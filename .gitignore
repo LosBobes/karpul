@@ -15,3 +15,10 @@ frontend/dist/
 # Misc
 .env
 .DS_Store
+
+# Deployment secrets / state
+deploy/.env
+deploy/terraform/.terraform/
+deploy/terraform/*.tfstate*
+deploy/terraform/terraform.tfvars
+deploy/terraform/.terraform.lock.hcl

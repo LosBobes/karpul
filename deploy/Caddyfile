@@ -1,0 +1,5 @@
+# Automatic HTTPS via Let's Encrypt. DOMAIN comes from deploy/.env.
+{$DOMAIN} {
+	encode zstd gzip
+	reverse_proxy frontend:80
+}

@@ -57,6 +57,11 @@ alone hosts the whole app at http://localhost:8000.
 docker compose up --build              # http://localhost:8080
 ```
 
+### Production on Hetzner
+
+Terraform for the server, Caddy for HTTPS, GitHub Actions for deploys on every push to `main`.
+See [deploy/README.md](deploy/README.md) for the steps and the secrets to set.
+
 ## Configuration
 
 | Variable | Where | Default | Purpose |

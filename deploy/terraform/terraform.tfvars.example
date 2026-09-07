@@ -1,0 +1,7 @@
+# Copy to terraform.tfvars (git-ignored). Put the token in the environment instead:
+#   export TF_VAR_hcloud_token=...
+ssh_public_key = "ssh-ed25519 AAAA... deploy@karpul"
+name           = "karpul"
+server_type    = "cx22"
+location       = "fsn1"
+# ssh_allowed_cidrs = ["203.0.113.0/24"]
