@@ -1,0 +1,183 @@
+import { useState } from 'react'
+import { fmtTime, sameName } from '../lib/dates'
+import { isPassengerDrag, readPassengerDrag, setPassengerDrag, type PassengerDrag } from '../lib/dnd'
+import type { Ride } from '../lib/types'
+
+interface Props {
+  ride: Ride
+  userName: string
+  busy: boolean
+  onJoin: (ride: Ride) => void
+  onLeave: (ride: Ride, bookingId: number) => void
+  onCancel: (ride: Ride) => void
+  onEdit: (ride: Ride) => void
+  /** Someone is dragging a passenger token right now. */
+  dragActive: boolean
+  onDragState: (dragging: boolean) => void
+  onDropPassenger: (ride: Ride, drag: PassengerDrag) => void
+}
+
+export function RideCard({
+  ride,
+  userName,
+  busy,
+  onJoin,
+  onLeave,
+  onCancel,
+  onEdit,
+  dragActive,
+  onDragState,
+  onDropPassenger,
+}: Props) {
+  const [over, setOver] = useState(false)
+  const isDriver = sameName(userName, ride.driver_name)
+  const myBooking = ride.bookings.find((b) => sameName(b.passenger_name, userName))
+  const full = ride.free_seats <= 0
+  const canReceive = !!userName && !isDriver && !myBooking && !full && !busy
+
+  const seatDots = Array.from({ length: ride.seats }, (_, i) => i < ride.bookings.length)
+
+  const cls = [
+    'ride',
+    full && 'ride-full',
+    dragActive && canReceive && 'ride-droppable',
+    dragActive && !canReceive && 'ride-nodrop',
+    over && 'ride-over',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <article
+      className={cls}
+      onDragOver={(e) => {
+        if (!canReceive || !isPassengerDrag(e)) return
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        if (!over) setOver(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false)
+      }}
+      onDrop={(e) => {
+        setOver(false)
+        if (!canReceive) return
+        const drag = readPassengerDrag(e)
+        if (!drag) return
+        e.preventDefault()
+        onDropPassenger(ride, drag)
+      }}
+    >
+      <div className="ride-times">
+        <div className="time">
+          <span className="time-label">Leave</span>
+          <span className="time-value">{fmtTime(ride.departure_time)}</span>
+        </div>
+        <div className="time">
+          <span className="time-label">Back</span>
+          <span className="time-value">{fmtTime(ride.return_time)}</span>
+        </div>
+      </div>
+
+      <div className="ride-body">
+        <div className="ride-route">
+          <span>{ride.origin}</span>
+          <span className="arrow" aria-hidden="true">
+            →
+          </span>
+          <span>{ride.destination}</span>
+        </div>
+        <div className="ride-meta">
+          <span className={`chip chip-${ride.car_type}`}>
+            {ride.car_type === 'corporate' ? 'Company car' : 'Own car'}
+          </span>
+          <span className="ride-car">{ride.car_name}</span>
+          <span className="ride-driver">
+            driver <strong>{ride.driver_name}</strong>
+            {isDriver && ' (you)'}
+          </span>
+        </div>
+        {ride.notes && <p className="ride-notes">{ride.notes}</p>}
+        <div className="ride-seats">
+          <span className="seat-dots" aria-hidden="true">
+            {seatDots.map((taken, i) => (
+              <span key={i} className={taken ? 'seat seat-taken' : 'seat'} />
+            ))}
+          </span>
+          <span className="seat-text">
+            {full ? 'Full' : `${ride.free_seats} of ${ride.seats} free`}
+          </span>
+          {ride.bookings.length > 0 && (
+            <span className="passengers">
+              with{' '}
+              {ride.bookings.map((b, i) => {
+                const mine = sameName(b.passenger_name, userName)
+                return (
+                <span
+                  key={b.id}
+                  className={mine ? 'passenger passenger-me' : 'passenger'}
+                  draggable={mine && !busy}
+                  title={mine ? 'Drag to another car to switch, or to the tray to leave' : undefined}
+                  onDragStart={(e) => {
+                    if (!mine) return
+                    setPassengerDrag(e, { name: userName, fromRideId: ride.id, bookingId: b.id })
+                    onDragState(true)
+                  }}
+                  onDragEnd={() => onDragState(false)}
+                >
+                  {i > 0 && ', '}
+                  {b.passenger_name}
+                  {mine && ' (you)'}
+                  {isDriver && (
+                    <button
+                      type="button"
+                      className="btn-x"
+                      title={`Remove ${b.passenger_name}`}
+                      disabled={busy}
+                      onClick={() => onLeave(ride, b.id)}
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+                )
+              })}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="ride-actions">
+        {isDriver ? (
+          <>
+            <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onEdit(ride)}>
+              Edit
+            </button>
+            <button type="button" className="btn btn-danger btn-sm" disabled={busy} onClick={() => onCancel(ride)}>
+              Cancel ride
+            </button>
+          </>
+        ) : myBooking ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={busy}
+            onClick={() => onLeave(ride, myBooking.id)}
+          >
+            Leave
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            disabled={busy || full || !userName}
+            title={!userName ? 'Set your name first' : undefined}
+            onClick={() => onJoin(ride)}
+          >
+            {full ? 'Full' : 'Join'}
+          </button>
+        )}
+      </div>
+    </article>
+  )
+}
