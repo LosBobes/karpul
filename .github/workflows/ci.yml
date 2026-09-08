@@ -1,12 +1,22 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
+
+# A newer push to the same branch/PR makes older in-flight runs obsolete;
+# cancel them. Never cancel pushes to main (each commit there is deployed).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
 
 jobs:
-  backend:
+  backend-tests:
+    name: Backend tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,7 +31,8 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
 
-  frontend:
+  frontend-build:
+    name: Frontend lint and build
     runs-on: ubuntu-latest
     defaults:
       run:

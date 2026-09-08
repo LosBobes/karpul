@@ -1,0 +1,20 @@
+# Karpul vhost for the shared Hetzner host.
+#
+# Caddy runs on the host and already serves gamgee (localhost:3000), iris
+# (localhost:3001) and flora-find (localhost:3002). Do NOT overwrite the
+# server's /etc/caddy/Caddyfile with this file: APPEND this block to it so the
+# existing blocks are left untouched. See docs/deployment-hetzner.md.
+#
+# Replace karpul.example.com with the real domain before appending. Caddy
+# automatically obtains and renews a Let's Encrypt TLS certificate for it.
+
+karpul.example.com {
+    encode zstd gzip
+
+    reverse_proxy localhost:3003 {
+        # Absorb the few seconds while compose recreates the container during
+        # a deploy, instead of returning a hard 502 for every request.
+        lb_try_duration 10s
+        lb_try_interval 500ms
+    }
+}

@@ -14,7 +14,12 @@ from .database import engine, init_db
 from .routers import cars, rides
 from .seed import seed_corporate_cars
 
-FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+# Built frontend location. The Docker image sets KARPUL_FRONTEND_DIST=/app/static;
+# a source checkout falls back to frontend/dist after `npm run build`.
+FRONTEND_DIST = Path(
+    os.getenv("KARPUL_FRONTEND_DIST")
+    or Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+)
 
 
 @asynccontextmanager

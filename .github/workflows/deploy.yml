@@ -1,68 +1,112 @@
 name: Deploy to Hetzner
 
+# Builds Karpul on the shared Hetzner server from source on every push to
+# main, exactly like gamgee, iris and flora-find on the same box.
+#
+# HETZNER_HOST / HETZNER_USER / HETZNER_SSH_KEY (and optional HETZNER_PORT) are
+# inherited from the LosBobes org secrets. DEPLOY_PATH is set at the repo level
+# (/opt/karpul) so this service can never deploy into another app's directory.
+# The check-secrets job below no-ops the deploy until all of them exist.
+#
+# This expects /opt/karpul to already exist on the server as a clone of this
+# repo with a filled-in .env, and the Caddy block appended. See
+# docs/deployment-hetzner.md steps 1 to 5. Until that one-time bootstrap is
+# done, the deploy job fails at `cd`.
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
+# Serialize deploys: overlapping runs race on the same compose project.
+# Queue instead of cancelling so the in-flight deploy finishes cleanly.
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
+# The deploy runs entirely over SSH; it needs no GitHub API write access.
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  check-secrets:
+    name: Check deploy secrets are configured
     runs-on: ubuntu-latest
-    environment: production
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up SSH
+      - name: Look for the Hetzner secrets
+        id: check
         env:
-          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
-          HOST: ${{ secrets.HETZNER_HOST }}
+          HAS_HOST: ${{ secrets.HETZNER_HOST != '' }}
+          HAS_USER: ${{ secrets.HETZNER_USER != '' }}
+          HAS_KEY: ${{ secrets.HETZNER_SSH_KEY != '' }}
+          HAS_PATH: ${{ secrets.DEPLOY_PATH != '' }}
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          if [ "$HAS_HOST" = true ] && [ "$HAS_USER" = true ] && [ "$HAS_KEY" = true ] && [ "$HAS_PATH" = true ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "All deploy secrets present."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Hetzner deploy secrets are not fully configured (HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY from the org; DEPLOY_PATH on this repo). Skipping deploy. See docs/deployment-hetzner.md."
+          fi
 
-      - name: Write server .env from secrets
-        env:
-          DOMAIN: ${{ secrets.DOMAIN }}
-          CORPORATE_CARS: ${{ secrets.CORPORATE_CARS }}
-        run: |
-          test -n "$DOMAIN" || { echo "DOMAIN secret is not set"; exit 1; }
-          {
-            echo "DOMAIN=$DOMAIN"
-            echo "CORPORATE_CARS=$CORPORATE_CARS"
-          } > deploy/.env
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: check-secrets
+    if: needs.check-secrets.outputs.configured == 'true'
+    timeout-minutes: 20
 
-      - name: Sync repository to server
-        env:
-          HOST: ${{ secrets.HETZNER_HOST }}
-          USER: ${{ secrets.HETZNER_SSH_USER }}
-        run: |
-          rsync -az --delete \
-            --exclude '.git' \
-            --exclude 'node_modules' \
-            --exclude 'frontend/dist' \
-            --exclude 'backend/data' \
-            ./ "$USER@$HOST:/opt/karpul/"
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host:     ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key:      ${{ secrets.HETZNER_SSH_KEY }}
+          port:     ${{ secrets.HETZNER_PORT || 22 }}
+          # Give a busy box more than the default 30s to accept the connection.
+          timeout: 90s
+          script_stop: true
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
 
-      - name: Build and restart containers
-        env:
-          HOST: ${{ secrets.HETZNER_HOST }}
-          USER: ${{ secrets.HETZNER_SSH_USER }}
-        run: ssh "$USER@$HOST" 'bash /opt/karpul/deploy/deploy.sh'
+            echo "Pulling latest code..."
+            git fetch origin main
+            git reset --hard origin/main
 
-      - name: Smoke test
-        env:
-          DOMAIN: ${{ secrets.DOMAIN }}
-        run: |
-          for i in $(seq 1 12); do
-            if curl -fsS "https://$DOMAIN/api/health" | grep -q ok; then
-              echo "healthy"; exit 0
-            fi
-            sleep 10
-          done
-          echo "health check failed" >&2; exit 1
+            echo "Building image..."
+            # Runtime config (CORS_ORIGINS, CORPORATE_CARS) lives in the box's
+            # .env next to docker-compose.prod.yml; compose reads it
+            # automatically. Build first, while the current container keeps
+            # serving, so downtime is only the brief recreate window below.
+            docker compose -f docker-compose.prod.yml build
+
+            echo "Recreating container..."
+            # `up -d` recreates only what changed and starts the replacement
+            # immediately; Caddy retries across the gap (see Caddyfile). The
+            # named volume karpul_karpul_data is not touched.
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+            echo "Waiting for the app to report healthy..."
+            for i in $(seq 1 30); do
+              status="$(docker compose -f docker-compose.prod.yml ps --format '{{.Service}} {{.Health}}' | awk '$1=="app"{print $2}')"
+              if [ "$status" = "healthy" ]; then
+                echo "app healthy after ${i} checks"
+                break
+              fi
+              if [ "$i" = "30" ]; then
+                echo "app did not become healthy; recent logs:"
+                docker compose -f docker-compose.prod.yml logs --tail 50 app
+                exit 1
+              fi
+              sleep 2
+            done
+
+            echo "Pruning old images..."
+            docker image prune -f
+
+            echo "Running containers:"
+            docker compose -f docker-compose.prod.yml ps
