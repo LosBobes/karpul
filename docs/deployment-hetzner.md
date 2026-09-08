@@ -138,12 +138,17 @@ SSHing in, pulling and rebuilding, exactly like the sibling repos.
 | `HETZNER_USER` | org secret (already exists) | SSH user |
 | `HETZNER_SSH_KEY` | org secret (already exists) | Private key whose public half is on the server |
 | `HETZNER_PORT` | org secret, optional | SSH port, defaults to 22 |
-| `DEPLOY_PATH` | **this repo**: Settings, Secrets and variables, Actions | `/opt/karpul` |
 
-`DEPLOY_PATH` is deliberately per-repo so Karpul can never deploy into another
-app's directory. Until it is set, the workflow's `check-secrets` job skips the
-deploy with a warning instead of failing. Until the one-time bootstrap above is
-done, the deploy job fails at `cd /opt/karpul`.
+The deploy directory is **hard-coded** to `/opt/karpul` in the workflow and is
+never read from a secret. The org also carries a `DEPLOY_PATH` secret that
+belongs to another app; reading it here would (and once did) run Karpul's deploy
+inside that app's checkout. The remote script additionally checks that the
+directory's git remote is `LosBobes/karpul` and that its compose file is
+Karpul's before it builds or restarts anything, so a wrong path fails fast
+instead of touching a neighbour.
+
+Until the one-time bootstrap above is done, the deploy job fails at that guard
+with a message pointing back here.
 
 ---
 
