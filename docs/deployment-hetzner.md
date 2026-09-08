@@ -138,12 +138,19 @@ SSHing in, pulling and rebuilding, exactly like the sibling repos.
 | `HETZNER_USER` | org secret (already exists) | SSH user |
 | `HETZNER_SSH_KEY` | org secret (already exists) | Private key whose public half is on the server |
 | `HETZNER_PORT` | org secret, optional | SSH port, defaults to 22 |
-| `DEPLOY_PATH` | **this repo**: Settings, Secrets and variables, Actions | `/opt/karpul` |
 
-`DEPLOY_PATH` is deliberately per-repo so Karpul can never deploy into another
-app's directory. Until it is set, the workflow's `check-secrets` job skips the
-deploy with a warning instead of failing. Until the one-time bootstrap above is
-done, the deploy job fails at `cd /opt/karpul`.
+The deploy directory is **not** a secret. It is hard-coded to `/opt/karpul` in
+the workflow's `env` block, because the LosBobes org already carries a
+`DEPLOY_PATH` secret that points at a sibling app's checkout: a workflow that
+read `secrets.DEPLOY_PATH` would inherit it and rebuild that app instead of
+Karpul (this happened on the very first deploy run). Before it changes
+anything, the script also checks that `/opt/karpul` is a git clone whose
+`origin` is this repository and that its `docker-compose.prod.yml` defines the
+`app` service; otherwise it stops with an error and touches nothing.
+
+Until the `HETZNER_*` secrets exist, the `check-secrets` job skips the deploy
+with a warning instead of failing. Until the one-time bootstrap above is done,
+the deploy job fails at the checkout check with a message pointing here.
 
 ---
 
