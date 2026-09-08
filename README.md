@@ -54,14 +54,22 @@ alone hosts the whole app at http://localhost:8000.
 ### Docker
 
 ```bash
-docker compose up --build              # http://localhost:8080
+docker compose up --build              # http://localhost:8080, one container
 ```
+
+### Production on Hetzner
+
+Karpul runs on the shared LosBobes Hetzner box next to gamgee, iris and flora-find:
+host Caddy for HTTPS, a loopback-only compose stack on port 3003, and a GitHub Actions
+deploy on every push to `main` using the org's `HETZNER_*` secrets.
+See [docs/deployment-hetzner.md](docs/deployment-hetzner.md).
 
 ## Configuration
 
 | Variable | Where | Default | Purpose |
 | --- | --- | --- | --- |
 | `DATABASE_URL` | backend | `sqlite:///backend/data/karpul.db` | Any SQLAlchemy URL |
+| `KARPUL_FRONTEND_DIST` | backend | `frontend/dist` | Built frontend to serve from `/` |
 | `CORS_ORIGINS` | backend | `http://localhost:5173` | Comma-separated allowed origins |
 | `CORPORATE_CARS` | backend | 3 sample cars | Seed for the car pool on first start: `Name\|PLATE\|seats;Name\|PLATE\|seats` |
 | `VITE_API_URL` | frontend | *(same origin)* | Base URL of the API if hosted elsewhere |
@@ -97,6 +105,8 @@ backend/
     routers/       cars.py, rides.py
     seed.py        Company-car seed
   tests/           pytest suite (in-memory SQLite)
+Dockerfile         frontend build + FastAPI in one image
+docker-compose.prod.yml, Caddyfile, Makefile   shared-Hetzner-box deploy (docs/deployment-hetzner.md)
 frontend/
   src/
     App.tsx                  Week/day board, joins, drag-and-drop orchestration

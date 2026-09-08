@@ -1,0 +1,16 @@
+# Local all-in-one run: builds the frontend and serves everything from FastAPI.
+#   docker compose up --build        -> http://localhost:8080
+# For day-to-day development use `uvicorn --reload` + `npm run dev` instead (see README).
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8000"
+    environment:
+      CORS_ORIGINS: http://localhost:8080
+      # CORPORATE_CARS: "Skoda Octavia|B-123-XY|4;VW Transporter|B-456-ZZ|8"
+    volumes:
+      - karpul_data:/data
+
+volumes:
+  karpul_data:

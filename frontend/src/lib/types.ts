@@ -1,0 +1,46 @@
+export type CarType = 'corporate' | 'own'
+
+export interface CorporateCar {
+  id: number
+  name: string
+  plate: string
+  passenger_seats: number
+}
+
+export interface Booking {
+  id: number
+  passenger_name: string
+  created_at: string
+}
+
+export interface Ride {
+  id: number
+  ride_date: string // YYYY-MM-DD
+  car_type: CarType
+  car_name: string
+  corporate_car_id: number | null
+  driver_name: string
+  origin: string
+  destination: string
+  departure_time: string // HH:MM[:SS]
+  return_time: string | null
+  seats: number
+  notes: string
+  created_at: string
+  bookings: Booking[]
+  free_seats: number
+}
+
+export interface RideInput {
+  ride_date: string
+  car_type: CarType
+  car_name: string
+  corporate_car_id: number | null
+  driver_name: string
+  origin: string
+  destination: string
+  departure_time: string
+  return_time: string | null
+  seats: number
+  notes: string
+}

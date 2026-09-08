@@ -1,0 +1,44 @@
+# Production compose for the Karpul stack on the shared Hetzner host.
+#
+# This mirrors how gamgee, iris and flora-find are deployed on the same box: a
+# host-level Caddy terminates TLS (Let's Encrypt) and reverse-proxies each
+# domain to a loopback-only port. gamgee owns localhost:3000, iris 3001,
+# flora-find 3002, and Karpul owns localhost:3003, so the stacks never collide.
+#
+# Karpul is a single application container: the FastAPI backend serves the API
+# and the built React frontend from one origin on port 8000 (see the repo
+# Dockerfile). Only that container is published, and only on 127.0.0.1, so
+# nothing here is reachable from the internet except through Caddy. The SQLite
+# database lives in a named volume.
+#
+# The image is built ON THE SERVER from source (docker compose ... up --build),
+# the same as gamgee and flora-find.
+
+services:
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    environment:
+      # Same-origin deploy (browser -> Caddy -> FastAPI), so this is just the
+      # public domain. Kept so CORS allows it if the API is ever hit cross-origin.
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://karpul.example.com}
+      # Optional company-car seed, applied only when the car table is empty.
+      CORPORATE_CARS: ${CORPORATE_CARS:-}
+    volumes:
+      # SQLite persists here across every rebuild/recreate. Only
+      # `docker compose down -v` would delete it.
+      - karpul_data:/data
+    ports:
+      # Loopback only: reachable from Caddy on the same host, not the internet.
+      # gamgee 3000, iris 3001, flora-find 3002, Karpul 3003.
+      - "127.0.0.1:3003:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  karpul_data:
