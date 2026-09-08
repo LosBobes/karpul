@@ -4,14 +4,19 @@ name: Deploy to Hetzner
 # main, exactly like gamgee, iris and flora-find on the same box.
 #
 # HETZNER_HOST / HETZNER_USER / HETZNER_SSH_KEY (and optional HETZNER_PORT) are
-# inherited from the LosBobes org secrets. DEPLOY_PATH is set at the repo level
-# (/opt/karpul) so this service can never deploy into another app's directory.
-# The check-secrets job below no-ops the deploy until all of them exist.
+# inherited from the LosBobes org secrets. The check-secrets job below no-ops
+# the deploy until they exist.
+#
+# The deploy directory is HARD-CODED below, never read from a secret. The org
+# also carries a DEPLOY_PATH secret that belongs to another app: on the first
+# run this workflow inherited it and ran `docker compose up` inside that app's
+# checkout. The path is fixed here and the remote script refuses to touch a
+# directory whose git remote is not this repository.
 #
 # This expects /opt/karpul to already exist on the server as a clone of this
 # repo with a filled-in .env, and the Caddy block appended. See
 # docs/deployment-hetzner.md steps 1 to 5. Until that one-time bootstrap is
-# done, the deploy job fails at `cd`.
+# done, the deploy job fails at the checkout guard.
 
 on:
   push:
@@ -28,6 +33,10 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  DEPLOY_PATH: /opt/karpul
+  EXPECTED_REMOTE: LosBobes/karpul
+
 jobs:
   check-secrets:
     name: Check deploy secrets are configured
@@ -41,14 +50,13 @@ jobs:
           HAS_HOST: ${{ secrets.HETZNER_HOST != '' }}
           HAS_USER: ${{ secrets.HETZNER_USER != '' }}
           HAS_KEY: ${{ secrets.HETZNER_SSH_KEY != '' }}
-          HAS_PATH: ${{ secrets.DEPLOY_PATH != '' }}
         run: |
-          if [ "$HAS_HOST" = true ] && [ "$HAS_USER" = true ] && [ "$HAS_KEY" = true ] && [ "$HAS_PATH" = true ]; then
+          if [ "$HAS_HOST" = true ] && [ "$HAS_USER" = true ] && [ "$HAS_KEY" = true ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "All deploy secrets present."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Hetzner deploy secrets are not fully configured (HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY from the org; DEPLOY_PATH on this repo). Skipping deploy. See docs/deployment-hetzner.md."
+            echo "::warning::Hetzner deploy secrets are not fully configured (HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY from the org). Skipping deploy. See docs/deployment-hetzner.md."
           fi
 
   deploy:
@@ -68,10 +76,31 @@ jobs:
           port:     ${{ secrets.HETZNER_PORT || 22 }}
           # Give a busy box more than the default 30s to accept the connection.
           timeout: 90s
+          envs: DEPLOY_PATH,EXPECTED_REMOTE
           script_stop: true
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
+            echo "Deploy directory: $DEPLOY_PATH"
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              echo "::error::$DEPLOY_PATH is not a git checkout. Do the one-time bootstrap in docs/deployment-hetzner.md first."
+              exit 1
+            fi
+            cd "$DEPLOY_PATH"
+
+            # Guard: only ever operate on a checkout of THIS repository. Other
+            # apps share this server; never rebuild or restart one of them.
+            remote="$(git remote get-url origin)"
+            case "$remote" in
+              *"$EXPECTED_REMOTE"*|*"$(echo "$EXPECTED_REMOTE" | tr 'A-Z' 'a-z')"*) ;;
+              *)
+                echo "::error::$DEPLOY_PATH is a checkout of '$remote', not $EXPECTED_REMOTE. Refusing to deploy."
+                exit 1
+                ;;
+            esac
+            if ! grep -q "karpul_data" docker-compose.prod.yml; then
+              echo "::error::docker-compose.prod.yml in $DEPLOY_PATH is not Karpul's. Refusing to deploy."
+              exit 1
+            fi
 
             echo "Pulling latest code..."
             git fetch origin main
