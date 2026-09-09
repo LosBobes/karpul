@@ -68,7 +68,7 @@ export function PassengerTray({
             }}
             onDragEnd={() => onDragState(false)}
           >
-            <span aria-hidden="true">🧍</span> {userName}
+            <span aria-hidden="true">▸</span> {userName}
           </span>
           <span className="tray-text">
             {hasOpenRides ? 'Drag your name onto a car to pick a driver, or press Join.' : 'No free seats today yet.'}

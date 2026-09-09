@@ -1,7 +1,19 @@
 import { useState } from 'react'
+import ScrambleHover from '../fancy/text/scramble-hover'
+import { BoardText } from './BoardText'
 import { fmtTime, sameName } from '../lib/dates'
 import { isPassengerDrag, readPassengerDrag, setPassengerDrag, type PassengerDrag } from '../lib/dnd'
 import type { Ride } from '../lib/types'
+
+/** Split-flap feel: uppercase letters only, revealed left to right. */
+const SCRAMBLE = {
+  characters: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  scrambleSpeed: 35,
+  maxIterations: 8,
+  sequential: true,
+  revealDirection: 'start',
+  scrambledClassName: 'text-[var(--muted)]',
+} as const
 
 interface Props {
   ride: Ride
@@ -81,11 +93,11 @@ export function RideCard({
 
       <div className="ride-body">
         <div className="ride-route">
-          <span>{ride.origin}</span>
+          <ScrambleHover text={ride.origin} {...SCRAMBLE} />
           <span className="arrow" aria-hidden="true">
             →
           </span>
-          <span>{ride.destination}</span>
+          <ScrambleHover text={ride.destination} {...SCRAMBLE} />
         </div>
         <div className="ride-meta">
           <span className={`chip chip-${ride.car_type}`}>
@@ -105,7 +117,11 @@ export function RideCard({
             ))}
           </span>
           <span className="seat-text">
-            {full ? 'Full' : `${ride.free_seats} of ${ride.seats} free`}
+            {/* Re-keying on the count is what makes it flip: a new key remounts
+                the component, which replays the reveal on the new figure. */}
+            <BoardText key={ride.free_seats} staggerDuration={0.02} stiffness={260}>
+              {full ? 'FULL' : `${ride.free_seats} OF ${ride.seats} FREE`}
+            </BoardText>
           </span>
           {ride.bookings.length > 0 && (
             <span className="passengers">

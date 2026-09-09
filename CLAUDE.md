@@ -67,6 +67,29 @@ there is no login endpoint.
 
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings` and the computed `free_seats`. Every ride-returning endpoint goes through it.
 
+**Styling and the fancy components.** The frontend is Tailwind v4 (via `@tailwindcss/vite`)
+plus a hand-written design system in `src/index.css` — a dark "departure board" identity: hairline
+rules instead of shadows, 2px radius, Barlow Condensed for signage labels and IBM Plex Mono for
+anything numeric (times, plates, seat counts). The semantic class names (`.ride`, `.day`, `.btn`,
+`.chip`, …) are the contract the components render against; Tailwind utilities are used by the
+vendored components and for new markup. Fonts are bundled from `@fontsource` in `main.tsx` rather
+than fetched from Google, because the app ships as one self-hosted container.
+
+`src/fancy/` holds components copied from the fancy registry (`https://fancycomponents.dev/r/{name}.json`,
+MIT). They are vendored, not installed: each file carries a header naming its source and the local
+edits needed for this toolchain (no `"use client"`, no `NodeJS` types, `verbatimModuleSyntax`). They
+import `@/lib/utils`, hence the `@` → `src` alias in `vite.config.ts` and `tsconfig.app.json`.
+`src/fancy/**` is in `.oxlintrc.json`'s `ignorePatterns` — it is third-party code we deliberately
+do not restyle to local conventions.
+
+`components/BoardText.tsx` wraps `VerticalCutReveal` and is the only thing that should use it
+directly. That component clips its characters with `overflow-hidden` and slides them in from
+`y: 100%`, so if the animation never runs the text is *invisible*, not merely static — which happens
+in a background tab (rAF is throttled and the spring freezes part-way) and under
+`prefers-reduced-motion` (motion drives transforms from JS, so CSS can't stop it). `BoardText`
+renders plain text as the baseline and mounts the reveal only once the page is visible and motion is
+wanted. Re-keying it (`key={selected}`, `key={ride.free_seats}`) is what replays the flip.
+
 **Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), refetches on a 30 s interval and on window focus, and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
 Drag-and-drop uses native HTML5 DnD with a custom MIME type (`lib/dnd.ts`); dropping the passenger token on another car issues `leave` then `join`.
