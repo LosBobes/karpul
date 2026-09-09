@@ -504,6 +504,10 @@ label {
   border-radius: var(--radius);
   background: var(--signal);
   color: var(--signal-ink);
+  /* Matches the passenger token in the ride row exactly — it is a picture of
+     that token, so any drift makes the sentence point at the wrong thing. */
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -693,24 +697,53 @@ label {
 .ride-full .seat-taken {
   background: var(--muted);
 }
-.passengers {
+/* Passengers get their own labelled row. Inline after the seat count they read
+   as a sentence fragment ("FULL with Ana"), which is not what a board does. */
+.ride-pax {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+}
+.pax-label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
   color: var(--muted);
-  font-size: 0.9rem;
+  margin-right: 0.1rem;
+}
+/* One token per passenger — same mono as the driver line, so the row reads as
+   board data rather than prose. No commas: the borders do the separating. */
+.passenger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.pax-you {
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.6;
 }
 /* Your own chip inside a ride row. It is the drag handle for switching cars,
    so it has to advertise that: a grip, a lift on hover, and a grabbing cursor.
    Without the grip it just reads as a highlight. */
 .passenger-me {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  padding: 0.05rem 0.4rem;
-  border: 1px solid var(--signal);
-  border-radius: var(--radius);
+  border-color: var(--signal);
   background: var(--signal);
   color: var(--signal-ink);
   font-weight: 500;
-  vertical-align: baseline;
 }
 .grip {
   font-family: var(--font-mono);
