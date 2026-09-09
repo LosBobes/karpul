@@ -6,10 +6,17 @@
 # this block to it so the existing blocks are left untouched. See
 # docs/deployment-hetzner.md.
 #
-# Replace karpul.example.com with the real domain before appending. Caddy
-# automatically obtains and renews a Let's Encrypt TLS certificate for it.
+# Caddy automatically obtains and renews a Let's Encrypt TLS certificate for
+# both names. This needs karpul.dev's DNS to point straight at the server
+# (grey cloud in Cloudflare): behind the orange cloud the HTTP-01 challenge
+# cannot complete and issuance retries forever.
 
-karpul.example.com {
+# Apex redirects to www, which is the canonical origin (matches CORS_ORIGINS).
+karpul.dev {
+    redir https://www.karpul.dev{uri} permanent
+}
+
+www.karpul.dev {
     encode zstd gzip
 
     reverse_proxy localhost:3004 {

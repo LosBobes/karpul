@@ -18,7 +18,7 @@ are installed from the earlier deploys).
                                  v
                           Caddy (on the host, one instance)
      /              |                |                |              \
- gamgee.com  iris-application  flora-find.com  sokola.losbobes  karpul.example
+ gamgee.com  iris-application  flora-find.com  sokola.losbobes  www.karpul.dev
      |              |                |                |              |
 localhost:3000  localhost:3001  localhost:3002  localhost:3003  localhost:3004
      |              |                |                |              |
@@ -33,7 +33,7 @@ port. You only **add** a Karpul block to Caddy and start one more stack.
 | --- | --- | --- | --- | --- | --- |
 | Loopback port | `127.0.0.1:3000` | `127.0.0.1:3001` | `127.0.0.1:3002` | `127.0.0.1:3003` | `127.0.0.1:3004` |
 | Deploy dir / compose project | `/opt/gamgee` | `/opt/iris` | `/opt/flora-find` | `/opt/sokola` | `/opt/karpul` |
-| Caddy block | `gamgee.com {}` | `iris-application.com {}` | `flora-find.com {}` | `sokola.losbobes.com {}` | `karpul.example.com {}` |
+| Caddy block | `gamgee.com {}` | `iris-application.com {}` | `flora-find.com {}` | `sokola.losbobes.com {}` | `www.karpul.dev {}` |
 
 Karpul's container is named `karpul-app-1` and its volume `karpul_karpul_data`.
 Neither collides with the other apps.
@@ -81,7 +81,7 @@ Karpul has no secrets of its own (no accounts, no tokens). Set the public
 origin and, optionally, the company-car pool that is seeded on first start:
 
 ```env
-CORS_ORIGINS=https://karpul.example.com
+CORS_ORIGINS=https://www.karpul.dev.com
 CORPORATE_CARS=Skoda Octavia|BG-123-XY|4;VW Transporter|BG-456-ZZ|8
 ```
 
@@ -95,7 +95,7 @@ volume) to change the pool later.
 
 The server has a single `/etc/caddy/Caddyfile` that already contains the other
 apps' blocks. **Append** Karpul's block; do not replace the file. Fix the
-domain in the repo `Caddyfile` first if it still says `karpul.example.com`.
+domain in the repo `Caddyfile` first if it still says `www.karpul.dev.com`.
 
 ```bash
 cat /opt/karpul/Caddyfile >> /etc/caddy/Caddyfile
@@ -121,8 +121,8 @@ Verify:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps          # app "Up (healthy)"
-curl -sS https://karpul.example.com/api/health         # {"status":"ok"}
-curl -sS https://karpul.example.com/api/cars/corporate # seeded car pool
+curl -sS https://www.karpul.dev.com/api/health         # {"status":"ok"}
+curl -sS https://www.karpul.dev.com/api/cars/corporate # seeded car pool
 ```
 
 ---

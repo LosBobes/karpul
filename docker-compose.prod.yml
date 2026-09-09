@@ -23,7 +23,7 @@ services:
     environment:
       # Same-origin deploy (browser -> Caddy -> FastAPI), so this is just the
       # public domain. Kept so CORS allows it if the API is ever hit cross-origin.
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://karpul.example.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://www.karpul.dev}
       # Optional company-car seed, applied only when the car table is empty.
       CORPORATE_CARS: ${CORPORATE_CARS:-}
     volumes:
