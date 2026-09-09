@@ -9,6 +9,8 @@ interface Props {
   currentBookingId: number | null
   drivingToday: boolean
   hasOpenRides: boolean
+  /** A passenger token is in flight right now. */
+  dragActive: boolean
   onDragState: (dragging: boolean) => void
   onLeave: () => void
 }
@@ -23,6 +25,7 @@ export function PassengerTray({
   currentBookingId,
   drivingToday,
   hasOpenRides,
+  dragActive,
   onDragState,
   onLeave,
 }: Props) {
@@ -34,7 +37,16 @@ export function PassengerTray({
 
   return (
     <div
-      className={`tray ${seated ? 'tray-seated' : ''} ${over ? 'tray-over' : ''}`}
+      className={[
+        'tray',
+        seated && 'tray-seated',
+        // While the token is in flight the tray stops being a caption and
+        // becomes the "get out here" target, so it has to look like one.
+        seated && dragActive && 'tray-armed',
+        over && 'tray-over',
+      ]
+        .filter(Boolean)
+        .join(' ')}
       onDragOver={(e) => {
         if (!seated || !isPassengerDrag(e)) return
         e.preventDefault()
@@ -51,10 +63,25 @@ export function PassengerTray({
     >
       {seated ? (
         <>
-          <span className="tray-text">
-            You're riding with <strong>{currentRide.driver_name}</strong>. Drag your name to another car to switch,
-            or drop it here to get out.
+          <span className="tray-eject" aria-hidden="true">
+            ⏏
           </span>
+          {dragActive ? (
+            <span className="tray-text tray-text-armed">Drop here to get out of the car.</span>
+          ) : (
+            <span className="tray-text">
+              You're riding with <strong>{currentRide.driver_name}</strong>. Drag your{' '}
+              {/* A copy of the chip that sits in the ride row below, so it is obvious
+                  which thing on the board is the one you can pick up. */}
+              <span className="tray-chip">
+                <span className="grip" aria-hidden="true">
+                  ⠿
+                </span>
+                {userName}
+              </span>{' '}
+              chip onto another car to switch, or drop it here to get out.
+            </span>
+          )}
         </>
       ) : (
         <>

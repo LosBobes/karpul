@@ -74,6 +74,14 @@ def test_corporate_ride_uses_pool_car_and_blocks_overlap(client):
     later = dict(clash, departure_time="17:00", return_time="20:00")
     assert client.post("/api/rides", json=later).status_code == 201
 
+    # Same car, picked up exactly when the first ride returns -> a handover, fine
+    handover = dict(clash, departure_time="16:30", return_time="17:00", driver_name="Mila")
+    assert client.post("/api/rides", json=handover).status_code == 201, "back-to-back"
+
+    # ...but one minute early still overlaps
+    early = dict(clash, departure_time="16:29", return_time="16:45", driver_name="Nina")
+    assert client.post("/api/rides", json=early).status_code == 409
+
     # Different day -> fine
     other_day = dict(clash, ride_date=(date.today() + timedelta(days=2)).isoformat())
     assert client.post("/api/rides", json=other_day).status_code == 201

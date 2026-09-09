@@ -42,6 +42,7 @@ export function RideCard({
   onDropPassenger,
 }: Props) {
   const [over, setOver] = useState(false)
+  const [lifting, setLifting] = useState(false)
   const isDriver = sameName(userName, ride.driver_name)
   const myBooking = ride.bookings.find((b) => sameName(b.passenger_name, userName))
   const full = ride.free_seats <= 0
@@ -131,17 +132,35 @@ export function RideCard({
                 return (
                 <span
                   key={b.id}
-                  className={mine ? 'passenger passenger-me' : 'passenger'}
+                  className={[
+                    'passenger',
+                    mine && 'passenger-me',
+                    mine && !busy && 'passenger-grabbable',
+                    mine && lifting && 'passenger-lifting',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                   draggable={mine && !busy}
                   title={mine ? 'Drag to another car to switch, or to the tray to leave' : undefined}
                   onDragStart={(e) => {
                     if (!mine) return
                     setPassengerDrag(e, { name: userName, fromRideId: ride.id, bookingId: b.id })
+                    setLifting(true)
                     onDragState(true)
                   }}
-                  onDragEnd={() => onDragState(false)}
+                  onDragEnd={() => {
+                    setLifting(false)
+                    onDragState(false)
+                  }}
                 >
                   {i > 0 && ', '}
+                  {/* The grip is the whole point: without it the chip reads as a
+                      highlight, not as something you can pick up. */}
+                  {mine && !busy && (
+                    <span className="grip" aria-hidden="true">
+                      ⠿
+                    </span>
+                  )}
                   {b.passenger_name}
                   {mine && ' (you)'}
                   {isDriver && (

@@ -18,7 +18,7 @@
   --color-surface: #0f1519;
   --color-surface-2: #161f25;
   --color-text: #e6edf1;
-  --color-muted: #7b8f9c;
+  --color-muted: #97aab7;
   --color-border: #1f2b33;
   --color-signal: #ffb224;
   --color-signal-ink: #0b0705;
@@ -49,7 +49,9 @@
 
   color-scheme: dark;
   font-family: var(--font-body);
-  font-size: 15px;
+  /* The signage type is condensed and the fine print is mostly muted, so the
+     board starts a notch above the browser default rather than below it. */
+  font-size: 16px;
   line-height: 1.45;
 }
 
@@ -153,7 +155,8 @@ label {
 }
 .hint {
   color: var(--muted);
-  font-size: 0.82rem;
+  font-size: 0.88rem;
+  font-weight: 500;
   margin: 0;
 }
 .error {
@@ -162,7 +165,7 @@ label {
   border-left: 2px solid var(--stop);
   padding: 0.5rem 0.75rem;
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 
 /* Buttons — square signage keys, never pills. */
@@ -195,7 +198,7 @@ label {
 }
 .btn-sm {
   padding: 0.3rem 0.65rem;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
 }
 .btn-primary {
   background: var(--signal);
@@ -280,9 +283,10 @@ label {
   align-self: center;
 }
 .brand .muted {
-  font-family: var(--font-body);
-  font-size: 0.8rem;
-  letter-spacing: 0.14em;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
 }
 .topbar-right {
   display: flex;
@@ -296,13 +300,14 @@ label {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--muted);
 }
 .namebar strong {
   color: var(--text);
   font-family: var(--font-mono);
   font-weight: 500;
+  letter-spacing: -0.01em;
 }
 .namebar-edit {
   align-items: flex-end;
@@ -337,14 +342,15 @@ label {
   flex-wrap: wrap;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.85rem;
-  letter-spacing: 0.04em;
+  font-size: 0.9rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--muted);
 }
 .weekstrip-title input[type='date'] {
   width: auto;
   padding: 0.2rem 0.35rem;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
 }
 .weekstrip-days {
   display: grid;
@@ -356,7 +362,7 @@ label {
   flex-direction: column;
   align-items: center;
   gap: 0.15rem;
-  padding: 0.6rem 0.2rem;
+  padding: 0.6rem 0.15rem;
   border: none;
   border-left: 1px solid var(--border);
   border-top: 2px solid transparent;
@@ -373,7 +379,8 @@ label {
 }
 .day-name {
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-weight: 600;
+  font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--muted);
@@ -385,8 +392,9 @@ label {
 }
 .day-meta {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.02em;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -432,7 +440,7 @@ label {
   padding: 3rem 1rem;
   border: 1px dashed var(--border);
   font-family: var(--font-mono);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 .empty p {
   margin: 0 0 0.5rem;
@@ -449,14 +457,55 @@ label {
   border: 1px dashed var(--border);
   background: var(--surface);
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.92rem;
+  font-weight: 500;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+/* Seated: the tray stops being a launch pad and becomes the way out. */
+.tray-seated {
+  border-color: color-mix(in srgb, var(--stop) 30%, var(--border));
+}
+.tray-armed {
+  border-color: var(--stop);
+  color: var(--stop);
+  background: color-mix(in srgb, var(--stop) 7%, transparent);
 }
 .tray-over {
   border-color: var(--stop);
   border-style: solid;
   background: color-mix(in srgb, var(--stop) 12%, transparent);
   color: var(--stop);
+}
+.tray-eject {
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--stop);
+  opacity: 0.7;
+}
+.tray-armed .tray-eject,
+.tray-over .tray-eject {
+  opacity: 1;
+}
+.tray-text-armed {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+/* A still copy of the chip that lives in the ride row, so the sentence can
+   point at the exact thing you are meant to pick up. */
+.tray-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 0.3rem;
+  border: 1px solid var(--signal);
+  border-radius: var(--radius);
+  background: var(--signal);
+  color: var(--signal-ink);
+  font-weight: 500;
+  white-space: nowrap;
 }
 .token {
   display: inline-flex;
@@ -505,8 +554,9 @@ label {
   background: transparent;
 }
 .ride-droppable {
-  border-color: color-mix(in srgb, var(--signal) 45%, transparent);
+  border-color: color-mix(in srgb, var(--signal) 55%, transparent);
   border-style: dashed;
+  background: color-mix(in srgb, var(--signal) 5%, var(--surface));
 }
 .ride-nodrop {
   opacity: 0.3;
@@ -531,7 +581,8 @@ label {
 }
 .time-label {
   font-family: var(--font-display);
-  font-size: 0.65rem;
+  font-weight: 600;
+  font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--muted);
@@ -571,7 +622,8 @@ label {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
+  font-weight: 500;
   color: var(--muted);
 }
 .ride-driver {
@@ -580,7 +632,7 @@ label {
 }
 .ride-car {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.86rem;
 }
 /* Square bordered tags, the way a plate or a class marker is printed. */
 .chip {
@@ -588,10 +640,10 @@ label {
   border: 1px solid currentColor;
   border-radius: var(--radius);
   font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.8rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
 }
 .chip-corporate {
   color: var(--corp);
@@ -601,7 +653,7 @@ label {
 }
 .ride-notes {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   color: var(--muted);
   border-left: 2px solid var(--border);
   padding-left: 0.5rem;
@@ -611,7 +663,7 @@ label {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 .seat-dots {
   display: inline-flex;
@@ -628,7 +680,8 @@ label {
   background: var(--go);
 }
 .seat-text {
-  font-size: 0.8rem;
+  font-size: 0.86rem;
+  font-weight: 500;
   color: var(--go);
 }
 .ride-full .seat-text {
@@ -642,15 +695,51 @@ label {
 }
 .passengers {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
+/* Your own chip inside a ride row. It is the drag handle for switching cars,
+   so it has to advertise that: a grip, a lift on hover, and a grabbing cursor.
+   Without the grip it just reads as a highlight. */
 .passenger-me {
-  display: inline-block;
-  padding: 0 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid var(--signal);
+  border-radius: var(--radius);
   background: var(--signal);
   color: var(--signal-ink);
-  font-weight: 600;
+  font-weight: 500;
+  vertical-align: baseline;
+}
+.grip {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  opacity: 0.55;
+}
+.passenger-grabbable {
   cursor: grab;
+  transition: background 0.12s, box-shadow 0.12s, transform 0.12s;
+}
+.passenger-grabbable:hover {
+  background: color-mix(in srgb, var(--signal) 78%, white);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--signal) 35%, transparent);
+  transform: translateY(-1px);
+}
+.passenger-grabbable:hover .grip {
+  opacity: 0.95;
+}
+.passenger-grabbable:active {
+  cursor: grabbing;
+  transform: none;
+}
+/* While the chip is in flight the original stays put but goes ghosted, so the
+   row still shows where you are leaving from. */
+.passenger-lifting {
+  opacity: 0.35;
+  box-shadow: none;
 }
 .ride-actions {
   display: flex;
@@ -711,7 +800,7 @@ label {
   gap: 0.4rem;
   font-family: var(--font-body);
   font-weight: 400;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   text-transform: none;
   letter-spacing: 0;
   color: var(--muted);
@@ -760,7 +849,7 @@ label {
   border: 1px solid;
   background: var(--surface);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   z-index: 20;
   max-width: calc(100vw - 2rem);
 }
@@ -812,7 +901,8 @@ label {
   flex-direction: column;
   gap: 0.2rem;
   font-family: var(--font-display);
-  font-size: 0.75rem;
+  font-weight: 600;
+  font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--muted);
@@ -842,7 +932,8 @@ label {
 .car-retired-tag {
   flex-basis: 100%;
   font-family: var(--font-display);
-  font-size: 0.72rem;
+  font-weight: 600;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--muted);
