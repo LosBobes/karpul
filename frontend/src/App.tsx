@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
+import { BoardText } from './components/BoardText'
 import { NameBar } from './components/NameBar'
 import { PassengerTray } from './components/PassengerTray'
 import { RideCard } from './components/RideCard'
@@ -243,11 +244,10 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">
-            🚗
+            KP
           </span>
-          <span>
-            <strong>Karpul</strong> <span className="muted">firm carpooling</span>
-          </span>
+          <span>Karpul</span>
+          <span className="muted">Departures</span>
         </div>
         <div className="topbar-right">
           <NameBar name={userName} onChange={setUserName} />
@@ -257,7 +257,7 @@ export default function App() {
             title="Manage the company car pool"
             onClick={openAdmin}
           >
-            ⚙ Cars
+            Fleet
           </button>
         </div>
       </header>
@@ -266,7 +266,10 @@ export default function App() {
         <WeekStrip selected={selected} rides={rides} onSelect={setSelected} />
 
         <section className="day-head">
-          <h1>{fmtLongDate(selected)}</h1>
+          <h1>
+            {/* Keyed on the date so switching days replays the flip. */}
+            <BoardText key={selected}>{fmtLongDate(selected)}</BoardText>
+          </h1>
           <button
             type="button"
             className="btn btn-primary"
@@ -279,10 +282,10 @@ export default function App() {
         </section>
 
         {loading ? (
-          <p className="empty">Loading…</p>
+          <p className="empty">Reading the board…</p>
         ) : dayRides.length === 0 ? (
           <div className="empty">
-            <p>No rides on this day{isPast ? '.' : ' yet.'}</p>
+            <p>No departures {isPast ? 'were' : ''} scheduled for this day{isPast ? '.' : ' yet.'}</p>
             {!isPast && userName && (
               <button type="button" className="btn btn-link" onClick={() => setForm({ mode: 'create' })}>
                 Be the first to offer one

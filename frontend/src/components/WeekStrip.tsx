@@ -76,7 +76,7 @@ export function WeekStrip({ selected, rides, onSelect }: Props) {
               <span className="day-meta">
                 {c ? (
                   <>
-                    {c.rides} {c.rides === 1 ? 'ride' : 'rides'} · {c.free} free
+                    {c.rides}× · {c.free} free
                   </>
                 ) : (
                   <>&nbsp;</>
