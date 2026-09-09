@@ -157,3 +157,64 @@ def test_delete_unused_car_but_not_one_with_rides(client, admin):
     r = client.delete(f"/api/cars/corporate/{used['id']}", headers=AUTH)
     assert r.status_code == 409
     assert "retire" in r.json()["detail"]
+
+
+def test_rename_reaches_rides_already_booked_in_that_car(client, admin):
+    """`Ride.car_name` is a snapshot, so an admin rename has to be pushed out."""
+    car = client.get("/api/cars/corporate").json()[0]
+    ride = client.post(
+        "/api/rides",
+        json={
+            "ride_date": TOMORROW,
+            "car_type": "corporate",
+            "corporate_car_id": car["id"],
+            "driver_name": "Ana",
+            "origin": "Novi Sad",
+            "destination": "HQ",
+            "departure_time": "07:30",
+            "return_time": "16:30",
+            "seats": 2,
+        },
+    ).json()
+    assert ride["car_name"] == f"{car['name']} ({car['plate']})"
+
+    r = client.patch(
+        f"/api/cars/corporate/{car['id']}",
+        json={"name": "Mazda 6e", "plate": "bg-123-xy"},
+        headers=AUTH,
+    )
+    assert r.status_code == 200, r.text
+
+    after = client.get(f"/api/rides/{ride['id']}").json()
+    assert after["car_name"] == "Mazda 6e (BG-123-XY)"
+    # The driver's own seat offer is theirs, and is left alone.
+    assert after["seats"] == 2
+
+
+def test_raising_capacity_leaves_existing_offers_alone(client, admin):
+    """Growing the car does not silently widen a ride the driver already posted."""
+    car = client.get("/api/cars/corporate").json()[0]
+    ride = client.post(
+        "/api/rides",
+        json={
+            "ride_date": TOMORROW,
+            "car_type": "corporate",
+            "corporate_car_id": car["id"],
+            "driver_name": "Ana",
+            "origin": "Novi Sad",
+            "destination": "HQ",
+            "departure_time": "07:30",
+            "seats": 2,
+        },
+    ).json()
+    client.patch(
+        f"/api/cars/corporate/{car['id']}", json={"passenger_seats": 8}, headers=AUTH
+    ).raise_for_status()
+
+    assert client.get(f"/api/rides/{ride['id']}").json()["seats"] == 2
+    # ...but the driver can now edit up to the new capacity.
+    r = client.patch(
+        f"/api/rides/{ride['id']}", json={"seats": 7}, headers={"X-User-Name": "ana"}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["seats"] == 7

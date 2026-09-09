@@ -28,6 +28,31 @@ def _overlaps(a_start: time, a_end: time | None, b_start: time, b_end: time | No
     return a_start < b_end and b_start < a_end
 
 
+def corporate_car_label(car: CorporateCar) -> str:
+    """How a pool car is written on a ride row: `Mazda 6e (BG-123-XY)`."""
+    return f"{car.name} ({car.plate})"
+
+
+def relabel_rides_for_car(session: Session, car: CorporateCar) -> int:
+    """Push a renamed / re-plated car out to the rides that already reference it.
+
+    `Ride.car_name` is a denormalised label, so without this an admin rename
+    leaves the board showing the old name and plate on every existing ride.
+    Returns the number of rides touched; the caller commits.
+    """
+    label = corporate_car_label(car)
+    stmt = select(Ride).where(
+        Ride.corporate_car_id == car.id,
+        Ride.car_type == CarType.corporate,
+        Ride.car_name != label,
+    )
+    stale = list(session.exec(stmt))
+    for ride in stale:
+        ride.car_name = label
+        session.add(ride)
+    return len(stale)
+
+
 def resolve_corporate_car(session: Session, car_id: int) -> CorporateCar:
     car = session.get(CorporateCar, car_id)
     if car is None or not car.active:

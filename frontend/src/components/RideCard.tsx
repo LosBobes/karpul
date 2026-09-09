@@ -124,12 +124,13 @@ export function RideCard({
               {full ? 'FULL' : `${ride.free_seats} OF ${ride.seats} FREE`}
             </BoardText>
           </span>
-          {ride.bookings.length > 0 && (
-            <span className="passengers">
-              with{' '}
-              {ride.bookings.map((b, i) => {
-                const mine = sameName(b.passenger_name, userName)
-                return (
+        </div>
+        {ride.bookings.length > 0 && (
+          <div className="ride-pax">
+            <span className="pax-label">Aboard</span>
+            {ride.bookings.map((b) => {
+              const mine = sameName(b.passenger_name, userName)
+              return (
                 <span
                   key={b.id}
                   className={[
@@ -153,7 +154,6 @@ export function RideCard({
                     onDragState(false)
                   }}
                 >
-                  {i > 0 && ', '}
                   {/* The grip is the whole point: without it the chip reads as a
                       highlight, not as something you can pick up. */}
                   {mine && !busy && (
@@ -162,7 +162,7 @@ export function RideCard({
                     </span>
                   )}
                   {b.passenger_name}
-                  {mine && ' (you)'}
+                  {mine && <span className="pax-you">you</span>}
                   {isDriver && (
                     <button
                       type="button"
@@ -175,11 +175,10 @@ export function RideCard({
                     </button>
                   )}
                 </span>
-                )
-              })}
-            </span>
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <div className="ride-actions">

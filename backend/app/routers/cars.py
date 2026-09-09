@@ -7,6 +7,7 @@ from ..admin import AdminPasswordHeader, require_admin
 from ..database import get_session
 from ..models import CarType, CorporateCar, Ride
 from ..schemas import CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
+from ..services import relabel_rides_for_car
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
 
@@ -98,6 +99,12 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Sess
     for key, value in data.items():
         setattr(car, key, value)
     session.add(car)
+    # `Ride.car_name` is a denormalised "<Name> (<PLATE>)" label, so a rename has
+    # to travel to the rides already booked in this car or the board keeps
+    # showing the old one. Same transaction as the car edit: the label and the
+    # car never disagree.
+    if "name" in data or "plate" in data:
+        relabel_rides_for_car(session, car)
     session.commit()
     session.refresh(car)
     return car

@@ -7,7 +7,12 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..models import Booking, CarType, Ride
 from ..schemas import BookingCreate, BookingRead, RideCreate, RideRead, RideUpdate
-from ..services import ensure_car_available, resolve_corporate_car, to_ride_read_dict
+from ..services import (
+    corporate_car_label,
+    ensure_car_available,
+    resolve_corporate_car,
+    to_ride_read_dict,
+)
 
 router = APIRouter(prefix="/api/rides", tags=["rides"])
 
@@ -74,7 +79,7 @@ def create_ride(payload: RideCreate, session: SessionDep):
         ensure_car_available(
             session, car.id, payload.ride_date, payload.departure_time, payload.return_time
         )
-        data["car_name"] = f"{car.name} ({car.plate})"
+        data["car_name"] = corporate_car_label(car)
         if payload.seats > car.passenger_seats:
             raise HTTPException(
                 422,
@@ -116,7 +121,7 @@ def update_ride(ride_id: int, payload: RideUpdate, session: SessionDep, user: Us
             validated.return_time,
             exclude_ride_id=ride.id,
         )
-        data["car_name"] = f"{car.name} ({car.plate})"
+        data["car_name"] = corporate_car_label(car)
         if validated.seats > car.passenger_seats:
             raise HTTPException(
                 422,
