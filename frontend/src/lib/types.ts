@@ -5,6 +5,14 @@ export interface CorporateCar {
   name: string
   plate: string
   passenger_seats: number
+  /** Retired cars stay in the DB (rides reference them) but leave the ride form. */
+  active: boolean
+}
+
+export interface CorporateCarInput {
+  name: string
+  plate: string
+  passenger_seats: number
 }
 
 export interface Booking {

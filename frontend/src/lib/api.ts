@@ -1,4 +1,4 @@
-import type { CorporateCar, Ride, RideInput } from './types'
+import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './types'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -27,10 +27,17 @@ function extractDetail(body: unknown): string | null {
   return null
 }
 
-async function request<T>(path: string, init: RequestInit = {}, userName?: string): Promise<T> {
+/** Karpul has no sessions: the actor (or the shared admin password) rides on each request. */
+interface Auth {
+  userName?: string
+  adminPassword?: string
+}
+
+async function request<T>(path: string, init: RequestInit = {}, auth: Auth = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) }
   if (init.body) headers['Content-Type'] = 'application/json'
-  if (userName) headers['X-User-Name'] = userName
+  if (auth.userName) headers['X-User-Name'] = auth.userName
+  if (auth.adminPassword) headers['X-Admin-Password'] = auth.adminPassword
   const res = await fetch(`${BASE}${path}`, { ...init, headers })
   if (res.status === 204) return undefined as T
   const text = await res.text()
@@ -56,10 +63,10 @@ export const api = {
     request<Ride>('/api/rides', { method: 'POST', body: JSON.stringify(input) }),
 
   updateRide: (id: number, patch: Partial<RideInput>, userName: string) =>
-    request<Ride>(`/api/rides/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }, userName),
+    request<Ride>(`/api/rides/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }, { userName }),
 
   deleteRide: (id: number, userName: string) =>
-    request<void>(`/api/rides/${id}`, { method: 'DELETE' }, userName),
+    request<void>(`/api/rides/${id}`, { method: 'DELETE' }, { userName }),
 
   join: (rideId: number, passengerName: string) =>
     request<Ride>(`/api/rides/${rideId}/bookings`, {
@@ -68,5 +75,28 @@ export const api = {
     }),
 
   leave: (rideId: number, bookingId: number, userName: string) =>
-    request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }, userName),
+    request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }, { userName }),
+
+  // --- car pool admin (shared password, see backend/app/admin.py) ---
+
+  /** Every car including retired ones. Doubles as the password check: 401 = wrong. */
+  allCorporateCars: (adminPassword: string) =>
+    request<CorporateCar[]>('/api/cars/corporate?include_inactive=true', {}, { adminPassword }),
+
+  createCar: (input: CorporateCarInput, adminPassword: string) =>
+    request<CorporateCar>(
+      '/api/cars/corporate',
+      { method: 'POST', body: JSON.stringify(input) },
+      { adminPassword },
+    ),
+
+  updateCar: (id: number, patch: Partial<CorporateCarInput & { active: boolean }>, adminPassword: string) =>
+    request<CorporateCar>(
+      `/api/cars/corporate/${id}`,
+      { method: 'PATCH', body: JSON.stringify(patch) },
+      { adminPassword },
+    ),
+
+  deleteCar: (id: number, adminPassword: string) =>
+    request<void>(`/api/cars/corporate/${id}`, { method: 'DELETE' }, { adminPassword }),
 }

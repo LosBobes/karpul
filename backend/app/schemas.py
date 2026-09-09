@@ -14,6 +14,13 @@ def _clean_name(value: str) -> str:
     return value
 
 
+def _clean_plate(value: str) -> str:
+    value = " ".join(value.split()).upper()
+    if not value:
+        raise ValueError("must not be empty")
+    return value
+
+
 class CorporateCarRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -21,6 +28,45 @@ class CorporateCarRead(BaseModel):
     name: str
     plate: str
     passenger_seats: int
+    active: bool
+
+
+class CorporateCarCreate(BaseModel):
+    """Admin-only: a new car for the company pool."""
+
+    name: str = Field(min_length=1, max_length=80)
+    plate: str = Field(min_length=1, max_length=20)
+    passenger_seats: int = Field(ge=1, le=8)
+    active: bool = True
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, v: str) -> str:
+        return _clean_name(v)
+
+    @field_validator("plate")
+    @classmethod
+    def clean_plate(cls, v: str) -> str:
+        return _clean_plate(v)
+
+
+class CorporateCarUpdate(BaseModel):
+    """Admin-only partial update; `active=False` retires a car without deleting it."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    plate: str | None = Field(default=None, min_length=1, max_length=20)
+    passenger_seats: int | None = Field(default=None, ge=1, le=8)
+    active: bool | None = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, v: str | None) -> str | None:
+        return _clean_name(v) if v is not None else None
+
+    @field_validator("plate")
+    @classmethod
+    def clean_plate(cls, v: str | None) -> str | None:
+        return _clean_plate(v) if v is not None else None
 
 
 class BookingRead(BaseModel):
