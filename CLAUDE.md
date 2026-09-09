@@ -58,7 +58,10 @@ there is no login endpoint.
     strips it from the edit payload for that reason.
   - `GET /api/rides` takes `date` or `from`/`to`; with no params it returns the current Mon–Sun week,
     and a range longer than 92 days is rejected.
-- `routers/cars.py` — the admin-only car mutations, and two guards that keep ride invariants true
+- `routers/cars.py` — the admin-only car mutations. A rename or re-plate is pushed out to the
+  rides already booked in that car (`relabel_rides_for_car`), because `Ride.car_name` is a
+  denormalised `"<Name> (<PLATE>)"` snapshot; a capacity change deliberately does *not* touch
+  `Ride.seats`, which is the driver's own offer. Two guards keep ride invariants true
   after the fact: a car's `passenger_seats` may not drop below the seats an existing ride already
   offers in it (409), and a car may not be hard-deleted while any ride references it (409 — retire
   it with `active=false` instead, which hides it from the pool without touching ride history).

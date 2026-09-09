@@ -208,6 +208,10 @@ export default function App() {
     try {
       await fn()
       applyCars(await api.allCorporateCars(adminPassword))
+      // A car edit can rewrite `car_name` on rides already booked in it
+      // (backend: relabel_rides_for_car), so the board has to be reloaded or it
+      // keeps the old name and plate until the 30 s poll comes round.
+      await load()
     } catch (e) {
       setAdminError(errMsg(e))
     } finally {
