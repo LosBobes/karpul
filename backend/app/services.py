@@ -16,13 +16,16 @@ def to_ride_read_dict(ride: Ride) -> dict:
 
 
 def _overlaps(a_start: time, a_end: time | None, b_start: time, b_end: time | None) -> bool:
-    """Two rides on the same day overlap if their [departure, return] windows intersect.
+    """Two rides on the same day overlap if their [departure, return) windows intersect.
 
-    A ride without a return time is treated as occupying the car until end of day.
+    The windows are half-open on purpose: the same car may be handed over back to
+    back within a day, so a ride returning at 12:00 does not block one leaving at
+    12:00. A ride without a return time has no handover point and is treated as
+    occupying the car until end of day.
     """
     a_end = a_end or time.max
     b_end = b_end or time.max
-    return a_start <= b_end and b_start <= a_end
+    return a_start < b_end and b_start < a_end
 
 
 def resolve_corporate_car(session: Session, car_id: int) -> CorporateCar:

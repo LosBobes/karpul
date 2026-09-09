@@ -48,7 +48,7 @@ there is no login endpoint.
 
 **Where the rules live:**
 - `schemas.py` — field validation and cross-field consistency (`corporate_car_id` required for corporate rides, `car_name` required for own cars, `return_time > departure_time`).
-- `services.py` — corporate-car double-booking check. A ride with no `return_time` occupies the car until end of day. Called on both create and update (update passes `exclude_ride_id`).
+- `services.py` — corporate-car double-booking check. Windows are half-open, so the same car can be handed over back to back within a day (a ride back at 12:00 does not block one leaving at 12:00); a ride with no `return_time` has no handover point and occupies the car until end of day. Called on both create and update (update passes `exclude_ride_id`).
 - `routers/rides.py` — ownership checks and the rules that need the DB row:
   - `seats` may not exceed the chosen corporate car's `passenger_seats` (422), and on PATCH may not
     drop below the number of existing bookings (409).
