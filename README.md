@@ -60,7 +60,7 @@ docker compose up --build              # http://localhost:8080, one container
 ### Production on Hetzner
 
 Karpul runs on the shared LosBobes Hetzner box next to gamgee, iris and flora-find:
-host Caddy for HTTPS, a loopback-only compose stack on port 3003, and a GitHub Actions
+host Caddy for HTTPS, a loopback-only compose stack on port 3004, and a GitHub Actions
 deploy on every push to `main` using the org's `HETZNER_*` secrets.
 See [docs/deployment-hetzner.md](docs/deployment-hetzner.md).
 

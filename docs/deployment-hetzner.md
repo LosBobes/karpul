@@ -17,23 +17,23 @@ are installed from the earlier deploys).
                                  |  HTTPS (443)
                                  v
                           Caddy (on the host, one instance)
-        /                  |                    |                   \
-  gamgee.com      iris-application.com    flora-find.com     karpul.example.com
-      |                    |                    |                    |
- localhost:3000      localhost:3001       localhost:3002       localhost:3003
-      |                    |                    |                    |
-  /opt/gamgee          /opt/iris          /opt/flora-find        /opt/karpul
+     /              |                |                |              \
+ gamgee.com  iris-application  flora-find.com  sokola.losbobes  karpul.example
+     |              |                |                |              |
+localhost:3000  localhost:3001  localhost:3002  localhost:3003  localhost:3004
+     |              |                |                |              |
+ /opt/gamgee    /opt/iris     /opt/flora-find   /opt/sokola    /opt/karpul
 ```
 
 One Caddy instance on the host serves every domain. Each app is a separate
 Docker Compose project in its own directory, publishing to a different loopback
-port. You only **add** a Karpul block to Caddy and start a fourth stack.
+port. You only **add** a Karpul block to Caddy and start one more stack.
 
-| Concern | gamgee | iris | flora-find | Karpul |
-| --- | --- | --- | --- | --- |
-| Loopback port | `127.0.0.1:3000` | `127.0.0.1:3001` | `127.0.0.1:3002` | `127.0.0.1:3003` |
-| Deploy dir / compose project | `/opt/gamgee` | `/opt/iris` | `/opt/flora-find` | `/opt/karpul` |
-| Caddy block | `gamgee.com {}` | `iris-application.com {}` | `flora-find.com {}` | `karpul.example.com {}` |
+| Concern | gamgee | iris | flora-find | sokola | Karpul |
+| --- | --- | --- | --- | --- | --- |
+| Loopback port | `127.0.0.1:3000` | `127.0.0.1:3001` | `127.0.0.1:3002` | `127.0.0.1:3003` | `127.0.0.1:3004` |
+| Deploy dir / compose project | `/opt/gamgee` | `/opt/iris` | `/opt/flora-find` | `/opt/sokola` | `/opt/karpul` |
+| Caddy block | `gamgee.com {}` | `iris-application.com {}` | `flora-find.com {}` | `sokola.losbobes.com {}` | `karpul.example.com {}` |
 
 Karpul's container is named `karpul-app-1` and its volume `karpul_karpul_data`.
 Neither collides with the other apps.
@@ -114,7 +114,7 @@ cd /opt/karpul
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-Only `127.0.0.1:3003` is published, so the stack is reachable only through
+Only `127.0.0.1:3004` is published, so the stack is reachable only through
 Caddy. Caddy provisions the TLS certificate on the first request.
 
 Verify:
