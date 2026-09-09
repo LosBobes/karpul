@@ -17,23 +17,23 @@ are installed from the earlier deploys).
                                  |  HTTPS (443)
                                  v
                           Caddy (on the host, one instance)
-        /                  |                    |                   \
-  gamgee.com      iris-application.com    flora-find.com     karpul.example.com
-      |                    |                    |                    |
- localhost:3000      localhost:3001       localhost:3002       localhost:3003
-      |                    |                    |                    |
-  /opt/gamgee          /opt/iris          /opt/flora-find        /opt/karpul
+     /              |                |                |              \
+ gamgee.com  iris-application  flora-find.com  sokola.losbobes  www.karpul.dev
+     |              |                |                |              |
+localhost:3000  localhost:3001  localhost:3002  localhost:3003  localhost:3004
+     |              |                |                |              |
+ /opt/gamgee    /opt/iris     /opt/flora-find   /opt/sokola    /opt/karpul
 ```
 
 One Caddy instance on the host serves every domain. Each app is a separate
 Docker Compose project in its own directory, publishing to a different loopback
-port. You only **add** a Karpul block to Caddy and start a fourth stack.
+port. You only **add** a Karpul block to Caddy and start one more stack.
 
-| Concern | gamgee | iris | flora-find | Karpul |
-| --- | --- | --- | --- | --- |
-| Loopback port | `127.0.0.1:3000` | `127.0.0.1:3001` | `127.0.0.1:3002` | `127.0.0.1:3003` |
-| Deploy dir / compose project | `/opt/gamgee` | `/opt/iris` | `/opt/flora-find` | `/opt/karpul` |
-| Caddy block | `gamgee.com {}` | `iris-application.com {}` | `flora-find.com {}` | `karpul.example.com {}` |
+| Concern | gamgee | iris | flora-find | sokola | Karpul |
+| --- | --- | --- | --- | --- | --- |
+| Loopback port | `127.0.0.1:3000` | `127.0.0.1:3001` | `127.0.0.1:3002` | `127.0.0.1:3003` | `127.0.0.1:3004` |
+| Deploy dir / compose project | `/opt/gamgee` | `/opt/iris` | `/opt/flora-find` | `/opt/sokola` | `/opt/karpul` |
+| Caddy block | `gamgee.com {}` | `iris-application.com {}` | `flora-find.com {}` | `sokola.losbobes.com {}` | `www.karpul.dev {}` |
 
 Karpul's container is named `karpul-app-1` and its volume `karpul_karpul_data`.
 Neither collides with the other apps.
@@ -81,7 +81,7 @@ Karpul has no secrets of its own (no accounts, no tokens). Set the public
 origin and, optionally, the company-car pool that is seeded on first start:
 
 ```env
-CORS_ORIGINS=https://karpul.example.com
+CORS_ORIGINS=https://www.karpul.dev.com
 CORPORATE_CARS=Skoda Octavia|BG-123-XY|4;VW Transporter|BG-456-ZZ|8
 ```
 
@@ -95,7 +95,7 @@ volume) to change the pool later.
 
 The server has a single `/etc/caddy/Caddyfile` that already contains the other
 apps' blocks. **Append** Karpul's block; do not replace the file. Fix the
-domain in the repo `Caddyfile` first if it still says `karpul.example.com`.
+domain in the repo `Caddyfile` first if it still says `www.karpul.dev.com`.
 
 ```bash
 cat /opt/karpul/Caddyfile >> /etc/caddy/Caddyfile
@@ -114,15 +114,15 @@ cd /opt/karpul
 docker compose -f docker-compose.prod.yml up --build -d
 ```
 
-Only `127.0.0.1:3003` is published, so the stack is reachable only through
+Only `127.0.0.1:3004` is published, so the stack is reachable only through
 Caddy. Caddy provisions the TLS certificate on the first request.
 
 Verify:
 
 ```bash
 docker compose -f docker-compose.prod.yml ps          # app "Up (healthy)"
-curl -sS https://karpul.example.com/api/health         # {"status":"ok"}
-curl -sS https://karpul.example.com/api/cars/corporate # seeded car pool
+curl -sS https://www.karpul.dev.com/api/health         # {"status":"ok"}
+curl -sS https://www.karpul.dev.com/api/cars/corporate # seeded car pool
 ```
 
 ---
@@ -138,12 +138,19 @@ SSHing in, pulling and rebuilding, exactly like the sibling repos.
 | `HETZNER_USER` | org secret (already exists) | SSH user |
 | `HETZNER_SSH_KEY` | org secret (already exists) | Private key whose public half is on the server |
 | `HETZNER_PORT` | org secret, optional | SSH port, defaults to 22 |
-| `DEPLOY_PATH` | **this repo**: Settings, Secrets and variables, Actions | `/opt/karpul` |
 
-`DEPLOY_PATH` is deliberately per-repo so Karpul can never deploy into another
-app's directory. Until it is set, the workflow's `check-secrets` job skips the
-deploy with a warning instead of failing. Until the one-time bootstrap above is
-done, the deploy job fails at `cd /opt/karpul`.
+The deploy directory is **not** a secret. It is hard-coded to `/opt/karpul` in
+the workflow's `env` block, because the LosBobes org already carries a
+`DEPLOY_PATH` secret that points at a sibling app's checkout: a workflow that
+read `secrets.DEPLOY_PATH` would inherit it and rebuild that app instead of
+Karpul (this happened on the very first deploy run). Before it changes
+anything, the script also checks that `/opt/karpul` is a git clone whose
+`origin` is this repository and that its `docker-compose.prod.yml` defines the
+`app` service; otherwise it stops with an error and touches nothing.
+
+Until the `HETZNER_*` secrets exist, the `check-secrets` job skips the deploy
+with a warning instead of failing. Until the one-time bootstrap above is done,
+the deploy job fails at the checkout check with a message pointing here.
 
 ---
 

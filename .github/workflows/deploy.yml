@@ -4,14 +4,17 @@ name: Deploy to Hetzner
 # main, exactly like gamgee, iris and flora-find on the same box.
 #
 # HETZNER_HOST / HETZNER_USER / HETZNER_SSH_KEY (and optional HETZNER_PORT) are
-# inherited from the LosBobes org secrets. DEPLOY_PATH is set at the repo level
-# (/opt/karpul) so this service can never deploy into another app's directory.
-# The check-secrets job below no-ops the deploy until all of them exist.
+# inherited from the LosBobes org secrets. The deploy directory is NOT a
+# secret: it is pinned to /opt/karpul below so nothing inherited from the org
+# (the sibling apps share a DEPLOY_PATH secret pointing at *their* checkout)
+# can ever make this workflow rebuild another app's stack. The deploy script
+# additionally refuses to run unless that directory is a clone of this very
+# repository and its compose file defines the `app` service.
 #
 # This expects /opt/karpul to already exist on the server as a clone of this
 # repo with a filled-in .env, and the Caddy block appended. See
 # docs/deployment-hetzner.md steps 1 to 5. Until that one-time bootstrap is
-# done, the deploy job fails at `cd`.
+# done, the deploy job fails with a clear message before touching anything.
 
 on:
   push:
@@ -28,6 +31,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Where Karpul lives on the box. Deliberately hard-coded (not a secret or
+  # variable) so it cannot be overridden by an org-level value.
+  DEPLOY_PATH: /opt/karpul
+
 jobs:
   check-secrets:
     name: Check deploy secrets are configured
@@ -41,14 +49,13 @@ jobs:
           HAS_HOST: ${{ secrets.HETZNER_HOST != '' }}
           HAS_USER: ${{ secrets.HETZNER_USER != '' }}
           HAS_KEY: ${{ secrets.HETZNER_SSH_KEY != '' }}
-          HAS_PATH: ${{ secrets.DEPLOY_PATH != '' }}
         run: |
-          if [ "$HAS_HOST" = true ] && [ "$HAS_USER" = true ] && [ "$HAS_KEY" = true ] && [ "$HAS_PATH" = true ]; then
+          if [ "$HAS_HOST" = true ] && [ "$HAS_USER" = true ] && [ "$HAS_KEY" = true ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
             echo "All deploy secrets present."
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Hetzner deploy secrets are not fully configured (HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY from the org; DEPLOY_PATH on this repo). Skipping deploy. See docs/deployment-hetzner.md."
+            echo "::warning::Hetzner deploy secrets are not fully configured (HETZNER_HOST, HETZNER_USER, HETZNER_SSH_KEY from the org). Skipping deploy. See docs/deployment-hetzner.md."
           fi
 
   deploy:
@@ -71,35 +78,61 @@ jobs:
           script_stop: true
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
+            DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
+            EXPECTED_REPO="${{ github.repository }}"
+            COMPOSE="docker compose -f docker-compose.prod.yml"
+
+            echo "Checking ${DEPLOY_PATH} is the Karpul checkout..."
+            # Refuse to touch anything unless the directory exists, is a git
+            # clone of THIS repository, and its compose file has our service.
+            # This is what stops a wrong path from rebuilding a sibling app.
+            if [ ! -d "${DEPLOY_PATH}/.git" ]; then
+              echo "::error::${DEPLOY_PATH} is not a git checkout. Bootstrap the server first (docs/deployment-hetzner.md, steps 1 to 5)."
+              exit 1
+            fi
+            cd "${DEPLOY_PATH}"
+            origin_url="$(git remote get-url origin | tr '[:upper:]' '[:lower:]')"
+            expected="$(printf '%s' "${EXPECTED_REPO}" | tr '[:upper:]' '[:lower:]')"
+            case "${origin_url}" in
+              *"${expected}"|*"${expected}.git"|*"${expected}/"|*"${expected}.git/") ;;
+              *)
+                echo "::error::${DEPLOY_PATH} tracks '${origin_url}', not ${EXPECTED_REPO}. Refusing to deploy into another app's directory."
+                exit 1
+                ;;
+            esac
 
             echo "Pulling latest code..."
             git fetch origin main
             git reset --hard origin/main
+
+            if ! ${COMPOSE} config --services | grep -qx app; then
+              echo "::error::docker-compose.prod.yml in ${DEPLOY_PATH} does not define the 'app' service. Refusing to deploy."
+              exit 1
+            fi
 
             echo "Building image..."
             # Runtime config (CORS_ORIGINS, CORPORATE_CARS) lives in the box's
             # .env next to docker-compose.prod.yml; compose reads it
             # automatically. Build first, while the current container keeps
             # serving, so downtime is only the brief recreate window below.
-            docker compose -f docker-compose.prod.yml build
+            ${COMPOSE} build
 
             echo "Recreating container..."
             # `up -d` recreates only what changed and starts the replacement
             # immediately; Caddy retries across the gap (see Caddyfile). The
             # named volume karpul_karpul_data is not touched.
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            ${COMPOSE} up -d --remove-orphans
 
             echo "Waiting for the app to report healthy..."
             for i in $(seq 1 30); do
-              status="$(docker compose -f docker-compose.prod.yml ps --format '{{.Service}} {{.Health}}' | awk '$1=="app"{print $2}')"
+              status="$(${COMPOSE} ps --format '{{.Service}} {{.Health}}' | awk '$1=="app"{print $2}')"
               if [ "$status" = "healthy" ]; then
                 echo "app healthy after ${i} checks"
                 break
               fi
               if [ "$i" = "30" ]; then
                 echo "app did not become healthy; recent logs:"
-                docker compose -f docker-compose.prod.yml logs --tail 50 app
+                ${COMPOSE} logs --tail 50 app
                 exit 1
               fi
               sleep 2
@@ -109,4 +142,4 @@ jobs:
             docker image prune -f
 
             echo "Running containers:"
-            docker compose -f docker-compose.prod.yml ps
+            ${COMPOSE} ps

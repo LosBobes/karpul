@@ -1,17 +1,25 @@
 # Karpul vhost for the shared Hetzner host.
 #
 # Caddy runs on the host and already serves gamgee (localhost:3000), iris
-# (localhost:3001) and flora-find (localhost:3002). Do NOT overwrite the
-# server's /etc/caddy/Caddyfile with this file: APPEND this block to it so the
-# existing blocks are left untouched. See docs/deployment-hetzner.md.
+# (localhost:3001), flora-find (localhost:3002) and sokola (localhost:3003).
+# Do NOT overwrite the server's /etc/caddy/Caddyfile with this file: APPEND
+# this block to it so the existing blocks are left untouched. See
+# docs/deployment-hetzner.md.
 #
-# Replace karpul.example.com with the real domain before appending. Caddy
-# automatically obtains and renews a Let's Encrypt TLS certificate for it.
+# Caddy automatically obtains and renews a Let's Encrypt TLS certificate for
+# both names. This needs karpul.dev's DNS to point straight at the server
+# (grey cloud in Cloudflare): behind the orange cloud the HTTP-01 challenge
+# cannot complete and issuance retries forever.
 
-karpul.example.com {
+# Apex redirects to www, which is the canonical origin (matches CORS_ORIGINS).
+karpul.dev {
+    redir https://www.karpul.dev{uri} permanent
+}
+
+www.karpul.dev {
     encode zstd gzip
 
-    reverse_proxy localhost:3003 {
+    reverse_proxy localhost:3004 {
         # Absorb the few seconds while compose recreates the container during
         # a deploy, instead of returning a hard 502 for every request.
         lb_try_duration 10s

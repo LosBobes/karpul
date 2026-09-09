@@ -3,7 +3,8 @@
 # This mirrors how gamgee, iris and flora-find are deployed on the same box: a
 # host-level Caddy terminates TLS (Let's Encrypt) and reverse-proxies each
 # domain to a loopback-only port. gamgee owns localhost:3000, iris 3001,
-# flora-find 3002, and Karpul owns localhost:3003, so the stacks never collide.
+# flora-find 3002, sokola 3003, and Karpul owns localhost:3004, so the
+# stacks never collide.
 #
 # Karpul is a single application container: the FastAPI backend serves the API
 # and the built React frontend from one origin on port 8000 (see the repo
@@ -22,7 +23,7 @@ services:
     environment:
       # Same-origin deploy (browser -> Caddy -> FastAPI), so this is just the
       # public domain. Kept so CORS allows it if the API is ever hit cross-origin.
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://karpul.example.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://www.karpul.dev}
       # Optional company-car seed, applied only when the car table is empty.
       CORPORATE_CARS: ${CORPORATE_CARS:-}
     volumes:
@@ -31,8 +32,8 @@ services:
       - karpul_data:/data
     ports:
       # Loopback only: reachable from Caddy on the same host, not the internet.
-      # gamgee 3000, iris 3001, flora-find 3002, Karpul 3003.
-      - "127.0.0.1:3003:8000"
+      # gamgee 3000, iris 3001, flora-find 3002, sokola 3003, Karpul 3004.
+      - "127.0.0.1:3004:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health', timeout=3).status == 200 else 1)"]
       interval: 10s
