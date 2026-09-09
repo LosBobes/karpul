@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { NameBar } from './components/NameBar'
 import { PassengerTray } from './components/PassengerTray'
 import { RideCard } from './components/RideCard'
@@ -7,7 +8,8 @@ import { WeekStrip } from './components/WeekStrip'
 import { api, ApiError } from './lib/api'
 import { addDays, fmtLongDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
 import type { PassengerDrag } from './lib/dnd'
-import type { CorporateCar, Ride, RideInput } from './lib/types'
+import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
+import { useAdminPassword } from './lib/useAdminPassword'
 import { useUserName } from './lib/useUserName'
 
 type FormState = { mode: 'create' } | { mode: 'edit'; ride: Ride } | null
@@ -30,6 +32,16 @@ export default function App() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [dragActive, setDragActive] = useState(false)
+
+  // Car-pool admin (shared password, see backend/app/admin.py). Everything else on
+  // this board is honour-based; only editing the company cars is gated.
+  const [adminPassword, setAdminPassword] = useAdminPassword()
+  const [adminOpen, setAdminOpen] = useState(false)
+  const [adminUnlocked, setAdminUnlocked] = useState(false)
+  const [adminCars, setAdminCars] = useState<CorporateCar[]>([])
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [adminError, setAdminError] = useState<string | null>(null)
+  const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
   const week = useMemo(() => {
     const monday = startOfWeek(parseISODate(selected))
@@ -151,6 +163,74 @@ export default function App() {
     }
   }
 
+  /** The admin list is the superset; the ride form only ever sees active cars. */
+  const applyCars = useCallback((all: CorporateCar[]) => {
+    setAdminCars(all)
+    setCars(all.filter((c) => c.active))
+  }, [])
+
+  const unlockAdmin = useCallback(
+    async (password: string) => {
+      setAdminLoading(true)
+      setAdminError(null)
+      try {
+        applyCars(await api.allCorporateCars(password))
+        setAdminPassword(password)
+        setAdminUnlocked(true)
+      } catch (e) {
+        setAdminUnlocked(false)
+        setAdminError(errMsg(e))
+      } finally {
+        setAdminLoading(false)
+      }
+    },
+    [applyCars, setAdminPassword],
+  )
+
+  function openAdmin() {
+    setAdminOpen(true)
+    setAdminError(null)
+    // A password remembered from last time unlocks straight away (or fails loudly).
+    if (adminPassword && !adminUnlocked) void unlockAdmin(adminPassword)
+  }
+
+  function lockAdmin() {
+    setAdminPassword('')
+    setAdminUnlocked(false)
+    setAdminCars([])
+    setAdminError(null)
+  }
+
+  async function withAdminBusy(id: number, fn: () => Promise<void>) {
+    setAdminBusyId(id)
+    setAdminError(null)
+    try {
+      await fn()
+      applyCars(await api.allCorporateCars(adminPassword))
+    } catch (e) {
+      setAdminError(errMsg(e))
+    } finally {
+      setAdminBusyId(null)
+    }
+  }
+
+  const onCreateCar = (input: CorporateCarInput) =>
+    void withAdminBusy(NEW_CAR_BUSY_ID, async () => {
+      await api.createCar(input, adminPassword)
+      setToast({ kind: 'ok', text: `${input.name} added to the pool.` })
+    })
+
+  const onUpdateCar = (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
+    void withAdminBusy(id, () => api.updateCar(id, patch, adminPassword).then(() => undefined))
+
+  const onDeleteCar = (car: CorporateCar) => {
+    if (!confirm(`Delete ${car.name} (${car.plate}) from the pool? Retiring keeps it on past rides.`)) return
+    void withAdminBusy(car.id, async () => {
+      await api.deleteCar(car.id, adminPassword)
+      setToast({ kind: 'ok', text: `${car.name} deleted.` })
+    })
+  }
+
   const dayRides = rides.filter((r) => r.ride_date === selected)
   const isPast = selected < todayISO()
   const myRideToday = dayRides.find((r) => r.bookings.some((b) => sameName(b.passenger_name, userName))) ?? null
@@ -169,7 +249,17 @@ export default function App() {
             <strong>Karpul</strong> <span className="muted">firm carpooling</span>
           </span>
         </div>
-        <NameBar name={userName} onChange={setUserName} />
+        <div className="topbar-right">
+          <NameBar name={userName} onChange={setUserName} />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            title="Manage the company car pool"
+            onClick={openAdmin}
+          >
+            ⚙ Cars
+          </button>
+        </div>
       </header>
 
       <main>
@@ -245,6 +335,22 @@ export default function App() {
           error={formError}
           onSubmit={onSubmitForm}
           onClose={closeForm}
+        />
+      )}
+
+      {adminOpen && (
+        <CarAdmin
+          unlocked={adminUnlocked}
+          cars={adminCars}
+          loading={adminLoading}
+          error={adminError}
+          busyId={adminBusyId}
+          onUnlock={(p) => void unlockAdmin(p)}
+          onLock={lockAdmin}
+          onCreate={onCreateCar}
+          onUpdate={onUpdateCar}
+          onDelete={onDeleteCar}
+          onClose={() => setAdminOpen(false)}
         />
       )}
 

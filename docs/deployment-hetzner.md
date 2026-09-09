@@ -77,17 +77,25 @@ cp .env.prod.example .env
 nano .env
 ```
 
-Karpul has no secrets of its own (no accounts, no tokens). Set the public
-origin and, optionally, the company-car pool that is seeded on first start:
+Karpul has one secret: the shared password for the company-car admin screen.
+Set the public origin, that password, and optionally the car pool that is
+seeded on first start:
 
 ```env
-CORS_ORIGINS=https://www.karpul.dev.com
+CORS_ORIGINS=https://www.karpul.dev
+KARPUL_ADMIN_PASSWORD=<long random string>
 CORPORATE_CARS=Skoda Octavia|BG-123-XY|4;VW Transporter|BG-456-ZZ|8
 ```
 
+`KARPUL_ADMIN_PASSWORD` is what the *Cars* button asks for; anyone with it can
+add, edit, retire and delete company cars, so make it long. Leaving it empty
+switches the admin endpoints off (503) — the rest of the app is unaffected.
+Changing it later takes a `docker compose -f docker-compose.prod.yml up -d`
+to pick up the new value.
+
 The `.env` file is gitignored and stays only on the server. The seed applies
-only while the car table is empty; edit the `corporatecar` table (or reset the
-volume) to change the pool later.
+only while the car table is empty; after that the pool is managed from the
+*Cars* screen.
 
 ---
 
