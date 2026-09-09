@@ -302,6 +302,7 @@ export default function App() {
                 currentBookingId={myBookingToday?.id ?? null}
                 drivingToday={drivingToday}
                 hasOpenRides={hasOpenRides}
+                dragActive={dragActive}
                 onDragState={setDragActive}
                 onLeave={() => myRideToday && myBookingToday && void onLeave(myRideToday, myBookingToday.id)}
               />
