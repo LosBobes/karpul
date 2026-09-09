@@ -75,7 +75,14 @@ jobs:
           port:     ${{ secrets.HETZNER_PORT || 22 }}
           # Give a busy box more than the default 30s to accept the connection.
           timeout: 90s
-          script_stop: true
+          # MUST stay false. With script_stop: true the action does not run
+          # this script as a script: it splits it on newlines and injects an
+          # exit-code check after every single line, which lands *inside*
+          # multi-line constructs and makes the remote bash fail to parse
+          # ("syntax error near unexpected token `;'" right after the `case`
+          # below). The `set -e` on the first line gives us fail-fast anyway,
+          # and a non-zero exit still fails this step.
+          script_stop: false
           script: |
             set -e
             DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
