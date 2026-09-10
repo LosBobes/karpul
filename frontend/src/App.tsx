@@ -1,20 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { AddCarCard } from './components/AddCarCard'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
-import { BoardText } from './components/BoardText'
-import { NameBar } from './components/NameBar'
-import { PassengerTray } from './components/PassengerTray'
-import { RideCard } from './components/RideCard'
+import { CarCarousel, type CarSelection } from './components/CarCarousel'
+import { CarDetail } from './components/CarDetail'
+import { ConfirmDialog } from './components/ConfirmDialog'
+import { DateCarousel } from './components/DateCarousel'
+import { CarIcon, KebabIcon, KeyIcon, MenuIcon, PlusIcon, UserIcon } from './components/icons'
+import { Menu } from './components/Menu'
+import { NameSheet } from './components/NameSheet'
 import { RideForm } from './components/RideForm'
-import { WeekStrip } from './components/WeekStrip'
+import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
-import { addDays, fmtLongDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
+import { addDays, fmtShortDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { useLiveBoard, type LiveEvent } from './lib/live'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
 import { useUserName } from './lib/useUserName'
 
-type FormState = { mode: 'create' } | { mode: 'edit'; ride: Ride } | null
+type FormState = { mode: 'create'; template?: Ride } | { mode: 'edit'; ride: Ride } | null
+
+/** A pending "are you sure?" — the confirm card owns the wording, the caller the action. */
+interface Confirm {
+  title: string
+  body: ReactNode
+  label: string
+  onConfirm: () => void
+}
 
 function errMsg(e: unknown): string {
   if (e instanceof ApiError) return e.message
@@ -32,10 +44,6 @@ function sortRides(rides: Ride[]): Ride[] {
   )
 }
 
-function isOverRide(over: DropTarget | null, rideId: number): boolean {
-  return over?.kind === 'ride' && over.rideId === rideId
-}
-
 const LIVE_LABEL = { connecting: 'Connecting', live: 'Live', offline: 'Offline' } as const
 const LIVE_TITLE = {
   connecting: 'Connecting to the board…',
@@ -45,7 +53,7 @@ const LIVE_TITLE = {
 
 export default function App() {
   const [userName, setUserName] = useUserName()
-  const [selected, setSelected] = useState(todayISO)
+  const [selected, setSelectedDate] = useState(todayISO)
   const [rides, setRides] = useState<Ride[]>([])
   const [cars, setCars] = useState<CorporateCar[]>([])
   const [loadedWeek, setLoadedWeek] = useState<string | null>(null)
@@ -54,7 +62,12 @@ export default function App() {
   const [form, setForm] = useState<FormState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  // The passenger token in flight and what it is hovering over (lib/dnd.ts).
+  const [confirmState, setConfirm] = useState<Confirm | null>(null)
+  // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
+  const [carSel, setCarSel] = useState<CarSelection | null>(null)
+  // First visit: ask for the name straight away rather than hiding it in a menu.
+  const [nameOpen, setNameOpen] = useState(() => !userName)
+  // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
   const [drag, setDrag] = useState<PassengerDrag | null>(null)
   const [dragOver, setDragOver] = useState<DropTarget | null>(null)
 
@@ -67,6 +80,11 @@ export default function App() {
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
+
+  const setSelected = useCallback((iso: string) => {
+    setSelectedDate(iso)
+    setCarSel(null)
+  }, [])
 
   const week = useMemo(() => {
     const monday = startOfWeek(parseISODate(selected))
@@ -178,17 +196,29 @@ export default function App() {
     })
 
   const onCancel = (ride: Ride) => {
-    if (!confirm(`Cancel your ride ${ride.origin} → ${ride.destination} on ${fmtLongDate(ride.ride_date)}?`)) return
-    void withBusy(ride, async () => {
-      await api.deleteRide(ride.id, userName)
-      setRides((rs) => rs.filter((r) => r.id !== ride.id))
-      setToast({ kind: 'ok', text: 'Ride cancelled.' })
+    const n = ride.bookings.length
+    setConfirm({
+      title: 'Remove this car?',
+      body:
+        n > 0
+          ? `${n} passenger${n === 1 ? ' is' : 's are'} in this car. They will lose their seat.`
+          : `${ride.car_name} (${ride.driver_name}) will be removed from ${fmtShortDate(ride.ride_date)}.`,
+      label: 'Remove',
+      onConfirm: () => {
+        setConfirm(null)
+        void withBusy(ride, async () => {
+          await api.deleteRide(ride.id, userName)
+          setRides((rs) => rs.filter((r) => r.id !== ride.id))
+          setToast({ kind: 'ok', text: 'Car removed.' })
+        })
+      },
     })
   }
 
-  /** Drop of the passenger token onto a car: switch cars if already seated, else join. */
+  /** Drop of the passenger chip onto a car: switch cars if already seated, else join. */
   const onDropPassenger = (target: Ride, drag: PassengerDrag) => {
     if (!sameName(drag.name, userName)) return
+    setCarSel(target.id)
     void withBusy(target, async () => {
       if (drag.fromRideId !== null && drag.bookingId !== null && drag.fromRideId !== target.id) {
         replaceRide(await api.leave(drag.fromRideId, drag.bookingId, userName))
@@ -198,7 +228,7 @@ export default function App() {
     })
   }
 
-  /** Where the token landed. Looked up against the *current* rides: the board
+  /** Where the chip landed. Looked up against the *current* rides: the board
    *  can change under a drag (live updates), so this is read at drop time. */
   const dropPassenger = (drag: PassengerDrag, target: DropTarget) => {
     if (target.kind === 'tray') {
@@ -238,13 +268,15 @@ export default function App() {
         const { driver_name: _driver, ...patch } = input
         void _driver
         replaceRide(await api.updateRide(form.ride.id, patch, userName))
-        setToast({ kind: 'ok', text: 'Ride updated.' })
+        setToast({ kind: 'ok', text: 'Car updated.' })
+        setCarSel(form.ride.id)
       } else {
-        await api.createRide(input)
-        setToast({ kind: 'ok', text: 'Ride published.' })
+        const created = await api.createRide(input)
+        setToast({ kind: 'ok', text: 'Car added.' })
+        setCarSel(created.id)
       }
       closeForm()
-      setSelected(input.ride_date)
+      setSelectedDate(input.ride_date)
       void load()
     } catch (e) {
       setFormError(errMsg(e))
@@ -311,114 +343,136 @@ export default function App() {
   const onUpdateCar = (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
     void withAdminBusy(id, () => api.updateCar(id, patch, adminPassword).then(() => undefined))
 
-  const onDeleteCar = (car: CorporateCar) => {
-    if (!confirm(`Delete ${car.name} (${car.plate}) from the pool? Retiring keeps it on past rides.`)) return
-    void withAdminBusy(car.id, async () => {
-      await api.deleteCar(car.id, adminPassword)
-      setToast({ kind: 'ok', text: `${car.name} deleted.` })
+  const onDeleteCar = (car: CorporateCar) =>
+    setConfirm({
+      title: 'Delete this car?',
+      body: `${car.name} (${car.plate}) will be deleted from the pool. Retiring it instead keeps it on past rides.`,
+      label: 'Delete',
+      onConfirm: () => {
+        setConfirm(null)
+        void withAdminBusy(car.id, async () => {
+          await api.deleteCar(car.id, adminPassword)
+          setToast({ kind: 'ok', text: `${car.name} deleted.` })
+        })
+      },
     })
-  }
 
   const dayRides = rides.filter((r) => r.ride_date === selected)
   const isPast = selected < todayISO()
   const myRideToday = dayRides.find((r) => r.bookings.some((b) => sameName(b.passenger_name, userName))) ?? null
   const myBookingToday = myRideToday?.bookings.find((b) => sameName(b.passenger_name, userName)) ?? null
-  const drivingToday = dayRides.some((r) => sameName(r.driver_name, userName))
-  const hasOpenRides = dayRides.some((r) => r.free_seats > 0 && !sameName(r.driver_name, userName))
+  const canAdd = !isPast
+
+  // Resolve the open tile: an explicit pick that still exists, else your own
+  // car, else the first one, else the "add" tile.
+  const selection: CarSelection | null = (() => {
+    if (carSel === 'new') return canAdd ? 'new' : (dayRides[0]?.id ?? null)
+    if (carSel !== null && dayRides.some((r) => r.id === carSel)) return carSel
+    return myRideToday?.id ?? dayRides[0]?.id ?? (canAdd ? 'new' : null)
+  })()
+  const openRide = typeof selection === 'number' ? (dayRides.find((r) => r.id === selection) ?? null) : null
+
+  const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setNameOpen(true))
 
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden="true">
-            KP
-          </span>
-          <span>Karpul</span>
-          <span className="muted">Departures</span>
-        </div>
+        <Menu
+          className="topbar-menu"
+          trigger={<MenuIcon size={22} />}
+          label="Menu"
+          align="left"
+          items={[
+            { label: userName ? `Change name (${userName})` : 'Enter your name', icon: <UserIcon size={18} />, onSelect: () => setNameOpen(true) },
+            { label: 'Company cars', icon: <KeyIcon size={18} />, onSelect: openAdmin },
+          ]}
+        />
+        <h1 className="topbar-title">
+          <CarIcon size={20} /> Karpul
+        </h1>
         <div className="topbar-right">
           <span className={`live live-${liveStatus}`} role="status" title={LIVE_TITLE[liveStatus]}>
             <span className="live-dot" aria-hidden="true" />
-            {LIVE_LABEL[liveStatus]}
+            <span className="sr-only">{LIVE_LABEL[liveStatus]}</span>
           </span>
-          <NameBar name={userName} onChange={setUserName} />
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            title="Manage the company car pool"
-            onClick={openAdmin}
-          >
-            Fleet
-          </button>
+          <Menu
+            trigger={<KebabIcon size={22} />}
+            label="Day options"
+            items={[
+              { label: 'Add car', icon: <PlusIcon size={18} />, onSelect: openNewCar, disabled: !canAdd },
+              { label: 'Go to today', icon: <CarIcon size={18} />, onSelect: () => setSelected(todayISO()) },
+            ]}
+          />
         </div>
       </header>
 
       <main>
-        <WeekStrip selected={selected} rides={rides} onSelect={setSelected} />
-
-        <section className="day-head">
-          <h1>
-            {/* Keyed on the date so switching days replays the flip. */}
-            <BoardText key={selected}>{fmtLongDate(selected)}</BoardText>
-          </h1>
-          <button
-            type="button"
-            className="btn btn-primary"
-            disabled={!userName}
-            title={!userName ? 'Set your name first' : undefined}
-            onClick={() => setForm({ mode: 'create' })}
-          >
-            + Offer a ride
-          </button>
-        </section>
+        <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
 
         {loading ? (
-          <p className="empty">Reading the board…</p>
-        ) : dayRides.length === 0 ? (
-          <div className="empty">
-            <p>No departures {isPast ? 'were' : ''} scheduled for this day{isPast ? '.' : ' yet.'}</p>
-            {!isPast && userName && (
-              <button type="button" className="btn btn-link" onClick={() => setForm({ mode: 'create' })}>
-                Be the first to offer one
-              </button>
-            )}
-            {!userName && <p className="hint">Enter your name at the top to join or offer rides.</p>}
+          <div className="cars cars-skeleton" aria-busy="true">
+            <span className="car-tile skeleton" />
+            <span className="car-tile skeleton" />
+            <span className="car-tile skeleton" />
           </div>
-        ) : (
-          <>
-            {!isPast && (
-              <PassengerTray
-                userName={userName}
-                currentRide={myRideToday}
-                currentBookingId={myBookingToday?.id ?? null}
-                drivingToday={drivingToday}
-                hasOpenRides={hasOpenRides}
-                dragActive={drag !== null}
-                over={dragOver?.kind === 'tray'}
-                onGrab={onGrab}
-              />
-            )}
-            <div className={`ride-list ${drag ? 'ride-list-dragging' : ''}`}>
-              {dayRides.map((r) => (
-                <RideCard
-                  key={r.id}
-                  ride={r}
-                  userName={userName}
-                  busy={busyId === r.id}
-                  onJoin={onJoin}
-                  onLeave={onLeave}
-                  onCancel={onCancel}
-                  onEdit={(ride) => setForm({ mode: 'edit', ride })}
-                  dragActive={drag !== null}
-                  lifted={drag?.fromRideId === r.id}
-                  over={isOverRide(dragOver, r.id)}
-                  onGrab={onGrab}
-                />
-              ))}
-            </div>
-          </>
+        ) : dayRides.length === 0 && !canAdd ? null : (
+          <CarCarousel
+            rides={dayRides}
+            selected={selection}
+            userName={userName}
+            dragActive={drag !== null}
+            over={dragOver}
+            canAdd={canAdd}
+            onSelect={setCarSel}
+          />
+        )}
+
+        {!loading && openRide && (
+          <CarDetail
+            key={openRide.id}
+            ride={openRide}
+            userName={userName}
+            busy={busyId === openRide.id}
+            isPast={isPast}
+            onJoin={onJoin}
+            onLeave={onLeave}
+            onCancel={onCancel}
+            onEdit={(ride) => setForm({ mode: 'edit', ride })}
+            onDuplicate={(ride) => (userName ? setForm({ mode: 'create', template: ride }) : setNameOpen(true))}
+            dragActive={drag !== null}
+            lifted={drag?.fromRideId === openRide.id}
+            over={dragOver?.kind === 'ride' && dragOver.rideId === openRide.id}
+            onGrab={onGrab}
+          />
+        )}
+
+        {!loading && !openRide && (
+          <AddCarCard
+            userName={userName}
+            isPast={isPast}
+            hasCars={dayRides.length > 0}
+            onAdd={openNewCar}
+            onEditName={() => setNameOpen(true)}
+          />
+        )}
+
+        {!loading && (
+          <YouPanel
+            userName={userName}
+            dayRides={dayRides}
+            currentRide={myRideToday}
+            currentBookingId={myBookingToday?.id ?? null}
+            isPast={isPast}
+            dragActive={drag !== null}
+            over={dragOver?.kind === 'tray'}
+            onGrab={onGrab}
+            onOpenCar={setCarSel}
+            onEditName={() => setNameOpen(true)}
+          />
         )}
       </main>
+
+      {nameOpen && <NameSheet name={userName} onChange={setUserName} onClose={() => setNameOpen(false)} />}
 
       {form && (
         <RideForm
@@ -427,9 +481,19 @@ export default function App() {
           userName={userName}
           cars={cars}
           existing={form.mode === 'edit' ? form.ride : null}
+          template={form.mode === 'create' ? form.template : null}
           submitting={submitting}
           error={formError}
           onSubmit={onSubmitForm}
+          onDelete={
+            form.mode === 'edit'
+              ? () => {
+                  const ride = form.ride
+                  closeForm()
+                  onCancel(ride)
+                }
+              : undefined
+          }
           onClose={closeForm}
         />
       )}
@@ -447,6 +511,16 @@ export default function App() {
           onUpdate={onUpdateCar}
           onDelete={onDeleteCar}
           onClose={() => setAdminOpen(false)}
+        />
+      )}
+
+      {confirmState && (
+        <ConfirmDialog
+          title={confirmState.title}
+          body={confirmState.body}
+          confirmLabel={confirmState.label}
+          onConfirm={confirmState.onConfirm}
+          onCancel={() => setConfirm(null)}
         />
       )}
 

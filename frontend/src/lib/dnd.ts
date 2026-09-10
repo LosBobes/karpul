@@ -46,6 +46,8 @@ const SLOP_PX = 6
 /** Auto-scroll band at the top and bottom of the viewport, and its top speed. */
 const EDGE_PX = 64
 const EDGE_SPEED_PX = 12
+/** Touch: gap between the fingertip and the bottom edge of the ghost. */
+const TOUCH_LIFT_PX = 24
 
 /**
  * How far to scroll this frame: nothing outside the band, then a quadratic
@@ -143,10 +145,15 @@ export function grabPassenger(
     const dy = edgeScroll(pos.y)
     if (dy) window.scrollBy(0, dy)
     if (ghost) {
-      const { width, height } = ghost.getBoundingClientRect()
-      const x = pos.x - width / 2
-      const y = touch ? pos.y - height - 28 : pos.y - height / 2
-      ghost.style.transform = `translate(${x}px, ${y}px)`
+      // Anchor the ghost with percentage translates, which are resolved against
+      // the ghost's own box by the browser: centred on the pointer for a mouse,
+      // centred *above* the finger on touch so the finger never covers it.
+      // Measuring the box ourselves (getBoundingClientRect) came back zero on
+      // some mobile browsers on the first frame and left the chip hanging off
+      // the top-right of the finger.
+      ghost.style.transform = touch
+        ? `translate(${pos.x}px, ${pos.y - TOUCH_LIFT_PX}px) translate(-50%, -100%)`
+        : `translate(${pos.x}px, ${pos.y}px) translate(-50%, -50%)`
     }
     const next = targetAt(pos.x, pos.y)
     if (!sameTarget(next, over)) {

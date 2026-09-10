@@ -8,23 +8,28 @@ the app guards the company-car pool.
 
 ## What it does
 
-- **Offer a ride** for a given day: pick a **company car** from the pool or use **your own car**,
-  set departure and return time (or one-way), origin/destination, and how many **free seats** you have.
+- **Pick a day** on the date carousel, then **swipe through the cars** going that day. Each tile
+  shows the car and its seat count; the open car shows the driver, when it leaves and returns,
+  where from and to, and who is in it.
+- **Add a car** for a given day from the *+ Add car* tile: pick a **company car** from the pool or
+  use **your own car**, set how many **passenger seats** you offer, departure and return time (or
+  one-way), and pickup / drop-off locations.
 - **Company cars can't be double-booked** – overlapping time windows on the same day are rejected.
-- **Join a ride** by pressing *Join*, or **drag your name onto a car** to pick a driver.
-  Drag it to another car to switch, or drop it back on the tray to get out. Works with a
-  finger too: on a phone, press and hold your chip for a moment and it lifts.
-- **Manage the company car pool** from the *Cars* button in the header: add a car, fix a
+- **Get into a car** by tapping *Get in this car*, or **drag your chip onto a car**. Drag it to
+  another car to switch, or drop it back on *You* to get out. Works with a finger too: on a phone,
+  press and hold your chip for a moment and it lifts.
+- **Manage the company car pool** from the ☰ menu (*Company cars*): add a car, fix a
   name/plate/seat count, retire one that's been sold, or delete one that was never used.
   This is the one screen behind a password (see *Company-car admin* below).
-- Week overview shows how many rides and free seats each day has.
-- Drivers can edit/cancel their ride and remove passengers; passengers can leave.
+- A dot under a day on the carousel means at least one car is going that day.
+- Drivers can edit, duplicate or remove their car from its ⋮ menu and remove passengers;
+  passengers can leave.
 - **Live board.** Every tab holds a WebSocket to `/api/ws`; when anyone offers, edits or
   cancels a ride, joins or leaves one, or edits the car pool, everybody else sees it at once.
   The header lamp shows *Live*, *Connecting* or *Offline*; while offline the board falls back
   to polling every 30 s, and every reconnect reloads the week in case something was missed.
-- Phone-friendly: the board reflows to one column, forms open as bottom sheets, and tap
-  targets are sized for fingers.
+- Phone-first: one column, horizontal carousels, forms open as bottom sheets, and tap
+  targets are sized for fingers. On a desktop the same column sits centred.
 
 Identity is honour-based: actions that change a ride are checked against the `X-User-Name`
 header (driver-only edit/cancel, passenger-or-driver leave). That's deliberate – it's an
@@ -139,8 +144,9 @@ Dockerfile         frontend build + FastAPI in one image
 docker-compose.prod.yml, Caddyfile, Makefile   shared-Hetzner-box deploy (docs/deployment-hetzner.md)
 frontend/
   src/
-    App.tsx                  Week/day board, joins, drag-and-drop and live-update orchestration
-    components/              NameBar, WeekStrip, RideCard, RideForm, PassengerTray, CarAdmin
+    App.tsx                  Day/car selection, joins, drag-and-drop and live-update orchestration
+    components/              DateCarousel, CarCarousel, CarDetail, YouPanel, AddCarCard, RideForm,
+                             CarAdmin, NameSheet, Sheet, ConfirmDialog, Menu, Avatar, icons
     lib/                     api client, dates, pointer drag-and-drop (dnd.ts), live socket (live.ts),
-                             useUserName, useAdminPassword
+                             useUserName, useAdminPassword, useCoarsePointer
 ```
