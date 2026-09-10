@@ -13,6 +13,7 @@ import { Sidebar } from './components/Sidebar'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
+import { messages, useT } from './lib/i18n'
 import { addDays, fmtShortDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { useLiveBoard, type LiveEvent } from './lib/live'
@@ -47,10 +48,12 @@ interface Confirm {
   onConfirm: () => void
 }
 
+/** An error as a toast line, in the app's language (server texts are English, see i18n). */
 function errMsg(e: unknown): string {
-  if (e instanceof ApiError) return e.message
+  const t = messages()
+  if (e instanceof ApiError) return t.apiError(e.message)
   if (e instanceof Error) return e.message
-  return 'Something went wrong'
+  return t.common.somethingWrong
 }
 
 /** Same order the API lists in, so a ride pushed over the socket lands in the right row. */
@@ -63,14 +66,8 @@ function sortRides(rides: Ride[]): Ride[] {
   )
 }
 
-const LIVE_LABEL = { connecting: 'Connecting', live: 'Live', offline: 'Offline' } as const
-const LIVE_TITLE = {
-  connecting: 'Connecting to the board…',
-  live: 'Changes made by others show up here as they happen.',
-  offline: 'Live updates are down; the board refreshes itself every 30 s until they are back.',
-} as const
-
 export default function App() {
+  const t = useT()
   const [userName, setUserName] = useUserName()
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
@@ -104,6 +101,10 @@ export default function App() {
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
+
+  useEffect(() => {
+    document.title = t.documentTitle
+  }, [t])
 
   const setSelected = useCallback((iso: string) => {
     setSelectedDate(iso)
@@ -149,7 +150,7 @@ export default function App() {
       try {
         next = await api.rides(range.from, range.to)
       } catch (e) {
-        if (seq === loadSeq.current) setToast({ kind: 'error', text: `Could not load rides: ${errMsg(e)}` })
+        if (seq === loadSeq.current) setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) })
         next = null
         break
       }
@@ -250,7 +251,7 @@ export default function App() {
   const onJoin = (ride: Ride) =>
     withBusy(ride, async () => {
       upsertRide(await api.join(ride.id, userName, userName))
-      setToast({ kind: 'ok', text: `You're in with ${ride.driver_name}.` })
+      setToast({ kind: 'ok', text: t.toasts.youreIn(ride.driver_name) })
     })
 
   const onLeave = (ride: Ride, bookingId: number) =>
@@ -262,7 +263,7 @@ export default function App() {
   const onAddPassenger = (ride: Ride, name: string) =>
     withBusy(ride, async () => {
       upsertRide(await api.join(ride.id, name, userName))
-      setToast({ kind: 'ok', text: `${name} is in with ${ride.driver_name}.` })
+      setToast({ kind: 'ok', text: t.toasts.nameIn(name, ride.driver_name) })
     })
 
   /** The driver's switch: may the passengers add and remove each other? */
@@ -270,24 +271,21 @@ export default function App() {
     withBusy(ride, async () => {
       const on = !ride.passengers_manage
       upsertRide(await api.updateRide(ride.id, { passengers_manage: on }, userName))
-      setToast({ kind: 'ok', text: on ? 'Passengers can now add and remove each other.' : 'Only you manage the passenger list now.' })
+      setToast({ kind: 'ok', text: on ? t.toasts.manageOn : t.toasts.manageOff })
     })
 
   const onCancel = (ride: Ride) => {
     const n = ride.bookings.length
     setConfirm({
-      title: 'Remove this ride?',
-      body:
-        n > 0
-          ? `${n} passenger${n === 1 ? ' is' : 's are'} in this car. They will lose their seat.`
-          : `${ride.driver_name}'s ride in the ${ride.car_name} will be removed from ${fmtShortDate(ride.ride_date)}.`,
-      label: 'Remove',
+      title: t.confirm.removeRideTitle,
+      body: n > 0 ? t.confirm.removeRidePax(n) : t.confirm.removeRideBody(ride.driver_name, ride.car_name, fmtShortDate(ride.ride_date)),
+      label: t.common.remove,
       onConfirm: () => {
         setConfirm(null)
         void withBusy(ride, async () => {
           await api.deleteRide(ride.id, userName)
           setRides((rs) => rs.filter((r) => r.id !== ride.id))
-          setToast({ kind: 'ok', text: 'Ride removed.' })
+          setToast({ kind: 'ok', text: t.toasts.rideRemoved })
         })
       },
     })
@@ -302,7 +300,7 @@ export default function App() {
         upsertRide(await api.leave(drag.fromRideId, drag.bookingId, userName))
       }
       upsertRide(await api.join(target.id, userName, userName))
-      setToast({ kind: 'ok', text: `You're in with ${target.driver_name}.` })
+      setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
     })
   }
 
@@ -349,12 +347,12 @@ export default function App() {
         const { driver_name: _driver, ...patch } = input
         void _driver
         upsertRide(await api.updateRide(form.ride.id, patch, userName))
-        setToast({ kind: 'ok', text: 'Ride updated.' })
+        setToast({ kind: 'ok', text: t.toasts.rideUpdated })
         setCarSel(form.ride.id)
       } else {
         const created = await api.createRide(input)
         upsertRide(created)
-        setToast({ kind: 'ok', text: 'Ride added.' })
+        setToast({ kind: 'ok', text: t.toasts.rideAdded })
         setCarSel(created.id)
       }
       closeForm()
@@ -420,7 +418,7 @@ export default function App() {
   const onCreateCar = (input: CorporateCarInput) =>
     void withAdminBusy(NEW_CAR_BUSY_ID, async () => {
       await api.createCar(input, adminPassword)
-      setToast({ kind: 'ok', text: `${input.name} added to the pool.` })
+      setToast({ kind: 'ok', text: t.toasts.carAdded(input.name) })
     })
 
   const onUpdateCar = (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
@@ -428,14 +426,14 @@ export default function App() {
 
   const onDeleteCar = (car: CorporateCar) =>
     setConfirm({
-      title: 'Delete this car?',
-      body: `${car.name} (${car.plate}) will be deleted from the pool. Retiring it instead keeps it on past rides.`,
-      label: 'Delete',
+      title: t.confirm.deleteCarTitle,
+      body: t.confirm.deleteCarBody(car.name, car.plate),
+      label: t.common.delete,
       onConfirm: () => {
         setConfirm(null)
         void withAdminBusy(car.id, async () => {
           await api.deleteCar(car.id, adminPassword)
-          setToast({ kind: 'ok', text: `${car.name} deleted.` })
+          setToast({ kind: 'ok', text: t.toasts.carDeleted(car.name) })
         })
       },
     })
@@ -496,7 +494,7 @@ export default function App() {
         <button
           type="button"
           className="icon-btn topbar-menu"
-          aria-label="Menu"
+          aria-label={t.common.menu}
           aria-haspopup="dialog"
           aria-expanded={sidebarOpen}
           aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
@@ -508,15 +506,15 @@ export default function App() {
           <CarIcon size={20} /> Karpul
         </h1>
         <div className="topbar-right">
-          <span className={`live live-${liveStatus}`} role="status" title={LIVE_TITLE[liveStatus]}>
+          <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
             <span className="live-dot" aria-hidden="true" />
-            <span className="sr-only">{LIVE_LABEL[liveStatus]}</span>
+            <span className="sr-only">{t.live.label[liveStatus]}</span>
           </span>
         </div>
       </header>
 
       <main>
-        <div className="segmented view-switch" role="radiogroup" aria-label="View">
+        <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
           <button
             type="button"
             role="radio"
@@ -524,7 +522,7 @@ export default function App() {
             className={upcoming ? 'seg seg-on' : 'seg'}
             onClick={() => setView('upcoming')}
           >
-            <ListIcon size={16} /> Upcoming
+            <ListIcon size={16} /> {t.view.upcoming}
           </button>
           <button
             type="button"
@@ -533,7 +531,7 @@ export default function App() {
             className={upcoming ? 'seg' : 'seg seg-on'}
             onClick={() => setView('week')}
           >
-            <CalendarIcon size={16} /> Week
+            <CalendarIcon size={16} /> {t.view.week}
           </button>
         </div>
 
@@ -550,7 +548,7 @@ export default function App() {
                 userName={userName}
                 isPast={false}
                 hasCars={false}
-                emptyTitle="No upcoming sessions yet"
+                emptyTitle={t.empty.noUpcoming}
                 onAdd={openNewCar}
                 onEditName={() => setNameOpen(true)}
               />
@@ -565,7 +563,7 @@ export default function App() {
                 />
                 <button type="button" className="add-row" onClick={openNewCar}>
                   <PlusIcon size={18} />
-                  Add a ride
+                  {t.empty.addARide}
                 </button>
               </>
             )}

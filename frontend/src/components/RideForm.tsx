@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { messages, useT } from '../lib/i18n'
 import type { CarType, CorporateCar, Ride, RideInput } from '../lib/types'
 import { Avatar } from './Avatar'
 import { DatePicker } from './DatePicker'
@@ -31,11 +32,12 @@ function loadLastRoute(): { origin: string; destination: string; car_name: strin
   } catch {
     /* ignore */
   }
-  return { origin: '', destination: 'Office', car_name: '' }
+  return { origin: '', destination: messages().form.defaultDestination, car_name: '' }
 }
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
 export function RideForm({ date, userName, cars, existing, template, submitting, error, onSubmit, onDelete, onClose }: Props) {
+  const t = useT()
   const seed = existing ?? template ?? null
   const [last] = useState(loadLastRoute)
   const [rideDate, setRideDate] = useState(existing?.ride_date ?? date)
@@ -57,7 +59,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
   // Clamp during render so switching to a smaller car never leaves an invalid value.
   const seats = Math.min(Math.max(rawSeats, minSeats), maxSeats)
 
-  const localError = !oneWay && ret <= departure ? 'Return time must be after departure time' : null
+  const localError = !oneWay && ret <= departure ? t.form.returnAfter : null
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -86,25 +88,25 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
   return (
     <Sheet
       id="ride-form-title"
-      title={existing ? 'Edit ride' : 'Add ride'}
+      title={existing ? t.form.editTitle : t.form.addTitle}
       as="form"
       onSubmit={submit}
       onClose={onClose}
       footer={
         <>
           <button type="submit" className="btn btn-primary btn-block" disabled={submitting || !!localError}>
-            {submitting ? 'Saving…' : existing ? 'Save changes' : 'Add ride'}
+            {submitting ? t.common.saving : existing ? t.form.saveChanges : t.form.addTitle}
           </button>
           {existing && onDelete && (
             <button type="button" className="btn btn-outline-danger btn-block" disabled={submitting} onClick={onDelete}>
-              <TrashIcon size={18} /> Delete ride
+              <TrashIcon size={18} /> {t.form.deleteRide}
             </button>
           )}
         </>
       }
     >
       <div className="field">
-        <span className="field-label">Driver</span>
+        <span className="field-label">{t.form.driver}</span>
         <div className="driver-pill">
           <Avatar name={userName} size="sm" />
           <span>{userName}</span>
@@ -112,8 +114,8 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       </div>
 
       <div className="field">
-        <span className="field-label">Car</span>
-        <div className="segmented" role="radiogroup" aria-label="Car">
+        <span className="field-label">{t.form.car}</span>
+        <div className="segmented" role="radiogroup" aria-label={t.form.car}>
           <button
             type="button"
             role="radio"
@@ -122,7 +124,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
             disabled={!cars.length}
             onClick={() => setCarType('corporate')}
           >
-            Company car
+            {t.form.companyCar}
           </button>
           <button
             type="button"
@@ -131,22 +133,22 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
             className={carType === 'own' ? 'seg seg-on' : 'seg'}
             onClick={() => setCarType('own')}
           >
-            My own car
+            {t.form.myOwnCar}
           </button>
         </div>
         {carType === 'corporate' ? (
           <Select
-            label="Which company car"
+            label={t.form.whichCar}
             icon={<CarIcon size={16} />}
             value={carId === '' ? null : carId}
-            options={cars.map((c) => ({ value: c.id, label: c.name, hint: `${c.plate} · ${c.passenger_seats} seats` }))}
+            options={cars.map((c) => ({ value: c.id, label: c.name, hint: t.form.carHint(c.plate, c.passenger_seats) }))}
             onChange={setCarId}
           />
         ) : (
           <input
             required
-            aria-label="Your car"
-            placeholder="e.g. grey Octavia"
+            aria-label={t.form.yourCar}
+            placeholder={t.form.carPlaceholder}
             maxLength={80}
             value={carName}
             onChange={(e) => setCarName(e.target.value)}
@@ -156,77 +158,75 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
 
       <div className="field">
         <span className="field-label" id="capacity-label">
-          Passenger seats
+          {t.form.seats}
         </span>
         <div className="stepper" role="group" aria-labelledby="capacity-label">
-          <button type="button" aria-label="Fewer seats" disabled={seats <= minSeats} onClick={() => setSeats(seats - 1)}>
+          <button type="button" aria-label={t.form.fewer} disabled={seats <= minSeats} onClick={() => setSeats(seats - 1)}>
             <MinusIcon />
           </button>
           <output aria-live="polite">{seats}</output>
-          <button type="button" aria-label="More seats" disabled={seats >= maxSeats} onClick={() => setSeats(seats + 1)}>
+          <button type="button" aria-label={t.form.more} disabled={seats >= maxSeats} onClick={() => setSeats(seats + 1)}>
             <PlusIcon />
           </button>
         </div>
-        {minSeats > 0 && <p className="hint">{minSeats} already booked, so it can't go lower.</p>}
+        {minSeats > 0 && <p className="hint">{t.form.alreadyBooked(minSeats)}</p>}
       </div>
 
       <div className="field">
-        <span className="field-label">Passenger list</span>
+        <span className="field-label">{t.form.passengerList}</span>
         <label className="toggle toggle-row">
           <input type="checkbox" checked={passengersManage} onChange={(e) => setPassengersManage(e.target.checked)} />
-          <span>Passengers can add and remove each other</span>
+          <span>{t.form.canManage}</span>
         </label>
         <p className="hint">
-          {passengersManage
-            ? 'Anyone in the car can put a colleague in or take one out. You can still do both.'
-            : 'Only you can put others in or take them out. Anyone can still get in or leave on their own.'}
+          {passengersManage ? t.form.manageOn : t.form.manageOff}
         </p>
       </div>
 
       <div className="field">
-        <span className="field-label">Departs</span>
+        <span className="field-label">{t.form.departs}</span>
         <div className="grid-2">
-          <DatePicker label="Day" value={rideDate} onChange={setRideDate} />
-          <TimePicker label="Departure time" value={departure} onChange={setDeparture} />
+          <DatePicker label={t.form.day} value={rideDate} onChange={setRideDate} />
+          <TimePicker label={t.form.departureTime} value={departure} onChange={setDeparture} />
         </div>
       </div>
 
       <div className="field">
         <span className="field-label field-label-row">
-          Returns
+          {t.form.returns}
           <label className="toggle">
             <input type="checkbox" checked={oneWay} onChange={(e) => setOneWay(e.target.checked)} />
-            <span>One way</span>
+            <span>{t.form.oneWay}</span>
           </label>
         </span>
         <div className="grid-2">
           {/* Rides are same-day, so the return day only echoes the departure. */}
-          <DatePicker label="Return day (same day)" value={rideDate} onChange={setRideDate} disabled />
-          <TimePicker label="Return time" value={ret} onChange={setRet} disabled={oneWay} />
+          <DatePicker label={t.form.returnDay} value={rideDate} onChange={setRideDate} disabled />
+          <TimePicker label={t.form.returnTime} value={ret} onChange={setRet} disabled={oneWay} />
         </div>
       </div>
 
       <label className="field">
-        <span className="field-label">Pickup location</span>
+        <span className="field-label">{t.form.pickup}</span>
         <span className="input-icon">
           <PinIcon size={16} />
-          <input required maxLength={120} placeholder="e.g. Main St. Parking" value={origin} onChange={(e) => setOrigin(e.target.value)} />
+          <input required maxLength={120} placeholder={t.form.pickupPlaceholder} value={origin} onChange={(e) => setOrigin(e.target.value)} />
         </span>
       </label>
 
       <label className="field">
-        <span className="field-label">Drop-off location</span>
+        <span className="field-label">{t.form.dropoff}</span>
         <span className="input-icon">
           <PinIcon size={16} />
-          <input required maxLength={120} placeholder="e.g. Office" value={destination} onChange={(e) => setDestination(e.target.value)} />
+          <input required maxLength={120} placeholder={t.form.dropoffPlaceholder} value={destination} onChange={(e) => setDestination(e.target.value)} />
         </span>
       </label>
 
       <label className="field">
         <span className="field-label">
-          Notes <span className="muted">(optional)</span>
+          {t.form.notes} <span className="muted">{t.form.optional}</span>
         </span>
-        <textarea rows={2} maxLength={500} placeholder="Meeting point, detours, luggage…" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <textarea rows={2} maxLength={500} placeholder={t.form.notesPlaceholder} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
 
       {(localError || error) && <p className="error">{localError ?? error}</p>}

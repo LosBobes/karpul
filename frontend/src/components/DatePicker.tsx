@@ -1,5 +1,7 @@
 import { useId, useState } from 'react'
 import { addDays, fmtShortDate, parseISODate, startOfWeek, toISODate, todayISO } from '../lib/dates'
+import { useT } from '../lib/i18n'
+import { intlTag } from '../lib/locale'
 import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { Popover } from './Popover'
 
@@ -14,7 +16,8 @@ interface Props {
 }
 
 /** A month calendar in a popover, replacing the native date input. */
-export function DatePicker({ value, onChange, label, disabled, variant = 'control', linkText = 'Jump to…' }: Props) {
+export function DatePicker({ value, onChange, label, disabled, variant = 'control', linkText }: Props) {
+  const t = useT()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const id = useId()
 
@@ -31,7 +34,7 @@ export function DatePicker({ value, onChange, label, disabled, variant = 'contro
         onClick={(e) => setAnchor(anchor ? null : e.currentTarget)}
       >
         {variant === 'link' ? (
-          linkText
+          (linkText ?? t.dates.jumpTo)
         ) : (
           <>
             <span className="control-icon">
@@ -57,6 +60,7 @@ export function DatePicker({ value, onChange, label, disabled, variant = 'contro
 }
 
 function Calendar({ value, onPick }: { value: string; onPick: (iso: string) => void }) {
+  const t = useT()
   const selected = parseISODate(value)
   const [view, setView] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1))
   const today = todayISO()
@@ -64,18 +68,18 @@ function Calendar({ value, onPick }: { value: string; onPick: (iso: string) => v
   // Six rows from the Monday on or before the 1st, so the grid never jumps in height.
   const first = startOfWeek(view)
   const cells = Array.from({ length: 42 }, (_, i) => addDays(first, i))
-  const weekdays = Array.from({ length: 7 }, (_, i) => addDays(first, i).toLocaleDateString(undefined, { weekday: 'narrow' }))
-  const monthLabel = view.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+  const weekdays = Array.from({ length: 7 }, (_, i) => addDays(first, i).toLocaleDateString(intlTag(), { weekday: 'narrow' }))
+  const monthLabel = view.toLocaleDateString(intlTag(), { month: 'long', year: 'numeric' })
   const shift = (n: number) => setView(new Date(view.getFullYear(), view.getMonth() + n, 1))
 
   return (
     <div className="cal">
       <div className="cal-head">
-        <button type="button" className="icon-btn" aria-label="Previous month" onClick={() => shift(-1)}>
+        <button type="button" className="icon-btn" aria-label={t.dates.prevMonth} onClick={() => shift(-1)}>
           <ChevronLeftIcon />
         </button>
         <strong>{monthLabel}</strong>
-        <button type="button" className="icon-btn" aria-label="Next month" onClick={() => shift(1)}>
+        <button type="button" className="icon-btn" aria-label={t.dates.nextMonth} onClick={() => shift(1)}>
           <ChevronRightIcon />
         </button>
       </div>
@@ -111,7 +115,7 @@ function Calendar({ value, onPick }: { value: string; onPick: (iso: string) => v
             onPick(today)
           }}
         >
-          Today
+          {t.common.today}
         </button>
       </div>
     </div>

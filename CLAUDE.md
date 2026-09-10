@@ -119,12 +119,29 @@ its mark from the `simple-icons` package in `currentColor`. Only the brands list
 are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
 not in that package, so they keep the generic icon.
 
+**Language.** The UI is switchable between English and Serbian (Latin script). Every string
+the screen shows lives in `lib/i18n.ts` as two dictionaries, `en` and `sr`; `en` is the
+reference and `sr` is typed as its shape, so a missing key is a type error, never a silent
+fallback. Anything with a count or a name in it is a function (Serbian has three plural forms
+and would need case endings on names, so the sentences are built to keep the name as typed).
+Components read text with `useT()`; non-component code (`lib/dates.ts`, `lib/carModels.ts`) with
+`messages()`. The choice is an external store in `lib/locale.ts` (`karpul.locale`, first visit
+follows the browser language), which also hands `Intl` its tag (`intlTag()`, `sr-Latn-RS`), so
+weekday and month names, the week range and 12/24-hour clocks follow the app language rather
+than the browser. Backend error texts stay English on the wire and are rendered through
+`apiError` in the same file, which matches the server's wordings (keep it in step when a
+`detail` string changes). The switch is `LanguageSwitch`, at the foot of the drawer and on the
+first-run name sheet. `main.tsx` also bundles Inter's Latin Extended subset for č ć š ž đ.
+Wording rule for both languages: no em dashes.
+
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: *Add ride*, your name (the identity block and *Change name* both open
 `NameSheet`), *Company cars* (`CarAdmin`) and the *Company car guide* (`CarGuide`: how to charge
-with the company card, and a Mazda 6e primer for first-time EV drivers — plain content arrays at
-the top of that file, also reachable from the driver card of any company-car ride). Picking an
+with the company card, and a Mazda 6e primer for first-time EV drivers. The words are the `guide`
+entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
+line-icon style with the green accent on the one thing the step is about; also reachable from
+the driver card of any company-car ride). Picking an
 item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. Below the bar, two views are switched by the
 segmented control at the top of `main` and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default) and *Week*. Upcoming is

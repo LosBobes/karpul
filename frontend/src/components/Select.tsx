@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
+import { useT } from '../lib/i18n'
 import { CheckIcon, ChevronDownIcon } from './icons'
 import { Popover } from './Popover'
 
@@ -20,7 +21,8 @@ interface Props<T> {
 }
 
 /** A dropdown that looks the same on every platform: a control and a listbox popover. */
-export function Select<T extends string | number>({ value, options, onChange, label, placeholder = 'Choose…', disabled, icon }: Props<T>) {
+export function Select<T extends string | number>({ value, options, onChange, label, placeholder, disabled, icon }: Props<T>) {
+  const t = useT()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const id = useId()
   const current = options.find((o) => o.value === value) ?? null
@@ -45,7 +47,7 @@ export function Select<T extends string | number>({ value, options, onChange, la
               {current.hint && <span className="control-hint">{current.hint}</span>}
             </>
           ) : (
-            placeholder
+            (placeholder ?? t.common.choose)
           )}
         </span>
         <ChevronDownIcon size={18} className="control-chevron" />
