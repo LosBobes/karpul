@@ -105,12 +105,13 @@ Known car models get a side-view illustration instead of the generic icon: `lib/
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
 `components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
 white Mazda 6e, used in the ride tiles, the driver card's vehicle strip and the admin list.
-`carPowertrain()` in the same file says whether a name is *electric* or a *hybrid* (explicit
-words first, then models sold only one way; hybrid words beat electric words so "plug-in hybrid
-electric" is a hybrid) and `PowertrainBadge` draws it as a round sticker (bolt / leaf) pinned to
-the corner of every picture slot (`.pt-badge`; the slot is `position: relative`), bigger on a
-phone. It is never drawn inside the artwork itself, so its size does not depend on the drawing.
-The driver card also spells it out as an "Electric" / "Hybrid" tag.
+`carPowertrain()` in the same file says whether a name is *electric*, a *hybrid*, *diesel* or
+*petrol* (explicit words and engine badges first, hybrid before electric before diesel before
+petrol so "plug-in hybrid electric" is a hybrid; then models sold only one way) and
+`PowertrainMark` draws it as a 12px glyph (bolt / leaf / drop / pump) *after the car's name* on
+the tile, the Upcoming row and the admin list (`.pt-mark`). It is deliberately not on the
+picture: a sticker big enough to read on a phone hid the car. The driver card spells it out as
+an "Electric" / "Hybrid" / "Diesel" / "Petrol" tag.
 Below that, `carBrand()` in the same file recognises a *make* from the name (make words and
 the models people write instead of one: "grey Golf", "Octavia"; words that are also plain
 English, like "Seat" or "Focus", must be capitalised to count) and `BrandLogo` /`CarGlyph` show

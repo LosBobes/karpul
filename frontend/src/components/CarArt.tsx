@@ -35,7 +35,7 @@ import {
   type SimpleIcon,
 } from 'simple-icons'
 import { carBrand, carModel, carPowertrain, powertrainLabel, type CarBrandKey, type CarModelKey, type Powertrain } from '../lib/carModels'
-import { BoltIcon, CarIcon, LeafIcon } from './icons'
+import { BoltIcon, CarIcon, DropIcon, LeafIcon, PumpIcon } from './icons'
 
 /**
  * Per-model artwork for the cars in the pool: `lib/carModels.ts` decides which
@@ -63,8 +63,7 @@ const ART_RATIO = 48 / 128
  * light bars, dark glass, big twin-spoke wheels and a dark sill. The outline
  * follows `currentColor` so it takes the tile's muted/green state like the
  * line icons do; the body stays white because the car is white. That it is
- * electric is not drawn here: `PowertrainBadge` says so on top of every
- * picture, at a size that survives a phone screen.
+ * electric is not drawn here: `PowertrainMark` says so beside the car's name.
  */
 export function Mazda6eArt({ width, className }: ArtProps) {
   return (
@@ -207,21 +206,29 @@ export function CarGlyph({ carName, size = 22, className }: GlyphProps) {
   return <CarIcon size={size} className={className} />
 }
 
+/** The glyph for what a car runs on: bolt, leaf, drop or pump. */
+export function PowertrainIcon({ kind, size = 12 }: { kind: Powertrain; size?: number }) {
+  const sw = 2.25
+  if (kind === 'electric') return <BoltIcon size={size} strokeWidth={sw} />
+  if (kind === 'hybrid') return <LeafIcon size={size} strokeWidth={sw} />
+  if (kind === 'diesel') return <DropIcon size={size} strokeWidth={sw} />
+  return <PumpIcon size={size} strokeWidth={sw} />
+}
+
 /**
- * The round sticker that says what the car runs on: a bolt for electric, a
- * leaf for a hybrid, nothing for the rest. It sits in the corner of whatever
- * picture slot holds it (`.pt-badge` is absolutely positioned; the slot is
- * `position: relative`), so it is the same size on a tile, a list row and
- * the admin list whatever the artwork underneath, and `index.css` makes it
- * bigger on a phone. Pass a `carName` and it decides for itself, or a `kind`.
+ * A small mark beside the car's name saying what it runs on, nothing when
+ * the name does not say. It lives in the text line, never over the picture,
+ * so it can stay small (`.pt-mark`, 12px) without hiding the car. Electric
+ * and hybrid are green, the fuel-burners muted. Pass a `carName` and it
+ * decides for itself, or a `kind`.
  */
-export function PowertrainBadge({ carName, kind, className }: { carName?: string; kind?: Powertrain | null; className?: string }) {
+export function PowertrainMark({ carName, kind, className }: { carName?: string; kind?: Powertrain | null; className?: string }) {
   const pt = kind ?? (carName !== undefined ? carPowertrain(carName) : null)
   if (!pt) return null
   const label = powertrainLabel(pt)
   return (
-    <span className={['pt-badge', `pt-badge-${pt}`, className].filter(Boolean).join(' ')} role="img" aria-label={label} title={label}>
-      {pt === 'electric' ? <BoltIcon strokeWidth={2.5} /> : <LeafIcon strokeWidth={2.25} />}
+    <span className={['pt-mark', `pt-mark-${pt}`, className].filter(Boolean).join(' ')} role="img" aria-label={label} title={label}>
+      <PowertrainIcon kind={pt} />
     </span>
   )
 }

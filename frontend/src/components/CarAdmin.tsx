@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { CorporateCar, CorporateCarInput } from '../lib/types'
-import { CarGlyph, PowertrainBadge } from './CarArt'
+import { CarGlyph, PowertrainMark } from './CarArt'
 import { CarIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
 import { Menu } from './Menu'
 import { Sheet } from './Sheet'
@@ -61,10 +61,12 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
           <li key={car.id} className={car.active ? 'admin-row' : 'admin-row admin-row-retired'}>
             <span className="admin-car-icon" aria-hidden="true">
               <CarGlyph carName={car.name} size={16} />
-              <PowertrainBadge carName={car.name} />
             </span>
             <span className="admin-row-text">
-              <strong>{car.name}</strong>
+              <strong>
+                {car.name}
+                <PowertrainMark carName={car.name} />
+              </strong>
               <span>
                 <span className="mono">{car.plate}</span> · {car.passenger_seats} seats
                 {!car.active && <span className="tag">Retired</span>}

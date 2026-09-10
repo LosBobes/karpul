@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, sameName, shortCarName } from '../lib/dates'
 import type { Ride } from '../lib/types'
-import { CarGlyph, PowertrainBadge } from './CarArt'
+import { CarGlyph, PowertrainMark } from './CarArt'
 import { ChevronDownIcon } from './icons'
 
 interface Props {
@@ -59,10 +59,12 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                       </span>
                       <span className="session-art" aria-hidden="true">
                         <CarGlyph carName={r.car_name} size={20} />
-                        <PowertrainBadge carName={r.car_name} />
                       </span>
                       <span className="session-text">
-                        <strong>{shortCarName(r.car_name)}</strong>
+                        <strong>
+                          <span className="session-name">{shortCarName(r.car_name)}</span>
+                          <PowertrainMark carName={r.car_name} />
+                        </strong>
                         <span>
                           {r.driver_name} · {r.origin} to {r.destination}
                         </span>
