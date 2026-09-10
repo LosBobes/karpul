@@ -182,12 +182,20 @@ in your shell profile first):
 make deploy     # git pull + rebuild on the server
 make logs       # tail container logs
 make ssh        # shell into the server
-make backup     # copy the live SQLite file to ./karpul-<date>.db
+make backup     # consistent snapshot of the live SQLite DB to ./karpul-<date>.db
 ```
 
 The database is untouched by rebuilds: it lives in the `karpul_karpul_data`
 named volume. Only `docker compose -f docker-compose.prod.yml down -v` would
 delete it. Tables are created on boot if missing.
+
+SQLite runs in WAL mode, so the volume holds `karpul.db-wal` and `karpul.db-shm`
+next to `karpul.db`. Never copy `karpul.db` on its own: the newest commits are
+in the `-wal` file until SQLite checkpoints them. `make backup` (or
+`docker compose exec -T app python -m app.backup > snapshot.db` on the server)
+takes a consistent single-file snapshot through SQLite's backup API while the
+app keeps running; a restore is that file dropped in as `/data/karpul.db` with
+the `-wal` / `-shm` files removed and the container restarted.
 
 ---
 

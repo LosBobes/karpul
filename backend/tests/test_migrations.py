@@ -3,14 +3,14 @@ database from an older release is patched on start (app/database.py)."""
 
 from sqlalchemy import inspect, text
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel
 
-from app.database import ADDED_COLUMNS, add_missing_columns
+from app.database import ADDED_COLUMNS, add_missing_columns, make_engine
 from app.models import Ride
 
 
 def _engine():
-    return create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    return make_engine("sqlite://", poolclass=StaticPool)
 
 
 def _columns(engine, table: str) -> set[str]:

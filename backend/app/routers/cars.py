@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, col, func, select
 
 from ..admin import AdminPasswordHeader, require_admin
-from ..database import get_session
+from ..database import get_session, get_write_session
 from ..events import cars_changed
 from ..models import CarType, CorporateCar, Ride
 from ..schemas import CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
@@ -13,6 +13,7 @@ from ..services import relabel_rides_for_car
 router = APIRouter(prefix="/api/cars", tags=["cars"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
+WriteSessionDep = Annotated[Session, Depends(get_write_session)]
 AdminOnly = Depends(require_admin)
 
 
@@ -80,7 +81,7 @@ def list_corporate_cars(
     status_code=status.HTTP_201_CREATED,
     dependencies=[AdminOnly],
 )
-def create_corporate_car(payload: CorporateCarCreate, session: SessionDep):
+def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep):
     _ensure_plate_free(session, payload.plate)
     car = CorporateCar(**payload.model_dump())
     session.add(car)
@@ -91,7 +92,7 @@ def create_corporate_car(payload: CorporateCarCreate, session: SessionDep):
 
 
 @router.patch("/corporate/{car_id}", response_model=CorporateCarRead, dependencies=[AdminOnly])
-def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: SessionDep):
+def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: WriteSessionDep):
     car = _get_car_or_404(session, car_id)
     data = payload.model_dump(exclude_unset=True)
     if "plate" in data:
@@ -116,7 +117,7 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Sess
 
 
 @router.delete("/corporate/{car_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[AdminOnly])
-def delete_corporate_car(car_id: int, session: SessionDep):
+def delete_corporate_car(car_id: int, session: WriteSessionDep):
     """Hard delete, allowed only while no ride references the car.
 
     Rides keep `corporate_car_id` as a foreign key, so deleting a used car would
