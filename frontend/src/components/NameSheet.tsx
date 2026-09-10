@@ -43,7 +43,7 @@ export function NameSheet({ name, onChange, onClose }: Props) {
         />
       </label>
       <p className="hint">
-        This is how you appear to your colleagues in a car. No account, no password — the name is only
+        This is how you appear to your colleagues in a car. No account, no password. The name is only
         remembered in this browser.
       </p>
     </Sheet>

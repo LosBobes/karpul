@@ -34,7 +34,7 @@ export function sameName(a: string | null | undefined, b: string | null | undefi
 
 /** "HH:MM[:SS]" from the API, shown the way the browser locale writes clock times. */
 export function fmtTime(t: string | null): string {
-  if (!t) return '—'
+  if (!t) return ''
   const [h, m] = t.split(':').map(Number)
   return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
@@ -67,6 +67,25 @@ export function fmtWeekRange(monday: Date): string {
   const fmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
   if (typeof fmt.formatRange === 'function') return fmt.formatRange(monday, sunday)
   return `${fmtMonthDay(monday)} – ${fmt.format(sunday)}`
+}
+
+/**
+ * A day as a list heading: "Today", "Tomorrow", else the weekday and date
+ * ("Friday, Sep 12"). The date is always given as well, in `fmtDayDate`, so
+ * "Today" still says which day that is.
+ */
+export function fmtDayLabel(iso: string): string {
+  const today = todayISO()
+  if (iso === today) return 'Today'
+  if (iso === toISODate(addDays(parseISODate(today), 1))) return 'Tomorrow'
+  return parseISODate(iso).toLocaleDateString(undefined, { weekday: 'long' })
+}
+
+/** "Sep 12" for a heading next to `fmtDayLabel`, with the year once it is not this year. */
+export function fmtDayDate(iso: string): string {
+  const d = parseISODate(iso)
+  const sameYear = d.getFullYear() === new Date().getFullYear()
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' })
 }
 
 /** "Sat, May 17" */

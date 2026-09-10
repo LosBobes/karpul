@@ -1,11 +1,48 @@
 import type { ComponentType } from 'react'
-import { carModel, type CarModelKey } from '../lib/carModels'
+import {
+  siAudi,
+  siBmw,
+  siChevrolet,
+  siCitroen,
+  siDacia,
+  siDsautomobiles,
+  siFiat,
+  siFord,
+  siHonda,
+  siHyundai,
+  siJeep,
+  siKia,
+  siLada,
+  siMazda,
+  siMg,
+  siMini,
+  siMitsubishi,
+  siNissan,
+  siOpel,
+  siPeugeot,
+  siPolestar,
+  siPorsche,
+  siRenault,
+  siSeat,
+  siSkoda,
+  siSmart,
+  siSubaru,
+  siSuzuki,
+  siTesla,
+  siToyota,
+  siVolkswagen,
+  siVolvo,
+  type SimpleIcon,
+} from 'simple-icons'
+import { carBrand, carModel, type CarBrandKey, type CarModelKey } from '../lib/carModels'
 import { CarIcon } from './icons'
 
 /**
  * Per-model artwork for the cars in the pool: `lib/carModels.ts` decides which
- * model a car name is, this file draws it. Anything unknown keeps the generic
- * line icon.
+ * model a car name is, this file draws it. A car the board cannot draw but
+ * whose make it recognises gets the make's logo instead (`BrandLogo`, marks
+ * from the `simple-icons` package, drawn in `currentColor` so they sit in the
+ * design like the line icons do). Anything else keeps the generic car icon.
  */
 interface ArtProps {
   /** Rendered width in px; height follows `ART_RATIO`. */
@@ -97,6 +134,59 @@ function Wheel({ cx }: { cx: number }) {
   )
 }
 
+const LOGOS: Record<CarBrandKey, SimpleIcon> = {
+  audi: siAudi,
+  bmw: siBmw,
+  volkswagen: siVolkswagen,
+  toyota: siToyota,
+  honda: siHonda,
+  ford: siFord,
+  skoda: siSkoda,
+  renault: siRenault,
+  peugeot: siPeugeot,
+  citroen: siCitroen,
+  fiat: siFiat,
+  opel: siOpel,
+  hyundai: siHyundai,
+  kia: siKia,
+  mazda: siMazda,
+  nissan: siNissan,
+  volvo: siVolvo,
+  tesla: siTesla,
+  porsche: siPorsche,
+  subaru: siSubaru,
+  suzuki: siSuzuki,
+  mitsubishi: siMitsubishi,
+  jeep: siJeep,
+  chevrolet: siChevrolet,
+  mini: siMini,
+  dacia: siDacia,
+  seat: siSeat,
+  smart: siSmart,
+  polestar: siPolestar,
+  mg: siMg,
+  lada: siLada,
+  dsautomobiles: siDsautomobiles,
+}
+
+/** A make's logo, filled with `currentColor`, in a square of `size` px. */
+export function BrandLogo({ brand, size = 22, className }: { brand: CarBrandKey; size?: number; className?: string }) {
+  const icon = LOGOS[brand]
+  return (
+    <svg
+      className={className}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      role="img"
+      aria-label={icon.title}
+    >
+      <path d={icon.path} />
+    </svg>
+  )
+}
+
 interface GlyphProps {
   carName: string
   /** Line-icon size; a model illustration is drawn about twice as wide. */
@@ -104,12 +194,19 @@ interface GlyphProps {
   className?: string
 }
 
-/** The model illustration when there is one, else the generic car icon. */
+/**
+ * The model illustration when there is one, else the make's logo when the
+ * name gives one away, else the generic car icon.
+ */
 export function CarGlyph({ carName, size = 22, className }: GlyphProps) {
   const model = carModel(carName)
-  if (!model) return <CarIcon size={size} className={className} />
-  const Art = ART[model.key]
-  return <Art width={Math.round(size * 2.8)} className={className} />
+  if (model) {
+    const Art = ART[model.key]
+    return <Art width={Math.round(size * 2.8)} className={className} />
+  }
+  const brand = carBrand(carName)
+  if (brand) return <BrandLogo brand={brand.key} size={size} className={className} />
+  return <CarIcon size={size} className={className} />
 }
 
 /** The illustration for a known model, at a chosen width. */

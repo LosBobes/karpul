@@ -5,10 +5,11 @@ import { CarCarousel, type CarSelection } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
-import { CarIcon, KebabIcon, KeyIcon, MenuIcon, PlusIcon, UserIcon } from './components/icons'
+import { CalendarIcon, CarIcon, KebabIcon, KeyIcon, ListIcon, MenuIcon, PlusIcon, UserIcon } from './components/icons'
 import { Menu } from './components/Menu'
 import { NameSheet } from './components/NameSheet'
 import { RideForm } from './components/RideForm'
+import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
 import { addDays, fmtShortDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
@@ -19,6 +20,23 @@ import { useAdminPassword } from './lib/useAdminPassword'
 import { useUserName } from './lib/useUserName'
 
 type FormState = { mode: 'create'; template?: Ride } | { mode: 'edit'; ride: Ride } | null
+
+/**
+ * "Upcoming" lists every session from today on; "Week" is the day board with
+ * the date strip. The choice is remembered per browser.
+ */
+type View = 'upcoming' | 'week'
+const VIEW_KEY = 'karpul.view'
+/** How far ahead the upcoming list looks. The API caps a range at 92 days. */
+const UPCOMING_DAYS = 90
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'upcoming'
+  } catch {
+    return 'upcoming'
+  }
+}
 
 /** A pending "are you sure?" — the confirm card owns the wording, the caller the action. */
 interface Confirm {
@@ -53,10 +71,11 @@ const LIVE_TITLE = {
 
 export default function App() {
   const [userName, setUserName] = useUserName()
+  const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
   const [rides, setRides] = useState<Ride[]>([])
   const [cars, setCars] = useState<CorporateCar[]>([])
-  const [loadedWeek, setLoadedWeek] = useState<string | null>(null)
+  const [loadedRange, setLoadedRange] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [toast, setToast] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
   const [form, setForm] = useState<FormState>(null)
@@ -86,20 +105,37 @@ export default function App() {
     setCarSel(null)
   }, [])
 
-  const week = useMemo(() => {
+  const setView = useCallback((v: View) => {
+    setViewState(v)
+    setCarSel(null)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      /* private mode etc. */
+    }
+  }, [])
+
+  // What is loaded: the next UPCOMING_DAYS from today, or the Mon-Sun week
+  // around the selected day.
+  const range = useMemo(() => {
+    if (view === 'upcoming') {
+      const today = parseISODate(todayISO())
+      return { from: toISODate(today), to: toISODate(addDays(today, UPCOMING_DAYS)) }
+    }
     const monday = startOfWeek(parseISODate(selected))
     return { from: toISODate(monday), to: toISODate(addDays(monday, 6)) }
-  }, [selected])
+  }, [view, selected])
+  const rangeKey = `${range.from}:${range.to}`
 
   const load = useCallback(async () => {
     try {
-      setRides(await api.rides(week.from, week.to))
+      setRides(await api.rides(range.from, range.to))
     } catch (e) {
       setToast({ kind: 'error', text: `Could not load rides: ${errMsg(e)}` })
     } finally {
-      setLoadedWeek(week.from)
+      setLoadedRange(rangeKey)
     }
-  }, [week])
+  }, [range, rangeKey])
 
   useEffect(() => {
     // Data fetching: the state update happens after the await, not synchronously.
@@ -107,7 +143,7 @@ export default function App() {
     void load()
   }, [load])
 
-  const loading = loadedWeek !== week.from
+  const loading = loadedRange !== rangeKey
 
   useEffect(() => {
     api.corporateCars().then(setCars).catch(() => setCars([]))
@@ -126,10 +162,10 @@ export default function App() {
         case 'ride.created':
         case 'ride.updated':
           setRides((rs) => {
-            // An edit can move a ride into or out of the loaded week.
-            const inWeek = ev.ride.ride_date >= week.from && ev.ride.ride_date <= week.to
+            // An edit can move a ride into or out of the loaded range.
+            const inRange = ev.ride.ride_date >= range.from && ev.ride.ride_date <= range.to
             const rest = rs.filter((r) => r.id !== ev.ride.id)
-            return inWeek ? sortRides([...rest, ev.ride]) : rest
+            return inRange ? sortRides([...rest, ev.ride]) : rest
           })
           break
         case 'ride.deleted':
@@ -146,7 +182,7 @@ export default function App() {
           break
       }
     },
-    [week, load, adminUnlocked, adminPassword, applyCars],
+    [range, load, adminUnlocked, adminPassword, applyCars],
   )
   const liveStatus = useLiveBoard({ onEvent: onLiveEvent, onConnect: load })
 
@@ -186,13 +222,28 @@ export default function App() {
 
   const onJoin = (ride: Ride) =>
     withBusy(ride, async () => {
-      replaceRide(await api.join(ride.id, userName))
+      replaceRide(await api.join(ride.id, userName, userName))
       setToast({ kind: 'ok', text: `You're in with ${ride.driver_name}.` })
     })
 
   const onLeave = (ride: Ride, bookingId: number) =>
     withBusy(ride, async () => {
       replaceRide(await api.leave(ride.id, bookingId, userName))
+    })
+
+  /** The driver, or a passenger when the driver allows it, puts a colleague in. */
+  const onAddPassenger = (ride: Ride, name: string) =>
+    withBusy(ride, async () => {
+      replaceRide(await api.join(ride.id, name, userName))
+      setToast({ kind: 'ok', text: `${name} is in with ${ride.driver_name}.` })
+    })
+
+  /** The driver's switch: may the passengers add and remove each other? */
+  const onTogglePassengersManage = (ride: Ride) =>
+    withBusy(ride, async () => {
+      const on = !ride.passengers_manage
+      replaceRide(await api.updateRide(ride.id, { passengers_manage: on }, userName))
+      setToast({ kind: 'ok', text: on ? 'Passengers can now add and remove each other.' : 'Only you manage the passenger list now.' })
     })
 
   const onCancel = (ride: Ride) => {
@@ -223,7 +274,7 @@ export default function App() {
       if (drag.fromRideId !== null && drag.bookingId !== null && drag.fromRideId !== target.id) {
         replaceRide(await api.leave(drag.fromRideId, drag.bookingId, userName))
       }
-      replaceRide(await api.join(target.id, userName))
+      replaceRide(await api.join(target.id, userName, userName))
       setToast({ kind: 'ok', text: `You're in with ${target.driver_name}.` })
     })
   }
@@ -357,8 +408,9 @@ export default function App() {
       },
     })
 
-  const dayRides = rides.filter((r) => r.ride_date === selected)
-  const isPast = selected < todayISO()
+  const upcoming = view === 'upcoming'
+  const dayRides = upcoming ? [] : rides.filter((r) => r.ride_date === selected)
+  const isPast = !upcoming && selected < todayISO()
   const myRideToday = dayRides.find((r) => r.bookings.some((b) => sameName(b.passenger_name, userName))) ?? null
   const myBookingToday = myRideToday?.bookings.find((b) => sameName(b.passenger_name, userName)) ?? null
   const canAdd = !isPast
@@ -371,8 +423,39 @@ export default function App() {
     return myRideToday?.id ?? dayRides[0]?.id ?? (canAdd ? 'new' : null)
   })()
   const openRide = typeof selection === 'number' ? (dayRides.find((r) => r.id === selection) ?? null) : null
+  // In the upcoming list only an explicit tap unfolds a car.
+  const openUpcomingId = upcoming && typeof carSel === 'number' && rides.some((r) => r.id === carSel) ? carSel : null
 
   const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setNameOpen(true))
+
+  /** Unfold a row in the upcoming list; the week view follows it, should you switch. */
+  const openUpcoming = (rideId: number | null) => {
+    setCarSel(rideId)
+    const ride = rideId !== null ? rides.find((r) => r.id === rideId) : undefined
+    if (ride) setSelectedDate(ride.ride_date)
+  }
+
+  const detailFor = (ride: Ride, inList: boolean) => (
+    <CarDetail
+      key={ride.id}
+      ride={ride}
+      userName={userName}
+      busy={busyId === ride.id}
+      isPast={isPast}
+      onJoin={onJoin}
+      onLeave={onLeave}
+      onAddPassenger={onAddPassenger}
+      onCancel={onCancel}
+      onEdit={(r) => setForm({ mode: 'edit', ride: r })}
+      onDuplicate={(r) => (userName ? setForm({ mode: 'create', template: r }) : setNameOpen(true))}
+      onTogglePassengersManage={onTogglePassengersManage}
+      dragActive={drag !== null}
+      lifted={drag?.fromRideId === ride.id}
+      over={dragOver?.kind === 'ride' && dragOver.rideId === ride.id}
+      onGrab={onGrab}
+      draggable={!inList}
+    />
+  )
 
   return (
     <div className="app">
@@ -397,78 +480,125 @@ export default function App() {
           </span>
           <Menu
             trigger={<KebabIcon size={22} />}
-            label="Day options"
-            items={[
-              { label: 'Add car', icon: <PlusIcon size={18} />, onSelect: openNewCar, disabled: !canAdd },
-              { label: 'Go to today', icon: <CarIcon size={18} />, onSelect: () => setSelected(todayISO()) },
-            ]}
+            label="Options"
+            items={
+              upcoming
+                ? [{ label: 'Add car', icon: <PlusIcon size={18} />, onSelect: openNewCar }]
+                : [
+                    { label: 'Add car', icon: <PlusIcon size={18} />, onSelect: openNewCar, disabled: !canAdd },
+                    { label: 'Go to today', icon: <CarIcon size={18} />, onSelect: () => setSelected(todayISO()) },
+                  ]
+            }
           />
         </div>
       </header>
 
       <main>
-        <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
+        <div className="segmented view-switch" role="radiogroup" aria-label="View">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={upcoming}
+            className={upcoming ? 'seg seg-on' : 'seg'}
+            onClick={() => setView('upcoming')}
+          >
+            <ListIcon size={16} /> Upcoming
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={!upcoming}
+            className={upcoming ? 'seg' : 'seg seg-on'}
+            onClick={() => setView('week')}
+          >
+            <CalendarIcon size={16} /> Week
+          </button>
+        </div>
 
-        {loading ? (
-          <div className="cars cars-skeleton" aria-busy="true">
-            <span className="car-tile skeleton" />
-            <span className="car-tile skeleton" />
-            <span className="car-tile skeleton" />
-          </div>
-        ) : dayRides.length === 0 && !canAdd ? null : (
-          <CarCarousel
-            rides={dayRides}
-            selected={selection}
-            userName={userName}
-            dragActive={drag !== null}
-            over={dragOver}
-            canAdd={canAdd}
-            onSelect={setCarSel}
-          />
+        {upcoming && (
+          <>
+            {loading ? (
+              <div className="session-list session-skeleton" aria-busy="true">
+                <span className="card session skeleton" />
+                <span className="card session skeleton" />
+                <span className="card session skeleton" />
+              </div>
+            ) : rides.length === 0 ? (
+              <AddCarCard
+                userName={userName}
+                isPast={false}
+                hasCars={false}
+                emptyTitle="No upcoming sessions yet"
+                onAdd={openNewCar}
+                onEditName={() => setNameOpen(true)}
+              />
+            ) : (
+              <>
+                <Upcoming
+                  rides={rides}
+                  userName={userName}
+                  openId={openUpcomingId}
+                  onOpen={openUpcoming}
+                  renderDetail={(ride) => detailFor(ride, true)}
+                />
+                <button type="button" className="add-row" onClick={openNewCar}>
+                  <PlusIcon size={18} />
+                  Add a car
+                </button>
+              </>
+            )}
+          </>
         )}
 
-        {!loading && openRide && (
-          <CarDetail
-            key={openRide.id}
-            ride={openRide}
-            userName={userName}
-            busy={busyId === openRide.id}
-            isPast={isPast}
-            onJoin={onJoin}
-            onLeave={onLeave}
-            onCancel={onCancel}
-            onEdit={(ride) => setForm({ mode: 'edit', ride })}
-            onDuplicate={(ride) => (userName ? setForm({ mode: 'create', template: ride }) : setNameOpen(true))}
-            dragActive={drag !== null}
-            lifted={drag?.fromRideId === openRide.id}
-            over={dragOver?.kind === 'ride' && dragOver.rideId === openRide.id}
-            onGrab={onGrab}
-          />
-        )}
+        {!upcoming && (
+          <>
+            <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
 
-        {!loading && !openRide && (
-          <AddCarCard
-            userName={userName}
-            isPast={isPast}
-            hasCars={dayRides.length > 0}
-            onAdd={openNewCar}
-            onEditName={() => setNameOpen(true)}
-          />
-        )}
+            {loading ? (
+              <div className="cars cars-skeleton" aria-busy="true">
+                <span className="car-tile skeleton" />
+                <span className="car-tile skeleton" />
+                <span className="car-tile skeleton" />
+              </div>
+            ) : dayRides.length === 0 && !canAdd ? null : (
+              <CarCarousel
+                rides={dayRides}
+                selected={selection}
+                userName={userName}
+                dragActive={drag !== null}
+                over={dragOver}
+                canAdd={canAdd}
+                onSelect={setCarSel}
+              />
+            )}
 
-        {!loading && (
-          <YouPanel
-            userName={userName}
-            dayRides={dayRides}
-            currentRide={myRideToday}
-            currentBookingId={myBookingToday?.id ?? null}
-            isPast={isPast}
-            dragActive={drag !== null}
-            over={dragOver?.kind === 'tray'}
-            onGrab={onGrab}
-            onOpenCar={setCarSel}
-            onEditName={() => setNameOpen(true)}
-          />
+            {!loading && openRide && detailFor(openRide, false)}
+
+            {!loading && !openRide && (
+              <AddCarCard
+                userName={userName}
+                isPast={isPast}
+                hasCars={dayRides.length > 0}
+                onAdd={openNewCar}
+                onEditName={() => setNameOpen(true)}
+              />
+            )}
+
+            {!loading && (
+              <YouPanel
+                userName={userName}
+                dayRides={dayRides}
+                currentRide={myRideToday}
+                currentBookingId={myBookingToday?.id ?? null}
+                isPast={isPast}
+                dragActive={drag !== null}
+                over={dragOver?.kind === 'tray'}
+                onGrab={onGrab}
+                onOpenCar={setCarSel}
+                onEditName={() => setNameOpen(true)}
+              />
+            )}
+          </>
         )}
       </main>
 

@@ -155,14 +155,43 @@ def delete_ride(ride_id: int, session: SessionDep, user: UserName = None):
     ride_deleted(ride_id, ride_date)
 
 
+def _is_passenger(ride: Ride, name: str) -> bool:
+    return any(_norm(b.passenger_name) == _norm(name) for b in ride.bookings)
+
+
+def _may_manage_seats(ride: Ride, actor: str) -> bool:
+    """Who may put other people in this car or take them out.
+
+    The driver always can. Passengers can too, but only while the driver has
+    switched `passengers_manage` on for the ride; each passenger can always
+    leave on their own (that is not "managing", see `leave_ride`).
+    """
+    if _norm(actor) == _norm(ride.driver_name):
+        return True
+    return ride.passengers_manage and _is_passenger(ride, actor)
+
+
 @router.post("/{ride_id}/bookings", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def join_ride(ride_id: int, payload: BookingCreate, session: SessionDep):
+def join_ride(ride_id: int, payload: BookingCreate, session: SessionDep, user: UserName = None):
+    """Put `passenger_name` in the car.
+
+    Without `X-User-Name` this is a self-join: the passenger is the actor. With
+    it, someone else can be added, but only by the driver or, when the driver
+    allows it (`passengers_manage`), by a passenger already in the car.
+    """
     ride = _get_ride_or_404(session, ride_id)
     name = payload.passenger_name
+    actor = user.strip() if user and user.strip() else name
+    if _norm(actor) != _norm(name) and not _may_manage_seats(ride, actor):
+        if ride.passengers_manage:
+            detail = "Only the driver or a passenger in this car can add someone"
+        else:
+            detail = "Only the driver can add other passengers to this car"
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail)
     if _norm(name) == _norm(ride.driver_name):
-        raise HTTPException(status.HTTP_409_CONFLICT, "You are the driver of this ride")
-    if any(_norm(b.passenger_name) == _norm(name) for b in ride.bookings):
-        raise HTTPException(status.HTTP_409_CONFLICT, "You already joined this ride")
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{name} is the driver of this ride")
+    if _is_passenger(ride, name):
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{name} already joined this ride")
     if len(ride.bookings) >= ride.seats:
         raise HTTPException(status.HTTP_409_CONFLICT, "No free seats left")
     session.add(Booking(ride_id=ride.id, passenger_name=name))
@@ -184,10 +213,13 @@ def leave_ride(ride_id: int, booking_id: int, session: SessionDep, user: UserNam
     booking = next((b for b in ride.bookings if b.id == booking_id), None)
     if booking is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
-    if _norm(booking.passenger_name) != _norm(user) and _norm(ride.driver_name) != _norm(user):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN, "Only the passenger or the driver can remove this booking"
+    if _norm(booking.passenger_name) != _norm(user) and not _may_manage_seats(ride, user):
+        detail = (
+            "Only the passenger, the driver or another passenger in this car can remove this booking"
+            if ride.passengers_manage
+            else "Only the passenger or the driver can remove this booking"
         )
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail)
     session.delete(booking)
     session.commit()
     session.refresh(ride)

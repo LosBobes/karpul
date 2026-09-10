@@ -163,3 +163,79 @@ def test_range_listing_and_validation(client):
     assert [r["driver_name"] for r in rides] == ["Ana", "Bojan"]
     r = client.get("/api/rides", params={"from": d2.isoformat(), "to": d1.isoformat()})
     assert r.status_code == 422
+
+
+def _booking_id(ride: dict, name: str) -> int:
+    return next(b["id"] for b in ride["bookings"] if b["passenger_name"] == name)
+
+
+def test_passengers_manage_defaults_off_and_only_driver_adds_or_removes_others(client):
+    ride = client.post("/api/rides", json=own_ride(seats=3)).json()
+    assert ride["passengers_manage"] is False
+    url = f"/api/rides/{ride['id']}/bookings"
+
+    # Self-joins need no header at all.
+    assert client.post(url, json={"passenger_name": "Marko"}).status_code == 201
+    # A passenger putting somebody else in: refused while the switch is off.
+    r = client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "Marko"})
+    assert r.status_code == 403
+    assert "Only the driver" in r.json()["detail"]
+    # A stranger neither.
+    assert client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "Zoran"}).status_code == 403
+    # The driver always can.
+    r = client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "ana"})
+    assert r.status_code == 201, r.text
+    assert [b["passenger_name"] for b in r.json()["bookings"]] == ["Marko", "Petar"]
+
+    # A passenger removing another: refused while the switch is off.
+    petar = _booking_id(r.json(), "Petar")
+    assert client.delete(f"{url}/{petar}", headers={"X-User-Name": "Marko"}).status_code == 403
+
+
+def test_passengers_manage_lets_passengers_add_and_remove_each_other(client):
+    ride = client.post("/api/rides", json=own_ride(seats=3, passengers_manage=True)).json()
+    assert ride["passengers_manage"] is True
+    url = f"/api/rides/{ride['id']}/bookings"
+    client.post(url, json={"passenger_name": "Marko"})
+
+    # Marko, seated, puts Petar in ...
+    r = client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "marko"})
+    assert r.status_code == 201, r.text
+    # ... but somebody outside the car still cannot.
+    r = client.post(url, json={"passenger_name": "Mila"}, headers={"X-User-Name": "Zoran"})
+    assert r.status_code == 403
+    assert "passenger in this car" in r.json()["detail"]
+    # The usual seat rules still apply to whoever is added.
+    assert client.post(url, json={"passenger_name": "Ana"}, headers={"X-User-Name": "Marko"}).status_code == 409
+    assert client.post(url, json={"passenger_name": "petar"}, headers={"X-User-Name": "Marko"}).status_code == 409
+
+    # Petar takes Marko out; Zoran, not in the car, cannot take anyone out.
+    body = client.get(f"/api/rides/{ride['id']}").json()
+    marko = _booking_id(body, "Marko")
+    assert client.delete(f"{url}/{marko}", headers={"X-User-Name": "Zoran"}).status_code == 403
+    r = client.delete(f"{url}/{marko}", headers={"X-User-Name": "Petar"})
+    assert r.status_code == 200
+    assert [b["passenger_name"] for b in r.json()["bookings"]] == ["Petar"]
+
+
+def test_driver_toggles_passengers_manage(client):
+    ride = client.post("/api/rides", json=own_ride(seats=3)).json()
+    rid = ride["id"]
+    url = f"/api/rides/{rid}/bookings"
+    client.post(url, json={"passenger_name": "Marko"})
+
+    # Only the driver flips the switch.
+    assert client.patch(f"/api/rides/{rid}", json={"passengers_manage": True}, headers={"X-User-Name": "Marko"}).status_code == 403
+    r = client.patch(f"/api/rides/{rid}", json={"passengers_manage": True}, headers={"X-User-Name": "Ana"})
+    assert r.status_code == 200
+    assert r.json()["passengers_manage"] is True
+    assert client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "Marko"}).status_code == 201
+
+    # Off again: what was allowed a moment ago is refused.
+    r = client.patch(f"/api/rides/{rid}", json={"passengers_manage": False}, headers={"X-User-Name": "Ana"})
+    assert r.json()["passengers_manage"] is False
+    assert client.post(url, json={"passenger_name": "Mila"}, headers={"X-User-Name": "Marko"}).status_code == 403
+    # A partial edit of something else leaves the switch alone.
+    r = client.patch(f"/api/rides/{rid}", json={"passengers_manage": True}, headers={"X-User-Name": "Ana"})
+    r = client.patch(f"/api/rides/{rid}", json={"notes": "bring coffee"}, headers={"X-User-Name": "Ana"})
+    assert r.json()["passengers_manage"] is True

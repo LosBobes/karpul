@@ -98,6 +98,7 @@ class RideBase(BaseModel):
     return_time: time | None = None
     seats: int = Field(ge=0, le=8)
     notes: str = Field(default="", max_length=500)
+    passengers_manage: bool = False
 
     @field_validator("driver_name", "origin", "destination", "car_name", "notes")
     @classmethod
@@ -134,6 +135,7 @@ class RideUpdate(BaseModel):
     return_time: time | None = None
     seats: int | None = Field(default=None, ge=0, le=8)
     notes: str | None = Field(default=None, max_length=500)
+    passengers_manage: bool | None = None
 
 
 class RideRead(BaseModel):
@@ -151,6 +153,7 @@ class RideRead(BaseModel):
     return_time: time | None
     seats: int
     notes: str
+    passengers_manage: bool
     created_at: datetime
     bookings: list[BookingRead]
     free_seats: int

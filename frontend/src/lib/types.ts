@@ -34,6 +34,8 @@ export interface Ride {
   return_time: string | null
   seats: number
   notes: string
+  /** Driver's switch: passengers may add and remove each other. */
+  passengers_manage: boolean
   created_at: string
   bookings: Booking[]
   free_seats: number
@@ -51,4 +53,5 @@ export interface RideInput {
   return_time: string | null
   seats: number
   notes: string
+  passengers_manage: boolean
 }
