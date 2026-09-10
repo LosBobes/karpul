@@ -27,7 +27,7 @@ npm run build    # tsc -b && vite build -> frontend/dist
 Whole app in one process: `npm run build`, then `uvicorn app.main:app` serves API + SPA on :8000.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `pytest -q`, frontend `npm run lint` and `npm run build`. There is no frontend test runner and no Python linter/formatter configured.
+CI (`.github/workflows/ci.yml`) runs exactly: backend `pytest -q`, frontend `npm run lint` and `npm run build`. There is no frontend test runner and no Python linter/formatter configured. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`.
 
@@ -75,7 +75,10 @@ plus a hand-written design system in `src/index.css` — a dark "departure board
 rules instead of shadows, 2px radius, Barlow Condensed for signage labels and IBM Plex Mono for
 anything numeric (times, plates, seat counts). The semantic class names (`.ride`, `.day`, `.btn`,
 `.chip`, …) are the contract the components render against; Tailwind utilities are used by the
-vendored components and for new markup. Fonts are bundled from `@fontsource` in `main.tsx` rather
+vendored components and for new markup. Two media blocks at the end carry the phone layout:
+`max-width: 600px` (one-column rides, bottom-sheet modals, safe-area padding) and
+`pointer: coarse` (44px targets, hover choreography switched off). `lib/useCoarsePointer.ts`
+exposes the same query to components that need to change their wording. Fonts are bundled from `@fontsource` in `main.tsx` rather
 than fetched from Google, because the app ships as one self-hosted container.
 
 `src/fancy/` holds components copied from the fancy registry (`https://fancycomponents.dev/r/{name}.json`,
@@ -93,9 +96,34 @@ in a background tab (rAF is throttled and the spring freezes part-way) and under
 renders plain text as the baseline and mounts the reveal only once the page is visible and motion is
 wanted. Re-keying it (`key={selected}`, `key={ride.free_seats}`) is what replays the flip.
 
-**Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), refetches on a 30 s interval and on window focus, and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
+**Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
-Drag-and-drop uses native HTML5 DnD with a custom MIME type (`lib/dnd.ts`); dropping the passenger token on another car issues `leave` then `join`.
+
+**Live updates.** Every tab keeps one WebSocket open to `/api/ws` (`lib/live.ts`, `useLiveBoard`).
+The server pushes `ride.created` / `ride.updated` (carrying the full `RideRead`), `ride.deleted`
+and `cars.changed`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
+(re-sorting with the API's order: date, departure, id) and treats `cars.changed` as "reload
+both car lists and the board", because a pool edit can relabel rides. The hook reconnects with
+exponential backoff and immediately on `visibilitychange`/`online`/`focus`, and calls
+`onConnect` on *every* open, which reloads the week — events that happened while the socket
+was down were never delivered. The 30 s poll only runs while the socket is not `live`. On the
+backend, `app/events.py` is an in-memory hub: sync route handlers run on a worker thread, so
+`publish()` hands each event to the connection's own `asyncio.Queue` via
+`call_soon_threadsafe` and the socket task does the sending. This only works with **one
+uvicorn worker** (which is what the Dockerfile runs); more workers would need a shared channel.
+Publish only after `session.commit()`, and every ride mutation must publish or the other tabs
+go stale. Tests: `tests/test_live.py` (`client.websocket_connect`).
+
+**Drag-and-drop** is pointer-event based (`lib/dnd.ts`, `grabPassenger`), not HTML5 DnD, so it
+works with a finger: mouse lifts the chip after a few pixels of movement, touch after a short
+press-and-hold (a swipe before the hold is treated as a scroll and ignored). Handles carry
+`touch-action: none` in `index.css` — remove that and mobile drags get cancelled by the
+browser's own scrolling. The controller owns a plain-DOM ghost, auto-scrolls at the viewport
+edges and finds the drop target with `elementFromPoint` on `[data-drop]` elements: a card or the
+tray spreads `dropZone(...)` *only while it can receive*, so validity lives in the components.
+`App.tsx` holds the in-flight `drag`/`dragOver` state and dispatches the drop through a ref, since
+the ride list can change under a drag via live updates. Dropping on another car issues `leave`
+then `join`; dropping on the tray issues `leave`.
 
 **Company cars** are seeded from `CORPORATE_CARS` (`Name|PLATE|seats;…`) only while the `corporatecar` table is empty (`seed.py`); after that the pool is managed through the admin endpoints. `GET /api/cars/corporate` stays public and active-only, so `App.tsx` keeps the admin list (`adminCars`, everything) and the ride-form list (`cars`, `active` only) as two views of one fetch — `applyCars()`.
 

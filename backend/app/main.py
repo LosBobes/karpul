@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from .database import engine, init_db
-from .routers import cars, rides
+from .routers import cars, live, rides
 from .seed import seed_corporate_cars
 
 # Built frontend location. The Docker image sets KARPUL_FRONTEND_DIST=/app/static;
@@ -42,6 +42,7 @@ app.add_middleware(
 
 app.include_router(cars.router)
 app.include_router(rides.router)
+app.include_router(live.router)
 
 
 @app.get("/api/health", tags=["meta"])

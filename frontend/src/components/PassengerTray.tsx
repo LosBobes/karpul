@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { isPassengerDrag, setPassengerDrag } from '../lib/dnd'
+import { dropZone, type PassengerDrag } from '../lib/dnd'
 import type { Ride } from '../lib/types'
+import { useCoarsePointer } from '../lib/useCoarsePointer'
 
 interface Props {
   userName: string
@@ -11,8 +11,9 @@ interface Props {
   hasOpenRides: boolean
   /** A passenger token is in flight right now. */
   dragActive: boolean
-  onDragState: (dragging: boolean) => void
-  onLeave: () => void
+  /** The token is hovering over the tray. */
+  over: boolean
+  onGrab: (e: React.PointerEvent<HTMLElement>, drag: PassengerDrag) => void
 }
 
 /**
@@ -26,14 +27,17 @@ export function PassengerTray({
   drivingToday,
   hasOpenRides,
   dragActive,
-  onDragState,
-  onLeave,
+  over,
+  onGrab,
 }: Props) {
-  const [over, setOver] = useState(false)
+  const coarse = useCoarsePointer()
 
   if (!userName || drivingToday) return null
 
   const seated = currentRide !== null
+  // On a phone the chip lifts after a short hold, and the wording has to say so
+  // or nobody discovers it.
+  const verb = coarse ? 'Hold and drag' : 'Drag'
 
   return (
     <div
@@ -43,23 +47,11 @@ export function PassengerTray({
         // While the token is in flight the tray stops being a caption and
         // becomes the "get out here" target, so it has to look like one.
         seated && dragActive && 'tray-armed',
-        over && 'tray-over',
+        seated && over && 'tray-over',
       ]
         .filter(Boolean)
         .join(' ')}
-      onDragOver={(e) => {
-        if (!seated || !isPassengerDrag(e)) return
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'move'
-        setOver(true)
-      }}
-      onDragLeave={() => setOver(false)}
-      onDrop={(e) => {
-        if (!seated || !isPassengerDrag(e)) return
-        e.preventDefault()
-        setOver(false)
-        onLeave()
-      }}
+      {...dropZone(seated ? { kind: 'tray' } : null)}
     >
       {seated ? (
         <>
@@ -70,7 +62,7 @@ export function PassengerTray({
             <span className="tray-text tray-text-armed">Drop here to get out of the car.</span>
           ) : (
             <span className="tray-text">
-              You're riding with <strong>{currentRide.driver_name}</strong>. Drag your{' '}
+              You're riding with <strong>{currentRide.driver_name}</strong>. {verb} your{' '}
               {/* A copy of the chip that sits in the ride row below, so it is obvious
                   which thing on the board is the one you can pick up. */}
               <span className="tray-chip">
@@ -86,19 +78,19 @@ export function PassengerTray({
       ) : (
         <>
           <span
-            className="token"
-            draggable={hasOpenRides}
-            title={hasOpenRides ? 'Drag me onto a car' : 'No cars with free seats today'}
-            onDragStart={(e) => {
-              setPassengerDrag(e, { name: userName, fromRideId: null, bookingId: currentBookingId })
-              onDragState(true)
+            className={hasOpenRides ? 'token' : 'token token-off'}
+            title={hasOpenRides ? `${verb} me onto a car` : 'No cars with free seats today'}
+            onPointerDown={(e) => {
+              if (hasOpenRides) onGrab(e, { name: userName, fromRideId: null, bookingId: currentBookingId })
             }}
-            onDragEnd={() => onDragState(false)}
+            onDragStart={(e) => e.preventDefault()}
           >
             <span aria-hidden="true">▸</span> {userName}
           </span>
           <span className="tray-text">
-            {hasOpenRides ? 'Drag your name onto a car to pick a driver, or press Join.' : 'No free seats today yet.'}
+            {hasOpenRides
+              ? `${verb} your name onto a car to pick a driver, or press Join.`
+              : 'No free seats today yet.'}
           </span>
         </>
       )}

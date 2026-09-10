@@ -1,8 +1,7 @@
-import { useState } from 'react'
 import ScrambleHover from '../fancy/text/scramble-hover'
 import { BoardText } from './BoardText'
 import { fmtTime, sameName } from '../lib/dates'
-import { isPassengerDrag, readPassengerDrag, setPassengerDrag, type PassengerDrag } from '../lib/dnd'
+import { dropZone, type PassengerDrag } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 
 /** Split-flap feel: uppercase letters only, revealed left to right. */
@@ -25,8 +24,11 @@ interface Props {
   onEdit: (ride: Ride) => void
   /** Someone is dragging a passenger token right now. */
   dragActive: boolean
-  onDragState: (dragging: boolean) => void
-  onDropPassenger: (ride: Ride, drag: PassengerDrag) => void
+  /** The token in flight was picked up from this ride. */
+  lifted: boolean
+  /** The token is hovering over this ride. */
+  over: boolean
+  onGrab: (e: React.PointerEvent<HTMLElement>, drag: PassengerDrag) => void
 }
 
 export function RideCard({
@@ -38,11 +40,10 @@ export function RideCard({
   onCancel,
   onEdit,
   dragActive,
-  onDragState,
-  onDropPassenger,
+  lifted,
+  over,
+  onGrab,
 }: Props) {
-  const [over, setOver] = useState(false)
-  const [lifting, setLifting] = useState(false)
   const isDriver = sameName(userName, ride.driver_name)
   const myBooking = ride.bookings.find((b) => sameName(b.passenger_name, userName))
   const full = ride.free_seats <= 0
@@ -54,33 +55,16 @@ export function RideCard({
     'ride',
     full && 'ride-full',
     dragActive && canReceive && 'ride-droppable',
-    dragActive && !canReceive && 'ride-nodrop',
-    over && 'ride-over',
+    dragActive && !canReceive && !lifted && 'ride-nodrop',
+    over && canReceive && 'ride-over',
   ]
     .filter(Boolean)
     .join(' ')
 
   return (
-    <article
-      className={cls}
-      onDragOver={(e) => {
-        if (!canReceive || !isPassengerDrag(e)) return
-        e.preventDefault()
-        e.dataTransfer.dropEffect = 'move'
-        if (!over) setOver(true)
-      }}
-      onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false)
-      }}
-      onDrop={(e) => {
-        setOver(false)
-        if (!canReceive) return
-        const drag = readPassengerDrag(e)
-        if (!drag) return
-        e.preventDefault()
-        onDropPassenger(ride, drag)
-      }}
-    >
+    // The drop zone attribute is only present while this car can take the
+    // passenger, so the drag controller never has to ask.
+    <article className={cls} {...dropZone(canReceive ? { kind: 'ride', rideId: ride.id } : null)}>
       <div className="ride-times">
         <div className="time">
           <span className="time-label">Leave</span>
@@ -137,22 +121,16 @@ export function RideCard({
                     'passenger',
                     mine && 'passenger-me',
                     mine && !busy && 'passenger-grabbable',
-                    mine && lifting && 'passenger-lifting',
+                    mine && lifted && 'passenger-lifting',
                   ]
                     .filter(Boolean)
                     .join(' ')}
-                  draggable={mine && !busy}
                   title={mine ? 'Drag to another car to switch, or to the tray to leave' : undefined}
-                  onDragStart={(e) => {
-                    if (!mine) return
-                    setPassengerDrag(e, { name: userName, fromRideId: ride.id, bookingId: b.id })
-                    setLifting(true)
-                    onDragState(true)
+                  onPointerDown={(e) => {
+                    if (mine && !busy) onGrab(e, { name: userName, fromRideId: ride.id, bookingId: b.id })
                   }}
-                  onDragEnd={() => {
-                    setLifting(false)
-                    onDragState(false)
-                  }}
+                  // Pointer events do the dragging; never let the browser start a native one.
+                  onDragStart={(e) => e.preventDefault()}
                 >
                   {/* The grip is the whole point: without it the chip reads as a
                       highlight, not as something you can pick up. */}
