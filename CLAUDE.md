@@ -119,7 +119,14 @@ its mark from the `simple-icons` package in `currentColor`. Only the brands list
 are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
 not in that package, so they keep the generic icon.
 
-**Screen structure.** Two views, switched by the segmented control at the top of `main` and
+**Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
+`Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
+about one particular ride: *Add ride*, your name (the identity block and *Change name* both open
+`NameSheet`), *Company cars* (`CarAdmin`) and the *Company car guide* (`CarGuide`: how to charge
+with the company card, and a Mazda 6e primer for first-time EV drivers — plain content arrays at
+the top of that file, also reachable from the driver card of any company-car ride). Picking an
+item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. Below the bar, two views are switched by the
+segmented control at the top of `main` and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default) and *Week*. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row

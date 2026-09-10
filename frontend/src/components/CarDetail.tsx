@@ -11,6 +11,7 @@ import {
   ArrowRightIcon,
   CopyIcon,
   GripIcon,
+  InfoIcon,
   KebabIcon,
   PencilIcon,
   PinIcon,
@@ -36,6 +37,8 @@ interface Props {
   onDuplicate: (ride: Ride) => void
   /** The driver's switch: may the passengers add and remove each other? */
   onTogglePassengersManage: (ride: Ride) => void
+  /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
+  onGuide?: () => void
   dragActive: boolean
   /** The chip in flight was picked up from this car. */
   lifted: boolean
@@ -62,6 +65,7 @@ export function CarDetail({
   onEdit,
   onDuplicate,
   onTogglePassengersManage,
+  onGuide,
   dragActive,
   lifted,
   over,
@@ -180,6 +184,11 @@ export function CarDetail({
               )}
             </span>
             <span className="driver-car-name">{ride.car_name}</span>
+            {ride.car_type === 'corporate' && onGuide && (
+              <button type="button" className="link driver-car-guide" onClick={onGuide}>
+                <InfoIcon size={15} /> How to charge and drive it
+              </button>
+            )}
           </span>
         </div>
         {ride.notes && <p className="driver-notes">{ride.notes}</p>}

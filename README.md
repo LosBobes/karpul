@@ -16,7 +16,7 @@ the app guards the company-car pool.
   going that day. Each tile shows the car and its seat count; the open ride shows the driver, when
   it leaves and returns, where from and to, and who is in the car. The switch between the two
   views is remembered in the browser.
-- **Add a ride** for a given day from the *+ Add ride* tile: pick a **company car** from the pool
+- **Add a ride** for a given day from the *+ Add ride* tile or the ☰ sidebar: pick a **company car** from the pool
   or use **your own car**, set how many **passenger seats** you offer, departure and return time
   (or one-way), and pickup / drop-off locations. The wording is deliberate: you add, edit or
   remove a *ride*; the *car* is the vehicle it goes in.
@@ -24,7 +24,10 @@ the app guards the company-car pool.
 - **Get into a car** by tapping *Get in this car*, or **drag your chip onto a car**. Drag it to
   another car to switch, or drop it back on *You* to get out. Works with a finger too: on a phone,
   press and hold your chip for a moment and it lifts.
-- **Manage the company car pool** from the ☰ menu (*Company cars*): add a car, fix a
+- **Company car guide** in the ☰ sidebar (and on the driver card of every company-car ride): how
+  to charge with the company card at the charger, and where the Mazda 6e keeps the controls a
+  first-time EV driver looks for in the wrong place.
+- **Manage the company car pool** from the ☰ sidebar (*Company cars*): add a car, fix a
   name/plate/seat count, retire one that's been sold, or delete one that was never used.
   This is the one screen behind a password (see *Company-car admin* below).
 - A dot under a day on the carousel means at least one ride is going that day.

@@ -1810,6 +1810,197 @@ body.dragging {
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
+/* --- Company car guide (components/CarGuide.tsx) -------------------------- */
+.guide .panel-body {
+  gap: 1.5rem;
+}
+.guide-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.guide-section .section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.guide-section .section-title svg {
+  color: var(--green);
+}
+.guide-hero {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0 0.25rem;
+}
+.guide-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.guide-step {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+.guide-step-no {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.guide-step-text,
+.guide-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.92rem;
+}
+.guide-step-text span,
+.guide-row dd {
+  color: var(--muted);
+}
+.guide-list {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.guide-row {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.guide-row dt {
+  font-weight: 600;
+}
+.guide-row dd {
+  margin: 0;
+}
+.driver-car-guide {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  padding: 0.15rem 0.35rem;
+  margin-left: -0.35rem;
+  font-size: 0.82rem;
+}
+
+/* --- App menu drawer (components/Sidebar.tsx) ---------------------------- */
+/* Slides in from the left edge under the ☰; a column of tall rows rather
+   than a popover, so it has room for who you are and a hint per entry. */
+.backdrop-drawer {
+  padding: 0;
+  place-items: stretch start;
+}
+.drawer {
+  display: flex;
+  flex-direction: column;
+  width: min(320px, 86vw);
+  height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow-pop);
+  overflow-y: auto;
+  outline: none;
+  animation: slide-in-left 0.22s ease-out;
+}
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(0.4rem + env(safe-area-inset-top)) 0.6rem 0.4rem 1.15rem;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-me {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.75rem 0.6rem 0.25rem;
+  padding: 0.75rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  text-align: left;
+}
+.drawer-me:hover {
+  border-color: var(--border-strong);
+}
+.drawer-me-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.drawer-me-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drawer-me-hint,
+.drawer-item-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.drawer-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.6rem;
+}
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 52px;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+}
+.drawer-item:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.drawer-item:disabled {
+  opacity: 0.45;
+}
+.drawer-item-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--green-soft);
+  color: var(--green);
+  flex: none;
+}
+.drawer-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.drawer-item-label {
+  font-weight: 500;
+}
+@keyframes slide-in-left {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+}
+
 .confirm {
   width: 100%;
   max-width: 340px;
