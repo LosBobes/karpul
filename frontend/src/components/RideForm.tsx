@@ -49,6 +49,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
   const [oneWay, setOneWay] = useState(seed ? seed.return_time === null : false)
   const [rawSeats, setSeats] = useState(seed?.seats ?? 3)
   const [notes, setNotes] = useState(seed?.notes ?? '')
+  const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
 
   const selectedCar = cars.find((c) => c.id === carId)
   const maxSeats = carType === 'corporate' && selectedCar ? selectedCar.passenger_seats : 8
@@ -78,6 +79,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       return_time: oneWay ? null : ret,
       seats,
       notes,
+      passengers_manage: passengersManage,
     })
   }
 
@@ -166,6 +168,19 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
           </button>
         </div>
         {minSeats > 0 && <p className="hint">{minSeats} already booked, so it can't go lower.</p>}
+      </div>
+
+      <div className="field">
+        <span className="field-label">Passenger list</span>
+        <label className="toggle toggle-row">
+          <input type="checkbox" checked={passengersManage} onChange={(e) => setPassengersManage(e.target.checked)} />
+          <span>Passengers can add and remove each other</span>
+        </label>
+        <p className="hint">
+          {passengersManage
+            ? 'Anyone in the car can put a colleague in or take one out. You can still do both.'
+            : 'Only you can put others in or take them out. Anyone can still get in or leave on their own.'}
+        </p>
       </div>
 
       <div className="field">

@@ -35,7 +35,11 @@ Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the sh
 
 FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, shipped as **one container**: the multi-stage `Dockerfile` builds the frontend and copies `dist` into the Python image, and `backend/app/main.py` mounts it at `/` behind the `/api` routes (`KARPUL_FRONTEND_DIST`). Anything unmatched falls through to `index.html` — so any new API route must live under `/api`, or the SPA catch-all will swallow it.
 
-**No auth, by design.** The user types a name once; it lives in `localStorage` (`lib/useUserName.ts`) and is sent as the `X-User-Name` header only on mutations that need an actor (PATCH/DELETE ride, DELETE booking). Joining a ride passes the name in the body instead. Name comparison is whitespace-collapsed + casefolded (`_norm` in `routers/rides.py`, `sameName` in `lib/dates.ts`) — keep both sides in sync if the rule changes.
+**No auth, by design.** The user types a name once; it lives in `localStorage` (`lib/useUserName.ts`) and is sent as the `X-User-Name` header on mutations that need an actor (PATCH/DELETE ride, POST/DELETE booking). Joining a ride passes the passenger's name in the body; the header is who is doing it, and without it the passenger is taken to be the actor (a self-join). Name comparison is whitespace-collapsed + casefolded (`_norm` in `routers/rides.py`, `sameName` in `lib/dates.ts`) — keep both sides in sync if the rule changes.
+
+**Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
+
+**Schema changes.** `create_all` never adds a column to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start and `tests/test_migrations.py` proves it. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
 
 **One exception to the no-auth rule.** Managing the company-car pool sits behind a single shared
 password from `KARPUL_ADMIN_PASSWORD`, sent as `X-Admin-Password` and checked by `require_admin`
@@ -85,8 +89,20 @@ Known car models get a side-view illustration instead of the generic icon: `lib/
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
 `components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
 white Mazda 6e, used in the car tiles, the driver card's vehicle strip and the admin list.
+Below that, `carBrand()` in the same file recognises a *make* from the name (make words and
+the models people write instead of one: "grey Golf", "Octavia"; words that are also plain
+English, like "Seat" or "Focus", must be capitalised to count) and `BrandLogo` /`CarGlyph` show
+its mark from the `simple-icons` package in `currentColor`. Only the brands listed in `LOGOS`
+are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
+not in that package, so they keep the generic icon.
 
-**Screen structure.** `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
+**Screen structure.** Two views, switched by the segmented control at the top of `main` and
+remembered in `localStorage` (`karpul.view`): *Upcoming* (the default) and *Week*. Upcoming is
+`Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
+the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
+unfolds `CarDetail` beneath it with `draggable={false}`, because there is no `YouPanel` tray and
+no other same-day tile to drop on. `App.tsx` loads whichever range the view needs (`range`) and
+the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
 width — nothing scrolls; the arrows beside the week label and a sideways swipe on the strip step a
 week) →
 `CarCarousel` (one tile per ride that day plus an *Add car* tile; tiles are also drop targets) →

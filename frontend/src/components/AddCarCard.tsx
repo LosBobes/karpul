@@ -4,12 +4,14 @@ interface Props {
   userName: string
   isPast: boolean
   hasCars: boolean
+  /** Title when there is nothing yet; the default speaks of a day. */
+  emptyTitle?: string
   onAdd: () => void
   onEditName: () => void
 }
 
 /** The illustrated placeholder shown where a car would be: "add one" or "nothing went". */
-export function AddCarCard({ userName, isPast, hasCars, onAdd, onEditName }: Props) {
+export function AddCarCard({ userName, isPast, hasCars, emptyTitle = 'No cars on this day yet', onAdd, onEditName }: Props) {
   if (isPast) {
     return (
       <div className="card empty-card">
@@ -31,7 +33,7 @@ export function AddCarCard({ userName, isPast, hasCars, onAdd, onEditName }: Pro
   return (
     <button type="button" className="card empty-card empty-card-btn" onClick={onAdd}>
       <Illustration plus />
-      <strong>{hasCars ? 'Add a new car' : 'No cars on this day yet'}</strong>
+      <strong>{hasCars ? 'Add a new car' : emptyTitle}</strong>
       <span>Tap to enter the car, seats, times and route.</span>
     </button>
   )

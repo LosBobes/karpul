@@ -95,7 +95,7 @@ export function YouPanel({
         <div className="banner">
           <CheckCircleIcon size={22} />
           <span>
-            You're driving today — {driving.bookings.length} of {driving.seats} seats taken.
+            You're driving today. {driving.bookings.length} of {driving.seats} seats taken.
           </span>
         </div>
       )}

@@ -68,11 +68,18 @@ export const api = {
   deleteRide: (id: number, userName: string) =>
     request<void>(`/api/rides/${id}`, { method: 'DELETE' }, { userName }),
 
-  join: (rideId: number, passengerName: string) =>
-    request<Ride>(`/api/rides/${rideId}/bookings`, {
-      method: 'POST',
-      body: JSON.stringify({ passenger_name: passengerName }),
-    }),
+  /**
+   * Put `passengerName` in the car. `userName` is who is doing it: yourself
+   * (a plain join), or the driver / a fellow passenger adding someone else,
+   * which the server allows only when the ride's `passengers_manage` is on
+   * (the driver may always).
+   */
+  join: (rideId: number, passengerName: string, userName: string) =>
+    request<Ride>(
+      `/api/rides/${rideId}/bookings`,
+      { method: 'POST', body: JSON.stringify({ passenger_name: passengerName }) },
+      { userName },
+    ),
 
   leave: (rideId: number, bookingId: number, userName: string) =>
     request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }, { userName }),

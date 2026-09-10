@@ -38,6 +38,9 @@ class Ride(SQLModel, table=True):
     return_time: time | None = None
     seats: int = Field(ge=0, le=8)
     notes: str = ""
+    # Driver's choice: may the passengers add and remove each other? Off, only
+    # the driver (and each passenger, for themself) touches the seat list.
+    passengers_manage: bool = Field(default=False)
     created_at: datetime = Field(default_factory=utcnow)
 
     corporate_car: CorporateCar | None = Relationship(back_populates="rides")
