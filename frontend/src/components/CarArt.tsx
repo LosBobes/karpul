@@ -8,7 +8,7 @@ import { CarIcon } from './icons'
  * line icon.
  */
 interface ArtProps {
-  /** Rendered width in px; the art is 2:1. */
+  /** Rendered width in px; height follows `ART_RATIO`. */
   width: number
   className?: string
 }
@@ -17,19 +17,24 @@ const ART: Record<CarModelKey, ComponentType<ArtProps>> = {
   mazda6e: Mazda6eArt,
 }
 
+/** The illustrations are drawn in a 128×48 box: long and low, like the car. */
+const ART_RATIO = 48 / 128
+
 /**
- * Mazda 6e: a white electric fastback, drawn side-on and facing left. The
- * outline follows `currentColor` so it takes the tile's muted/green state
- * like the line icons do; the body stays white because the car is white.
- * A green bolt sticker in the corner says "electric" at a glance.
+ * Mazda 6e: a white electric fastback, drawn side-on and facing left after
+ * the press photo — long bonnet, one unbroken roofline into a ducktail, slim
+ * light bars, dark glass, big twin-spoke wheels and a dark sill. The outline
+ * follows `currentColor` so it takes the tile's muted/green state like the
+ * line icons do; the body stays white because the car is white. A green
+ * bolt sticker in the corner says "electric" at a glance.
  */
 export function Mazda6eArt({ width, className }: ArtProps) {
   return (
     <svg
       className={className}
       width={width}
-      height={width / 2}
-      viewBox="0 0 64 32"
+      height={Math.round(width * ART_RATIO)}
+      viewBox="0 0 128 48"
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -37,35 +42,58 @@ export function Mazda6eArt({ width, className }: ArtProps) {
       focusable="false"
     >
       {/* ground shadow */}
-      <ellipse cx="32" cy="29.2" rx="27" ry="1.4" fill="currentColor" opacity="0.14" />
+      <ellipse cx="64" cy="43.8" rx="58" ry="1.6" fill="currentColor" opacity="0.14" />
       {/* body */}
       <path
-        d="M2.5 23.5V18.5Q2.5 15.5 6.5 15L20 13.5 26.5 7.8Q29.5 5.5 34.5 5.5H41Q46.5 5.5 52.5 9.2L58.5 12.8Q61.5 14 61.5 17.5V23.5H54.5A6.5 6.5 0 0 0 41.5 23.5H22.5A6.5 6.5 0 0 0 9.5 23.5Z"
+        d="M4.6 26.5Q4.4 21 9 20.1C20 18.7 34 17 44 16.1C50 11.2 56.5 8.7 63 8.3C70 7.8 78 7.7 84 8.4C94 9.7 104 13.4 114 16.4L122 17Q124 17.3 124 19V31Q124 35.2 121 36.6L111.3 37A12 12 0 0 0 88.7 37H37.3A12 12 0 0 0 14.7 37H9.5Q6.8 37 6.3 34.5Z"
         fill="#fff"
         stroke="currentColor"
         strokeWidth="1.2"
       />
-      {/* glass */}
+      {/* dark lower cladding: sill between the wheels and the bumper lips */}
+      <path d="M37.3 35.4H88.7V37H37.3Z" fill="#343a42" />
+      <path d="M9.5 36.5H14.2M111.8 36.5H120.5" stroke="#343a42" strokeWidth="1.3" />
+      {/* glass: dark tint, one greenhouse from A-pillar to the fastback */}
       <path
-        d="M22 13.2 27.5 8.6Q30 7 34.5 7H40.5Q45.5 7 50.5 10.2L54.8 12.8Z"
-        fill="#dfe8f0"
+        d="M46.5 17.2C50.5 12.6 56.5 10 63 9.7L81 9.4C90 10.2 100 13.2 108 16.3Z"
+        fill="#3f4a55"
         stroke="currentColor"
         strokeWidth="0.9"
       />
-      <path d="M38 7.2V13" stroke="currentColor" strokeWidth="0.9" />
-      {/* mirror, lights */}
-      <path d="M21.6 12.4h-1.8a0.8 0.8 0 0 0-0.8 0.8v0.7" stroke="currentColor" strokeWidth="0.9" />
-      <path d="M3.2 16.2 8 15.4V16.9Z" fill="currentColor" opacity="0.55" />
-      <path d="M58.2 14.4 61 15.9" stroke="currentColor" strokeWidth="1.4" opacity="0.7" />
-      {/* wheels */}
-      <circle cx="16" cy="23.5" r="4.6" fill="#343a42" />
-      <circle cx="16" cy="23.5" r="2" fill="#e6e9ed" />
-      <circle cx="48" cy="23.5" r="4.6" fill="#343a42" />
-      <circle cx="48" cy="23.5" r="2" fill="#e6e9ed" />
+      <path d="M70.5 9.5 69 17" stroke="currentColor" strokeWidth="0.9" />
+      <path d="M97.5 12.1 96 16.5" stroke="currentColor" strokeWidth="0.9" />
+      {/* window highlight */}
+      <path d="M50 15.3C53.5 12 58 10.6 63 10.4" stroke="#8d98a3" strokeWidth="0.7" opacity="0.8" />
+      {/* mirror */}
+      <rect x="42" y="16.6" width="4.2" height="2.6" rx="0.9" fill="#fff" stroke="currentColor" strokeWidth="0.8" />
+      {/* character line and flush door handles */}
+      <path d="M38 26C58 25.2 78 24.2 98 23.6" stroke="currentColor" strokeWidth="0.7" opacity="0.35" />
+      <path d="M58 21.3h5M86 20.5h5" stroke="currentColor" strokeWidth="0.9" opacity="0.55" />
+      {/* slim light bars: headlight and tail light */}
+      <path d="M5.2 22.6 13.5 20.4V21.7L6 24.2Z" fill="currentColor" opacity="0.6" />
+      <path d="M115 18.9 122.8 17.7V19.1L115.6 20.2Z" fill="currentColor" opacity="0.6" />
+      <Wheel cx={26} />
+      <Wheel cx={100} />
       {/* electric sticker */}
-      <circle cx="58" cy="5.5" r="5" fill="var(--green)" stroke="#fff" strokeWidth="1" />
-      <path d="M58.6 2.2 55.8 6.2H58L57.4 8.8 60.2 4.8H58Z" fill="#fff" />
+      <circle cx="121" cy="6.5" r="5" fill="var(--green)" stroke="#fff" strokeWidth="1" />
+      <path d="M121.6 3.2 118.8 7.2H121L120.4 9.8 123.2 5.8H121Z" fill="#fff" />
     </svg>
+  )
+}
+
+/** A big dark alloy with five machined twin spokes, as on the 6e. */
+function Wheel({ cx }: { cx: number }) {
+  const cy = 32
+  const spokes = Array.from({ length: 5 }, (_, i) => i * 72 - 90)
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r="10.2" fill="#2a2f36" />
+      <circle cx={cx} cy={cy} r="6.9" fill="#4b525b" />
+      {spokes.map((deg) => (
+        <path key={deg} d={`M${cx} ${cy}l0 -6.2`} stroke="#d5dae0" strokeWidth="1.7" transform={`rotate(${deg + 90} ${cx} ${cy})`} />
+      ))}
+      <circle cx={cx} cy={cy} r="1.7" fill="#d5dae0" />
+    </g>
   )
 }
 
@@ -81,7 +109,7 @@ export function CarGlyph({ carName, size = 22, className }: GlyphProps) {
   const model = carModel(carName)
   if (!model) return <CarIcon size={size} className={className} />
   const Art = ART[model.key]
-  return <Art width={Math.round(size * 2.4)} className={className} />
+  return <Art width={Math.round(size * 2.8)} className={className} />
 }
 
 /** The illustration for a known model, at a chosen width. */
