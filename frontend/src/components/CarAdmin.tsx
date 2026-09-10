@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { CorporateCar, CorporateCarInput } from '../lib/types'
-import { CarGlyph } from './CarArt'
+import { CarGlyph, PowertrainBadge } from './CarArt'
 import { CarIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
 import { Menu } from './Menu'
 import { Sheet } from './Sheet'
@@ -50,7 +50,7 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
     >
       <p className="hint">
         Changes here affect everyone. Retiring a car keeps it on past rides but takes it out of the
-        "Add car" form.
+        "Add ride" form.
       </p>
 
       {error && <p className="error">{error}</p>}
@@ -61,6 +61,7 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
           <li key={car.id} className={car.active ? 'admin-row' : 'admin-row admin-row-retired'}>
             <span className="admin-car-icon" aria-hidden="true">
               <CarGlyph carName={car.name} size={16} />
+              <PowertrainBadge carName={car.name} />
             </span>
             <span className="admin-row-text">
               <strong>{car.name}</strong>

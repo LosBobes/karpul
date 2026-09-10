@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { firstName, sameName, shortCarName } from '../lib/dates'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
-import { CarGlyph } from './CarArt'
+import { CarGlyph, PowertrainBadge } from './CarArt'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from './icons'
 
 export type CarSelection = number | 'new'
@@ -27,7 +27,7 @@ function canReceive(ride: Ride, userName: string): boolean {
 }
 
 /**
- * One tile per car going that day, plus the "Add car" tile at the end. The
+ * One tile per ride going that day, plus the "Add ride" tile at the end. The
  * tiles are also drop targets, so a chip can be dropped straight onto another
  * car without opening it first.
  */
@@ -43,8 +43,8 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
   const scrollBy = (dir: -1 | 1) => strip.current?.scrollBy({ left: dir * 200, behavior: 'smooth' })
 
   return (
-    <section className="cars" aria-label="Cars">
-      <button type="button" className="icon-btn cars-arrow" aria-label="Scroll cars left" onClick={() => scrollBy(-1)}>
+    <section className="cars" aria-label="Rides">
+      <button type="button" className="icon-btn cars-arrow" aria-label="Scroll rides left" onClick={() => scrollBy(-1)}>
         <ChevronLeftIcon />
       </button>
       <div ref={strip} className="cars-strip">
@@ -76,6 +76,7 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
             >
               <span className="car-tile-art">
                 <CarGlyph carName={r.car_name} size={22} />
+                <PowertrainBadge carName={r.car_name} />
               </span>
               <span className="car-tile-name">{shortCarName(r.car_name) || firstName(r.driver_name)}</span>
               <span className="car-tile-seats">
@@ -92,11 +93,11 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
             onClick={() => onSelect('new')}
           >
             <PlusIcon size={22} />
-            <span className="car-tile-name">Add car</span>
+            <span className="car-tile-name">Add ride</span>
           </button>
         )}
       </div>
-      <button type="button" className="icon-btn cars-arrow" aria-label="Scroll cars right" onClick={() => scrollBy(1)}>
+      <button type="button" className="icon-btn cars-arrow" aria-label="Scroll rides right" onClick={() => scrollBy(1)}>
         <ChevronRightIcon />
       </button>
     </section>

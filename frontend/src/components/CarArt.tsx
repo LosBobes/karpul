@@ -34,8 +34,8 @@ import {
   siVolvo,
   type SimpleIcon,
 } from 'simple-icons'
-import { carBrand, carModel, type CarBrandKey, type CarModelKey } from '../lib/carModels'
-import { CarIcon } from './icons'
+import { carBrand, carModel, carPowertrain, powertrainLabel, type CarBrandKey, type CarModelKey, type Powertrain } from '../lib/carModels'
+import { BoltIcon, CarIcon, LeafIcon } from './icons'
 
 /**
  * Per-model artwork for the cars in the pool: `lib/carModels.ts` decides which
@@ -62,8 +62,9 @@ const ART_RATIO = 48 / 128
  * the press photo — long bonnet, one unbroken roofline into a ducktail, slim
  * light bars, dark glass, big twin-spoke wheels and a dark sill. The outline
  * follows `currentColor` so it takes the tile's muted/green state like the
- * line icons do; the body stays white because the car is white. A green
- * bolt sticker in the corner says "electric" at a glance.
+ * line icons do; the body stays white because the car is white. That it is
+ * electric is not drawn here: `PowertrainBadge` says so on top of every
+ * picture, at a size that survives a phone screen.
  */
 export function Mazda6eArt({ width, className }: ArtProps) {
   return (
@@ -111,9 +112,6 @@ export function Mazda6eArt({ width, className }: ArtProps) {
       <path d="M115 18.9 122.8 17.7V19.1L115.6 20.2Z" fill="currentColor" opacity="0.6" />
       <Wheel cx={26} />
       <Wheel cx={100} />
-      {/* electric sticker */}
-      <circle cx="121" cy="6.5" r="5" fill="var(--green)" stroke="#fff" strokeWidth="1" />
-      <path d="M121.6 3.2 118.8 7.2H121L120.4 9.8 123.2 5.8H121Z" fill="#fff" />
     </svg>
   )
 }
@@ -207,6 +205,25 @@ export function CarGlyph({ carName, size = 22, className }: GlyphProps) {
   const brand = carBrand(carName)
   if (brand) return <BrandLogo brand={brand.key} size={size} className={className} />
   return <CarIcon size={size} className={className} />
+}
+
+/**
+ * The round sticker that says what the car runs on: a bolt for electric, a
+ * leaf for a hybrid, nothing for the rest. It sits in the corner of whatever
+ * picture slot holds it (`.pt-badge` is absolutely positioned; the slot is
+ * `position: relative`), so it is the same size on a tile, a list row and
+ * the admin list whatever the artwork underneath, and `index.css` makes it
+ * bigger on a phone. Pass a `carName` and it decides for itself, or a `kind`.
+ */
+export function PowertrainBadge({ carName, kind, className }: { carName?: string; kind?: Powertrain | null; className?: string }) {
+  const pt = kind ?? (carName !== undefined ? carPowertrain(carName) : null)
+  if (!pt) return null
+  const label = powertrainLabel(pt)
+  return (
+    <span className={['pt-badge', `pt-badge-${pt}`, className].filter(Boolean).join(' ')} role="img" aria-label={label} title={label}>
+      {pt === 'electric' ? <BoltIcon strokeWidth={2.5} /> : <LeafIcon strokeWidth={2.25} />}
+    </span>
+  )
 }
 
 /** The illustration for a known model, at a chosen width. */

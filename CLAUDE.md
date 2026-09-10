@@ -88,7 +88,13 @@ query to components that need to change their wording. Icons are inline SVGs in
 Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
 `components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
-white Mazda 6e, used in the car tiles, the driver card's vehicle strip and the admin list.
+white Mazda 6e, used in the ride tiles, the driver card's vehicle strip and the admin list.
+`carPowertrain()` in the same file says whether a name is *electric* or a *hybrid* (explicit
+words first, then models sold only one way; hybrid words beat electric words so "plug-in hybrid
+electric" is a hybrid) and `PowertrainBadge` draws it as a round sticker (bolt / leaf) pinned to
+the corner of every picture slot (`.pt-badge`; the slot is `position: relative`), bigger on a
+phone. It is never drawn inside the artwork itself, so its size does not depend on the drawing.
+The driver card also spells it out as an "Electric" / "Hybrid" tag.
 Below that, `carBrand()` in the same file recognises a *make* from the name (make words and
 the models people write instead of one: "grey Golf", "Octavia"; words that are also plain
 English, like "Seat" or "Focus", must be capitalised to count) and `BrandLogo` /`CarGlyph` show
@@ -105,7 +111,7 @@ no other same-day tile to drop on. `App.tsx` loads whichever range the view need
 the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
 width — nothing scrolls; the arrows beside the week label and a sideways swipe on the strip step a
 week) →
-`CarCarousel` (one tile per ride that day plus an *Add car* tile; tiles are also drop targets) →
+`CarCarousel` (one tile per ride that day plus an *Add ride* tile; tiles are also drop targets) →
 either `CarDetail` (driver card, times, route, passenger list with the drop zone and the
 *Get in this car* row) or `AddCarCard` (the illustrated placeholder) → `YouPanel`. The design's
 "unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
@@ -117,7 +123,9 @@ custom controls (and `Menu` is the ⋮ menu) built on `Popover`, which portals t
 positions itself against its anchor with `position: fixed`, so it is never clipped by a sheet's
 scrolling body and flips above the anchor when the viewport runs out. `TimePicker` shows 12- or
 24-hour columns depending on the browser locale but always emits `HH:MM`. `App.tsx` resolves which tile is open (`selection`):
-an explicit pick that still exists, else your own car, else the first car, else the *Add* tile.
+an explicit pick that still exists, else your own ride, else the first ride, else the *Add* tile.
+**Wording:** the thing you add, edit, duplicate or remove is a *ride*; *car* is reserved for the
+vehicle (the pool, "Company car" / "Own car", "get in this car", "in this car").
 
 **Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.

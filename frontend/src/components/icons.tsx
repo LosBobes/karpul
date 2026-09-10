@@ -44,6 +44,14 @@ export const BoltIcon = (p: IconProps) => (
   </Icon>
 )
 
+/** A leaf, the usual "hybrid" mark. */
+export const LeafIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M20 4.5c0 9-4 15.5-13 15.5-1.6 0-2.6-.3-3.5-.8C5 10 11 4.5 20 4.5z" />
+    <path d="M4.5 19.5C7 14 11 10 16 7.5" />
+  </Icon>
+)
+
 export const PlusIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 5v14M5 12h14" />

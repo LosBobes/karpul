@@ -10,13 +10,13 @@ interface Props {
   onEditName: () => void
 }
 
-/** The illustrated placeholder shown where a car would be: "add one" or "nothing went". */
-export function AddCarCard({ userName, isPast, hasCars, emptyTitle = 'No cars on this day yet', onAdd, onEditName }: Props) {
+/** The illustrated placeholder shown where a ride would be: "add one" or "nothing went". */
+export function AddCarCard({ userName, isPast, hasCars, emptyTitle = 'No rides on this day yet', onAdd, onEditName }: Props) {
   if (isPast) {
     return (
       <div className="card empty-card">
         <Illustration muted />
-        <strong>{hasCars ? 'Pick a car above' : 'No cars went on this day'}</strong>
+        <strong>{hasCars ? 'Pick a ride above' : 'No rides went on this day'}</strong>
         <span>Past days are read-only.</span>
       </div>
     )
@@ -26,14 +26,14 @@ export function AddCarCard({ userName, isPast, hasCars, emptyTitle = 'No cars on
       <button type="button" className="card empty-card empty-card-btn" onClick={onEditName}>
         <Illustration />
         <strong>Who are you?</strong>
-        <span>Enter your name to add a car or get into one.</span>
+        <span>Enter your name to add a ride or get into a car.</span>
       </button>
     )
   }
   return (
     <button type="button" className="card empty-card empty-card-btn" onClick={onAdd}>
       <Illustration plus />
-      <strong>{hasCars ? 'Add a new car' : emptyTitle}</strong>
+      <strong>{hasCars ? 'Add a new ride' : emptyTitle}</strong>
       <span>Tap to enter the car, seats, times and route.</span>
     </button>
   )
