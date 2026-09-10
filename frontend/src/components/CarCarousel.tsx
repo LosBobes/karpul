@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { firstName, sameName, shortCarName } from '../lib/dates'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
-import { CarGlyph, PowertrainBadge } from './CarArt'
+import { CarGlyph, PowertrainMark } from './CarArt'
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from './icons'
 
 export type CarSelection = number | 'new'
@@ -76,9 +76,11 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
             >
               <span className="car-tile-art">
                 <CarGlyph carName={r.car_name} size={22} />
-                <PowertrainBadge carName={r.car_name} />
               </span>
-              <span className="car-tile-name">{shortCarName(r.car_name) || firstName(r.driver_name)}</span>
+              <span className="car-tile-name">
+                <span className="car-tile-name-text">{shortCarName(r.car_name) || firstName(r.driver_name)}</span>
+                <PowertrainMark carName={r.car_name} />
+              </span>
               <span className="car-tile-seats">
                 {r.bookings.length} / {r.seats}
               </span>

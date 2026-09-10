@@ -34,10 +34,11 @@ the app guards the company-car pool.
   add or remove other passengers too.
 - Cars get a face from their name: a known model is drawn (the Mazda 6e so far), otherwise a
   recognised make shows its logo ("grey Golf" gets the VW mark, "Octavia" the Škoda one), and
-  anything else keeps the generic car icon. A round sticker in the corner says what the car runs
-  on: a bolt for **electric**, a leaf for a **hybrid**, worked out from the name ("Kona
-  Electric", "Corolla hybrid", "Outlander PHEV", "Golf GTE", "Octavia iV") or from a model that
-  only comes one way (Tesla, ID.4, Enyaq, Prius…).
+  anything else keeps the generic car icon. A small mark after the name says what the car runs
+  on: a bolt for **electric**, a leaf for a **hybrid**, a drop for **diesel**, a pump for
+  **petrol**, worked out from the name ("Kona Electric", "Corolla hybrid", "Golf GTE", "Octavia
+  iV", "Passat TDI", "dizel", "Clio TCe", "benzinac") or from a model that only comes one way
+  (Tesla, ID.4, Enyaq, Prius…).
 - **Live board.** Every tab holds a WebSocket to `/api/ws`; when anyone offers, edits or
   cancels a ride, joins or leaves one, or edits the car pool, everybody else sees it at once.
   The header lamp shows *Live*, *Connecting* or *Offline*; while offline the board falls back

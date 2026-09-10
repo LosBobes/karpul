@@ -4,7 +4,7 @@
  * Three things: a *model* the board can draw (`carModel`, artwork in
  * `components/CarArt.tsx`), a *brand* whose logo it can show (`carBrand`,
  * marks from the `simple-icons` package) and what *drives* it
- * (`carPowertrain`: electric, hybrid or nothing to say). All run on
+ * (`carPowertrain`: electric, hybrid, diesel, petrol or nothing to say). All run on
  * `Ride.car_name` ("Mazda 6e (BG-123-XY)", "grey Octavia") as well as on the
  * pool's own `CorporateCar.name`, so the plate suffix and any colour or
  * chit-chat around the name must be tolerated.
@@ -144,24 +144,28 @@ export function carBrand(carName: string): CarBrand | null {
   return BRAND_TESTS.find((b) => b.models.some((re) => re.test(name)))?.brand ?? null
 }
 
-export type Powertrain = 'electric' | 'hybrid'
+export type Powertrain = 'electric' | 'hybrid' | 'diesel' | 'petrol'
 
-const POWERTRAIN_LABEL: Record<Powertrain, string> = { electric: 'Electric', hybrid: 'Hybrid' }
+const POWERTRAIN_LABEL: Record<Powertrain, string> = { electric: 'Electric', hybrid: 'Hybrid', diesel: 'Diesel', petrol: 'Petrol' }
 
-/** "Electric" / "Hybrid", for tags and titles. */
+/** "Electric" / "Hybrid" / "Diesel" / "Petrol", for tags and titles. */
 export function powertrainLabel(kind: Powertrain): string {
   return POWERTRAIN_LABEL[kind]
 }
 
 /**
- * Words that say outright what the car runs on. Hybrid words are checked
- * first so "plug-in hybrid electric" is a hybrid, and "Niro EV" beats the
- * hybrid Niro below because a word always wins over a model. Same `=` rule as
- * the brand lists: Škoda's plug-ins are written "Octavia iV", and "IV" or
- * "iv" is just a generation number.
+ * Words that say outright what the car runs on: the fuel itself, in English
+ * and Serbian, and the engine badges people copy off the boot lid (TDI, TSI,
+ * dCi, TCe…). Hybrid words are checked first so "plug-in hybrid electric" is
+ * a hybrid, then electric, diesel and petrol; "Niro EV" beats the hybrid Niro
+ * below because a word always wins over a model. Same `=` rule as the brand
+ * lists: Škoda's plug-ins are written "Octavia iV", and "IV" or "iv" is just
+ * a generation number.
  */
 const HYBRID_WORDS = ['hybrid', 'hibrid', 'hibridni', 'hibridna', 'hibridno', 'hybride', 'ehybrid', 'e-hybrid', 'phev', 'hev', 'mhev', 'plug-in', 'plugin', 'gte', '4xe', 'e-power', '=iV']
 const ELECTRIC_WORDS = ['electric', 'electro', 'elektro', 'električni', 'električna', 'električno', 'elektricni', 'elektricna', 'elektricno', 'na struju', 'ev', 'bev', 'e-auto', 'e-car']
+const DIESEL_WORDS = ['diesel', 'dizel', 'dizelaš', 'dizelas', 'dízel', 'tdi', 'tdci', 'hdi', 'bluehdi', 'blue hdi', 'e-hdi', 'ehdi', 'cdi', 'dci', 'crdi', 'd-4d', 'd4d', 'jtd', 'jtdm', 'multijet', 'mjet', 'sdi', 'cdti', 'dtec', 'i-dtec', 'skyactiv-d', 'ddis', 'di-d', 'bluetec', 'd-cat']
+const PETROL_WORDS = ['petrol', 'benzin', 'benzinac', 'benzinski', 'benzinska', 'gasoline', 'tsi', 'tfsi', 'fsi', 'mpi', 'gti', 'gdi', 't-gdi', 'tgdi', 'vti', 'thp', 'puretech', 'tce', 'ecoboost', 'skyactiv-g', 'vvt-i', 'vvti', 'i-vtec', 'vtec', 'ecotec', 'firefly', 'multiair', 'twinair']
 
 /**
  * Models sold only with that drivetrain, so the name alone settles it. Ones
@@ -183,13 +187,18 @@ const HYBRID_MODELS = ['prius', 'niro', 'ioniq', 'yaris cross', 'c-hr', 'chr', '
 
 const HYBRID_TESTS = compile(HYBRID_WORDS)
 const ELECTRIC_TESTS = compile(ELECTRIC_WORDS)
+const DIESEL_TESTS = compile(DIESEL_WORDS)
+const PETROL_TESTS = compile(PETROL_WORDS)
 const ELECTRIC_MODEL_TESTS = compile(ELECTRIC_MODELS)
 const HYBRID_MODEL_TESTS = compile(HYBRID_MODELS)
-// BMW writes its plug-ins as a three-figure number plus "e" (330e, 530e, X5 45e).
+// BMW says it with the letter after the number: 330e is a plug-in, 320d a
+// diesel, 320i petrol. Only once the make is known, so a bare "320d" does not count.
 const BMW_PLUGIN = new RegExp(`${NOT_BEFORE}\\d{2,3}e${NOT_AFTER}`, 'iu')
+const BMW_DIESEL = new RegExp(`${NOT_BEFORE}\\d{3}d${NOT_AFTER}`, 'iu')
+const BMW_PETROL = new RegExp(`${NOT_BEFORE}\\d{3}i${NOT_AFTER}`, 'iu')
 
 /**
- * Electric, hybrid or null (petrol, diesel or simply unsaid), from the name.
+ * Electric, hybrid, diesel, petrol or null (simply unsaid), from the name.
  * The plate suffix is stripped first so "EV-123" on a plate does not count.
  * A drawn model that is electric (`CarModel.electric`) counts as such too.
  */
@@ -198,9 +207,15 @@ export function carPowertrain(carName: string): Powertrain | null {
   if (!name.trim()) return null
   if (HYBRID_TESTS.some((re) => re.test(name))) return 'hybrid'
   if (ELECTRIC_TESTS.some((re) => re.test(name))) return 'electric'
+  if (DIESEL_TESTS.some((re) => re.test(name))) return 'diesel'
+  if (PETROL_TESTS.some((re) => re.test(name))) return 'petrol'
   if (carModel(name)?.electric) return 'electric'
   if (ELECTRIC_MODEL_TESTS.some((re) => re.test(name))) return 'electric'
   if (HYBRID_MODEL_TESTS.some((re) => re.test(name))) return 'hybrid'
-  if (carBrand(name)?.key === 'bmw' && BMW_PLUGIN.test(name)) return 'hybrid'
+  if (carBrand(name)?.key === 'bmw') {
+    if (BMW_PLUGIN.test(name)) return 'hybrid'
+    if (BMW_DIESEL.test(name)) return 'diesel'
+    if (BMW_PETROL.test(name)) return 'petrol'
+  }
   return null
 }

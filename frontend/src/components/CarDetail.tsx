@@ -5,15 +5,13 @@ import { dropZone, type PassengerDrag } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
-import { BrandLogo, CarArt, PowertrainBadge } from './CarArt'
+import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  BoltIcon,
   CopyIcon,
   GripIcon,
   KebabIcon,
-  LeafIcon,
   PencilIcon,
   PinIcon,
   PlusIcon,
@@ -163,13 +161,11 @@ export function CarDetail({
           {model && (
             <span className="driver-car-art" aria-hidden="true">
               <CarArt model={model.key} width={104} />
-              <PowertrainBadge kind={powertrain} />
             </span>
           )}
           {brand && (
             <span className="driver-car-logo" title={brand.name}>
               <BrandLogo brand={brand.key} size={30} />
-              <PowertrainBadge kind={powertrain} />
             </span>
           )}
           <span className="driver-car-text">
@@ -178,9 +174,8 @@ export function CarDetail({
                 {ride.car_type === 'corporate' ? 'Company car' : 'Own car'}
               </span>
               {powertrain && (
-                <span className="tag tag-green tag-icon">
-                  {powertrain === 'electric' ? <BoltIcon size={13} strokeWidth={2.25} /> : <LeafIcon size={13} strokeWidth={2.25} />}{' '}
-                  {powertrainLabel(powertrain)}
+                <span className={powertrain === 'electric' || powertrain === 'hybrid' ? 'tag tag-green tag-icon' : 'tag tag-icon'}>
+                  <PowertrainIcon kind={powertrain} size={13} /> {powertrainLabel(powertrain)}
                 </span>
               )}
             </span>

@@ -52,6 +52,22 @@ export const LeafIcon = (p: IconProps) => (
   </Icon>
 )
 
+/** A fuel pump: petrol. */
+export const PumpIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 20V5.5A1.5 1.5 0 0 1 6.5 4h6A1.5 1.5 0 0 1 14 5.5V20" />
+    <path d="M3.5 20h12M5.5 11h8" />
+    <path d="M14 9h2a1.5 1.5 0 0 1 1.5 1.5V16a1.5 1.5 0 0 0 3 0v-5.5L18 8" />
+  </Icon>
+)
+
+/** A drop: diesel. */
+export const DropIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M12 3.5s-6 6.6-6 11a6 6 0 0 0 12 0c0-4.4-6-11-6-11z" />
+  </Icon>
+)
+
 export const PlusIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 5v14M5 12h14" />
