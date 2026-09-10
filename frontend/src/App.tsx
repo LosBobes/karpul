@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AddCarCard } from './components/AddCarCard'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
+import { CarGuide } from './components/CarGuide'
 import { CarCarousel, type CarSelection } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
-import { CalendarIcon, CarIcon, KebabIcon, KeyIcon, ListIcon, MenuIcon, PlusIcon, UserIcon } from './components/icons'
-import { Menu } from './components/Menu'
+import { CalendarIcon, CarIcon, ListIcon, MenuIcon, PlusIcon } from './components/icons'
 import { NameSheet } from './components/NameSheet'
 import { RideForm } from './components/RideForm'
+import { Sidebar } from './components/Sidebar'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
@@ -86,6 +87,10 @@ export default function App() {
   const [carSel, setCarSel] = useState<CarSelection | null>(null)
   // First visit: ask for the name straight away rather than hiding it in a menu.
   const [nameOpen, setNameOpen] = useState(() => !userName)
+  // The app menu (components/Sidebar.tsx), a drawer under the ☰ in the top bar.
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // The company-car help (components/CarGuide.tsx): from the sidebar or a ride's driver card.
+  const [guideOpen, setGuideOpen] = useState(false)
   // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
   const [drag, setDrag] = useState<PassengerDrag | null>(null)
   const [dragOver, setDragOver] = useState<DropTarget | null>(null)
@@ -328,6 +333,9 @@ export default function App() {
       },
     })
 
+  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
+  const closeGuide = useCallback(() => setGuideOpen(false), [])
+
   const closeForm = useCallback(() => {
     setForm(null)
     setFormError(null)
@@ -473,6 +481,7 @@ export default function App() {
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
       onDuplicate={(r) => (userName ? setForm({ mode: 'create', template: r }) : setNameOpen(true))}
       onTogglePassengersManage={onTogglePassengersManage}
+      onGuide={() => setGuideOpen(true)}
       dragActive={drag !== null}
       lifted={drag?.fromRideId === ride.id}
       over={dragOver?.kind === 'ride' && dragOver.rideId === ride.id}
@@ -484,16 +493,17 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <Menu
-          className="topbar-menu"
-          trigger={<MenuIcon size={22} />}
-          label="Menu"
-          align="left"
-          items={[
-            { label: userName ? `Change name (${userName})` : 'Enter your name', icon: <UserIcon size={18} />, onSelect: () => setNameOpen(true) },
-            { label: 'Company cars', icon: <KeyIcon size={18} />, onSelect: openAdmin },
-          ]}
-        />
+        <button
+          type="button"
+          className="icon-btn topbar-menu"
+          aria-label="Menu"
+          aria-haspopup="dialog"
+          aria-expanded={sidebarOpen}
+          aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
+          onClick={() => setSidebarOpen(true)}
+        >
+          <MenuIcon size={22} />
+        </button>
         <h1 className="topbar-title">
           <CarIcon size={20} /> Karpul
         </h1>
@@ -502,18 +512,6 @@ export default function App() {
             <span className="live-dot" aria-hidden="true" />
             <span className="sr-only">{LIVE_LABEL[liveStatus]}</span>
           </span>
-          <Menu
-            trigger={<KebabIcon size={22} />}
-            label="Options"
-            items={
-              upcoming
-                ? [{ label: 'Add ride', icon: <PlusIcon size={18} />, onSelect: openNewCar }]
-                : [
-                    { label: 'Add ride', icon: <PlusIcon size={18} />, onSelect: openNewCar, disabled: !canAdd },
-                    { label: 'Go to today', icon: <CarIcon size={18} />, onSelect: () => setSelected(todayISO()) },
-                  ]
-            }
-          />
         </div>
       </header>
 
@@ -625,6 +623,20 @@ export default function App() {
           </>
         )}
       </main>
+
+      {sidebarOpen && (
+        <Sidebar
+          userName={userName}
+          canAdd={canAdd}
+          onAddRide={openNewCar}
+          onEditName={() => setNameOpen(true)}
+          onCompanyCars={openAdmin}
+          onGuide={() => setGuideOpen(true)}
+          onClose={closeSidebar}
+        />
+      )}
+
+      {guideOpen && <CarGuide onClose={closeGuide} />}
 
       {nameOpen && <NameSheet name={userName} onChange={setUserName} onClose={() => setNameOpen(false)} />}
 
