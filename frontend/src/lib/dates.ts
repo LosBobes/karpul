@@ -57,6 +57,18 @@ export function fmtMonthDay(d: Date): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
+/**
+ * The Mon–Sun week starting at `monday`, the way the locale writes a range:
+ * "7–13 Sept 2026" / "Sep 7 – 13, 2026", or "31 Aug – 6 Sept 2026" when it
+ * straddles a month.
+ */
+export function fmtWeekRange(monday: Date): string {
+  const sunday = addDays(monday, 6)
+  const fmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+  if (typeof fmt.formatRange === 'function') return fmt.formatRange(monday, sunday)
+  return `${fmtMonthDay(monday)} – ${fmt.format(sunday)}`
+}
+
 /** "Sat, May 17" */
 export function fmtShortDate(iso: string): string {
   return parseISODate(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })

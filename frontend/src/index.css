@@ -702,6 +702,11 @@ main {
   letter-spacing: 0.01em;
   white-space: nowrap;
 }
+.tag-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
 .tag-green {
   background: var(--green-soft);
   color: var(--green);
@@ -775,39 +780,29 @@ main {
 }
 
 /* --- Date carousel ------------------------------------------------------- */
+/* All seven days always fit the column, so nothing scrolls off-screen and
+   there is nothing to hunt for. The week is changed by the arrows next to the
+   week label underneath, or by swiping the strip sideways. */
 .dates {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-}
-.dates-row {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
+  gap: 0.45rem;
 }
 .dates-strip {
-  flex: 1;
   display: flex;
-  gap: 0.4rem;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
+  gap: 0.3rem;
   padding: 2px;
-  /* Soft edges where the strip is cut off, so a half pill reads as "more this way". */
-  mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent);
-}
-.dates-strip::-webkit-scrollbar {
-  display: none;
+  touch-action: pan-y;
 }
 .date {
-  flex: 1 0 58px;
-  scroll-snap-align: center;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.1rem;
-  min-height: 56px;
-  padding: 0.45rem 0.3rem 0.3rem;
+  min-height: 58px;
+  padding: 0.45rem 0.1rem 0.3rem;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--surface);
@@ -819,14 +814,15 @@ main {
   border-color: var(--border-strong);
 }
 .date-wd {
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 500;
   color: var(--muted);
 }
 .date-md {
-  font-size: 0.86rem;
+  font-size: 0.98rem;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 .date-dot {
   width: 5px;
@@ -839,6 +835,9 @@ main {
   visibility: hidden;
 }
 .date-today .date-wd {
+  color: var(--green);
+}
+.date-today .date-md {
   color: var(--green);
 }
 .date-past {
@@ -856,8 +855,12 @@ main {
   color: #fff;
 }
 .date-selected .date-wd,
-.date-selected.date-today .date-wd {
-  color: rgba(255, 255, 255, 0.8);
+.date-selected.date-today .date-wd,
+.date-selected.date-today .date-md {
+  color: rgba(255, 255, 255, 0.85);
+}
+.date-selected .date-md {
+  color: #fff;
 }
 .date-selected .date-dot {
   background: #fff;
@@ -866,14 +869,47 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 0.25rem;
+  gap: 0.5rem;
+  padding: 0 0.1rem;
   font-size: 0.82rem;
   color: var(--muted);
+}
+.week-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.week-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  flex: none;
+}
+.week-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.dates-week {
+  padding: 0 0.4rem;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
 }
 .dates-tools {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  flex: none;
 }
 /* --- Car carousel -------------------------------------------------------- */
 .cars {
@@ -914,6 +950,12 @@ main {
 }
 .car-tile svg {
   color: var(--muted);
+}
+.car-tile-art {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  max-width: 100%;
 }
 .car-tile-name {
   max-width: 100%;
@@ -1061,6 +1103,35 @@ main {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A car with artwork gets a little vehicle strip: picture left, tags and name stacked. */
+.driver-car-illustrated {
+  gap: 0.75rem;
+}
+.driver-car-art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, #f4f8f6 0%, var(--green-soft) 100%);
+  color: var(--green-dark);
+}
+.driver-car-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.driver-car-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.driver-car-illustrated .driver-car-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text);
 }
 .driver-notes {
   margin: 0;
@@ -1578,8 +1649,9 @@ body.dragging {
 .admin-car-icon {
   display: inline-grid;
   place-items: center;
-  width: 36px;
+  width: 44px;
   height: 36px;
+  overflow: hidden;
   border-radius: 10px;
   background: var(--green-soft);
   color: var(--green);
@@ -1688,6 +1760,10 @@ body.dragging {
   }
   .cars-arrow {
     display: none;
+  }
+  .week-btn {
+    width: 36px;
+    height: 36px;
   }
   .car-tile-droppable {
     /* The dashed outline is the only affordance on a phone (no cursor, no

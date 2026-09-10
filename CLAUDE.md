@@ -81,8 +81,14 @@ one self-hosted container). The semantic class names (`.card`, `.date`, `.car-ti
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
 query to components that need to change their wording. Icons are inline SVGs in
 `components/icons.tsx`; avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
+Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`
+matches a car name (plate suffix and all) to a model key and an `electric` flag, and
+`components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
+white Mazda 6e, used in the car tiles, the driver card's vehicle strip and the admin list.
 
-**Screen structure.** `DateCarousel` (the loaded Mon–Sun week as pills, arrows step a week) →
+**Screen structure.** `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
+width — nothing scrolls; the arrows beside the week label and a sideways swipe on the strip step a
+week) →
 `CarCarousel` (one tile per ride that day plus an *Add car* tile; tiles are also drop targets) →
 either `CarDetail` (driver card, times, route, passenger list with the drop zone and the
 *Get in this car* row) or `AddCarCard` (the illustrated placeholder) → `YouPanel`. The design's
