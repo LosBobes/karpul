@@ -12,13 +12,19 @@ the app guards the company-car pool.
   set departure and return time (or one-way), origin/destination, and how many **free seats** you have.
 - **Company cars can't be double-booked** – overlapping time windows on the same day are rejected.
 - **Join a ride** by pressing *Join*, or **drag your name onto a car** to pick a driver.
-  Drag it to another car to switch, or drop it back on the tray to get out.
+  Drag it to another car to switch, or drop it back on the tray to get out. Works with a
+  finger too: on a phone, press and hold your chip for a moment and it lifts.
 - **Manage the company car pool** from the *Cars* button in the header: add a car, fix a
   name/plate/seat count, retire one that's been sold, or delete one that was never used.
   This is the one screen behind a password (see *Company-car admin* below).
 - Week overview shows how many rides and free seats each day has.
 - Drivers can edit/cancel their ride and remove passengers; passengers can leave.
-- The board refreshes itself every 30 s and whenever the tab regains focus.
+- **Live board.** Every tab holds a WebSocket to `/api/ws`; when anyone offers, edits or
+  cancels a ride, joins or leaves one, or edits the car pool, everybody else sees it at once.
+  The header lamp shows *Live*, *Connecting* or *Offline*; while offline the board falls back
+  to polling every 30 s, and every reconnect reloads the week in case something was missed.
+- Phone-friendly: the board reflows to one column, forms open as bottom sheets, and tap
+  targets are sized for fingers.
 
 Identity is honour-based: actions that change a ride are checked against the `X-User-Name`
 header (driver-only edit/cancel, passenger-or-driver leave). That's deliberate – it's an
@@ -107,6 +113,7 @@ The car pool is seeded only when the table is empty; after that it is managed fr
 | `GET` | `/api/rides?date=YYYY-MM-DD` or `?from=&to=` | Rides with bookings and `free_seats`; defaults to this week |
 | `POST` | `/api/rides` | Create a ride |
 | `GET` | `/api/rides/{id}` | |
+| `WS` | `/api/ws` | Live updates: `ride.created` / `ride.updated` (with the ride), `ride.deleted`, `cars.changed`, `ping` |
 | `PATCH` | `/api/rides/{id}` | Driver only (`X-User-Name`) |
 | `DELETE` | `/api/rides/{id}` | Driver only |
 | `POST` | `/api/rides/{id}/bookings` | `{ "passenger_name": "…" }` – 409 when full / duplicate / driver |
@@ -124,14 +131,16 @@ backend/
     schemas.py     Pydantic request/response models + validation rules
     services.py    Car-availability (overlap) check, ride serialisation
     admin.py       Shared-password gate for the company-car endpoints
-    routers/       cars.py, rides.py
+    events.py      In-process hub that fans board changes out to the WebSocket clients
+    routers/       cars.py, rides.py, live.py (the /api/ws socket)
     seed.py        Company-car seed
   tests/           pytest suite (in-memory SQLite)
 Dockerfile         frontend build + FastAPI in one image
 docker-compose.prod.yml, Caddyfile, Makefile   shared-Hetzner-box deploy (docs/deployment-hetzner.md)
 frontend/
   src/
-    App.tsx                  Week/day board, joins, drag-and-drop orchestration
+    App.tsx                  Week/day board, joins, drag-and-drop and live-update orchestration
     components/              NameBar, WeekStrip, RideCard, RideForm, PassengerTray, CarAdmin
-    lib/                     api client, dates, dnd helpers, useUserName, useAdminPassword
+    lib/                     api client, dates, pointer drag-and-drop (dnd.ts), live socket (live.ts),
+                             useUserName, useAdminPassword
 ```

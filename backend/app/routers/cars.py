@@ -5,6 +5,7 @@ from sqlmodel import Session, col, func, select
 
 from ..admin import AdminPasswordHeader, require_admin
 from ..database import get_session
+from ..events import cars_changed
 from ..models import CarType, CorporateCar, Ride
 from ..schemas import CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
 from ..services import relabel_rides_for_car
@@ -85,6 +86,7 @@ def create_corporate_car(payload: CorporateCarCreate, session: SessionDep):
     session.add(car)
     session.commit()
     session.refresh(car)
+    cars_changed()
     return car
 
 
@@ -107,6 +109,9 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Sess
         relabel_rides_for_car(session, car)
     session.commit()
     session.refresh(car)
+    # One coarse event rather than one per relabelled ride: the client reloads
+    # both the pool and the board, which is also what it does after its own edits.
+    cars_changed()
     return car
 
 
@@ -129,3 +134,4 @@ def delete_corporate_car(car_id: int, session: SessionDep):
         )
     session.delete(car)
     session.commit()
+    cars_changed()

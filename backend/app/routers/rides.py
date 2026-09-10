@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlmodel import Session, select
 
 from ..database import get_session
+from ..events import ride_deleted, ride_saved
 from ..models import Booking, CarType, Ride
 from ..schemas import BookingCreate, BookingRead, RideCreate, RideRead, RideUpdate
 from ..services import (
@@ -89,6 +90,7 @@ def create_ride(payload: RideCreate, session: SessionDep):
     session.add(ride)
     session.commit()
     session.refresh(ride)
+    ride_saved(ride, created=True)
     return to_ride_read_dict(ride)
 
 
@@ -137,6 +139,7 @@ def update_ride(ride_id: int, payload: RideUpdate, session: SessionDep, user: Us
     session.add(ride)
     session.commit()
     session.refresh(ride)
+    ride_saved(ride, created=False)
     return to_ride_read_dict(ride)
 
 
@@ -146,8 +149,10 @@ def delete_ride(ride_id: int, session: SessionDep, user: UserName = None):
     ride = _get_ride_or_404(session, ride_id)
     if _norm(ride.driver_name) != _norm(user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver can cancel this ride")
+    ride_id, ride_date = ride.id, ride.ride_date
     session.delete(ride)
     session.commit()
+    ride_deleted(ride_id, ride_date)
 
 
 @router.post("/{ride_id}/bookings", response_model=RideRead, status_code=status.HTTP_201_CREATED)
@@ -163,6 +168,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: SessionDep):
     session.add(Booking(ride_id=ride.id, passenger_name=name))
     session.commit()
     session.refresh(ride)
+    ride_saved(ride, created=False)
     return to_ride_read_dict(ride)
 
 
@@ -185,4 +191,5 @@ def leave_ride(ride_id: int, booking_id: int, session: SessionDep, user: UserNam
     session.delete(booking)
     session.commit()
     session.refresh(ride)
+    ride_saved(ride, created=False)
     return to_ride_read_dict(ride)

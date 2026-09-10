@@ -113,6 +113,11 @@ systemctl reload caddy
 
 The reload is zero-downtime and does not affect the other apps.
 
+The live board uses a WebSocket on `/api/ws`. Caddy's `reverse_proxy` passes
+the upgrade through as-is, so the block needs nothing extra for it; if the
+header lamp in the app says *Offline* behind a different proxy, check that it
+forwards `Upgrade`/`Connection` headers.
+
 ---
 
 ## 5. Build and start the Karpul stack

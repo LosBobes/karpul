@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { BoardText } from './components/BoardText'
 import { NameBar } from './components/NameBar'
@@ -8,7 +8,8 @@ import { RideForm } from './components/RideForm'
 import { WeekStrip } from './components/WeekStrip'
 import { api, ApiError } from './lib/api'
 import { addDays, fmtLongDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
-import type { PassengerDrag } from './lib/dnd'
+import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
+import { useLiveBoard, type LiveEvent } from './lib/live'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
 import { useUserName } from './lib/useUserName'
@@ -21,6 +22,27 @@ function errMsg(e: unknown): string {
   return 'Something went wrong'
 }
 
+/** Same order the API lists in, so a ride pushed over the socket lands in the right row. */
+function sortRides(rides: Ride[]): Ride[] {
+  return [...rides].sort(
+    (a, b) =>
+      a.ride_date.localeCompare(b.ride_date) ||
+      a.departure_time.localeCompare(b.departure_time) ||
+      a.id - b.id,
+  )
+}
+
+function isOverRide(over: DropTarget | null, rideId: number): boolean {
+  return over?.kind === 'ride' && over.rideId === rideId
+}
+
+const LIVE_LABEL = { connecting: 'Connecting', live: 'Live', offline: 'Offline' } as const
+const LIVE_TITLE = {
+  connecting: 'Connecting to the board…',
+  live: 'Changes made by others show up here as they happen.',
+  offline: 'Live updates are down; the board refreshes itself every 30 s until they are back.',
+} as const
+
 export default function App() {
   const [userName, setUserName] = useUserName()
   const [selected, setSelected] = useState(todayISO)
@@ -32,7 +54,9 @@ export default function App() {
   const [form, setForm] = useState<FormState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [dragActive, setDragActive] = useState(false)
+  // The passenger token in flight and what it is hovering over (lib/dnd.ts).
+  const [drag, setDrag] = useState<PassengerDrag | null>(null)
+  const [dragOver, setDragOver] = useState<DropTarget | null>(null)
 
   // Car-pool admin (shared password, see backend/app/admin.py). Everything else on
   // this board is honour-based; only editing the company cars is gated.
@@ -71,16 +95,54 @@ export default function App() {
     api.corporateCars().then(setCars).catch(() => setCars([]))
   }, [])
 
-  // Keep the board fresh for people who leave the tab open.
+  /** The admin list is the superset; the ride form only ever sees active cars. */
+  const applyCars = useCallback((all: CorporateCar[]) => {
+    setAdminCars(all)
+    setCars(all.filter((c) => c.active))
+  }, [])
+
+  // Live board: the server pushes every change anyone makes (lib/live.ts).
+  const onLiveEvent = useCallback(
+    (ev: LiveEvent) => {
+      switch (ev.type) {
+        case 'ride.created':
+        case 'ride.updated':
+          setRides((rs) => {
+            // An edit can move a ride into or out of the loaded week.
+            const inWeek = ev.ride.ride_date >= week.from && ev.ride.ride_date <= week.to
+            const rest = rs.filter((r) => r.id !== ev.ride.id)
+            return inWeek ? sortRides([...rest, ev.ride]) : rest
+          })
+          break
+        case 'ride.deleted':
+          setRides((rs) => rs.filter((r) => r.id !== ev.ride_id))
+          break
+        case 'cars.changed':
+          // A pool edit can relabel rides (backend: relabel_rides_for_car), so
+          // both lists are reloaded rather than patched.
+          if (adminUnlocked) api.allCorporateCars(adminPassword).then(applyCars).catch(() => undefined)
+          else api.corporateCars().then(setCars).catch(() => undefined)
+          void load()
+          break
+        default:
+          break
+      }
+    },
+    [week, load, adminUnlocked, adminPassword, applyCars],
+  )
+  const liveStatus = useLiveBoard({ onEvent: onLiveEvent, onConnect: load })
+
+  // Keep the board fresh for people who leave the tab open. Polling is the
+  // fallback for when the socket is down; a focus always re-syncs.
   useEffect(() => {
-    const id = setInterval(() => void load(), 30_000)
+    const id = liveStatus === 'live' ? null : setInterval(() => void load(), 30_000)
     const onFocus = () => void load()
     window.addEventListener('focus', onFocus)
     return () => {
-      clearInterval(id)
+      if (id !== null) clearInterval(id)
       window.removeEventListener('focus', onFocus)
     }
-  }, [load])
+  }, [load, liveStatus])
 
   useEffect(() => {
     if (!toast) return
@@ -136,6 +198,33 @@ export default function App() {
     })
   }
 
+  /** Where the token landed. Looked up against the *current* rides: the board
+   *  can change under a drag (live updates), so this is read at drop time. */
+  const dropPassenger = (drag: PassengerDrag, target: DropTarget) => {
+    if (target.kind === 'tray') {
+      const from = drag.fromRideId !== null ? rides.find((r) => r.id === drag.fromRideId) : undefined
+      if (from && drag.bookingId !== null) void onLeave(from, drag.bookingId)
+      return
+    }
+    const ride = rides.find((r) => r.id === target.rideId)
+    if (ride) onDropPassenger(ride, drag)
+  }
+  const dropRef = useRef(dropPassenger)
+  useEffect(() => {
+    dropRef.current = dropPassenger
+  })
+
+  const onGrab = (e: React.PointerEvent<HTMLElement>, d: PassengerDrag) =>
+    grabPassenger(e, d, {
+      onStart: setDrag,
+      onOver: setDragOver,
+      onEnd: (dropped, target) => {
+        setDrag(null)
+        setDragOver(null)
+        if (target) dropRef.current(dropped, target)
+      },
+    })
+
   const closeForm = useCallback(() => {
     setForm(null)
     setFormError(null)
@@ -163,12 +252,6 @@ export default function App() {
       setSubmitting(false)
     }
   }
-
-  /** The admin list is the superset; the ride form only ever sees active cars. */
-  const applyCars = useCallback((all: CorporateCar[]) => {
-    setAdminCars(all)
-    setCars(all.filter((c) => c.active))
-  }, [])
 
   const unlockAdmin = useCallback(
     async (password: string) => {
@@ -254,6 +337,10 @@ export default function App() {
           <span className="muted">Departures</span>
         </div>
         <div className="topbar-right">
+          <span className={`live live-${liveStatus}`} role="status" title={LIVE_TITLE[liveStatus]}>
+            <span className="live-dot" aria-hidden="true" />
+            {LIVE_LABEL[liveStatus]}
+          </span>
           <NameBar name={userName} onChange={setUserName} />
           <button
             type="button"
@@ -306,12 +393,12 @@ export default function App() {
                 currentBookingId={myBookingToday?.id ?? null}
                 drivingToday={drivingToday}
                 hasOpenRides={hasOpenRides}
-                dragActive={dragActive}
-                onDragState={setDragActive}
-                onLeave={() => myRideToday && myBookingToday && void onLeave(myRideToday, myBookingToday.id)}
+                dragActive={drag !== null}
+                over={dragOver?.kind === 'tray'}
+                onGrab={onGrab}
               />
             )}
-            <div className={`ride-list ${dragActive ? 'ride-list-dragging' : ''}`}>
+            <div className={`ride-list ${drag ? 'ride-list-dragging' : ''}`}>
               {dayRides.map((r) => (
                 <RideCard
                   key={r.id}
@@ -322,9 +409,10 @@ export default function App() {
                   onLeave={onLeave}
                   onCancel={onCancel}
                   onEdit={(ride) => setForm({ mode: 'edit', ride })}
-                  dragActive={dragActive}
-                  onDragState={setDragActive}
-                  onDropPassenger={onDropPassenger}
+                  dragActive={drag !== null}
+                  lifted={drag?.fromRideId === r.id}
+                  over={isOverRide(dragOver, r.id)}
+                  onGrab={onGrab}
                 />
               ))}
             </div>

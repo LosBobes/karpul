@@ -295,6 +295,44 @@ label {
   gap: 0.5rem 0.75rem;
 }
 
+/* Live indicator — the board's "on air" lamp. */
+.live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  cursor: default;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.live-live {
+  color: var(--go);
+}
+.live-live .live-dot {
+  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--go) 60%, transparent);
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+.live-offline {
+  color: var(--stop);
+}
+.live-connecting .live-dot {
+  animation: live-pulse 0.9s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
 .namebar {
   display: flex;
   flex-wrap: wrap;
@@ -524,14 +562,24 @@ label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   cursor: grab;
-  user-select: none;
 }
 .token:active {
   cursor: grabbing;
 }
-.token[draggable='false'] {
+.token-off {
   cursor: not-allowed;
   opacity: 0.45;
+}
+/* Drag handles (lib/dnd.ts). `touch-action: none` is what makes a finger drag
+   possible at all: without it the browser takes the gesture for scrolling and
+   cancels our pointer part-way. The rest stops the long-press from selecting
+   text or popping the iOS callout, since long-press is the pick-up gesture. */
+.token,
+.passenger-grabbable {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Ride row — one departure on the board. */
@@ -774,6 +822,41 @@ label {
   opacity: 0.35;
   box-shadow: none;
 }
+/* The chip that follows the pointer. A plain DOM node created by lib/dnd.ts,
+   drawn over everything and transparent to hit-testing so elementFromPoint
+   sees the car underneath it. */
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  pointer-events: none;
+  will-change: transform;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--signal);
+  border-radius: var(--radius);
+  background: var(--signal);
+  color: var(--signal-ink);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--signal) 30%, transparent),
+    0 10px 24px rgba(0, 0, 0, 0.55);
+  transform: translate(-1000px, -1000px);
+}
+.drag-ghost .grip {
+  opacity: 0.8;
+}
+body.dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .ride-actions {
   display: flex;
   flex-direction: column;
@@ -972,14 +1055,61 @@ label {
   color: var(--muted);
 }
 
+/* Phones. The board keeps its shape — times on the left, route in the
+   middle — but the actions drop under the row, the modals become bottom
+   sheets and nothing is allowed to force a horizontal scroll. */
 @media (max-width: 600px) {
+  .app {
+    padding: 0 0.75rem calc(4rem + env(safe-area-inset-bottom));
+  }
+  .topbar {
+    padding-top: calc(0.75rem + env(safe-area-inset-top));
+    gap: 0.5rem 1rem;
+    margin-bottom: 1rem;
+  }
+  .brand {
+    font-size: 1.3rem;
+  }
+  .topbar-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .namebar-edit {
+    width: 100%;
+  }
+  .namebar-edit label {
+    flex: 1 1 10rem;
+  }
+  .day-head {
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .day-head h1 {
+    font-size: 1.45rem;
+    flex: 1 1 auto;
+  }
   .ride {
-    grid-template-columns: auto 1fr;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.75rem;
+    padding: 0.8rem 0.5rem;
+  }
+  .ride-times {
+    min-width: 3.9rem;
+    padding-right: 0.6rem;
+  }
+  .ride-route {
+    font-size: 1.15rem;
   }
   .ride-actions {
     grid-column: 1 / -1;
     flex-direction: row;
     justify-content: flex-end;
+  }
+  .ride-actions .btn {
+    flex: 1 1 auto;
+  }
+  .day {
+    padding-inline: 0;
   }
   .day-meta {
     display: none;
@@ -994,10 +1124,69 @@ label {
     order: -1;
     flex-basis: 100%;
   }
+  /* Bottom sheet: full width, slides up from the bottom edge, leaves room
+     for the on-screen keyboard by scrolling inside itself. */
+  .modal-backdrop {
+    padding: 0;
+    align-items: end;
+  }
+  .modal {
+    max-width: none;
+    max-height: calc(100dvh - 1.5rem);
+    padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    border-inline: none;
+    border-bottom: none;
+  }
+  .modal-foot .btn {
+    flex: 1 1 auto;
+  }
   .car-row-actions {
     margin-left: 0;
     flex-basis: 100%;
     justify-content: flex-end;
+  }
+  .toast {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    width: max-content;
+  }
+}
+
+/* Fingers, not cursors: bigger targets, and no hover choreography (a touch
+   "hover" sticks until the next tap, so lifted chips would stay lifted). */
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+  .btn-sm {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.9rem;
+  }
+  .btn-x {
+    padding: 0.35rem 0.55rem;
+    font-size: 1.15rem;
+  }
+  .token {
+    padding: 0.5rem 0.9rem;
+  }
+  .passenger {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.88rem;
+  }
+  .passenger-grabbable:hover {
+    background: var(--signal);
+    box-shadow: none;
+    transform: none;
+  }
+  .day {
+    min-height: 56px;
+  }
+  .ride:hover {
+    background: var(--surface);
+  }
+  .ride-droppable {
+    /* Dashed amber outline is the only affordance on a phone (no cursor,
+       no hover), so make it a touch louder than on desktop. */
+    border-color: color-mix(in srgb, var(--signal) 75%, transparent);
   }
 }
 
