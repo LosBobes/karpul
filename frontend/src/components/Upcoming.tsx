@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, sameName, shortCarName } from '../lib/dates'
+import { useT } from '../lib/i18n'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { ChevronDownIcon } from './icons'
@@ -21,6 +22,7 @@ interface Props {
  * editing never leaves the list.
  */
 export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Props) {
+  const t = useT()
   const days: { date: string; rides: Ride[] }[] = []
   for (const r of rides) {
     const last = days[days.length - 1]
@@ -29,7 +31,7 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
   }
 
   return (
-    <section className="upcoming" aria-label="Next sessions">
+    <section className="upcoming" aria-label={t.upcoming.label}>
       {days.map((day) => {
         const free = day.rides.reduce((n, r) => n + r.free_seats, 0)
         return (
@@ -37,9 +39,7 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
             <h3 className="section-title">
               {fmtDayLabel(day.date)}
               <span className="section-count">{fmtDayDate(day.date)}</span>
-              <span className="section-meta">
-                {day.rides.length} {day.rides.length === 1 ? 'ride' : 'rides'} · {free} free {free === 1 ? 'seat' : 'seats'}
-              </span>
+              <span className="section-meta">{t.upcoming.meta(day.rides.length, free)}</span>
             </h3>
             <ul className="session-list">
               {day.rides.map((r) => {
@@ -55,7 +55,7 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                     <button type="button" className={cls} aria-expanded={open} onClick={() => onOpen(open ? null : r.id)}>
                       <span className="session-time">
                         <span className="when-value">{fmtTime(r.departure_time)}</span>
-                        <small>{r.return_time ? `back ${fmtTime(r.return_time)}` : 'one way'}</small>
+                        <small>{r.return_time ? t.upcoming.back(fmtTime(r.return_time)) : t.upcoming.oneWay}</small>
                       </span>
                       <span className="session-art" aria-hidden="true">
                         <CarGlyph carName={r.car_name} size={20} />
@@ -65,21 +65,17 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                           <span className="session-name">{shortCarName(r.car_name)}</span>
                           <PowertrainMark carName={r.car_name} />
                         </strong>
-                        <span>
-                          {r.driver_name} · {r.origin} to {r.destination}
-                        </span>
+                        <span>{t.upcoming.route(r.driver_name, r.origin, r.destination)}</span>
                       </span>
                       <span className="session-side">
                         {driving ? (
-                          <span className="tag tag-green">Driving</span>
+                          <span className="tag tag-green">{t.upcoming.driving}</span>
                         ) : riding ? (
-                          <span className="tag tag-green">You're in</span>
+                          <span className="tag tag-green">{t.upcoming.youreIn}</span>
                         ) : full ? (
-                          <span className="tag">Full</span>
+                          <span className="tag">{t.upcoming.full}</span>
                         ) : (
-                          <span className="session-seats">
-                            {r.free_seats} {r.free_seats === 1 ? 'seat' : 'seats'}
-                          </span>
+                          <span className="session-seats">{t.upcoming.seats(r.free_seats)}</span>
                         )}
                         <ChevronDownIcon size={16} className="session-chevron" />
                       </span>

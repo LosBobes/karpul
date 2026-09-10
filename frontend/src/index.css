@@ -1842,26 +1842,89 @@ body.dragging {
 }
 .guide-step {
   display: flex;
-  gap: 0.7rem;
+  gap: 0.8rem;
   align-items: flex-start;
 }
-.guide-step-no {
+/* The picture beside each entry (components/GuideArt.tsx): a small framed
+   tile, ink in the muted grey, the one thing the step is about in green. */
+.guide-art {
+  position: relative;
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
   flex: none;
-  border-radius: 50%;
-  background: var(--green-soft);
-  color: var(--green);
-  font-size: 0.85rem;
+  width: 96px;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.guide-art-row {
+  background: var(--surface);
+}
+.guide-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.guide-art .accent {
+  stroke: var(--green);
+}
+.guide-art .accent-fill {
+  fill: var(--green-soft);
+  stroke: var(--green);
+}
+.guide-art .soft {
+  fill: currentColor;
+  fill-opacity: 0.09;
+}
+.guide-art .glass {
+  fill: currentColor;
+  fill-opacity: 0.22;
+}
+.guide-art .ink {
+  fill: currentColor;
+  stroke: none;
+}
+.guide-art text {
+  stroke: none;
+  fill: currentColor;
+  font-family: var(--font-sans);
+  font-size: 8px;
   font-weight: 600;
 }
+.guide-art text.accent-text {
+  fill: var(--green);
+}
+.guide-art text.big {
+  font-size: 11px;
+  font-weight: 700;
+}
+.guide-art text.label {
+  font-size: 9px;
+  fill: var(--text);
+}
+.guide-step-no {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px var(--surface);
+}
 .guide-step-text,
-.guide-row {
+.guide-row-text {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
   font-size: 0.92rem;
 }
 .guide-step-text span,
@@ -1875,6 +1938,9 @@ body.dragging {
   gap: 0.6rem;
 }
 .guide-row {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
   padding: 0.6rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1895,6 +1961,29 @@ body.dragging {
   padding: 0.15rem 0.35rem;
   margin-left: -0.35rem;
   font-size: 0.82rem;
+}
+
+/* --- Language switch (components/LanguageSwitch.tsx) --------------------- */
+/* English / Srpski as a segmented control: at the foot of the app menu and,
+   for a newcomer, on the first-run name sheet. */
+.lang {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.lang-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.lang-seg .seg {
+  min-height: 34px;
+  font-size: 0.85rem;
+}
+.lang-compact {
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
 }
 
 /* --- App menu drawer (components/Sidebar.tsx) ---------------------------- */
@@ -1958,6 +2047,11 @@ body.dragging {
   display: flex;
   flex-direction: column;
   padding: 0.5rem 0.6rem;
+}
+.drawer-foot {
+  margin-top: auto;
+  padding: 0.75rem 1.15rem 0.9rem;
+  border-top: 1px solid var(--border);
 }
 .drawer-item {
   display: flex;

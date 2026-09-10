@@ -1,5 +1,6 @@
 import { firstName, fmtTime, sameName } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
+import { useT } from '../lib/i18n'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
@@ -37,20 +38,21 @@ export function YouPanel({
   onOpenCar,
   onEditName,
 }: Props) {
+  const t = useT()
   const coarse = useCoarsePointer()
-  const verb = coarse ? 'Hold and drag' : 'Drag'
+  const verb = coarse ? t.you.holdDrag : t.you.drag
 
   if (!userName) {
     return (
       <section className="you">
-        <h3 className="section-title">You</h3>
+        <h3 className="section-title">{t.you.title}</h3>
         <button type="button" className="card you-row you-row-btn" onClick={onEditName}>
           <span className="avatar avatar-md avatar-empty" aria-hidden="true">
             ?
           </span>
           <span className="you-text">
-            <strong>Who are you?</strong>
-            <span>Tap to enter your name. No account needed.</span>
+            <strong>{t.you.whoAreYou}</strong>
+            <span>{t.you.tapName}</span>
           </span>
           <PencilIcon size={18} />
         </button>
@@ -72,10 +74,24 @@ export function YouPanel({
     .filter(Boolean)
     .join(' ')
 
+  const status = isPast
+    ? seated
+      ? t.you.rodeWith(firstName(currentRide.driver_name))
+      : t.you.dayOver
+    : driving
+      ? t.you.youDrive
+      : seated
+        ? t.you.inCar(firstName(currentRide.driver_name), verb)
+        : openSeats
+          ? t.you.notInCar(verb)
+          : dayRides.length
+            ? t.you.noFreeSeats
+            : t.you.noRides
+
   return (
     <section className={cls} {...dropZone(seated && !isPast ? { kind: 'tray' } : null)}>
       <h3 className="section-title">
-        You
+        {t.you.title}
         <button type="button" className="link section-action" onClick={onEditName}>
           <PencilIcon size={14} /> {userName}
         </button>
@@ -85,8 +101,7 @@ export function YouPanel({
         <div className="banner banner-ok">
           <CheckCircleIcon size={22} />
           <span>
-            <strong>You're all set!</strong> Riding with {firstName(currentRide.driver_name)}, leaving at{' '}
-            {fmtTime(currentRide.departure_time)}.
+            <strong>{t.you.allSet}</strong> {t.you.ridingWith(firstName(currentRide.driver_name), fmtTime(currentRide.departure_time))}
           </span>
         </div>
       )}
@@ -94,15 +109,13 @@ export function YouPanel({
       {driving && (
         <div className="banner">
           <CheckCircleIcon size={22} />
-          <span>
-            You're driving today. {driving.bookings.length} of {driving.seats} seats taken.
-          </span>
+          <span>{t.you.drivingToday(driving.bookings.length, driving.seats)}</span>
         </div>
       )}
 
       <div
         className={['card', 'you-row', canDrag && 'grabbable', seated && dragActive && 'you-row-out'].filter(Boolean).join(' ')}
-        title={canDrag ? `${verb} me onto a car` : undefined}
+        title={canDrag ? t.you.dragMe(verb) : undefined}
         onPointerDown={(e) => {
           if (canDrag) onGrab(e, { name: userName, fromRideId: null, bookingId: currentBookingId })
         }}
@@ -114,7 +127,7 @@ export function YouPanel({
               <LogoutIcon size={22} />
             </span>
             <span className="you-text">
-              <strong>Drop here to get out of the car</strong>
+              <strong>{t.you.dropOut}</strong>
             </span>
           </>
         ) : (
@@ -122,25 +135,11 @@ export function YouPanel({
             <Avatar name={userName} />
             <span className="you-text">
               <strong>{userName}</strong>
-              <span>
-                {isPast
-                  ? seated
-                    ? `You rode with ${firstName(currentRide.driver_name)}.`
-                    : 'This day is over.'
-                  : driving
-                    ? "You're the driver."
-                    : seated
-                      ? `In ${firstName(currentRide.driver_name)}'s car. ${verb} to another car, or drop here to get out.`
-                      : openSeats
-                        ? `Not in a car yet. ${verb} onto a car, or open one and tap "Get in".`
-                        : dayRides.length
-                          ? 'No free seats today.'
-                          : 'No rides on this day yet.'}
-              </span>
+              <span>{status}</span>
             </span>
             {seated && !isPast && (
               <button type="button" className="link" onClick={() => onOpenCar(currentRide.id)}>
-                Open
+                {t.common.open}
               </button>
             )}
             {canDrag && (

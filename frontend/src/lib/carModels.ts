@@ -1,3 +1,5 @@
+import { messages } from './i18n'
+
 /**
  * What the board knows about a car from its name alone.
  *
@@ -146,11 +148,9 @@ export function carBrand(carName: string): CarBrand | null {
 
 export type Powertrain = 'electric' | 'hybrid' | 'diesel' | 'petrol'
 
-const POWERTRAIN_LABEL: Record<Powertrain, string> = { electric: 'Electric', hybrid: 'Hybrid', diesel: 'Diesel', petrol: 'Petrol' }
-
-/** "Electric" / "Hybrid" / "Diesel" / "Petrol", for tags and titles. */
+/** "Electric" / "Hybrid" / "Diesel" / "Petrol" in the app's language, for tags and titles. */
 export function powertrainLabel(kind: Powertrain): string {
-  return POWERTRAIN_LABEL[kind]
+  return messages().powertrain[kind]
 }
 
 /**

@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useT } from '../lib/i18n'
 import { Avatar } from './Avatar'
 import { CarIcon, InfoIcon, KeyIcon, PlusIcon, UserIcon, XIcon } from './icons'
+import { LanguageSwitch } from './LanguageSwitch'
 
 interface Props {
   userName: string
@@ -23,11 +25,13 @@ interface Item {
 
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the three things that are not about one particular ride —
- * adding one, who you are, the company-car pool and its guide. Picking an item closes
- * the drawer first, so the sheet it opens is the only thing left on screen.
+ * top bar. It holds the things that are not about one particular ride:
+ * adding one, who you are, the company-car pool and its guide, and at the
+ * bottom the language. Picking an item closes the drawer first, so the sheet
+ * it opens is the only thing left on screen.
  */
 export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars, onGuide, onClose }: Props) {
+  const t = useT()
   const panel = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -58,27 +62,27 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
 
   const items: Item[] = [
     {
-      label: 'Add ride',
-      hint: canAdd ? 'Offer seats in your car' : 'Not on a day that has passed',
+      label: t.sidebar.addRide,
+      hint: canAdd ? t.sidebar.addHint : t.sidebar.addPast,
       icon: <PlusIcon size={20} />,
       onSelect: pick(onAddRide),
       disabled: !canAdd,
     },
     {
-      label: userName ? 'Change name' : 'Enter your name',
-      hint: userName ? 'How colleagues see you' : 'Needed before you can get in a car',
+      label: userName ? t.sidebar.changeName : t.sidebar.enterName,
+      hint: userName ? t.sidebar.nameHint : t.sidebar.nameNeeded,
       icon: <UserIcon size={20} />,
       onSelect: pick(onEditName),
     },
     {
-      label: 'Company cars',
-      hint: 'Manage the pool (password)',
+      label: t.sidebar.cars,
+      hint: t.sidebar.carsHint,
       icon: <KeyIcon size={20} />,
       onSelect: pick(onCompanyCars),
     },
     {
-      label: 'Company car guide',
-      hint: 'Charging with the card, the Mazda 6e',
+      label: t.sidebar.guide,
+      hint: t.sidebar.guideHint,
       icon: <InfoIcon size={20} />,
       onSelect: pick(onGuide),
     },
@@ -99,7 +103,7 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
           <h2 id="sidebar-title" className="topbar-title">
             <CarIcon size={20} /> Karpul
           </h2>
-          <button type="button" className="icon-btn" aria-label="Close menu" onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label={t.sidebar.closeMenu} onClick={onClose}>
             <XIcon />
           </button>
         </header>
@@ -107,12 +111,12 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
         <button type="button" className="drawer-me" onClick={pick(onEditName)}>
           <Avatar name={userName || '?'} size="lg" />
           <span className="drawer-me-text">
-            <span className="drawer-me-name">{userName || 'No name yet'}</span>
-            <span className="drawer-me-hint">{userName ? 'You, in this browser' : 'Tap to introduce yourself'}</span>
+            <span className="drawer-me-name">{userName || t.sidebar.noName}</span>
+            <span className="drawer-me-hint">{userName ? t.sidebar.youHere : t.sidebar.tapIntro}</span>
           </span>
         </button>
 
-        <nav className="drawer-nav" aria-label="Menu">
+        <nav className="drawer-nav" aria-label={t.common.menu}>
           {items.map((it) => (
             <button key={it.label} type="button" className="drawer-item" disabled={it.disabled} onClick={it.onSelect}>
               <span className="drawer-item-icon">{it.icon}</span>
@@ -123,6 +127,10 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
             </button>
           ))}
         </nav>
+
+        <div className="drawer-foot">
+          <LanguageSwitch />
+        </div>
       </div>
     </div>
   )

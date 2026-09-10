@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { firstName, sameName, shortCarName } from '../lib/dates'
+import { useT } from '../lib/i18n'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
@@ -32,6 +33,7 @@ function canReceive(ride: Ride, userName: string): boolean {
  * car without opening it first.
  */
 export function CarCarousel({ rides, selected, userName, dragActive, over, canAdd, onSelect }: Props) {
+  const t = useT()
   const strip = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,8 +45,8 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
   const scrollBy = (dir: -1 | 1) => strip.current?.scrollBy({ left: dir * 200, behavior: 'smooth' })
 
   return (
-    <section className="cars" aria-label="Rides">
-      <button type="button" className="icon-btn cars-arrow" aria-label="Scroll rides left" onClick={() => scrollBy(-1)}>
+    <section className="cars" aria-label={t.carousel.label}>
+      <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollLeft} onClick={() => scrollBy(-1)}>
         <ChevronLeftIcon />
       </button>
       <div ref={strip} className="cars-strip">
@@ -95,11 +97,11 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
             onClick={() => onSelect('new')}
           >
             <PlusIcon size={22} />
-            <span className="car-tile-name">Add ride</span>
+            <span className="car-tile-name">{t.carousel.addRide}</span>
           </button>
         )}
       </div>
-      <button type="button" className="icon-btn cars-arrow" aria-label="Scroll rides right" onClick={() => scrollBy(1)}>
+      <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollRight} onClick={() => scrollBy(1)}>
         <ChevronRightIcon />
       </button>
     </section>

@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { useT } from '../lib/i18n'
 import { XIcon } from './icons'
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
  * pushes the buttons off-screen.
  */
 export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'div', onSubmit, footer, className }: Props) {
+  const t = useT()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -43,7 +45,7 @@ export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'd
       <div className="panel-grab" aria-hidden="true" />
       <header className="panel-head">
         <h2 id={id}>{title}</h2>
-        <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
+        <button type="button" className="icon-btn" aria-label={t.common.close} onClick={onClose}>
           <XIcon />
         </button>
       </header>

@@ -1,3 +1,4 @@
+import { useT } from '../lib/i18n'
 import { CarIcon, PlusIcon } from './icons'
 
 interface Props {
@@ -11,13 +12,14 @@ interface Props {
 }
 
 /** The illustrated placeholder shown where a ride would be: "add one" or "nothing went". */
-export function AddCarCard({ userName, isPast, hasCars, emptyTitle = 'No rides on this day yet', onAdd, onEditName }: Props) {
+export function AddCarCard({ userName, isPast, hasCars, emptyTitle, onAdd, onEditName }: Props) {
+  const t = useT()
   if (isPast) {
     return (
       <div className="card empty-card">
         <Illustration muted />
-        <strong>{hasCars ? 'Pick a ride above' : 'No rides went on this day'}</strong>
-        <span>Past days are read-only.</span>
+        <strong>{hasCars ? t.empty.pickAbove : t.empty.noRidesWent}</strong>
+        <span>{t.empty.pastReadOnly}</span>
       </div>
     )
   }
@@ -25,16 +27,16 @@ export function AddCarCard({ userName, isPast, hasCars, emptyTitle = 'No rides o
     return (
       <button type="button" className="card empty-card empty-card-btn" onClick={onEditName}>
         <Illustration />
-        <strong>Who are you?</strong>
-        <span>Enter your name to add a ride or get into a car.</span>
+        <strong>{t.empty.whoAreYou}</strong>
+        <span>{t.empty.enterToAdd}</span>
       </button>
     )
   }
   return (
     <button type="button" className="card empty-card empty-card-btn" onClick={onAdd}>
       <Illustration plus />
-      <strong>{hasCars ? 'Add a new ride' : emptyTitle}</strong>
-      <span>Tap to enter the car, seats, times and route.</span>
+      <strong>{hasCars ? t.empty.addNew : (emptyTitle ?? t.empty.noRidesDay)}</strong>
+      <span>{t.empty.tapToEnter}</span>
     </button>
   )
 }

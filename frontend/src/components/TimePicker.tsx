@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { fmtTime } from '../lib/dates'
+import { useT } from '../lib/i18n'
+import { intlTag } from '../lib/locale'
 import { ClockIcon } from './icons'
 import { Popover } from './Popover'
 
@@ -13,11 +15,12 @@ interface Props {
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-/** Does this browser's locale write clock times with AM/PM? */
-const TWELVE_HOUR = new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).resolvedOptions().hour12 === true
+/** Does the app's locale write clock times with AM/PM? (Serbian never does.) */
+const twelveHour = () => new Intl.DateTimeFormat(intlTag(), { hour: 'numeric' }).resolvedOptions().hour12 === true
 
 /** Hour and minute columns in a popover, replacing the native time input. Always the same UI. */
 export function TimePicker({ value, onChange, label, disabled }: Props) {
+  const t = useT()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const id = useId()
 
@@ -43,7 +46,7 @@ export function TimePicker({ value, onChange, label, disabled }: Props) {
           <Columns value={value} onChange={onChange} />
           <div className="popover-foot">
             <button type="button" className="btn btn-primary btn-sm" onClick={() => setAnchor(null)}>
-              Done
+              {t.common.done}
             </button>
           </div>
         </Popover>
@@ -53,6 +56,7 @@ export function TimePicker({ value, onChange, label, disabled }: Props) {
 }
 
 function Columns({ value, onChange }: { value: string; onChange: (hhmm: string) => void }) {
+  const t = useT()
   const [h, m] = value.split(':').map(Number)
   const set = (hour: number, minute: number) => onChange(`${pad(hour)}:${pad(minute)}`)
 
@@ -63,11 +67,11 @@ function Columns({ value, onChange }: { value: string; onChange: (hhmm: string) 
     minutes.sort((a, b) => a - b)
   }
 
-  if (!TWELVE_HOUR) {
+  if (!twelveHour()) {
     return (
       <div className="timepick">
-        <Column label="Hour" items={Array.from({ length: 24 }, (_, i) => ({ v: i, text: pad(i) }))} value={h} onPick={(v) => set(v, m)} />
-        <Column label="Minute" items={minutes.map((v) => ({ v, text: pad(v) }))} value={m} onPick={(v) => set(h, v)} />
+        <Column label={t.time.hour} items={Array.from({ length: 24 }, (_, i) => ({ v: i, text: pad(i) }))} value={h} onPick={(v) => set(v, m)} />
+        <Column label={t.time.minute} items={minutes.map((v) => ({ v, text: pad(v) }))} value={m} onPick={(v) => set(h, v)} />
       </div>
     )
   }
@@ -78,14 +82,14 @@ function Columns({ value, onChange }: { value: string; onChange: (hhmm: string) 
   return (
     <div className="timepick">
       <Column
-        label="Hour"
+        label={t.time.hour}
         items={[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((v) => ({ v, text: String(v) }))}
         value={h12}
         onPick={(v) => set(to24(v, pm), m)}
       />
-      <Column label="Minute" items={minutes.map((v) => ({ v, text: pad(v) }))} value={m} onPick={(v) => set(h, v)} />
+      <Column label={t.time.minute} items={minutes.map((v) => ({ v, text: pad(v) }))} value={m} onPick={(v) => set(h, v)} />
       <Column
-        label="AM or PM"
+        label={t.time.ampm}
         items={[
           { v: 0, text: 'AM' },
           { v: 1, text: 'PM' },
