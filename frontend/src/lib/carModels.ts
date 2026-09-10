@@ -1,9 +1,10 @@
 /**
  * What the board knows about a car from its name alone.
  *
- * Two levels: a *model* the board can draw (`carModel`, artwork in
- * `components/CarArt.tsx`), and a *brand* whose logo it can show
- * (`carBrand`, marks from the `simple-icons` package). Both run on
+ * Three things: a *model* the board can draw (`carModel`, artwork in
+ * `components/CarArt.tsx`), a *brand* whose logo it can show (`carBrand`,
+ * marks from the `simple-icons` package) and what *drives* it
+ * (`carPowertrain`: electric, hybrid or nothing to say). All run on
  * `Ride.car_name` ("Mazda 6e (BG-123-XY)", "grey Octavia") as well as on the
  * pool's own `CorporateCar.name`, so the plate suffix and any colour or
  * chit-chat around the name must be tolerated.
@@ -141,4 +142,65 @@ export function carBrand(carName: string): CarBrand | null {
   const byMake = BRAND_TESTS.find((b) => b.makes.some((re) => re.test(name)))
   if (byMake) return byMake.brand
   return BRAND_TESTS.find((b) => b.models.some((re) => re.test(name)))?.brand ?? null
+}
+
+export type Powertrain = 'electric' | 'hybrid'
+
+const POWERTRAIN_LABEL: Record<Powertrain, string> = { electric: 'Electric', hybrid: 'Hybrid' }
+
+/** "Electric" / "Hybrid", for tags and titles. */
+export function powertrainLabel(kind: Powertrain): string {
+  return POWERTRAIN_LABEL[kind]
+}
+
+/**
+ * Words that say outright what the car runs on. Hybrid words are checked
+ * first so "plug-in hybrid electric" is a hybrid, and "Niro EV" beats the
+ * hybrid Niro below because a word always wins over a model. Same `=` rule as
+ * the brand lists: Škoda's plug-ins are written "Octavia iV", and "IV" or
+ * "iv" is just a generation number.
+ */
+const HYBRID_WORDS = ['hybrid', 'hibrid', 'hibridni', 'hibridna', 'hibridno', 'hybride', 'ehybrid', 'e-hybrid', 'phev', 'hev', 'mhev', 'plug-in', 'plugin', 'gte', '4xe', 'e-power', '=iV']
+const ELECTRIC_WORDS = ['electric', 'electro', 'elektro', 'električni', 'električna', 'električno', 'elektricni', 'elektricna', 'elektricno', 'na struju', 'ev', 'bev', 'e-auto', 'e-car']
+
+/**
+ * Models sold only with that drivetrain, so the name alone settles it. Ones
+ * that come both ways (Kona, Niro, Ioniq, Corolla…) are left to the words
+ * above. Tesla and Polestar make nothing else, so the make is enough.
+ */
+const ELECTRIC_MODELS = [
+  'tesla', 'polestar', 'mazda 6e', 'mazda6e',
+  'id.3', 'id.4', 'id.5', 'id.7', 'id. buzz', 'id.buzz', 'e-golf', 'e-up',
+  'e-tron', 'etron', 'q4 e-tron', 'q6 e-tron',
+  'i3', 'i4', 'i5', 'i7', '=iX', 'ix1', 'ix2', 'ix3',
+  'zoe', 'megane e-tech', 'scenic e-tech', 'scénic e-tech', '=Leaf', 'ariya', 'e-208', 'e-2008', 'e-308', 'e-c4', 'e-berlingo',
+  '500e', '600e', 'enyaq', 'elroq', 'ev3', 'ev6', 'ev9', 'niro ev', 'kona electric', 'ioniq 5', 'ioniq 6', 'inster',
+  'bz4x', 'taycan', 'solterra', 'ex30', 'ex90', 'ec40', 'mg4', 'mg5', 'zs ev', '=Spring', '=Born', 'mach-e', 'mach e',
+  'e:ny1', 'honda e', 'cybertruck', 'model 3', 'model y', 'model s', 'model x', 'smart eq', 'smart #1', 'smart #3',
+  'e-transit', 'e-vito', 'eqa', 'eqb', 'eqc', 'eqe', 'eqs', 'mokka-e', 'corsa-e', 'astra electric', 'ampera-e',
+]
+const HYBRID_MODELS = ['prius', 'niro', 'ioniq', 'yaris cross', 'c-hr', 'chr', 'rav4 phev', 'outlander phev', 'e-tech']
+
+const HYBRID_TESTS = compile(HYBRID_WORDS)
+const ELECTRIC_TESTS = compile(ELECTRIC_WORDS)
+const ELECTRIC_MODEL_TESTS = compile(ELECTRIC_MODELS)
+const HYBRID_MODEL_TESTS = compile(HYBRID_MODELS)
+// BMW writes its plug-ins as a three-figure number plus "e" (330e, 530e, X5 45e).
+const BMW_PLUGIN = new RegExp(`${NOT_BEFORE}\\d{2,3}e${NOT_AFTER}`, 'iu')
+
+/**
+ * Electric, hybrid or null (petrol, diesel or simply unsaid), from the name.
+ * The plate suffix is stripped first so "EV-123" on a plate does not count.
+ * A drawn model that is electric (`CarModel.electric`) counts as such too.
+ */
+export function carPowertrain(carName: string): Powertrain | null {
+  const name = carName.replace(/\s*\([^)]*\)\s*$/, '')
+  if (!name.trim()) return null
+  if (HYBRID_TESTS.some((re) => re.test(name))) return 'hybrid'
+  if (ELECTRIC_TESTS.some((re) => re.test(name))) return 'electric'
+  if (carModel(name)?.electric) return 'electric'
+  if (ELECTRIC_MODEL_TESTS.some((re) => re.test(name))) return 'electric'
+  if (HYBRID_MODEL_TESTS.some((re) => re.test(name))) return 'hybrid'
+  if (carBrand(name)?.key === 'bmw' && BMW_PLUGIN.test(name)) return 'hybrid'
+  return null
 }

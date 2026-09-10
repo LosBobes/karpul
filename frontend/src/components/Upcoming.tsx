@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, sameName, shortCarName } from '../lib/dates'
 import type { Ride } from '../lib/types'
-import { CarGlyph } from './CarArt'
+import { CarGlyph, PowertrainBadge } from './CarArt'
 import { ChevronDownIcon } from './icons'
 
 interface Props {
@@ -16,8 +16,8 @@ interface Props {
 }
 
 /**
- * The next sessions as one list: a heading per day, a row per car going that
- * day. Tapping a row unfolds the full car card underneath it, so joining or
+ * The next sessions as one list: a heading per day, a row per ride going that
+ * day. Tapping a row unfolds the full ride card underneath it, so joining or
  * editing never leaves the list.
  */
 export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Props) {
@@ -38,7 +38,7 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
               {fmtDayLabel(day.date)}
               <span className="section-count">{fmtDayDate(day.date)}</span>
               <span className="section-meta">
-                {day.rides.length} {day.rides.length === 1 ? 'car' : 'cars'} · {free} free {free === 1 ? 'seat' : 'seats'}
+                {day.rides.length} {day.rides.length === 1 ? 'ride' : 'rides'} · {free} free {free === 1 ? 'seat' : 'seats'}
               </span>
             </h3>
             <ul className="session-list">
@@ -59,6 +59,7 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                       </span>
                       <span className="session-art" aria-hidden="true">
                         <CarGlyph carName={r.car_name} size={20} />
+                        <PowertrainBadge carName={r.car_name} />
                       </span>
                       <span className="session-text">
                         <strong>{shortCarName(r.car_name)}</strong>

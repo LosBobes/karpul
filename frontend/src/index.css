@@ -732,6 +732,34 @@ main {
   color: var(--blue);
 }
 
+/* --- Powertrain sticker --------------------------------------------------- */
+/* "Electric" (bolt) or "hybrid" (leaf), pinned to the top-right corner of a
+   picture slot: .car-tile-art, .session-art, .admin-car-icon and the driver
+   card's picture. The slot is position: relative and has a fixed size, so the
+   sticker lands in the same place whatever artwork is underneath and never
+   depends on how wide the drawing is. The phone block below makes it bigger. */
+.pt-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--surface);
+  pointer-events: none;
+}
+.pt-badge svg,
+.car-tile .pt-badge svg,
+.car-tile-selected .pt-badge svg {
+  width: 12px;
+  height: 12px;
+  color: #fff;
+}
+
 /* --- Avatars ------------------------------------------------------------- */
 .avatar {
   display: inline-grid;
@@ -968,8 +996,10 @@ main {
   color: var(--muted);
 }
 .car-tile-art {
+  position: relative;
   display: grid;
   place-items: center;
+  width: 64px;
   height: 28px;
   max-width: 100%;
 }
@@ -1125,6 +1155,7 @@ main {
   gap: 0.75rem;
 }
 .driver-car-art {
+  position: relative;
   display: grid;
   place-items: center;
   flex: none;
@@ -1135,6 +1166,7 @@ main {
 }
 /* No drawing of the model, but the make is known: its logo in the picture slot. */
 .driver-car-logo {
+  position: relative;
   display: grid;
   place-items: center;
   flex: none;
@@ -1267,6 +1299,7 @@ main {
   white-space: nowrap;
 }
 .session-art {
+  position: relative;
   display: grid;
   place-items: center;
   flex: none;
@@ -1841,11 +1874,11 @@ body.dragging {
   color: var(--muted);
 }
 .admin-car-icon {
+  position: relative;
   display: inline-grid;
   place-items: center;
   width: 48px;
   height: 36px;
-  overflow: hidden;
   border-radius: 10px;
   background: var(--green-soft);
   color: var(--green);
@@ -1933,6 +1966,23 @@ body.dragging {
   .session-art {
     width: 48px;
   }
+  /* Thumb-sized: a 12px glyph is a green dot at arm's length. */
+  .pt-badge {
+    top: -7px;
+    right: -7px;
+    width: 24px;
+    height: 24px;
+  }
+  .pt-badge svg,
+  .car-tile .pt-badge svg,
+  .car-tile-selected .pt-badge svg {
+    width: 16px;
+    height: 16px;
+  }
+  /* The list row's picture sits right against the car name: keep the sticker off the text. */
+  .session-art .pt-badge {
+    right: -3px;
+  }
   .session-detail {
     margin-left: 0.4rem;
     padding-left: 0.5rem;
@@ -1974,6 +2024,18 @@ body.dragging {
     /* The dashed outline is the only affordance on a phone (no cursor, no
        hover), so make it a touch louder than on desktop. */
     box-shadow: 0 0 0 2px var(--green-line);
+  }
+  .pt-badge {
+    top: -7px;
+    right: -7px;
+    width: 24px;
+    height: 24px;
+  }
+  .pt-badge svg,
+  .car-tile .pt-badge svg,
+  .car-tile-selected .pt-badge svg {
+    width: 16px;
+    height: 16px;
   }
 }
 

@@ -11,9 +11,9 @@ interface Props {
   date: string
   userName: string
   cars: CorporateCar[]
-  /** Editing this ride (the sheet says "Edit car" and offers Delete). */
+  /** Editing this ride (the sheet says "Edit ride" and offers Delete). */
   existing?: Ride | null
-  /** Pre-fill a new ride from this one ("Duplicate car"). */
+  /** Pre-fill a new ride from this one ("Duplicate ride"). */
   template?: Ride | null
   submitting: boolean
   error: string | null
@@ -34,7 +34,7 @@ function loadLastRoute(): { origin: string; destination: string; car_name: strin
   return { origin: '', destination: 'Office', car_name: '' }
 }
 
-/** The "Add car" / "Edit car" bottom sheet. */
+/** The "Add ride" / "Edit ride" bottom sheet. */
 export function RideForm({ date, userName, cars, existing, template, submitting, error, onSubmit, onDelete, onClose }: Props) {
   const seed = existing ?? template ?? null
   const [last] = useState(loadLastRoute)
@@ -86,18 +86,18 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
   return (
     <Sheet
       id="ride-form-title"
-      title={existing ? 'Edit car' : 'Add car'}
+      title={existing ? 'Edit ride' : 'Add ride'}
       as="form"
       onSubmit={submit}
       onClose={onClose}
       footer={
         <>
           <button type="submit" className="btn btn-primary btn-block" disabled={submitting || !!localError}>
-            {submitting ? 'Saving…' : existing ? 'Save changes' : 'Add car'}
+            {submitting ? 'Saving…' : existing ? 'Save changes' : 'Add ride'}
           </button>
           {existing && onDelete && (
             <button type="button" className="btn btn-outline-danger btn-block" disabled={submitting} onClick={onDelete}>
-              <TrashIcon size={18} /> Delete car
+              <TrashIcon size={18} /> Delete ride
             </button>
           )}
         </>

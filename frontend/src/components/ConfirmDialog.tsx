@@ -10,7 +10,7 @@ interface Props {
   onCancel: () => void
 }
 
-/** The "Remove this car?" card: a red trash badge, one line of consequence, two stacked buttons. */
+/** The "Remove this ride?" card: a red trash badge, one line of consequence, two stacked buttons. */
 export function ConfirmDialog({ title, body, confirmLabel, busy, onConfirm, onCancel }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()

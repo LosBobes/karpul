@@ -249,18 +249,18 @@ export default function App() {
   const onCancel = (ride: Ride) => {
     const n = ride.bookings.length
     setConfirm({
-      title: 'Remove this car?',
+      title: 'Remove this ride?',
       body:
         n > 0
           ? `${n} passenger${n === 1 ? ' is' : 's are'} in this car. They will lose their seat.`
-          : `${ride.car_name} (${ride.driver_name}) will be removed from ${fmtShortDate(ride.ride_date)}.`,
+          : `${ride.driver_name}'s ride in the ${ride.car_name} will be removed from ${fmtShortDate(ride.ride_date)}.`,
       label: 'Remove',
       onConfirm: () => {
         setConfirm(null)
         void withBusy(ride, async () => {
           await api.deleteRide(ride.id, userName)
           setRides((rs) => rs.filter((r) => r.id !== ride.id))
-          setToast({ kind: 'ok', text: 'Car removed.' })
+          setToast({ kind: 'ok', text: 'Ride removed.' })
         })
       },
     })
@@ -319,11 +319,11 @@ export default function App() {
         const { driver_name: _driver, ...patch } = input
         void _driver
         replaceRide(await api.updateRide(form.ride.id, patch, userName))
-        setToast({ kind: 'ok', text: 'Car updated.' })
+        setToast({ kind: 'ok', text: 'Ride updated.' })
         setCarSel(form.ride.id)
       } else {
         const created = await api.createRide(input)
-        setToast({ kind: 'ok', text: 'Car added.' })
+        setToast({ kind: 'ok', text: 'Ride added.' })
         setCarSel(created.id)
       }
       closeForm()
@@ -483,9 +483,9 @@ export default function App() {
             label="Options"
             items={
               upcoming
-                ? [{ label: 'Add car', icon: <PlusIcon size={18} />, onSelect: openNewCar }]
+                ? [{ label: 'Add ride', icon: <PlusIcon size={18} />, onSelect: openNewCar }]
                 : [
-                    { label: 'Add car', icon: <PlusIcon size={18} />, onSelect: openNewCar, disabled: !canAdd },
+                    { label: 'Add ride', icon: <PlusIcon size={18} />, onSelect: openNewCar, disabled: !canAdd },
                     { label: 'Go to today', icon: <CarIcon size={18} />, onSelect: () => setSelected(todayISO()) },
                   ]
             }
@@ -543,7 +543,7 @@ export default function App() {
                 />
                 <button type="button" className="add-row" onClick={openNewCar}>
                   <PlusIcon size={18} />
-                  Add a car
+                  Add a ride
                 </button>
               </>
             )}

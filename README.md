@@ -9,16 +9,17 @@ the app guards the company-car pool.
 ## What it does
 
 - **Upcoming** is the home screen: every session from today on as one list, a heading per day
-  and a row per car with its time, driver, route and free seats. Tap a row and the full car card
-  unfolds underneath it, so you get in, edit or duplicate without leaving the list. The list looks
-  90 days ahead.
-- **Week** is the day board: **pick a day** on the date carousel, then **swipe through the cars**
-  going that day. Each tile shows the car and its seat count; the open car shows the driver, when
-  it leaves and returns, where from and to, and who is in it. The switch between the two views is
-  remembered in the browser.
-- **Add a car** for a given day from the *+ Add car* tile: pick a **company car** from the pool or
-  use **your own car**, set how many **passenger seats** you offer, departure and return time (or
-  one-way), and pickup / drop-off locations.
+  and a row per ride with its time, driver, car, route and free seats. Tap a row and the full
+  ride card unfolds underneath it, so you get in, edit or duplicate without leaving the list. The
+  list looks 90 days ahead.
+- **Week** is the day board: **pick a day** on the date carousel, then **swipe through the rides**
+  going that day. Each tile shows the car and its seat count; the open ride shows the driver, when
+  it leaves and returns, where from and to, and who is in the car. The switch between the two
+  views is remembered in the browser.
+- **Add a ride** for a given day from the *+ Add ride* tile: pick a **company car** from the pool
+  or use **your own car**, set how many **passenger seats** you offer, departure and return time
+  (or one-way), and pickup / drop-off locations. The wording is deliberate: you add, edit or
+  remove a *ride*; the *car* is the vehicle it goes in.
 - **Company cars can't be double-booked** – overlapping time windows on the same day are rejected.
 - **Get into a car** by tapping *Get in this car*, or **drag your chip onto a car**. Drag it to
   another car to switch, or drop it back on *You* to get out. Works with a finger too: on a phone,
@@ -26,14 +27,17 @@ the app guards the company-car pool.
 - **Manage the company car pool** from the ☰ menu (*Company cars*): add a car, fix a
   name/plate/seat count, retire one that's been sold, or delete one that was never used.
   This is the one screen behind a password (see *Company-car admin* below).
-- A dot under a day on the carousel means at least one car is going that day.
-- Drivers can edit, duplicate or remove their car from its ⋮ menu, remove passengers and put a
+- A dot under a day on the carousel means at least one ride is going that day.
+- Drivers can edit, duplicate or remove their ride from its ⋮ menu, remove passengers and put a
   colleague in by name; passengers can leave. A driver can also **let the passengers manage the
-  list** (a switch in the car form and in the ⋮ menu): with it on, anyone already in the car can
+  list** (a switch in the ride form and in the ⋮ menu): with it on, anyone already in the car can
   add or remove other passengers too.
 - Cars get a face from their name: a known model is drawn (the Mazda 6e so far), otherwise a
   recognised make shows its logo ("grey Golf" gets the VW mark, "Octavia" the Škoda one), and
-  anything else keeps the generic car icon.
+  anything else keeps the generic car icon. A round sticker in the corner says what the car runs
+  on: a bolt for **electric**, a leaf for a **hybrid**, worked out from the name ("Kona
+  Electric", "Corolla hybrid", "Outlander PHEV", "Golf GTE", "Octavia iV") or from a model that
+  only comes one way (Tesla, ID.4, Enyaq, Prius…).
 - **Live board.** Every tab holds a WebSocket to `/api/ws`; when anyone offers, edits or
   cancels a ride, joins or leaves one, or edits the car pool, everybody else sees it at once.
   The header lamp shows *Live*, *Connecting* or *Offline*; while offline the board falls back

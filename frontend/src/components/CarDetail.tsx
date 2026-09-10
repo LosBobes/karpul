@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from 'react'
-import { carBrand, carModel } from '../lib/carModels'
+import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carModels'
 import { fmtTime, sameName } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
-import { BrandLogo, CarArt } from './CarArt'
+import { BrandLogo, CarArt, PowertrainBadge } from './CarArt'
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -13,6 +13,7 @@ import {
   CopyIcon,
   GripIcon,
   KebabIcon,
+  LeafIcon,
   PencilIcon,
   PinIcon,
   PlusIcon,
@@ -48,8 +49,8 @@ interface Props {
 }
 
 /**
- * The selected car: who drives, when it leaves and comes back, where from and
- * to, and who is in it. The passenger list doubles as the drop zone.
+ * The selected ride: who drives, when it leaves and comes back, where from and
+ * to, and who is in the car. The passenger list doubles as the drop zone.
  */
 export function CarDetail({
   ride,
@@ -73,6 +74,7 @@ export function CarDetail({
   const isDriver = sameName(userName, ride.driver_name)
   const model = carModel(ride.car_name)
   const brand = model ? null : carBrand(ride.car_name)
+  const powertrain = carPowertrain(ride.car_name)
   const myBooking = ride.bookings.find((b) => sameName(b.passenger_name, userName))
   const full = ride.free_seats <= 0
   const canJoin = !!userName && !isDriver && !myBooking && !full && !busy && !isPast
@@ -96,17 +98,17 @@ export function CarDetail({
 
   const menuItems = isDriver
     ? [
-        { label: 'Edit car', icon: <PencilIcon size={18} />, onSelect: () => onEdit(ride), disabled: busy },
+        { label: 'Edit ride', icon: <PencilIcon size={18} />, onSelect: () => onEdit(ride), disabled: busy },
         {
           label: ride.passengers_manage ? 'Stop passengers managing seats' : 'Let passengers manage seats',
           icon: <UsersIcon size={18} />,
           onSelect: () => onTogglePassengersManage(ride),
           disabled: busy || isPast,
         },
-        { label: 'Duplicate car', icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: busy },
-        { label: 'Remove car', icon: <TrashIcon size={18} />, onSelect: () => onCancel(ride), danger: true, disabled: busy },
+        { label: 'Duplicate ride', icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: busy },
+        { label: 'Remove ride', icon: <TrashIcon size={18} />, onSelect: () => onCancel(ride), danger: true, disabled: busy },
       ]
-    : [{ label: 'Duplicate as my car', icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: !userName }]
+    : [{ label: 'Duplicate as my ride', icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: !userName }]
 
   return (
     <div className="detail">
@@ -118,7 +120,7 @@ export function CarDetail({
             <span className="tag tag-green">Driver</span>
             {isDriver && <span className="tag">You</span>}
           </div>
-          <Menu trigger={<KebabIcon />} label="Car options" items={menuItems} />
+          <Menu trigger={<KebabIcon />} label="Ride options" items={menuItems} />
         </header>
 
         <div className="driver-times">
@@ -161,11 +163,13 @@ export function CarDetail({
           {model && (
             <span className="driver-car-art" aria-hidden="true">
               <CarArt model={model.key} width={104} />
+              <PowertrainBadge kind={powertrain} />
             </span>
           )}
           {brand && (
             <span className="driver-car-logo" title={brand.name}>
               <BrandLogo brand={brand.key} size={30} />
+              <PowertrainBadge kind={powertrain} />
             </span>
           )}
           <span className="driver-car-text">
@@ -173,9 +177,10 @@ export function CarDetail({
               <span className={`tag ${ride.car_type === 'corporate' ? 'tag-blue' : ''}`}>
                 {ride.car_type === 'corporate' ? 'Company car' : 'Own car'}
               </span>
-              {model?.electric && (
+              {powertrain && (
                 <span className="tag tag-green tag-icon">
-                  <BoltIcon size={12} strokeWidth={2.25} /> Electric
+                  {powertrain === 'electric' ? <BoltIcon size={13} strokeWidth={2.25} /> : <LeafIcon size={13} strokeWidth={2.25} />}{' '}
+                  {powertrainLabel(powertrain)}
                 </span>
               )}
             </span>

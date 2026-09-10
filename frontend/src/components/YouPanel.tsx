@@ -128,14 +128,14 @@ export function YouPanel({
                     ? `You rode with ${firstName(currentRide.driver_name)}.`
                     : 'This day is over.'
                   : driving
-                    ? 'Driving your own car.'
+                    ? "You're the driver."
                     : seated
                       ? `In ${firstName(currentRide.driver_name)}'s car. ${verb} to another car, or drop here to get out.`
                       : openSeats
                         ? `Not in a car yet. ${verb} onto a car, or open one and tap "Get in".`
                         : dayRides.length
                           ? 'No free seats today.'
-                          : 'No cars on this day yet.'}
+                          : 'No rides on this day yet.'}
               </span>
             </span>
             {seated && !isPast && (
