@@ -127,14 +127,31 @@ export default function App() {
   }, [view, selected])
   const rangeKey = `${range.from}:${range.to}`
 
-  const load = useCallback(async () => {
-    try {
-      setRides(await api.rides(range.from, range.to))
-    } catch (e) {
-      setToast({ kind: 'error', text: `Could not load rides: ${errMsg(e)}` })
-    } finally {
-      setLoadedRange(rangeKey)
-    }
+  // Loads overlap when twenty people are busy: a reconnect, a range change and a
+  // `cars.changed` can all be in flight together, and a live event can land
+  // between sending the request and getting the answer. Only the newest load
+  // may set the board, and an answer that an event may have overtaken is
+  // fetched once more instead of being trusted.
+  const loadSeq = useRef(0)
+  const eventDuringLoad = useRef(false)
+
+  const load = useCallback(async (): Promise<void> => {
+    const seq = ++loadSeq.current
+    let next: Ride[] | null = null
+    // One more round trip whenever an event overtook the answer; a quiet one ends it.
+    do {
+      eventDuringLoad.current = false
+      try {
+        next = await api.rides(range.from, range.to)
+      } catch (e) {
+        if (seq === loadSeq.current) setToast({ kind: 'error', text: `Could not load rides: ${errMsg(e)}` })
+        next = null
+        break
+      }
+    } while (seq === loadSeq.current && eventDuringLoad.current)
+    if (seq !== loadSeq.current) return // superseded; that load sets the board
+    if (next) setRides(next)
+    setLoadedRange(rangeKey)
   }, [range, rangeKey])
 
   useEffect(() => {
@@ -155,20 +172,29 @@ export default function App() {
     setCars(all.filter((c) => c.active))
   }, [])
 
+  /** Put a ride the server just returned (over REST or the socket) in its row.
+   *  An edit can move a ride into or out of the loaded range. */
+  const upsertRide = useCallback(
+    (ride: Ride) =>
+      setRides((rs) => {
+        const inRange = ride.ride_date >= range.from && ride.ride_date <= range.to
+        const rest = rs.filter((r) => r.id !== ride.id)
+        return inRange ? sortRides([...rest, ride]) : rest
+      }),
+    [range],
+  )
+
   // Live board: the server pushes every change anyone makes (lib/live.ts).
   const onLiveEvent = useCallback(
     (ev: LiveEvent) => {
       switch (ev.type) {
         case 'ride.created':
         case 'ride.updated':
-          setRides((rs) => {
-            // An edit can move a ride into or out of the loaded range.
-            const inRange = ev.ride.ride_date >= range.from && ev.ride.ride_date <= range.to
-            const rest = rs.filter((r) => r.id !== ev.ride.id)
-            return inRange ? sortRides([...rest, ev.ride]) : rest
-          })
+          eventDuringLoad.current = true
+          upsertRide(ev.ride)
           break
         case 'ride.deleted':
+          eventDuringLoad.current = true
           setRides((rs) => rs.filter((r) => r.id !== ev.ride_id))
           break
         case 'cars.changed':
@@ -182,7 +208,7 @@ export default function App() {
           break
       }
     },
-    [range, load, adminUnlocked, adminPassword, applyCars],
+    [upsertRide, load, adminUnlocked, adminPassword, applyCars],
   )
   const liveStatus = useLiveBoard({ onEvent: onLiveEvent, onConnect: load })
 
@@ -204,10 +230,6 @@ export default function App() {
     return () => clearTimeout(id)
   }, [toast])
 
-  function replaceRide(updated: Ride) {
-    setRides((rs) => rs.map((r) => (r.id === updated.id ? updated : r)))
-  }
-
   async function withBusy(ride: Ride, fn: () => Promise<void>) {
     setBusyId(ride.id)
     try {
@@ -222,19 +244,19 @@ export default function App() {
 
   const onJoin = (ride: Ride) =>
     withBusy(ride, async () => {
-      replaceRide(await api.join(ride.id, userName, userName))
+      upsertRide(await api.join(ride.id, userName, userName))
       setToast({ kind: 'ok', text: `You're in with ${ride.driver_name}.` })
     })
 
   const onLeave = (ride: Ride, bookingId: number) =>
     withBusy(ride, async () => {
-      replaceRide(await api.leave(ride.id, bookingId, userName))
+      upsertRide(await api.leave(ride.id, bookingId, userName))
     })
 
   /** The driver, or a passenger when the driver allows it, puts a colleague in. */
   const onAddPassenger = (ride: Ride, name: string) =>
     withBusy(ride, async () => {
-      replaceRide(await api.join(ride.id, name, userName))
+      upsertRide(await api.join(ride.id, name, userName))
       setToast({ kind: 'ok', text: `${name} is in with ${ride.driver_name}.` })
     })
 
@@ -242,7 +264,7 @@ export default function App() {
   const onTogglePassengersManage = (ride: Ride) =>
     withBusy(ride, async () => {
       const on = !ride.passengers_manage
-      replaceRide(await api.updateRide(ride.id, { passengers_manage: on }, userName))
+      upsertRide(await api.updateRide(ride.id, { passengers_manage: on }, userName))
       setToast({ kind: 'ok', text: on ? 'Passengers can now add and remove each other.' : 'Only you manage the passenger list now.' })
     })
 
@@ -272,9 +294,9 @@ export default function App() {
     setCarSel(target.id)
     void withBusy(target, async () => {
       if (drag.fromRideId !== null && drag.bookingId !== null && drag.fromRideId !== target.id) {
-        replaceRide(await api.leave(drag.fromRideId, drag.bookingId, userName))
+        upsertRide(await api.leave(drag.fromRideId, drag.bookingId, userName))
       }
-      replaceRide(await api.join(target.id, userName, userName))
+      upsertRide(await api.join(target.id, userName, userName))
       setToast({ kind: 'ok', text: `You're in with ${target.driver_name}.` })
     })
   }
@@ -318,17 +340,19 @@ export default function App() {
       if (form?.mode === 'edit') {
         const { driver_name: _driver, ...patch } = input
         void _driver
-        replaceRide(await api.updateRide(form.ride.id, patch, userName))
+        upsertRide(await api.updateRide(form.ride.id, patch, userName))
         setToast({ kind: 'ok', text: 'Ride updated.' })
         setCarSel(form.ride.id)
       } else {
         const created = await api.createRide(input)
+        upsertRide(created)
         setToast({ kind: 'ok', text: 'Ride added.' })
         setCarSel(created.id)
       }
       closeForm()
+      // The response is the ride as saved, so the board needs no reload; a
+      // date outside the loaded range changes `range` and loads on its own.
       setSelectedDate(input.ride_date)
-      void load()
     } catch (e) {
       setFormError(errMsg(e))
     } finally {

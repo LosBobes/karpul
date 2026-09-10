@@ -22,6 +22,8 @@ logs:
 deploy:
 	ssh $(HOST) "cd $(DEPLOY_PATH) && git fetch origin main && git reset --hard origin/main && docker compose -f docker-compose.prod.yml up --build -d --remove-orphans && docker image prune -f"
 
-# Copy the live SQLite database to ./karpul-<date>.db.
+# Snapshot the live SQLite database to ./karpul-<date>.db. Goes through
+# SQLite's backup API (backend/app/backup.py), not `cat`: the database runs in
+# WAL mode, so the file on its own is missing whatever is still in karpul.db-wal.
 backup:
-	ssh $(HOST) "docker compose -f $(DEPLOY_PATH)/docker-compose.prod.yml exec -T app cat /data/karpul.db" > karpul-$$(date +%Y%m%d).db
+	ssh $(HOST) "docker compose -f $(DEPLOY_PATH)/docker-compose.prod.yml exec -T app python -m app.backup" > karpul-$$(date +%Y%m%d).db

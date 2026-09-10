@@ -2,9 +2,10 @@ from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from ..database import get_session
+from ..database import get_session, get_write_session
 from ..events import ride_deleted, ride_saved
 from ..models import Booking, CarType, Ride
 from ..schemas import BookingCreate, BookingRead, RideCreate, RideRead, RideUpdate
@@ -18,6 +19,9 @@ from ..services import (
 router = APIRouter(prefix="/api/rides", tags=["rides"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
+# Every mutation is check-then-write (free seats, car availability, ownership),
+# so it runs under the write lock from the first statement (database.begin_write).
+WriteSessionDep = Annotated[Session, Depends(get_write_session)]
 UserName = Annotated[str | None, Header(alias="X-User-Name")]
 
 
@@ -67,13 +71,16 @@ def list_rides(
     stmt = (
         select(Ride)
         .where(Ride.ride_date >= date_from, Ride.ride_date <= date_to)
+        # Bookings are fetched in one extra query for the whole list rather
+        # than lazily once per ride; every tab reloads this on reconnect.
+        .options(selectinload(Ride.bookings))  # type: ignore[arg-type]
         .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
     )
     return [to_ride_read_dict(r) for r in session.exec(stmt).all()]
 
 
 @router.post("", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def create_ride(payload: RideCreate, session: SessionDep):
+def create_ride(payload: RideCreate, session: WriteSessionDep):
     data = payload.model_dump()
     if payload.car_type == CarType.corporate:
         car = resolve_corporate_car(session, payload.corporate_car_id)  # type: ignore[arg-type]
@@ -100,7 +107,7 @@ def get_ride(ride_id: int, session: SessionDep):
 
 
 @router.patch("/{ride_id}", response_model=RideRead)
-def update_ride(ride_id: int, payload: RideUpdate, session: SessionDep, user: UserName = None):
+def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, user: UserName = None):
     user = _require_user(user)
     ride = _get_ride_or_404(session, ride_id)
     if _norm(ride.driver_name) != _norm(user):
@@ -144,7 +151,7 @@ def update_ride(ride_id: int, payload: RideUpdate, session: SessionDep, user: Us
 
 
 @router.delete("/{ride_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_ride(ride_id: int, session: SessionDep, user: UserName = None):
+def delete_ride(ride_id: int, session: WriteSessionDep, user: UserName = None):
     user = _require_user(user)
     ride = _get_ride_or_404(session, ride_id)
     if _norm(ride.driver_name) != _norm(user):
@@ -172,7 +179,7 @@ def _may_manage_seats(ride: Ride, actor: str) -> bool:
 
 
 @router.post("/{ride_id}/bookings", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def join_ride(ride_id: int, payload: BookingCreate, session: SessionDep, user: UserName = None):
+def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, user: UserName = None):
     """Put `passenger_name` in the car.
 
     Without `X-User-Name` this is a self-join: the passenger is the actor. With
@@ -207,7 +214,7 @@ def list_bookings(ride_id: int, session: SessionDep):
 
 
 @router.delete("/{ride_id}/bookings/{booking_id}", response_model=RideRead)
-def leave_ride(ride_id: int, booking_id: int, session: SessionDep, user: UserName = None):
+def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, user: UserName = None):
     user = _require_user(user)
     ride = _get_ride_or_404(session, ride_id)
     booking = next((b for b in ride.bookings if b.id == booking_id), None)

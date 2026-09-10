@@ -29,7 +29,7 @@ Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
 CI (`.github/workflows/ci.yml`) runs exactly: backend `pytest -q`, frontend `npm run lint` and `npm run build`. There is no frontend test runner and no Python linter/formatter configured. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
-Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`.
+Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`. The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits.
 
 ## Architecture
 
@@ -38,6 +38,22 @@ FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, ship
 **No auth, by design.** The user types a name once; it lives in `localStorage` (`lib/useUserName.ts`) and is sent as the `X-User-Name` header on mutations that need an actor (PATCH/DELETE ride, POST/DELETE booking). Joining a ride passes the passenger's name in the body; the header is who is doing it, and without it the passenger is taken to be the actor (a self-join). Name comparison is whitespace-collapsed + casefolded (`_norm` in `routers/rides.py`, `sameName` in `lib/dates.ts`) — keep both sides in sync if the rule changes.
 
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
+
+**Many people at once.** Twenty colleagues tap "get in" at the same minute, so the DB layer
+(`database.py`) is built for it: SQLite runs in WAL mode with a busy timeout (readers never wait
+for the writer), and every mutating route takes `WriteSessionDep` (`get_write_session`) instead
+of `SessionDep`. That starts the request's transaction as `BEGIN IMMEDIATE`, so the check-then-write
+in the handler (free seats, the car's time window, the plate) is serialised against every other
+writer and cannot overbook; `begin_write` must be the first thing on the session and refuses one
+that already ran a query. pysqlite's own transaction handling is switched off and SQLAlchemy's
+`begin` event issues the `BEGIN`, which means **every engine is built through `make_engine`** —
+the tests' included. `tests/test_concurrency.py` hammers the last seat and the corporate-car
+window from 20 threads on a file database (the shared in-memory test engine cannot show these
+races) and must keep passing. Around that: `GET /api/rides` eager-loads bookings (`selectinload`,
+two queries for the whole board instead of one per ride), API responses are gzipped, `/assets`
+are served immutable and `index.html` `no-cache`. On the frontend, `load()` in `App.tsx` is
+sequence-guarded (only the newest request may set the board) and repeats itself while socket
+events keep landing mid-flight; mutation responses go through `upsertRide` instead of a reload.
 
 **Schema changes.** `create_all` never adds a column to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start and `tests/test_migrations.py` proves it. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
 
@@ -158,7 +174,7 @@ then `join`; dropping on the tray issues `leave`.
 
 **Company cars** are seeded from `CORPORATE_CARS` (`Name|PLATE|seats;…`) only while the `corporatecar` table is empty (`seed.py`); after that the pool is managed through the admin endpoints. `GET /api/cars/corporate` stays public and active-only, so `App.tsx` keeps the admin list (`adminCars`, everything) and the ride-form list (`cars`, `active` only) as two views of one fetch — `applyCars()`.
 
-Tests (`backend/tests/conftest.py`) use an in-memory SQLite engine with `StaticPool` and override `get_session`. `TestClient` is intentionally used **without** a context manager so the lifespan never runs and the on-disk DB is never touched.
+Tests (`backend/tests/conftest.py`) use an in-memory SQLite engine (`make_engine("sqlite://", poolclass=StaticPool)`) and override `get_session`; `get_write_session` wraps it, so the override covers both. `TestClient` is intentionally used **without** a context manager so the lifespan never runs and the on-disk DB is never touched.
 
 ## Deployment
 

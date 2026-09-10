@@ -45,7 +45,9 @@ class Ride(SQLModel, table=True):
 
     corporate_car: CorporateCar | None = Relationship(back_populates="rides")
     bookings: list["Booking"] = Relationship(
-        back_populates="ride", sa_relationship_kwargs={"cascade": "all, delete-orphan"}
+        back_populates="ride",
+        # Oldest first, whichever way they were loaded (lazily or in bulk).
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Booking.id"},
     )
 
 

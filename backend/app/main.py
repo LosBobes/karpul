@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
@@ -40,6 +41,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# The 90-day board is the biggest thing on the wire and every tab reloads it on
+# reconnect; compressed it is a fraction of the size on the office Wi-Fi.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 app.include_router(cars.router)
 app.include_router(rides.router)
 app.include_router(live.router)
@@ -50,13 +55,24 @@ def health():
     return {"status": "ok"}
 
 
+class HashedAssets(StaticFiles):
+    """Vite names every bundle by content hash, so a browser may keep it for good
+    and a returning phone downloads only `index.html`."""
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
 # Serve the built frontend (if present) so a single process can host everything.
 if FRONTEND_DIST.is_dir():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+    app.mount("/assets", HashedAssets(directory=FRONTEND_DIST / "assets"), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
         candidate = FRONTEND_DIST / full_path
         if full_path and candidate.is_file():
             return FileResponse(candidate)
-        return FileResponse(FRONTEND_DIST / "index.html")
+        # The shell is tiny and must always point at the current bundles.
+        return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
