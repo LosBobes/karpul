@@ -70,31 +70,28 @@ there is no login endpoint.
 
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings` and the computed `free_seats`. Every ride-returning endpoint goes through it.
 
-**Styling and the fancy components.** The frontend is Tailwind v4 (via `@tailwindcss/vite`)
-plus a hand-written design system in `src/index.css` — a dark "departure board" identity: hairline
-rules instead of shadows, 2px radius, Barlow Condensed for signage labels and IBM Plex Mono for
-anything numeric (times, plates, seat counts). The semantic class names (`.ride`, `.day`, `.btn`,
-`.chip`, …) are the contract the components render against; Tailwind utilities are used by the
-vendored components and for new markup. Two media blocks at the end carry the phone layout:
-`max-width: 600px` (one-column rides, bottom-sheet modals, safe-area padding) and
-`pointer: coarse` (44px targets, hover choreography switched off). `lib/useCoarsePointer.ts`
-exposes the same query to components that need to change their wording. Fonts are bundled from `@fontsource` in `main.tsx` rather
-than fetched from Google, because the app ships as one self-hosted container.
+**Styling.** The frontend is Tailwind v4 (via `@tailwindcss/vite`) plus a hand-written design
+system in `src/index.css`: a light, phone-first, card-based UI — off-white ground, white cards with
+1px borders and a faint shadow, 12px corners, one green accent for "selected / go", red only for
+removal, Inter throughout (bundled from `@fontsource/inter` in `main.tsx`, because the app ships as
+one self-hosted container). The semantic class names (`.card`, `.date`, `.car-tile`, `.pax-row`,
+`.panel`, `.btn`, …) are the contract the components render against. The layout is a single
+560px column centred on a desktop; two media blocks at the end carry the phone layout:
+`max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
+choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
+query to components that need to change their wording. Icons are inline SVGs in
+`components/icons.tsx`; avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
 
-`src/fancy/` holds components copied from the fancy registry (`https://fancycomponents.dev/r/{name}.json`,
-MIT). They are vendored, not installed: each file carries a header naming its source and the local
-edits needed for this toolchain (no `"use client"`, no `NodeJS` types, `verbatimModuleSyntax`). They
-import `@/lib/utils`, hence the `@` → `src` alias in `vite.config.ts` and `tsconfig.app.json`.
-`src/fancy/**` is in `.oxlintrc.json`'s `ignorePatterns` — it is third-party code we deliberately
-do not restyle to local conventions.
-
-`components/BoardText.tsx` wraps `VerticalCutReveal` and is the only thing that should use it
-directly. That component clips its characters with `overflow-hidden` and slides them in from
-`y: 100%`, so if the animation never runs the text is *invisible*, not merely static — which happens
-in a background tab (rAF is throttled and the spring freezes part-way) and under
-`prefers-reduced-motion` (motion drives transforms from JS, so CSS can't stop it). `BoardText`
-renders plain text as the baseline and mounts the reveal only once the page is visible and motion is
-wanted. Re-keying it (`key={selected}`, `key={ride.free_seats}`) is what replays the flip.
+**Screen structure.** `DateCarousel` (the loaded Mon–Sun week as pills, arrows step a week) →
+`CarCarousel` (one tile per ride that day plus an *Add car* tile; tiles are also drop targets) →
+either `CarDetail` (driver card, times, route, passenger list with the drop zone and the
+*Get in this car* row) or `AddCarCard` (the illustrated placeholder) → `YouPanel`. The design's
+"unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
+you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the
+"drop here to get out" target when you are. Every dialog is a `Sheet` (bottom sheet on a phone,
+centred panel on a desktop); destructive actions go through `ConfirmDialog` instead of
+`window.confirm`; `Menu` is the ⋮ popover. `App.tsx` resolves which tile is open (`selection`):
+an explicit pick that still exists, else your own car, else the first car, else the *Add* tile.
 
 **Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
