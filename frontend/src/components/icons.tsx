@@ -195,3 +195,9 @@ export const SearchIcon = (p: IconProps) => (
     <path d="M20 20l-4.5-4.5" />
   </Icon>
 )
+
+export const ChevronDownIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M6 9.5l6 6 6-6" />
+  </Icon>
+)

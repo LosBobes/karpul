@@ -181,7 +181,7 @@ input[type='checkbox'] {
   justify-content: flex-end;
   gap: 0.5rem;
 }
-/* An input with a small leading glyph. */
+/* A text input with a small leading glyph. */
 .input-icon {
   position: relative;
   display: block;
@@ -455,29 +455,24 @@ main {
   }
 }
 
-/* --- Popover menu -------------------------------------------------------- */
-.menu {
-  position: relative;
-}
-.menu-pop {
-  position: absolute;
-  top: calc(100% + 4px);
-  z-index: 8;
-  min-width: 190px;
-  padding: 0.3rem;
+/* --- Popovers (components/Popover.tsx): menus, dropdowns, pickers --------- */
+.popover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  max-width: calc(100vw - 16px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   box-shadow: var(--shadow-pop);
-  display: flex;
-  flex-direction: column;
   animation: pop-in 0.12s ease-out;
 }
-.menu-pop-right {
-  right: 0;
-}
-.menu-pop-left {
-  left: 0;
+.menu-pop {
+  min-width: 190px;
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
 }
 .menu-item {
   display: flex;
@@ -515,6 +510,177 @@ main {
     opacity: 0;
     transform: translateY(-4px);
   }
+}
+
+/* A button that looks like an input: the trigger for Select / DatePicker / TimePicker. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.control:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.control:focus-visible,
+.control[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+}
+.control:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.control-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  flex: none;
+}
+.control-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.control-placeholder {
+  color: var(--muted);
+}
+.control-hint {
+  margin-left: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.control-chevron {
+  color: var(--muted);
+  flex: none;
+}
+.listbox {
+  padding: 0.3rem;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.option:hover {
+  background: var(--surface-2);
+}
+.option-on {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.option-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popover-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.4rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Calendar */
+.cal {
+  width: 300px;
+  padding: 0.5rem 0.6rem 0.4rem;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-wd {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+.cal-day {
+  aspect-ratio: 1;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.cal-day:hover {
+  background: var(--surface-2);
+}
+.cal-day-out {
+  color: var(--border-strong);
+}
+.cal-day-today {
+  border-color: var(--green);
+  color: var(--green);
+}
+.cal-day-selected,
+.cal-day-selected:hover {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.cal-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+
+/* Time picker */
+.timepick {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.4rem;
+}
+.timepick-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 72px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.timepick-col .option {
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Cards & tags -------------------------------------------------------- */
@@ -709,20 +875,6 @@ main {
   align-items: center;
   gap: 0.25rem;
 }
-/* The native date picker, wearing a text-link disguise. */
-.dates-jump {
-  position: relative;
-  display: inline-grid;
-}
-.dates-jump input {
-  position: absolute;
-  inset: 0;
-  min-height: 0;
-  padding: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
 /* --- Car carousel -------------------------------------------------------- */
 .cars {
   display: flex;
@@ -1261,12 +1413,13 @@ main {
 /* --- Drag ghost ---------------------------------------------------------- */
 /* The chip that follows the pointer. A plain DOM node created by lib/dnd.ts,
    drawn over everything and transparent to hit-testing so elementFromPoint
-   sees the car underneath it. */
+   sees the car underneath it. It is placed by transform alone (see dnd.ts),
+   so no margin, inset or width may be set here. */
 .drag-ghost {
   position: fixed;
   top: 0;
   left: 0;
-  z-index: 30;
+  z-index: 50;
   pointer-events: none;
   will-change: transform;
   display: inline-flex;

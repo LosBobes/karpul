@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { addDays, fmtMonthDay, fmtWeekday, parseISODate, startOfWeek, toISODate, todayISO } from '../lib/dates'
 import type { Ride } from '../lib/types'
+import { DatePicker } from './DatePicker'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 
 interface Props {
@@ -77,13 +78,7 @@ export function DateCarousel({ selected, rides, onSelect }: Props) {
               Today
             </button>
           )}
-          <label className="dates-jump">
-            <span className="sr-only">Jump to date</span>
-            <input type="date" value={selected} onChange={(e) => e.target.value && onSelect(e.target.value)} />
-            <span className="link" aria-hidden="true">
-              Jump to…
-            </span>
-          </label>
+          <DatePicker variant="link" label="Jump to date" value={selected} onChange={onSelect} />
         </span>
       </div>
     </section>

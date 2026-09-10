@@ -90,7 +90,11 @@ either `CarDetail` (driver card, times, route, passenger list with the drop zone
 you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the
 "drop here to get out" target when you are. Every dialog is a `Sheet` (bottom sheet on a phone,
 centred panel on a desktop); destructive actions go through `ConfirmDialog` instead of
-`window.confirm`; `Menu` is the ⋮ popover. `App.tsx` resolves which tile is open (`selection`):
+`window.confirm`. **No native pickers or dropdowns**: `Select`, `DatePicker` and `TimePicker` are
+custom controls (and `Menu` is the ⋮ menu) built on `Popover`, which portals to `<body>` and
+positions itself against its anchor with `position: fixed`, so it is never clipped by a sheet's
+scrolling body and flips above the anchor when the viewport runs out. `TimePicker` shows 12- or
+24-hour columns depending on the browser locale but always emits `HH:MM`. `App.tsx` resolves which tile is open (`selection`):
 an explicit pick that still exists, else your own car, else the first car, else the *Add* tile.
 
 **Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`

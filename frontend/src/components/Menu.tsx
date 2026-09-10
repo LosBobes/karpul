@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useId, useState, type ReactNode } from 'react'
+import { Popover } from './Popover'
 
 export interface MenuItem {
   label: string
@@ -17,44 +18,26 @@ interface Props {
   className?: string
 }
 
-/**
- * The ⋮ popover. Plain absolute positioning under the trigger; closes on an
- * outside tap, Escape, or choosing an item.
- */
+/** The ⋮ popover menu. */
 export function Menu({ trigger, label, items, align = 'right', className }: Props) {
-  const [open, setOpen] = useState(false)
-  const root = useRef<HTMLDivElement>(null)
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const id = useId()
 
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: PointerEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('pointerdown', onDown)
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('pointerdown', onDown)
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
   return (
-    <div ref={root} className={['menu', className].filter(Boolean).join(' ')}>
+    <div className={['menu', className].filter(Boolean).join(' ')}>
       <button
         type="button"
         className="icon-btn"
         aria-label={label}
         aria-haspopup="menu"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen((o) => !o)}
+        aria-expanded={anchor !== null}
+        aria-controls={anchor ? id : undefined}
+        onClick={(e) => setAnchor(anchor ? null : e.currentTarget)}
       >
         {trigger}
       </button>
-      {open && (
-        <div id={id} role="menu" className={`menu-pop menu-pop-${align}`}>
+      {anchor && (
+        <Popover id={id} role="menu" anchor={anchor} align={align} className="menu-pop" onClose={() => setAnchor(null)}>
           {items.map((it) => (
             <button
               key={it.label}
@@ -63,7 +46,7 @@ export function Menu({ trigger, label, items, align = 'right', className }: Prop
               className={it.danger ? 'menu-item menu-item-danger' : 'menu-item'}
               disabled={it.disabled}
               onClick={() => {
-                setOpen(false)
+                setAnchor(null)
                 it.onSelect()
               }}
             >
@@ -71,7 +54,7 @@ export function Menu({ trigger, label, items, align = 'right', className }: Prop
               {it.label}
             </button>
           ))}
-        </div>
+        </Popover>
       )}
     </div>
   )

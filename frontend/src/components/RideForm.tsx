@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import type { CarType, CorporateCar, Ride, RideInput } from '../lib/types'
 import { Avatar } from './Avatar'
-import { CalendarIcon, ClockIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon } from './icons'
+import { DatePicker } from './DatePicker'
+import { CarIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon } from './icons'
+import { Select } from './Select'
 import { Sheet } from './Sheet'
+import { TimePicker } from './TimePicker'
 
 interface Props {
   date: string
@@ -130,13 +133,13 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
           </button>
         </div>
         {carType === 'corporate' ? (
-          <select required aria-label="Which company car" value={carId} onChange={(e) => setCarId(Number(e.target.value))}>
-            {cars.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} · {c.plate} · {c.passenger_seats} seats
-              </option>
-            ))}
-          </select>
+          <Select
+            label="Which company car"
+            icon={<CarIcon size={16} />}
+            value={carId === '' ? null : carId}
+            options={cars.map((c) => ({ value: c.id, label: c.name, hint: `${c.plate} · ${c.passenger_seats} seats` }))}
+            onChange={setCarId}
+          />
         ) : (
           <input
             required
@@ -168,16 +171,8 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       <div className="field">
         <span className="field-label">Departs</span>
         <div className="grid-2">
-          <label className="input-icon">
-            <CalendarIcon size={16} />
-            <span className="sr-only">Day</span>
-            <input type="date" required value={rideDate} onChange={(e) => setRideDate(e.target.value)} />
-          </label>
-          <label className="input-icon">
-            <ClockIcon size={16} />
-            <span className="sr-only">Departure time</span>
-            <input type="time" required value={departure} onChange={(e) => setDeparture(e.target.value)} />
-          </label>
+          <DatePicker label="Day" value={rideDate} onChange={setRideDate} />
+          <TimePicker label="Departure time" value={departure} onChange={setDeparture} />
         </div>
       </div>
 
@@ -190,16 +185,9 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
           </label>
         </span>
         <div className="grid-2">
-          <label className="input-icon input-static">
-            <CalendarIcon size={16} />
-            <span className="sr-only">Return day</span>
-            <input type="date" disabled value={rideDate} readOnly />
-          </label>
-          <label className="input-icon">
-            <ClockIcon size={16} />
-            <span className="sr-only">Return time</span>
-            <input type="time" required={!oneWay} disabled={oneWay} value={ret} onChange={(e) => setRet(e.target.value)} />
-          </label>
+          {/* Rides are same-day, so the return day only echoes the departure. */}
+          <DatePicker label="Return day (same day)" value={rideDate} onChange={setRideDate} disabled />
+          <TimePicker label="Return time" value={ret} onChange={setRet} disabled={oneWay} />
         </div>
       </div>
 
