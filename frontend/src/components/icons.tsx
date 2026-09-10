@@ -38,6 +38,12 @@ export const CarIcon = (p: IconProps) => (
   </Icon>
 )
 
+export const BoltIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M13 3L5 13.5h6L10.5 21 19 10.5h-6z" />
+  </Icon>
+)
+
 export const PlusIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M12 5v14M5 12h14" />

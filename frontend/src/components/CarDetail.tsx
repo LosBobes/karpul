@@ -1,9 +1,11 @@
+import { carModel } from '../lib/carModels'
 import { fmtTime, sameName } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
-import { ArrowLeftIcon, ArrowRightIcon, CopyIcon, GripIcon, KebabIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, UsersIcon, XIcon } from './icons'
+import { CarArt } from './CarArt'
+import { ArrowLeftIcon, ArrowRightIcon, BoltIcon, CopyIcon, GripIcon, KebabIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, UsersIcon, XIcon } from './icons'
 import { Menu } from './Menu'
 
 interface Props {
@@ -45,6 +47,7 @@ export function CarDetail({
 }: Props) {
   const coarse = useCoarsePointer()
   const isDriver = sameName(userName, ride.driver_name)
+  const model = carModel(ride.car_name)
   const myBooking = ride.bookings.find((b) => sameName(b.passenger_name, userName))
   const full = ride.free_seats <= 0
   const canJoin = !!userName && !isDriver && !myBooking && !full && !busy && !isPast
@@ -107,11 +110,25 @@ export function CarDetail({
           </span>
         </div>
 
-        <div className="driver-car">
-          <span className={`tag ${ride.car_type === 'corporate' ? 'tag-blue' : ''}`}>
-            {ride.car_type === 'corporate' ? 'Company car' : 'Own car'}
+        <div className={model ? 'driver-car driver-car-illustrated' : 'driver-car'}>
+          {model && (
+            <span className="driver-car-art" aria-hidden="true">
+              <CarArt model={model.key} width={84} />
+            </span>
+          )}
+          <span className="driver-car-text">
+            <span className="driver-car-tags">
+              <span className={`tag ${ride.car_type === 'corporate' ? 'tag-blue' : ''}`}>
+                {ride.car_type === 'corporate' ? 'Company car' : 'Own car'}
+              </span>
+              {model?.electric && (
+                <span className="tag tag-green tag-icon">
+                  <BoltIcon size={12} strokeWidth={2.25} /> Electric
+                </span>
+              )}
+            </span>
+            <span className="driver-car-name">{ride.car_name}</span>
           </span>
-          <span className="driver-car-name">{ride.car_name}</span>
         </div>
         {ride.notes && <p className="driver-notes">{ride.notes}</p>}
       </article>

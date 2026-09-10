@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { firstName, sameName, shortCarName } from '../lib/dates'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
-import { CarIcon, ChevronLeftIcon, ChevronRightIcon, PlusIcon } from './icons'
+import { CarGlyph } from './CarArt'
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from './icons'
 
 export type CarSelection = number | 'new'
 
@@ -73,7 +74,9 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
               title={`${r.driver_name} · ${r.car_name}`}
               {...dropZone(receives ? { kind: 'ride', rideId: r.id } : null)}
             >
-              <CarIcon size={22} />
+              <span className="car-tile-art">
+                <CarGlyph carName={r.car_name} size={22} />
+              </span>
               <span className="car-tile-name">{shortCarName(r.car_name) || firstName(r.driver_name)}</span>
               <span className="car-tile-seats">
                 {r.bookings.length} / {r.seats}
