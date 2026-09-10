@@ -113,7 +113,7 @@ export function CarDetail({
         <div className={model ? 'driver-car driver-car-illustrated' : 'driver-car'}>
           {model && (
             <span className="driver-car-art" aria-hidden="true">
-              <CarArt model={model.key} width={84} />
+              <CarArt model={model.key} width={104} />
             </span>
           )}
           <span className="driver-car-text">

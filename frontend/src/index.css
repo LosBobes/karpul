@@ -1649,7 +1649,7 @@ body.dragging {
 .admin-car-icon {
   display: inline-grid;
   place-items: center;
-  width: 44px;
+  width: 48px;
   height: 36px;
   overflow: hidden;
   border-radius: 10px;
