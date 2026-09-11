@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
+import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
 import { CarIcon, CarProfileIcon, InfoIcon, UserIcon, XIcon } from './icons'
 import { LanguageSwitch } from './LanguageSwitch'
@@ -30,6 +31,8 @@ interface Item {
 export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
+  // The phone's back button closes the drawer instead of leaving the page.
+  useBackClose(onClose)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()

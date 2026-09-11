@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useBackClose } from '../lib/useBackClose'
 
 interface Props {
   /** The element the popover hangs off. */
@@ -22,6 +23,9 @@ interface Props {
  */
 export function Popover({ anchor, onClose, children, align = 'left', className, role, id, ...aria }: Props) {
   const ref = useRef<HTMLDivElement>(null)
+  // The phone's back button closes the popover, and the sheet under it
+  // stays open: the popover is the topmost layer.
+  useBackClose(onClose)
 
   useLayoutEffect(() => {
     const el = ref.current

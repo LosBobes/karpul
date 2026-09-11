@@ -165,7 +165,11 @@ either `CarDetail` (driver card, times, route, passenger list with the drop zone
 you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the
 "drop here to get out" target when you are. Every dialog is a `Sheet` (bottom sheet on a phone,
 centred panel on a desktop); destructive actions go through `ConfirmDialog` instead of
-`window.confirm`. **No native pickers or dropdowns**: `Select`, `DatePicker` and `TimePicker` are
+`window.confirm`. Every overlay (`Sheet`, `Sidebar`, `ConfirmDialog`, `Popover`) calls
+`useBackClose` (`lib/useBackClose.ts`), so a phone's back button closes the topmost one instead
+of leaving the page: the first overlay to open pushes one history entry, the ones stacked on top
+join an in-memory stack, back pops the top and re-pushes while any remain, and a close by any
+other route pops the entry when it was the last, so back never lands on a dead entry. **No native pickers or dropdowns**: `Select`, `DatePicker` and `TimePicker` are
 custom controls (and `Menu` is the ⋮ menu) built on `Popover`, which portals to `<body>` and
 positions itself against its anchor with `position: fixed`, so it is never clipped by a sheet's
 scrolling body and flips above the anchor when the viewport runs out. `TimePicker` shows 12- or
