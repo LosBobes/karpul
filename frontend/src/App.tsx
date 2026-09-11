@@ -3,7 +3,7 @@ import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab } from './components/AddRideButton'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
-import { CarCarousel, type CarSelection } from './components/CarCarousel'
+import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
@@ -82,7 +82,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false)
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
-  const [carSel, setCarSel] = useState<CarSelection | null>(null)
+  const [carSel, setCarSel] = useState<number | null>(null)
   // First visit: ask for the name straight away rather than hiding it in a menu.
   const [nameOpen, setNameOpen] = useState(() => !userName)
   // The app menu (components/Sidebar.tsx), a drawer under the ☰ in the top bar.
@@ -447,15 +447,13 @@ export default function App() {
   const canAdd = !isPast
 
   // Resolve the open tile: an explicit pick that still exists, else your own
-  // car, else the first one, else the "add" tile.
-  const selection: CarSelection | null = (() => {
-    if (carSel === 'new') return canAdd ? 'new' : (dayRides[0]?.id ?? null)
-    if (carSel !== null && dayRides.some((r) => r.id === carSel)) return carSel
-    return myRideToday?.id ?? dayRides[0]?.id ?? (canAdd ? 'new' : null)
-  })()
-  const openRide = typeof selection === 'number' ? (dayRides.find((r) => r.id === selection) ?? null) : null
+  // car, else the first one; with no rides that day nothing is open and the
+  // empty card shows instead.
+  const selection: number | null =
+    carSel !== null && dayRides.some((r) => r.id === carSel) ? carSel : (myRideToday?.id ?? dayRides[0]?.id ?? null)
+  const openRide = selection !== null ? (dayRides.find((r) => r.id === selection) ?? null) : null
   // In the upcoming list only an explicit tap unfolds a car.
-  const openUpcomingId = upcoming && typeof carSel === 'number' && rides.some((r) => r.id === carSel) ? carSel : null
+  const openUpcomingId = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
 
   const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setNameOpen(true))
 
@@ -548,9 +546,7 @@ export default function App() {
               <AddCarCard
                 userName={userName}
                 isPast={false}
-                hasCars={false}
                 emptyTitle={t.empty.noUpcoming}
-                onAdd={openNewCar}
                 onEditName={() => setNameOpen(true)}
               />
             ) : (
@@ -577,14 +573,13 @@ export default function App() {
                 <span className="car-tile skeleton" />
                 <span className="car-tile skeleton" />
               </div>
-            ) : dayRides.length === 0 && !canAdd ? null : (
+            ) : dayRides.length === 0 ? null : (
               <CarCarousel
                 rides={dayRides}
                 selected={selection}
                 userName={userName}
                 dragActive={drag !== null}
                 over={dragOver}
-                canAdd={canAdd}
                 onSelect={setCarSel}
               />
             )}
@@ -592,13 +587,7 @@ export default function App() {
             {!loading && openRide && detailFor(openRide, false)}
 
             {!loading && !openRide && (
-              <AddCarCard
-                userName={userName}
-                isPast={isPast}
-                hasCars={dayRides.length > 0}
-                onAdd={openNewCar}
-                onEditName={() => setNameOpen(true)}
-              />
+              <AddCarCard userName={userName} isPast={isPast} onEditName={() => setNameOpen(true)} />
             )}
 
             {!loading && (
@@ -624,8 +613,6 @@ export default function App() {
       {sidebarOpen && (
         <Sidebar
           userName={userName}
-          canAdd={canAdd}
-          onAddRide={openNewCar}
           onEditName={() => setNameOpen(true)}
           onCompanyCars={openAdmin}
           onGuide={() => setGuideOpen(true)}

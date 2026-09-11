@@ -79,10 +79,9 @@ const en = {
 
   view: { label: 'View', upcoming: 'Upcoming', week: 'Week' },
 
+  fab: { addRide: 'Add ride' },
+
   sidebar: {
-    addRide: 'Add ride',
-    addHint: 'Offer seats in your car',
-    addPast: 'Not on a day that has passed',
     changeName: 'Change name',
     enterName: 'Enter your name',
     nameHint: 'How colleagues see you',
@@ -277,16 +276,14 @@ const en = {
   empty: {
     noRidesDay: 'No rides on this day yet',
     noUpcoming: 'No upcoming sessions yet',
-    pickAbove: 'Pick a ride above',
     noRidesWent: 'No rides went on this day',
     pastReadOnly: 'Past days are read-only.',
     whoAreYou: 'Who are you?',
     enterToAdd: 'Enter your name to add a ride or get into a car.',
-    addNew: 'Add a new ride',
-    tapToEnter: 'Tap to enter the car, seats, times and route.',
+    usePlus: 'Add one with the + button at the bottom right.',
   },
 
-  carousel: { label: 'Rides', scrollLeft: 'Scroll rides left', scrollRight: 'Scroll rides right', addRide: 'Add ride' },
+  carousel: { label: 'Rides', scrollLeft: 'Scroll rides left', scrollRight: 'Scroll rides right' },
 
   powertrain: { electric: 'Electric', hybrid: 'Hybrid', diesel: 'Diesel', petrol: 'Petrol' } as Record<PowertrainKind, string>,
 
@@ -503,10 +500,9 @@ const sr: Messages = {
 
   view: { label: 'Prikaz', upcoming: 'Predstojeće', week: 'Sedmica' },
 
+  fab: { addRide: 'Dodaj vožnju' },
+
   sidebar: {
-    addRide: 'Dodaj vožnju',
-    addHint: 'Ponudi mesta u svom autu',
-    addPast: 'Ne za dan koji je prošao',
     changeName: 'Promeni ime',
     enterName: 'Upiši svoje ime',
     nameHint: 'Kako te kolege vide',
@@ -700,16 +696,14 @@ const sr: Messages = {
   empty: {
     noRidesDay: 'Za ovaj dan još nema vožnji',
     noUpcoming: 'Još nema predstojećih vožnji',
-    pickAbove: 'Izaberi vožnju iznad',
     noRidesWent: 'Tog dana nije bilo vožnji',
     pastReadOnly: 'Prošli dani se ne mogu menjati.',
     whoAreYou: 'Ko si ti?',
     enterToAdd: 'Upiši svoje ime da dodaš vožnju ili uđeš u auto.',
-    addNew: 'Dodaj novu vožnju',
-    tapToEnter: 'Dodirni i upiši auto, mesta, vreme i rutu.',
+    usePlus: 'Dodaj je dugmetom + u donjem desnom uglu.',
   },
 
-  carousel: { label: 'Vožnje', scrollLeft: 'Pomeri vožnje ulevo', scrollRight: 'Pomeri vožnje udesno', addRide: 'Dodaj vožnju' },
+  carousel: { label: 'Vožnje', scrollLeft: 'Pomeri vožnje ulevo', scrollRight: 'Pomeri vožnje udesno' },
 
   powertrain: { electric: 'Električni', hybrid: 'Hibrid', diesel: 'Dizel', petrol: 'Benzin' },
 

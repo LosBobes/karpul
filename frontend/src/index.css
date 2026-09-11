@@ -392,8 +392,8 @@ input[type='checkbox'] {
   color: var(--muted);
 }
 
-/* The one "add a ride" mark (components/AddRideButton.tsx): a white plus in a
-   green circle, the same wherever a ride can be added. */
+/* The one "add a ride" control (components/AddRideButton.tsx): a white plus
+   in a green circle, floating at the bottom right. */
 .plus-circle {
   display: inline-grid;
   place-items: center;
@@ -404,7 +404,6 @@ input[type='checkbox'] {
   box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 35%, transparent);
   transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
 }
-/* The plus stays white wherever the circle lands (tiles recolour their SVGs). */
 span.plus-circle svg {
   color: #fff;
 }
@@ -422,9 +421,7 @@ span.plus-circle svg {
 .fab .plus-circle {
   box-shadow: 0 6px 18px color-mix(in srgb, var(--green) 40%, transparent), 0 1px 3px rgba(0, 0, 0, 0.12);
 }
-.fab:hover .plus-circle,
-.empty-card-add:hover .plus-circle,
-.car-tile-add:hover .plus-circle {
+.fab:hover .plus-circle {
   background: var(--green-dark);
   transform: scale(1.05);
 }
@@ -1074,16 +1071,6 @@ main {
 .car-tile-selected .car-tile-seats {
   color: var(--green);
 }
-.car-tile-add {
-  border-style: dashed;
-  border-color: var(--green-line);
-  color: var(--green);
-  justify-content: center;
-}
-.car-tile-add svg,
-.car-tile-add .car-tile-name {
-  color: var(--green);
-}
 .car-tile-droppable {
   border-style: dashed;
   border-color: var(--green);
@@ -1676,7 +1663,7 @@ main {
   color: var(--green);
 }
 
-/* --- Empty / add-car card ----------------------------------------------- */
+/* --- Empty card ---------------------------------------------------------- */
 .empty-card {
   display: flex;
   flex-direction: column;
@@ -1689,14 +1676,6 @@ main {
 .empty-card strong {
   margin-top: 0.75rem;
   font-weight: 600;
-}
-.empty-card-plus {
-  position: relative; /* paints over the illustration, which is positioned */
-  margin-top: -28px;
-  box-shadow: 0 0 0 4px var(--surface), 0 4px 12px color-mix(in srgb, var(--green) 35%, transparent);
-}
-.empty-card-add strong {
-  margin-top: 0.5rem;
 }
 .empty-card > span:last-child {
   font-size: 0.86rem;
@@ -2120,9 +2099,6 @@ body.dragging {
   background: var(--green-soft);
   color: var(--green);
   flex: none;
-}
-.drawer-item-icon:has(.plus-circle) {
-  background: none;
 }
 .drawer-item-text {
   display: flex;

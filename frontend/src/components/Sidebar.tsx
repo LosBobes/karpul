@@ -1,15 +1,11 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
 import { Avatar } from './Avatar'
-import { PlusCircle } from './AddRideButton'
 import { CarIcon, CarProfileIcon, InfoIcon, UserIcon, XIcon } from './icons'
 import { LanguageSwitch } from './LanguageSwitch'
 
 interface Props {
   userName: string
-  /** False on a day in the past: there is nothing to add there. */
-  canAdd: boolean
-  onAddRide: () => void
   onEditName: () => void
   onCompanyCars: () => void
   onGuide: () => void
@@ -26,12 +22,12 @@ interface Item {
 
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the things that are not about one particular ride:
- * adding one, who you are, the company-car pool and its guide, and at the
- * bottom the language. Picking an item closes the drawer first, so the sheet
+ * top bar. It holds the things that are not about one particular ride: who
+ * you are, the company-car pool and its guide, and at the bottom the
+ * language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
  * it opens is the only thing left on screen.
  */
-export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars, onGuide, onClose }: Props) {
+export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
 
@@ -62,13 +58,6 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
   }
 
   const items: Item[] = [
-    {
-      label: t.sidebar.addRide,
-      hint: canAdd ? t.sidebar.addHint : t.sidebar.addPast,
-      icon: <PlusCircle size={36} />,
-      onSelect: pick(onAddRide),
-      disabled: !canAdd,
-    },
     {
       label: userName ? t.sidebar.changeName : t.sidebar.enterName,
       hint: userName ? t.sidebar.nameHint : t.sidebar.nameNeeded,
