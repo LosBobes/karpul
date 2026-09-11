@@ -3,7 +3,8 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { CarIcon, CarProfileIcon, InfoIcon, UserIcon, XIcon } from './icons'
+import { CarProfileIcon, InfoIcon, UserIcon, XIcon } from './icons'
+import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 
 interface Props {
@@ -104,7 +105,7 @@ export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose 
       >
         <header className="drawer-head">
           <h2 id="sidebar-title" className="topbar-title">
-            <CarIcon size={20} /> Karpul
+            <Logo /> Karpul
           </h2>
           <button type="button" className="icon-btn" aria-label={t.sidebar.closeMenu} onClick={requestClose}>
             <XIcon />

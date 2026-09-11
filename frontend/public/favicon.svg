@@ -1,1 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0f7b4f"/><path d="M14 38l5-14a4 4 0 0 1 4-3h18a4 4 0 0 1 4 3l5 14v10a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-3H21v3a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2zm7-3h22l-3-10H24z" fill="#fff"/><circle cx="21" cy="40" r="3" fill="#0f7b4f"/><circle cx="43" cy="40" r="3" fill="#0f7b4f"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- tile -->
+  <rect width="64" height="64" rx="14" fill="#0f7b4f"/>
+  <!-- mark -->
+  <g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13.5 39.5H10V32.5C10 29.5 12 27.8 15 27.5L26.5 26L34.5 17H49L42 29.5H53L40.5 46"/>
+    <path d="M26.5 39.5H35"/>
+    <circle cx="20" cy="41" r="5"/>
+  </g>
+</svg>

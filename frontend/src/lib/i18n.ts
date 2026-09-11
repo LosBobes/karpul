@@ -271,6 +271,8 @@ const en = {
     rideAdded: 'Ride added.',
     carAdded: (name: string) => `${name} added to the pool.`,
     carDeleted: (name: string) => `${name} deleted.`,
+    updateReady: 'A new version is ready.',
+    updateAction: 'Update',
   },
 
   empty: {
@@ -691,6 +693,8 @@ const sr: Messages = {
     rideAdded: 'Vožnja je dodata.',
     carAdded: (name) => `${name} je dodat u vozni park.`,
     carDeleted: (name) => `${name} je obrisan.`,
+    updateReady: 'Nova verzija je spremna.',
+    updateAction: 'Ažuriraj',
   },
 
   empty: {

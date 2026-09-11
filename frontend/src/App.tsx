@@ -7,7 +7,8 @@ import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
-import { CalendarIcon, CarIcon, ListIcon, MenuIcon } from './components/icons'
+import { CalendarIcon, ListIcon, MenuIcon } from './components/icons'
+import { Logo } from './components/Logo'
 import { NameSheet } from './components/NameSheet'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
@@ -20,6 +21,7 @@ import { addDays, fmtShortDate, parseISODate, sameName, startOfWeek, toISODate, 
 import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { useLiveBoard, type LiveEvent } from './lib/live'
+import { applyUpdate, useUpdateReady } from './lib/pwa'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
 import { useUserName } from './lib/useUserName'
@@ -220,6 +222,8 @@ export default function App() {
     [upsertRide, load, adminUnlocked, adminPassword, applyCars],
   )
   const liveStatus = useLiveBoard({ onEvent: onLiveEvent, onConnect: load })
+  // A newer build is installed and waiting (lib/pwa.ts); offered as a toast when no other shows.
+  const updateReady = useUpdateReady()
 
   // Keep the board fresh for people who leave the tab open. Polling is the
   // fallback for when the socket is down; a focus always re-syncs.
@@ -517,7 +521,7 @@ export default function App() {
           <MenuIcon size={22} />
         </button>
         <h1 className="topbar-title">
-          <CarIcon size={20} /> Karpul
+          <Logo /> Karpul
         </h1>
         <div className="topbar-right">
           <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
@@ -696,10 +700,16 @@ export default function App() {
         />
       )}
 
-      {toast && (
+      {toast ? (
         <div className={`toast toast-${toast.kind}`} role="status">
           {toast.text}
         </div>
+      ) : (
+        updateReady && (
+          <button type="button" className="toast toast-update" onClick={applyUpdate}>
+            {t.toasts.updateReady} <b>{t.toasts.updateAction}</b>
+          </button>
+        )
       )}
     </div>
   )

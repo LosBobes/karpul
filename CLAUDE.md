@@ -25,6 +25,8 @@ npm run build    # tsc -b && vite build -> frontend/dist
 ```
 
 Whole app in one process: `npm run build`, then `uvicorn app.main:app` serves API + SPA on :8000.
+App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's Chromium) re-renders
+the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
 CI (`.github/workflows/ci.yml`) runs exactly: backend `pytest -q`, frontend `npm run lint` and `npm run build`. There is no frontend test runner and no Python linter/formatter configured. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
@@ -99,7 +101,13 @@ one self-hosted container). The semantic class names (`.card`, `.date`, `.car-ti
 560px column centred on a desktop; two media blocks at the end carry the phone layout:
 `max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
-query to components that need to change their wording. Icons come from Phosphor
+query to components that need to change their wording. The app's own mark (the top bar, the drawer head, the favicon and the installed-app
+icons) is a car, side-on, whose back half turns into a thunderbolt: one thick white line on a green
+tile, nothing else. `public/favicon.svg` is the source, split by `<!-- tile -->` / `<!-- mark -->`
+comments that `scripts/render-icons.mjs` uses to derive the PNGs (`pwa-192`/`pwa-512` with rounded
+transparent corners, `pwa-maskable-512` full-bleed with the mark scaled into the platform's safe
+zone, `apple-touch-icon` full-bleed and opaque), and `components/Logo.tsx` repeats the same drawing
+inline with the tile in `currentColor`. Change the mark in all three places. Icons come from Phosphor
 (`@phosphor-icons/react`) through the named wrappers in `components/icons.tsx`, which are the
 contract the components render against (`size` in px, optional `weight`); nothing imports the
 package directly. The default weight is *regular*. Phosphor's *duotone* weight paints a 20% fill
@@ -205,6 +213,25 @@ vehicle (the pool, "Company car" / "Own car", "get in this car", "in this car").
 
 **Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
+
+**Installable (PWA).** `vite-plugin-pwa` in `vite.config.ts` writes the web app manifest
+(`manifest.webmanifest`, standalone display, the icons above, off-white theme colour to match the
+top bar) and generates a Workbox service worker, `sw.js`, that precaches the built shell: `index.html`,
+the hashed bundles, the fonts and the icons, so an installed app opens offline and starts instantly.
+Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc` and `/openapi.json`
+are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
+(`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
+shows it as a tappable "A new version is ready" toast (`useUpdateReady`, in the toast slot whenever no
+other toast shows) and the tap runs `applyUpdate`, which listens for `controllerchange` itself and
+reloads. That listener is deliberate: workbox-window only calls a controller change an update when a
+worker already controlled the page at registration, false on a first visit, and `clientsClaim: true`
+in the worker is what makes the new worker take that page over at all. An installed app can stay open
+for days, so the hook also asks the browser for a new worker every hour and when the app comes back to
+the foreground. On the server, everything outside `/assets` keeps its name across builds (the shell,
+`sw.js`, the manifest, the icons) and `mount_frontend` in `main.py` serves all of it `no-cache`, so a
+phone always learns about a new build; `tests/test_frontend.py` pins the headers. In `npm run dev` the
+virtual register module is a stub and no worker runs; index.html carries the Apple meta tags the
+manifest cannot express (`apple-touch-icon`, standalone mode, the app title).
 
 **Live updates.** Every tab keeps one WebSocket open to `/api/ws` (`lib/live.ts`, `useLiveBoard`).
 The server pushes `ride.created` / `ride.updated` (carrying the full `RideRead`), `ride.deleted`
