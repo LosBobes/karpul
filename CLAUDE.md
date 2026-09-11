@@ -100,9 +100,13 @@ one self-hosted container). The semantic class names (`.card`, `.date`, `.car-ti
 `max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
 query to components that need to change their wording. Icons come from Phosphor
-(`@phosphor-icons/react`, duotone by default) through the named wrappers in `components/icons.tsx`,
-which are the contract the components render against (`size` in px, optional `weight`); nothing
-imports the package directly. Adding a ride has exactly one control: `AddRideFab`
+(`@phosphor-icons/react`) through the named wrappers in `components/icons.tsx`, which are the
+contract the components render against (`size` in px, optional `weight`); nothing imports the
+package directly. The default weight is *regular*. Phosphor's *duotone* weight paints a 20% fill
+of the glyph's silhouette under the stroke, and for line icons that silhouette is a slab (a
+rectangle behind the three bars of the menu icon, a triangle behind a chevron) that showed on
+phones as a grey grating around the lines; duotone is therefore opt-in and used only for the two
+car marks, where the fill is the car's body. Adding a ride has exactly one control: `AddRideFab`
 (`components/AddRideButton.tsx`), a white plus in a green circle floating at the bottom right of
 the column on both views whenever a ride can be added (`.fab`, under every sheet's backdrop).
 There is deliberately no *Add ride* tile in the carousel, no plus in the empty card and no drawer
@@ -124,6 +128,27 @@ English, like "Seat" or "Focus", must be capitalised to count) and `BrandLogo` /
 its mark from the `simple-icons` package in `currentColor`. Only the brands listed in `LOGOS`
 are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
 not in that package, so they keep the generic icon.
+
+**Motion.** Nothing fades in; things slide or pop, and go back the way they came. The
+keyframes are in the *Motion* and *Sheets & dialogs* sections of `index.css`, the two hooks in
+`lib/motion.ts`. `useSlideDir(value, rank)` says which side freshly keyed content enters from
+(a higher rank enters from the right, a lower one from the left, NaN means no slide) and
+`App.tsx` wraps the view (Upcoming sits left of Week), the day board (the way the calendar
+moved, only while the Week view shows) and the driver card (from the tile you tapped) in keyed
+`.stack` wrappers carrying `slideClass(dir)`; `DateCarousel` does the same for a week step.
+`useClosing(onClose)` lets `Sheet`, `Sidebar` and `ConfirmDialog` play their exit before the
+parent unmounts them: every close from inside the overlay goes through `requestClose`, which
+adds `backdrop-closing`, and `onClose` runs on the panel's `animationend` (with a fallback
+timeout); a parent that unmounts the overlay itself, after a save, still closes on the spot,
+and the drawer's `pick` closes on the spot on purpose so the sheet it opens owns the history
+entry alone. Sheets rise from the bottom edge on a phone and pop up on a desktop, the drawer
+slides from the left, confirmations and popovers scale out of their anchor (`Popover` sets
+`transform-origin` and measures itself with `offsetWidth`, which a transform does not change),
+the toast and the floating plus spring in, the Upcoming detail unfolds as a grid row from
+`0fr` (the `.session-detail-clip` wrapper hides the overflow and leaves room for shadows), and
+the segmented controls (`SegThumb`, `components/Segmented.tsx`) and the date pills
+(`.date-thumb`) move one marker element instead of recolouring buttons. Reduced motion collapses
+every duration, so the exits still fire `animationend`.
 
 **Language.** The UI is switchable between English and Serbian (Latin script). Every string
 the screen shows lives in `lib/i18n.ts` as two dictionaries, `en` and `sr`; `en` is the

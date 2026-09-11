@@ -11,11 +11,13 @@ import { CalendarIcon, CarIcon, ListIcon, MenuIcon } from './components/icons'
 import { NameSheet } from './components/NameSheet'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
+import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
 import { messages, useT } from './lib/i18n'
 import { addDays, fmtShortDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
+import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { useLiveBoard, type LiveEvent } from './lib/live'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
@@ -457,6 +459,19 @@ export default function App() {
 
   const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setNameOpen(true))
 
+  // Motion (lib/motion.ts): Upcoming sits left of Week, so switching slides
+  // the new view in from that side; the day board slides the way the
+  // calendar moved (only while it is showing, so a date picked from the
+  // upcoming list does not replay when you switch); the driver card slides
+  // from the tile you tapped. Each is a keyed wrapper, so the slide plays
+  // once, on mount.
+  const viewDir = useSlideDir(view, (v) => (v === 'week' ? 1 : 0))
+  const dayDir = useSlideDir(upcoming ? '' : selected, (iso) => (iso ? parseISODate(iso).getTime() : NaN))
+  const tileDir = useSlideDir(selection === null ? '' : String(selection), (id) => {
+    const i = dayRides.findIndex((r) => String(r.id) === id)
+    return i < 0 ? NaN : i
+  })
+
   /** Unfold a row in the upcoming list; the week view follows it, should you switch. */
   const openUpcoming = (rideId: number | null) => {
     setCarSel(rideId)
@@ -514,6 +529,7 @@ export default function App() {
 
       <main>
         <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
+          <SegThumb count={2} index={upcoming ? 0 : 1} />
           <button
             type="button"
             role="radio"
@@ -535,7 +551,7 @@ export default function App() {
         </div>
 
         {upcoming && (
-          <>
+          <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
             {loading ? (
               <div className="session-list session-skeleton" aria-busy="true">
                 <span className="card session skeleton" />
@@ -560,51 +576,57 @@ export default function App() {
                 />
               </>
             )}
-          </>
+          </div>
         )}
 
         {!upcoming && (
-          <>
+          <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
             <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
 
-            {loading ? (
-              <div className="cars cars-skeleton" aria-busy="true">
-                <span className="car-tile skeleton" />
-                <span className="car-tile skeleton" />
-                <span className="car-tile skeleton" />
-              </div>
-            ) : dayRides.length === 0 ? null : (
-              <CarCarousel
-                rides={dayRides}
-                selected={selection}
-                userName={userName}
-                dragActive={drag !== null}
-                over={dragOver}
-                onSelect={setCarSel}
-              />
-            )}
+            <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+              {loading ? (
+                <div className="cars cars-skeleton" aria-busy="true">
+                  <span className="car-tile skeleton" />
+                  <span className="car-tile skeleton" />
+                  <span className="car-tile skeleton" />
+                </div>
+              ) : dayRides.length === 0 ? null : (
+                <CarCarousel
+                  rides={dayRides}
+                  selected={selection}
+                  userName={userName}
+                  dragActive={drag !== null}
+                  over={dragOver}
+                  onSelect={setCarSel}
+                />
+              )}
 
-            {!loading && openRide && detailFor(openRide, false)}
+              {!loading && openRide && (
+                <div key={openRide.id} className={['stack', slideClass(tileDir)].filter(Boolean).join(' ')}>
+                  {detailFor(openRide, false)}
+                </div>
+              )}
 
-            {!loading && !openRide && (
-              <AddCarCard userName={userName} isPast={isPast} onEditName={() => setNameOpen(true)} />
-            )}
+              {!loading && !openRide && (
+                <AddCarCard userName={userName} isPast={isPast} onEditName={() => setNameOpen(true)} />
+              )}
 
-            {!loading && (
-              <YouPanel
-                userName={userName}
-                dayRides={dayRides}
-                currentRide={myRideToday}
-                currentBookingId={myBookingToday?.id ?? null}
-                isPast={isPast}
-                dragActive={drag !== null}
-                over={dragOver?.kind === 'tray'}
-                onGrab={onGrab}
-                onOpenCar={setCarSel}
-                onEditName={() => setNameOpen(true)}
-              />
-            )}
-          </>
+              {!loading && (
+                <YouPanel
+                  userName={userName}
+                  dayRides={dayRides}
+                  currentRide={myRideToday}
+                  currentBookingId={myBookingToday?.id ?? null}
+                  isPast={isPast}
+                  dragActive={drag !== null}
+                  over={dragOver?.kind === 'tray'}
+                  onGrab={onGrab}
+                  onOpenCar={setCarSel}
+                  onEditName={() => setNameOpen(true)}
+                />
+              )}
+            </div>
+          </div>
         )}
       </main>
 

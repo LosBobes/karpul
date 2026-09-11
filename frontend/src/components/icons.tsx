@@ -37,12 +37,15 @@ import {
 
 /**
  * The app's icons, from Phosphor (`@phosphor-icons/react`, named imports so
- * only the glyphs used here are bundled). The default weight is *duotone*: a
- * rounded outline over a faint fill of the same colour, which sits with the
- * soft-green tints and pastel avatars of the design better than a bare
- * stroke. Every icon takes `size` (px) and an optional `weight`; the names
- * below are the contract the components render against, so swapping the pack
- * again means editing this file only.
+ * only the glyphs used here are bundled). The default weight is *regular*: a
+ * plain rounded stroke. Phosphor's *duotone* weight paints a 20% fill of the
+ * icon's silhouette under the stroke, and for line glyphs that silhouette is
+ * a slab: a rectangle behind the three bars of the menu icon, a triangle
+ * behind a chevron. On a phone that slab read as a grey grating around the
+ * lines, so duotone is opt-in and used only where the fill is a real shape,
+ * the car marks. Every icon takes `size` (px) and an optional `weight`; the
+ * names below are the contract the components render against, so swapping
+ * the pack again means editing this file only.
  */
 type IconProps = Omit<PhosphorProps, 'weight'> & {
   size?: number
@@ -52,15 +55,15 @@ type IconProps = Omit<PhosphorProps, 'weight'> & {
 }
 
 /** Phosphor's props for one of our icons: `size` in px, the weight resolved as above. */
-function props({ size = 20, weight, strokeWidth, ...rest }: IconProps, fallback: IconWeight = 'duotone'): PhosphorProps {
+function props({ size = 20, weight, strokeWidth, ...rest }: IconProps, fallback: IconWeight = 'regular'): PhosphorProps {
   const w = weight ?? (strokeWidth !== undefined && strokeWidth >= 2.25 ? 'bold' : fallback)
   return { size, weight: w, 'aria-hidden': true, focusable: false, ...rest }
 }
 
-/** The brand mark: a car seen from the front. */
-export const CarIcon = (p: IconProps) => <Car {...props(p)} />
-/** A car side-on: the vehicle pool. */
-export const CarProfileIcon = (p: IconProps) => <CarProfile {...props(p)} />
+/** The brand mark: a car seen from the front, its body tinted (duotone). */
+export const CarIcon = (p: IconProps) => <Car {...props(p, 'duotone')} />
+/** A car side-on: the vehicle pool, tinted like the brand mark. */
+export const CarProfileIcon = (p: IconProps) => <CarProfile {...props(p, 'duotone')} />
 
 export const BoltIcon = (p: IconProps) => <Lightning {...props(p)} />
 /** A leaf, the usual "hybrid" mark. */
