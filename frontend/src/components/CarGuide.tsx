@@ -1,15 +1,15 @@
 import { useT, type GuideEntry } from '../lib/i18n'
-import { CarArt } from './CarArt'
 import { GuideArt } from './GuideArt'
 import { BoltIcon, KeyIcon } from './icons'
 import { Sheet } from './Sheet'
 
 /**
  * The help panel for the company cars: how to charge one with the company
- * card, and where the Mazda 6e keeps the controls a first-time EV driver
- * looks for in the wrong place. The words live in `lib/i18n.ts` (`guide`, in
- * both languages), one picture per entry in `GuideArt.tsx`; edit those when
- * the fleet or the chargers change, nothing else needs to know.
+ * card, step by step, then where the Mazda 6e keeps the things a first-time
+ * EV driver looks for in the wrong place. The words live in `lib/i18n.ts`
+ * (`guide`, in both languages), one picture per entry in `GuideArt.tsx`;
+ * edit those when the fleet or the chargers change, nothing else needs to
+ * know.
  */
 export function CarGuide({ onClose }: { onClose: () => void }) {
   const t = useT()
@@ -36,13 +36,9 @@ export function CarGuide({ onClose }: { onClose: () => void }) {
       </section>
 
       <section className="guide-section">
-        <div className="guide-hero" aria-hidden="true">
-          <CarArt model="mazda6e" width={150} />
-        </div>
         <h3 className="section-title">
           <BoltIcon size={16} /> {t.guide.mazdaTitle}
         </h3>
-        <p className="hint">{t.guide.mazdaHint}</p>
         <dl className="guide-list">
           {t.guide.mazda.map((q: GuideEntry) => (
             <div key={q.art} className="guide-row">

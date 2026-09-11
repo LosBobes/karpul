@@ -1,5 +1,6 @@
 import { useT } from '../lib/i18n'
-import { CarIcon, PlusIcon } from './icons'
+import { PlusCircle } from './AddRideButton'
+import { CarIcon } from './icons'
 
 interface Props {
   userName: string
@@ -33,15 +34,16 @@ export function AddCarCard({ userName, isPast, hasCars, emptyTitle, onAdd, onEdi
     )
   }
   return (
-    <button type="button" className="card empty-card empty-card-btn" onClick={onAdd}>
-      <Illustration plus />
+    <button type="button" className="card empty-card empty-card-btn empty-card-add" onClick={onAdd}>
+      <Illustration />
+      <PlusCircle size={56} className="empty-card-plus" />
       <strong>{hasCars ? t.empty.addNew : (emptyTitle ?? t.empty.noRidesDay)}</strong>
       <span>{t.empty.tapToEnter}</span>
     </button>
   )
 }
 
-function Illustration({ plus = false, muted = false }: { plus?: boolean; muted?: boolean }) {
+function Illustration({ muted = false }: { muted?: boolean }) {
   return (
     <span className={muted ? 'illus illus-muted' : 'illus'} aria-hidden="true">
       <span className="illus-hill" />
@@ -50,11 +52,6 @@ function Illustration({ plus = false, muted = false }: { plus?: boolean; muted?:
       <span className="illus-car">
         <CarIcon size={44} strokeWidth={1.5} />
       </span>
-      {plus && (
-        <span className="illus-plus">
-          <PlusIcon size={14} strokeWidth={2.5} />
-        </span>
-      )}
     </span>
   )
 }

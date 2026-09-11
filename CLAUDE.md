@@ -99,8 +99,14 @@ one self-hosted container). The semantic class names (`.card`, `.date`, `.car-ti
 560px column centred on a desktop; two media blocks at the end carry the phone layout:
 `max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
-query to components that need to change their wording. Icons are inline SVGs in
-`components/icons.tsx`; avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
+query to components that need to change their wording. Icons come from Phosphor
+(`@phosphor-icons/react`, duotone by default) through the named wrappers in `components/icons.tsx`,
+which are the contract the components render against (`size` in px, optional `weight`); nothing
+imports the package directly. Adding a ride is always the same mark, a white plus in a green
+circle (`components/AddRideButton.tsx`): `PlusCircle` is the glyph on its own, inside the empty
+card, the *Add ride* tile and the drawer item, and `AddRideFab` is the floating button pinned to
+the bottom right of the column on both views whenever a ride can be added (`.fab`, under every
+sheet's backdrop). Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
 Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
 `components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
@@ -138,7 +144,7 @@ Wording rule for both languages: no em dashes.
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: *Add ride*, your name (the identity block and *Change name* both open
 `NameSheet`), *Company cars* (`CarAdmin`) and the *Company car guide* (`CarGuide`: how to charge
-with the company card, and a Mazda 6e primer for first-time EV drivers. The words are the `guide`
+with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
 line-icon style with the green accent on the one thing the step is about; also reachable from
 the driver card of any company-car ride). Picking an

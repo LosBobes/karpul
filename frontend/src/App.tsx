@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AddCarCard } from './components/AddCarCard'
+import { AddRideFab } from './components/AddRideButton'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
 import { CarCarousel, type CarSelection } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
-import { CalendarIcon, CarIcon, ListIcon, MenuIcon, PlusIcon } from './components/icons'
+import { CalendarIcon, CarIcon, ListIcon, MenuIcon } from './components/icons'
 import { NameSheet } from './components/NameSheet'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
@@ -561,10 +562,6 @@ export default function App() {
                   onOpen={openUpcoming}
                   renderDetail={(ride) => detailFor(ride, true)}
                 />
-                <button type="button" className="add-row" onClick={openNewCar}>
-                  <PlusIcon size={18} />
-                  {t.empty.addARide}
-                </button>
               </>
             )}
           </>
@@ -621,6 +618,8 @@ export default function App() {
           </>
         )}
       </main>
+
+      {canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
 
       {sidebarOpen && (
         <Sidebar
