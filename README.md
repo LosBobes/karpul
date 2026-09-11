@@ -26,7 +26,9 @@ the app guards the company-car pool.
   press and hold your chip for a moment and it lifts.
 - **Company car guide** in the ☰ sidebar (and on the driver card of every company-car ride): how
   to charge with the company card at the charger, and where the Mazda 6e keeps the controls a
-  first-time EV driver looks for in the wrong place.
+  first-time EV driver looks for in the wrong place (the gear stalk, the frunk, the 80% rule).
+- **Add a ride** from the green plus button that floats at the bottom right on both views; the same
+  mark sits in the empty state, the *Add ride* tile and the ☰ sidebar.
 - **Manage the company car pool** from the ☰ sidebar (*Company cars*): add a car, fix a
   name/plate/seat count, retire one that's been sold, or delete one that was never used.
   This is the one screen behind a password (see *Company-car admin* below).

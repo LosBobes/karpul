@@ -32,6 +32,7 @@ export type GuideArtKey =
   | 'touchscreen'
   | 'battery'
   | 'flap'
+  | 'frunk'
 
 export interface GuideEntry {
   art: GuideArtKey
@@ -283,7 +284,6 @@ const en = {
     enterToAdd: 'Enter your name to add a ride or get into a car.',
     addNew: 'Add a new ride',
     tapToEnter: 'Tap to enter the car, seats, times and route.',
-    addARide: 'Add a ride',
   },
 
   carousel: { label: 'Rides', scrollLeft: 'Scroll rides left', scrollRight: 'Scroll rides right', addRide: 'Add ride' },
@@ -294,8 +294,6 @@ const en = {
     title: 'Company car guide',
     chargingTitle: 'Charging with the company card',
     mazdaTitle: 'Mazda 6e, first time behind the wheel',
-    mazdaHint:
-      'The 6e is electric and does a few things differently from a petrol car. Nothing here is hard, it is just in another place than you would expect.',
     charging: [
       {
         art: 'park-flap',
@@ -358,6 +356,11 @@ const en = {
         art: 'flap',
         title: 'Where the plug goes',
         body: 'The charging flap is on the rear quarter panel: press it and it opens. If the car is locked the flap stays shut, so unlock first.',
+      },
+      {
+        art: 'frunk',
+        title: 'There is a boot under the bonnet',
+        body: 'With no engine up front, the space under the bonnet is a small second boot, the frunk. It is where the charging cable lives, so the cable never rolls around the back. It opens from the Vehicle menu on the touchscreen, not from a lever under the dash. Close it with a firm push on the bonnet and check it is latched.',
       },
     ] as GuideEntry[],
   },
@@ -704,7 +707,6 @@ const sr: Messages = {
     enterToAdd: 'Upiši svoje ime da dodaš vožnju ili uđeš u auto.',
     addNew: 'Dodaj novu vožnju',
     tapToEnter: 'Dodirni i upiši auto, mesta, vreme i rutu.',
-    addARide: 'Dodaj vožnju',
   },
 
   carousel: { label: 'Vožnje', scrollLeft: 'Pomeri vožnje ulevo', scrollRight: 'Pomeri vožnje udesno', addRide: 'Dodaj vožnju' },
@@ -715,8 +717,6 @@ const sr: Messages = {
     title: 'Vodič za službeni auto',
     chargingTitle: 'Punjenje službenom karticom',
     mazdaTitle: 'Mazda 6e, prvi put za volanom',
-    mazdaHint:
-      'Šestica je električna i neke stvari radi drugačije od auta na benzin. Ništa ovde nije teško, samo nije tamo gde bi se obično tražilo.',
     charging: [
       {
         art: 'park-flap',
@@ -779,6 +779,11 @@ const sr: Messages = {
         art: 'flap',
         title: 'Gde ide utikač',
         body: 'Poklopac priključka je na zadnjem bočnom delu: pritisni ga i otvara se. Dok je auto zaključan, poklopac ostaje zatvoren, pa prvo otključaj.',
+      },
+      {
+        art: 'frunk',
+        title: 'Ispod haube je prtljažnik',
+        body: 'Pošto napred nema motora, prostor ispod haube je mali drugi prtljažnik, takozvani frunk. U njemu stoji kabl za punjenje, pa se ne kotrlja po zadnjem prtljažniku. Otvara se iz menija Vehicle na ekranu, ne polugom ispod table. Zatvori ga čvrstim pritiskom na haubu i proveri da se zabravio.',
       },
     ],
   },

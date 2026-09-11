@@ -1,7 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
 import { Avatar } from './Avatar'
-import { CarIcon, InfoIcon, KeyIcon, PlusIcon, UserIcon, XIcon } from './icons'
+import { PlusCircle } from './AddRideButton'
+import { CarIcon, CarProfileIcon, InfoIcon, UserIcon, XIcon } from './icons'
 import { LanguageSwitch } from './LanguageSwitch'
 
 interface Props {
@@ -64,7 +65,7 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
     {
       label: t.sidebar.addRide,
       hint: canAdd ? t.sidebar.addHint : t.sidebar.addPast,
-      icon: <PlusIcon size={20} />,
+      icon: <PlusCircle size={36} />,
       onSelect: pick(onAddRide),
       disabled: !canAdd,
     },
@@ -77,7 +78,7 @@ export function Sidebar({ userName, canAdd, onAddRide, onEditName, onCompanyCars
     {
       label: t.sidebar.cars,
       hint: t.sidebar.carsHint,
-      icon: <KeyIcon size={20} />,
+      icon: <CarProfileIcon size={22} />,
       onSelect: pick(onCompanyCars),
     },
     {

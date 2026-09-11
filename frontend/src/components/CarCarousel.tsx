@@ -4,7 +4,8 @@ import { useT } from '../lib/i18n'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from './icons'
+import { PlusCircle } from './AddRideButton'
+import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 
 export type CarSelection = number | 'new'
 
@@ -96,7 +97,7 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
             aria-pressed={selected === 'new'}
             onClick={() => onSelect('new')}
           >
-            <PlusIcon size={22} />
+            <PlusCircle size={32} />
             <span className="car-tile-name">{t.carousel.addRide}</span>
           </button>
         )}

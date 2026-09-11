@@ -3,7 +3,7 @@ import type { GuideArtKey } from '../lib/i18n'
 /**
  * One small picture per entry of the company car guide (CarGuide.tsx): the
  * flap and the charger, the card on the reader, the plug, the stalk, the P
- * button, the 80% battery and so on. Drawn in the app's line-icon style, in
+ * button, the 80% battery, the frunk and so on. Drawn in the app's line-icon style, in
  * a 120×80 box, with `currentColor` for the ink and the green accent (via the
  * `accent` classes in index.css) for the one thing the step is about, so a
  * reader can find it on the real car from the picture alone. Nothing here is
@@ -280,6 +280,30 @@ function Flap() {
   )
 }
 
+/** The front of the car with the bonnet up and a cable coiled in the frunk. */
+function Frunk() {
+  return (
+    <>
+      {/* body, nose to the left, wheel arch on the right */}
+      <path className="soft" d="M6 62V44Q6 38 12 36L34 32L48 20Q52 16 58 16H92Q100 16 106 22L114 34V62H74A16 16 0 0 0 42 62Z" />
+      <circle cx="58" cy="62" r="9" fill="var(--surface)" />
+      <circle className="ink" cx="58" cy="62" r="3" />
+      {/* the bonnet, swung open */}
+      <path className="accent-fill" d="M48 24L12 6L8 13L44 31Z" />
+      <path className="accent" d="M48 24L44 31" />
+      {/* the well underneath with the coiled cable */}
+      <rect className="accent" x="18" y="38" width="30" height="14" rx="2" />
+      <path className="accent" d="M24 45a4 4 0 1 0 8 0a4 4 0 1 0-8 0M32 45h10" />
+      <path className="accent" d="M42 45q4 0 4 3" />
+      {/* no engine: crossed out */}
+      <g opacity="0.55">
+        <rect x="70" y="26" width="26" height="18" rx="2" />
+        <path d="M66 22L100 48" />
+      </g>
+    </>
+  )
+}
+
 const ART: Record<GuideArtKey, () => React.JSX.Element> = {
   'park-flap': ParkFlap,
   'card-reader': CardReader,
@@ -293,6 +317,7 @@ const ART: Record<GuideArtKey, () => React.JSX.Element> = {
   touchscreen: Touchscreen,
   battery: Battery,
   flap: Flap,
+  frunk: Frunk,
 }
 
 /** The picture for one guide entry, in a 3:2 box of `width` px. */
