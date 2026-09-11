@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
+import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
 import { CarIcon, CarProfileIcon, InfoIcon, UserIcon, XIcon } from './icons'
@@ -31,14 +32,16 @@ interface Item {
 export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
+  // The drawer slides back out before it unmounts, whichever way it is closed.
+  const { closing, requestClose, onAnimationEnd } = useClosing(onClose)
   // The phone's back button closes the drawer instead of leaving the page.
-  useBackClose(onClose)
+  useBackClose(requestClose)
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && requestClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  }, [requestClose])
 
   // Same lock as a sheet: the page behind must not scroll under the drawer.
   useEffect(() => {
@@ -55,6 +58,9 @@ export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose 
     panel.current?.focus()
   }, [])
 
+  // Picking an item closes on the spot: the sheet it opens must own the
+  // history entry and the body-scroll lock alone, so the drawer does not
+  // linger under it playing its exit.
   const pick = (fn: () => void) => () => {
     onClose()
     fn()
@@ -82,7 +88,10 @@ export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose 
   ]
 
   return (
-    <div className="backdrop backdrop-drawer" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className={closing ? 'backdrop backdrop-drawer backdrop-closing' : 'backdrop backdrop-drawer'}
+      onMouseDown={(e) => e.target === e.currentTarget && requestClose()}
+    >
       <div
         ref={panel}
         id="app-sidebar"
@@ -91,12 +100,13 @@ export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onClose 
         aria-modal="true"
         aria-labelledby="sidebar-title"
         tabIndex={-1}
+        onAnimationEnd={onAnimationEnd}
       >
         <header className="drawer-head">
           <h2 id="sidebar-title" className="topbar-title">
             <CarIcon size={20} /> Karpul
           </h2>
-          <button type="button" className="icon-btn" aria-label={t.sidebar.closeMenu} onClick={onClose}>
+          <button type="button" className="icon-btn" aria-label={t.sidebar.closeMenu} onClick={requestClose}>
             <XIcon />
           </button>
         </header>

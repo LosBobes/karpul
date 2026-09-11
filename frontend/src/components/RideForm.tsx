@@ -4,6 +4,7 @@ import type { CarType, CorporateCar, Ride, RideInput } from '../lib/types'
 import { Avatar } from './Avatar'
 import { DatePicker } from './DatePicker'
 import { CarIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon } from './icons'
+import { SegThumb } from './Segmented'
 import { Select } from './Select'
 import { Sheet } from './Sheet'
 import { TimePicker } from './TimePicker'
@@ -116,6 +117,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       <div className="field">
         <span className="field-label">{t.form.car}</span>
         <div className="segmented" role="radiogroup" aria-label={t.form.car}>
+          <SegThumb count={2} index={carType === 'corporate' ? 0 : 1} />
           <button
             type="button"
             role="radio"

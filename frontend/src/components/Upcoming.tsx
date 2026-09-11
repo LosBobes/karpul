@@ -80,7 +80,11 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                         <ChevronDownIcon size={16} className="session-chevron" />
                       </span>
                     </button>
-                    {open && <div className="session-detail">{renderDetail(r)}</div>}
+                    {open && (
+                      <div className="session-detail">
+                        <div className="session-detail-clip">{renderDetail(r)}</div>
+                      </div>
+                    )}
                   </li>
                 )
               })}

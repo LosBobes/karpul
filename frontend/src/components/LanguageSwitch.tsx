@@ -1,5 +1,6 @@
 import { useT } from '../lib/i18n'
 import { LOCALES, setLocale, useLocale, type Locale } from '../lib/locale'
+import { SegThumb } from './Segmented'
 
 /** Each language names itself, so a person can always find their way back. */
 const NAMES: Record<Locale, string> = { en: 'English', sr: 'Srpski' }
@@ -17,6 +18,7 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
     <div className={compact ? 'lang lang-compact' : 'lang'}>
       <span className="lang-label">{t.common.language}</span>
       <div className="segmented lang-seg" role="radiogroup" aria-label={t.common.language}>
+        <SegThumb count={LOCALES.length} index={Math.max(0, LOCALES.indexOf(locale))} />
         {LOCALES.map((l) => (
           <button
             key={l}

@@ -19,7 +19,9 @@ interface Props {
  * A floating panel rendered on <body> and positioned against its anchor, so
  * it is never clipped by a scrolling sheet body. Sits below the anchor and
  * flips above when the viewport runs out; closes on an outside tap, Escape,
- * or when the anchor scrolls away.
+ * or when the anchor scrolls away. It grows out of the anchor's edge (the
+ * `popover-up` class and `transform-origin` say which), so placement reads
+ * the layout size (`offsetWidth`) rather than the scaled bounding box.
  */
 export function Popover({ anchor, onClose, children, align = 'left', className, role, id, ...aria }: Props) {
   const ref = useRef<HTMLDivElement>(null)
@@ -33,16 +35,20 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
     const place = () => {
       const a = anchor.getBoundingClientRect()
       if (align === 'stretch') el.style.minWidth = `${a.width}px`
-      const p = el.getBoundingClientRect()
+      const width = el.offsetWidth
+      const height = el.offsetHeight
       const pad = 8
       const vw = window.innerWidth
       const vh = window.innerHeight
-      let left = align === 'right' ? a.right - p.width : a.left
-      left = Math.max(pad, Math.min(left, vw - pad - p.width))
+      let left = align === 'right' ? a.right - width : a.left
+      left = Math.max(pad, Math.min(left, vw - pad - width))
       let top = a.bottom + 4
-      if (top + p.height > vh - pad) top = Math.max(pad, a.top - 4 - p.height)
+      const up = top + height > vh - pad
+      if (up) top = Math.max(pad, a.top - 4 - height)
       el.style.top = `${top}px`
       el.style.left = `${left}px`
+      el.style.transformOrigin = `${up ? 'bottom' : 'top'} ${align === 'right' ? 'right' : 'left'}`
+      el.classList.toggle('popover-up', up)
       el.style.visibility = 'visible'
     }
     place()
@@ -79,7 +85,14 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
   }, [anchor, onClose])
 
   return createPortal(
-    <div ref={ref} id={id} role={role} {...aria} className={['popover', className].filter(Boolean).join(' ')} style={{ visibility: 'hidden' }}>
+    <div
+      ref={ref}
+      id={id}
+      role={role}
+      {...aria}
+      className={['popover', className].filter(Boolean).join(' ')}
+      style={{ visibility: 'hidden' }}
+    >
       {children}
     </div>,
     document.body,

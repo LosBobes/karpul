@@ -1,7 +1,8 @@
-import { useRef, type TouchEvent } from 'react'
+import { useRef, type CSSProperties, type TouchEvent } from 'react'
 import { addDays, fmtWeekRange, fmtWeekday, parseISODate, startOfWeek, toISODate, todayISO } from '../lib/dates'
 import { useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
+import { slideClass, useSlideDir } from '../lib/motion'
 import type { Ride } from '../lib/types'
 import { DatePicker } from './DatePicker'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
@@ -20,15 +21,19 @@ const SWIPE_PX = 48
  * always fit the width, so nothing is hidden off-screen. The arrows sit next
  * to the week label below, because that is what they move; a sideways swipe
  * on the pills does the same. A dot under a day means at least one car is
- * going that day.
+ * going that day. The green pill is one element that slides to the tapped
+ * day; a week step slides the whole strip in from the side the week came from.
  */
 export function DateCarousel({ selected, rides, onSelect }: Props) {
   const t = useT()
   const today = todayISO()
   const monday = startOfWeek(parseISODate(selected))
+  const mondayISO = toISODate(monday)
   const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
   const withRides = new Set(rides.map((r) => r.ride_date))
   const stepWeek = (n: number) => onSelect(toISODate(addDays(monday, 7 * n)))
+  const weekDir = useSlideDir(mondayISO, (iso) => parseISODate(iso).getTime())
+  const selectedIndex = days.findIndex((d) => toISODate(d) === selected)
 
   // Touch swipe on the strip. The handlers never preventDefault, so a vertical
   // drag still scrolls the page as usual.
@@ -49,7 +54,14 @@ export function DateCarousel({ selected, rides, onSelect }: Props) {
 
   return (
     <section className="dates" aria-label={t.dates.pickDay}>
-      <div className="dates-strip" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} onTouchCancel={() => (touch.current = null)}>
+      <div
+        key={mondayISO}
+        className={['dates-strip', slideClass(weekDir)].filter(Boolean).join(' ')}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={() => (touch.current = null)}
+      >
+        <span className="date-thumb" aria-hidden="true" style={{ '--date-i': selectedIndex } as CSSProperties} />
         {days.map((d) => {
           const iso = toISODate(d)
           const cls = [
