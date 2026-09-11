@@ -65,14 +65,23 @@ class HashedAssets(StaticFiles):
         return response
 
 
-# Serve the built frontend (if present) so a single process can host everything.
-if FRONTEND_DIST.is_dir():
-    app.mount("/assets", HashedAssets(directory=FRONTEND_DIST / "assets"), name="assets")
+def mount_frontend(app: FastAPI, dist: Path) -> None:
+    """Serve a Vite build from `dist` behind the API routes: hashed bundles from
+    `/assets`, everything else (the shell, the service worker, the manifest, the
+    icons) by its plain name with an SPA fallback."""
+    app.mount("/assets", HashedAssets(directory=dist / "assets"), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        candidate = FRONTEND_DIST / full_path
-        if full_path and candidate.is_file():
-            return FileResponse(candidate)
-        # The shell is tiny and must always point at the current bundles.
-        return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
+        candidate = dist / full_path
+        # Anything outside /assets keeps its name across builds, so it must be
+        # revalidated every time. The shell is tiny and must always point at the
+        # current bundles, and `sw.js` must be re-fetched or an installed app would
+        # never learn about a new build (the worker itself precaches the rest).
+        file = candidate if full_path and candidate.is_file() else dist / "index.html"
+        return FileResponse(file, headers={"Cache-Control": "no-cache"})
+
+
+# Serve the built frontend (if present) so a single process can host everything.
+if FRONTEND_DIST.is_dir():
+    mount_frontend(app, FRONTEND_DIST)

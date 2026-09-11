@@ -2379,6 +2379,18 @@ body.dragging {
 .toast-error {
   background: var(--red);
 }
+/* A waiting build (lib/pwa.ts): the whole pill is the button, the bold word the verb. */
+.toast-update {
+  border: none;
+  background: var(--green);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+.toast-update b {
+  font-weight: 700;
+}
 
 /* --- Motion -------------------------------------------------------------- */
 /* Nothing on this board fades in. A view or a day board that replaces
