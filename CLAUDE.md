@@ -102,11 +102,11 @@ choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` ex
 query to components that need to change their wording. Icons come from Phosphor
 (`@phosphor-icons/react`, duotone by default) through the named wrappers in `components/icons.tsx`,
 which are the contract the components render against (`size` in px, optional `weight`); nothing
-imports the package directly. Adding a ride is always the same mark, a white plus in a green
-circle (`components/AddRideButton.tsx`): `PlusCircle` is the glyph on its own, inside the empty
-card, the *Add ride* tile and the drawer item, and `AddRideFab` is the floating button pinned to
-the bottom right of the column on both views whenever a ride can be added (`.fab`, under every
-sheet's backdrop). Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
+imports the package directly. Adding a ride has exactly one control: `AddRideFab`
+(`components/AddRideButton.tsx`), a white plus in a green circle floating at the bottom right of
+the column on both views whenever a ride can be added (`.fab`, under every sheet's backdrop).
+There is deliberately no *Add ride* tile in the carousel, no plus in the empty card and no drawer
+item; the empty card's hint points at the floating button instead. Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
 Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
 `components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
@@ -142,7 +142,7 @@ Wording rule for both languages: no em dashes.
 
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
-about one particular ride: *Add ride*, your name (the identity block and *Change name* both open
+about one particular ride: your name (the identity block and *Change name* both open
 `NameSheet`), *Company cars* (`CarAdmin`) and the *Company car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
@@ -158,7 +158,7 @@ no other same-day tile to drop on. `App.tsx` loads whichever range the view need
 the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
 width — nothing scrolls; the arrows beside the week label and a sideways swipe on the strip step a
 week) →
-`CarCarousel` (one tile per ride that day plus an *Add ride* tile; tiles are also drop targets) →
+`CarCarousel` (one tile per ride that day, hidden when there are none; tiles are also drop targets) →
 either `CarDetail` (driver card, times, route, passenger list with the drop zone and the
 *Get in this car* row) or `AddCarCard` (the illustrated placeholder) → `YouPanel`. The design's
 "unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
@@ -170,7 +170,7 @@ custom controls (and `Menu` is the ⋮ menu) built on `Popover`, which portals t
 positions itself against its anchor with `position: fixed`, so it is never clipped by a sheet's
 scrolling body and flips above the anchor when the viewport runs out. `TimePicker` shows 12- or
 24-hour columns depending on the browser locale but always emits `HH:MM`. `App.tsx` resolves which tile is open (`selection`):
-an explicit pick that still exists, else your own ride, else the first ride, else the *Add* tile.
+an explicit pick that still exists, else your own ride, else the first ride, else nothing (the empty card).
 **Wording:** the thing you add, edit, duplicate or remove is a *ride*; *car* is reserved for the
 vehicle (the pool, "Company car" / "Own car", "get in this car", "in this car").
 

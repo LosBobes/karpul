@@ -4,21 +4,16 @@ import { useT } from '../lib/i18n'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { PlusCircle } from './AddRideButton'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
-
-export type CarSelection = number | 'new'
 
 interface Props {
   rides: Ride[]
-  selected: CarSelection | null
+  selected: number | null
   userName: string
   /** Someone is dragging the passenger chip; cards that can take it light up. */
   dragActive: boolean
   over: DropTarget | null
-  /** False for past days: nothing can be added or joined any more. */
-  canAdd: boolean
-  onSelect: (sel: CarSelection) => void
+  onSelect: (rideId: number) => void
 }
 
 function canReceive(ride: Ride, userName: string): boolean {
@@ -29,11 +24,11 @@ function canReceive(ride: Ride, userName: string): boolean {
 }
 
 /**
- * One tile per ride going that day, plus the "Add ride" tile at the end. The
- * tiles are also drop targets, so a chip can be dropped straight onto another
- * car without opening it first.
+ * One tile per ride going that day. The tiles are also drop targets, so a
+ * chip can be dropped straight onto another car without opening it first.
+ * Adding a ride is the floating plus (AddRideButton.tsx), not a tile here.
  */
-export function CarCarousel({ rides, selected, userName, dragActive, over, canAdd, onSelect }: Props) {
+export function CarCarousel({ rides, selected, userName, dragActive, over, onSelect }: Props) {
   const t = useT()
   const strip = useRef<HTMLDivElement>(null)
 
@@ -90,17 +85,6 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, canAd
             </button>
           )
         })}
-        {canAdd && (
-          <button
-            type="button"
-            className={selected === 'new' ? 'car-tile car-tile-add car-tile-selected' : 'car-tile car-tile-add'}
-            aria-pressed={selected === 'new'}
-            onClick={() => onSelect('new')}
-          >
-            <PlusCircle size={32} />
-            <span className="car-tile-name">{t.carousel.addRide}</span>
-          </button>
-        )}
       </div>
       <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollRight} onClick={() => scrollBy(1)}>
         <ChevronRightIcon />

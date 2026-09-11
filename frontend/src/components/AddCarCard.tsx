@@ -1,25 +1,26 @@
 import { useT } from '../lib/i18n'
-import { PlusCircle } from './AddRideButton'
 import { CarIcon } from './icons'
 
 interface Props {
   userName: string
   isPast: boolean
-  hasCars: boolean
   /** Title when there is nothing yet; the default speaks of a day. */
   emptyTitle?: string
-  onAdd: () => void
   onEditName: () => void
 }
 
-/** The illustrated placeholder shown where a ride would be: "add one" or "nothing went". */
-export function AddCarCard({ userName, isPast, hasCars, emptyTitle, onAdd, onEditName }: Props) {
+/**
+ * The illustrated placeholder shown where a ride would be: "nothing yet" or
+ * "nothing went". It does not add a ride itself; that is the floating plus
+ * (components/AddRideButton.tsx), which the hint points at.
+ */
+export function AddCarCard({ userName, isPast, emptyTitle, onEditName }: Props) {
   const t = useT()
   if (isPast) {
     return (
       <div className="card empty-card">
         <Illustration muted />
-        <strong>{hasCars ? t.empty.pickAbove : t.empty.noRidesWent}</strong>
+        <strong>{t.empty.noRidesWent}</strong>
         <span>{t.empty.pastReadOnly}</span>
       </div>
     )
@@ -34,12 +35,11 @@ export function AddCarCard({ userName, isPast, hasCars, emptyTitle, onAdd, onEdi
     )
   }
   return (
-    <button type="button" className="card empty-card empty-card-btn empty-card-add" onClick={onAdd}>
+    <div className="card empty-card">
       <Illustration />
-      <PlusCircle size={56} className="empty-card-plus" />
-      <strong>{hasCars ? t.empty.addNew : (emptyTitle ?? t.empty.noRidesDay)}</strong>
-      <span>{t.empty.tapToEnter}</span>
-    </button>
+      <strong>{emptyTitle ?? t.empty.noRidesDay}</strong>
+      <span>{t.empty.usePlus}</span>
+    </div>
   )
 }
 
