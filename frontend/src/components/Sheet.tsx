@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
+import { useBackClose } from '../lib/useBackClose'
 import { XIcon } from './icons'
 
 interface Props {
@@ -24,6 +25,8 @@ interface Props {
  */
 export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'div', onSubmit, footer, className }: Props) {
   const t = useT()
+  // The phone's back button closes the sheet instead of leaving the page.
+  useBackClose(onClose)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)

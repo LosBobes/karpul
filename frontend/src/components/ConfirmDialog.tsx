@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
+import { useBackClose } from '../lib/useBackClose'
 import { TrashIcon } from './icons'
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
 /** The "Remove this ride?" card: a red trash badge, one line of consequence, two stacked buttons. */
 export function ConfirmDialog({ title, body, confirmLabel, busy, onConfirm, onCancel }: Props) {
   const t = useT()
+  // The phone's back button cancels instead of leaving the page.
+  useBackClose(onCancel)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
     window.addEventListener('keydown', onKey)
