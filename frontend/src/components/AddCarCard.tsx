@@ -6,6 +6,8 @@ interface Props {
   isPast: boolean
   /** Title when there is nothing yet; the default speaks of a day. */
   emptyTitle?: string
+  /** The board is empty altogether: say what the two views are for. */
+  intro?: boolean
   onEditName: () => void
 }
 
@@ -14,7 +16,7 @@ interface Props {
  * "nothing went". It does not add a ride itself; that is the floating plus
  * (components/AddRideButton.tsx), which the hint points at.
  */
-export function AddCarCard({ userName, isPast, emptyTitle, onEditName }: Props) {
+export function AddCarCard({ userName, isPast, emptyTitle, intro = false, onEditName }: Props) {
   const t = useT()
   if (isPast) {
     return (
@@ -39,6 +41,11 @@ export function AddCarCard({ userName, isPast, emptyTitle, onEditName }: Props) 
       <Illustration />
       <strong>{emptyTitle ?? t.empty.noRidesDay}</strong>
       <span>{t.empty.usePlus}</span>
+      {intro && (
+        <p className="empty-intro">
+          {t.empty.viewsIntro} {t.empty.firstRide}
+        </p>
+      )}
     </div>
   )
 }

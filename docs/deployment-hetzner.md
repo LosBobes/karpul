@@ -77,15 +77,23 @@ cp .env.prod.example .env
 nano .env
 ```
 
-Karpul has one secret: the shared password for the company-car admin screen.
-Set the public origin, that password, and optionally the car pool that is
-seeded on first start:
+Karpul has two secrets: the shared password for the company-car admin screen
+and the VAPID key that signs push notifications. Set the public origin, both,
+and optionally the car pool that is seeded on first start:
 
 ```env
 CORS_ORIGINS=https://www.karpul.dev
 KARPUL_ADMIN_PASSWORD=<long random string>
+KARPUL_VAPID_PRIVATE_KEY=<what `python -m app.vapid` printed>
+KARPUL_VAPID_SUBJECT=mailto:someone@example.com
 CORPORATE_CARS=Skoda Octavia|BG-123-XY|4;VW Transporter|BG-456-ZZ|8
 ```
+
+`KARPUL_VAPID_PRIVATE_KEY` is generated once (`docker compose -f docker-compose.prod.yml
+run --rm app python -m app.vapid`, or any Python with the `cryptography` package) and
+then kept: browsers subscribe against the public half of it, so a new key silently
+orphans every existing subscription. Leaving it empty switches notifications off; the
+app hides the switch.
 
 `KARPUL_ADMIN_PASSWORD` is what the *Cars* button asks for; anyone with it can
 add, edit, retire and delete company cars, so make it long. Leaving it empty

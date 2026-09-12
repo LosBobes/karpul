@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from 'react'
-import { useT } from '../lib/i18n'
-import type { CorporateCar, CorporateCarInput } from '../lib/types'
+import { useEffect, useState, type FormEvent } from 'react'
+import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
+import { messages, useT } from '../lib/i18n'
+import type { CarUsage, CorporateCar, CorporateCarInput } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CarIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
+import { CarIcon, ChartIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
 import { Menu } from './Menu'
+import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
 
 type CarPatch = Partial<CorporateCarInput & { active: boolean }>
@@ -19,16 +21,21 @@ interface Props {
   onCreate: (input: CorporateCarInput) => void
   onUpdate: (id: number, patch: CarPatch) => void
   onDelete: (car: CorporateCar) => void
+  /** The usage report for the last `days` days (admin, see backend services.corporate_usage). */
+  onLoadUsage: (days: number) => Promise<CarUsage>
   onClose: () => void
 }
 
 /** Sentinel id for the "add a car" row, which has no car id of its own. */
 export const NEW_CAR_BUSY_ID = -1
 
-/** The company-car pool, behind the shared admin password. */
-export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onLock, onCreate, onUpdate, onDelete, onClose }: Props) {
+type Tab = 'cars' | 'usage'
+
+/** The company-car pool, behind the shared admin password, with a usage tab. */
+export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onLock, onCreate, onUpdate, onDelete, onLoadUsage, onClose }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
+  const [tab, setTab] = useState<Tab>('cars')
 
   if (!unlocked) {
     return <Unlock error={error} loading={loading} onUnlock={onUnlock} onClose={onClose} />
@@ -50,6 +57,20 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
         </>
       }
     >
+      <div className="segmented admin-tabs" role="radiogroup" aria-label={t.admin.title}>
+        <SegThumb count={2} index={tab === 'cars' ? 0 : 1} />
+        <button type="button" role="radio" aria-checked={tab === 'cars'} className={tab === 'cars' ? 'seg seg-on' : 'seg'} onClick={() => setTab('cars')}>
+          <CarIcon size={16} /> {t.usage.carsTab}
+        </button>
+        <button type="button" role="radio" aria-checked={tab === 'usage'} className={tab === 'usage' ? 'seg seg-on' : 'seg'} onClick={() => setTab('usage')}>
+          <ChartIcon size={16} /> {t.usage.tab}
+        </button>
+      </div>
+
+      {tab === 'usage' && <Usage load={onLoadUsage} />}
+
+      {tab === 'cars' && (
+        <>
       <p className="hint">{t.admin.hint}</p>
 
       {error && <p className="error">{error}</p>}
@@ -118,7 +139,157 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
           <PlusIcon size={18} /> {t.admin.addCompanyCar}
         </button>
       )}
+        </>
+      )}
     </Sheet>
+  )
+}
+
+const WINDOWS = [30, 90, 365] as const
+
+/**
+ * How the pool is used: per car the rides, the days it went out (as a share
+ * of the working days in the window), drivers, passengers and kilometres,
+ * when it last went out and what is booked ahead; then the rides themselves.
+ */
+function Usage({ load }: { load: (days: number) => Promise<CarUsage> }) {
+  const t = useT()
+  const [days, setDays] = useState<(typeof WINDOWS)[number]>(90)
+  const [report, setReport] = useState<CarUsage | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    // Data fetching, like App.load: a window change clears the old error first.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setError(null)
+    load(days)
+      .then((r) => live && setReport(r))
+      .catch((e) => live && setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong))
+    return () => {
+      live = false
+    }
+  }, [days, load])
+
+  const pct = (rate: number) => `${Math.round(rate * 100)}%`
+
+  return (
+    <div className="usage">
+      <div className="segmented usage-window" role="radiogroup" aria-label={t.usage.window(days)}>
+        <SegThumb count={WINDOWS.length} index={WINDOWS.indexOf(days)} />
+        {WINDOWS.map((d) => (
+          <button key={d} type="button" role="radio" aria-checked={days === d} className={days === d ? 'seg seg-on' : 'seg'} onClick={() => setDays(d)}>
+            {t.usage.window(d)}
+          </button>
+        ))}
+      </div>
+
+      {error && <p className="error">{error}</p>}
+      {!report && !error && <p className="hint">{t.common.loading}</p>}
+
+      {report && (
+        <>
+          <div className="stat-grid stat-grid-4">
+            <div className="card stat-tile">
+              <strong className="when-value">{report.totals.rides}</strong>
+              <span>{t.usage.ridesLabel}</span>
+            </div>
+            <div className="card stat-tile">
+              <strong className="when-value">{report.totals.days_used}</strong>
+              <span>{t.usage.daysOut}</span>
+            </div>
+            <div className="card stat-tile">
+              <strong className="when-value">{report.totals.passengers}</strong>
+              <span>{t.usage.passengers}</span>
+            </div>
+            <div className="card stat-tile">
+              <strong className="when-value">{report.totals.km}</strong>
+              <span>{t.usage.km}</span>
+            </div>
+          </div>
+          <p className="hint">{t.usage.useRateHint(report.working_days)}</p>
+
+          <ul className="usage-list">
+            {report.cars.map((row) => (
+              <li key={row.car.id} className={row.car.active ? 'card usage-car' : 'card usage-car usage-car-retired'}>
+                <div className="usage-car-head">
+                  <span className="admin-car-icon" aria-hidden="true">
+                    <CarGlyph carName={row.car.name} size={16} />
+                  </span>
+                  <span className="admin-row-text">
+                    <strong>
+                      {row.car.name}
+                      <PowertrainMark carName={row.car.name} />
+                      {!row.car.active && <span className="tag">{t.usage.retired}</span>}
+                    </strong>
+                    <span>
+                      <span className="mono">{row.car.plate}</span> · {t.usage.lastUsed}: {row.last_used ? fmtShortDate(row.last_used) : t.usage.never}
+                      {row.upcoming > 0 && ` · ${t.usage.booked(row.upcoming)}`}
+                    </span>
+                  </span>
+                  <span className="usage-rate when-value" title={t.usage.useRate}>
+                    {pct(row.use_rate)}
+                  </span>
+                </div>
+                <div className="usage-bar" role="img" aria-label={`${t.usage.useRate} ${pct(row.use_rate)}`}>
+                  <span style={{ width: pct(Math.min(row.use_rate, 1)) }} />
+                </div>
+                <dl className="usage-facts">
+                  <div>
+                    <dt>{t.usage.ridesLabel}</dt>
+                    <dd className="when-value">{row.rides}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.usage.daysOut}</dt>
+                    <dd className="when-value">{row.days_used}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.usage.drivers}</dt>
+                    <dd className="when-value">{row.drivers}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.usage.passengers}</dt>
+                    <dd className="when-value">{row.passengers}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.usage.km}</dt>
+                    <dd className="when-value">{row.km}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+
+          <h3 className="section-title">{t.usage.history}</h3>
+          {report.history.length === 0 ? (
+            <p className="hint">{t.usage.noUsage}</p>
+          ) : (
+            <ul className="history-list">
+              {report.history.map((h) => (
+                <li key={h.id} className="history-row">
+                  <span className="history-when">
+                    <span className="when-value">{fmtShortDate(h.ride_date)}</span>
+                    <small>
+                      {fmtTime(h.departure_time)}
+                      {h.return_time ? ` – ${fmtTime(h.return_time)}` : ''}
+                    </small>
+                  </span>
+                  <span className="history-text">
+                    <strong>
+                      {shortCarName(h.car_name)} · {h.driver_name}
+                    </strong>
+                    <span>
+                      {t.myRides.route(h.origin, h.destination)} · {t.usage.pax(h.passengers, h.seats)}
+                      {h.distance_km != null && ` · ${h.distance_km} km`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 

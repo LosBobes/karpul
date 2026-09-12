@@ -1,4 +1,4 @@
-import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './types'
+import type { CarUsage, CorporateCar, CorporateCarInput, PersonStats, PushConfig, Ride, RideInput } from './types'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -36,7 +36,9 @@ interface Auth {
 async function request<T>(path: string, init: RequestInit = {}, auth: Auth = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) }
   if (init.body) headers['Content-Type'] = 'application/json'
-  if (auth.userName) headers['X-User-Name'] = auth.userName
+  // A header value cannot carry a ć or a š (fetch refuses anything past
+  // Latin-1), so the name travels percent-encoded; the server decodes it.
+  if (auth.userName) headers['X-User-Name'] = encodeURIComponent(auth.userName)
   if (auth.adminPassword) headers['X-Admin-Password'] = auth.adminPassword
   const res = await fetch(`${BASE}${path}`, { ...init, headers })
   if (res.status === 204) return undefined as T
@@ -65,8 +67,11 @@ export const api = {
   updateRide: (id: number, patch: Partial<RideInput>, userName: string) =>
     request<Ride>(`/api/rides/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }, { userName }),
 
-  deleteRide: (id: number, userName: string) =>
-    request<void>(`/api/rides/${id}`, { method: 'DELETE' }, { userName }),
+  /** `following` also removes the later rides of the same weekly series. */
+  deleteRide: (id: number, userName: string, scope: 'one' | 'following' = 'one') =>
+    request<void>(`/api/rides/${id}?scope=${scope}`, { method: 'DELETE' }, { userName }),
+
+  ride: (id: number) => request<Ride>(`/api/rides/${id}`),
 
   /**
    * Put `passengerName` in the car. `userName` is who is doing it: yourself
@@ -74,15 +79,45 @@ export const api = {
    * which the server allows only when the ride's `passengers_manage` is on
    * (the driver may always).
    */
-  join: (rideId: number, passengerName: string, userName: string) =>
+  join: (rideId: number, passengerName: string, userName: string, pickup = '') =>
     request<Ride>(
       `/api/rides/${rideId}/bookings`,
-      { method: 'POST', body: JSON.stringify({ passenger_name: passengerName }) },
+      { method: 'POST', body: JSON.stringify({ passenger_name: passengerName, pickup }) },
       { userName },
     ),
 
   leave: (rideId: number, bookingId: number, userName: string) =>
     request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }, { userName }),
+
+  /** Move a passenger to another of the ride's pickup points ("" = the origin). */
+  movePickup: (rideId: number, bookingId: number, pickup: string, userName: string) =>
+    request<Ride>(
+      `/api/rides/${rideId}/bookings/${bookingId}`,
+      { method: 'PATCH', body: JSON.stringify({ pickup }) },
+      { userName },
+    ),
+
+  /** Where the ride's .ics lives; a plain link, the browser downloads it. */
+  rideCalendarUrl: (rideId: number) => `${BASE}/api/rides/${rideId}/calendar.ics`,
+
+  /** The subscribable calendar of everything `name` drives or rides in. */
+  calendarFeedUrl: (name: string) => `${BASE}/api/calendar/${encodeURIComponent(name)}.ics`,
+
+  myStats: (name: string) => request<PersonStats>(`/api/stats/me?name=${encodeURIComponent(name)}`),
+
+  // --- push notifications (see backend/app/push.py) ---
+
+  pushConfig: () => request<PushConfig>('/api/push/config'),
+
+  subscribePush: (subscription: PushSubscriptionJSON, locale: string, userName: string) =>
+    request<{ ok: boolean }>(
+      '/api/push/subscriptions',
+      { method: 'POST', body: JSON.stringify({ ...subscription, locale }) },
+      { userName },
+    ),
+
+  unsubscribePush: (endpoint: string) =>
+    request<void>('/api/push/subscriptions', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
 
   // --- car pool admin (shared password, see backend/app/admin.py) ---
 
@@ -106,4 +141,8 @@ export const api = {
 
   deleteCar: (id: number, adminPassword: string) =>
     request<void>(`/api/cars/corporate/${id}`, { method: 'DELETE' }, { adminPassword }),
+
+  /** How the pool cars were used over the last `days` days, with the rides as history. */
+  carUsage: (days: number, adminPassword: string) =>
+    request<CarUsage>(`/api/cars/corporate/usage?days=${days}`, {}, { adminPassword }),
 }

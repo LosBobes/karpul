@@ -9,7 +9,9 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
 import { CalendarIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
+import { MyRides } from './components/MyRides'
 import { NameSheet } from './components/NameSheet'
+import { NotificationsSheet } from './components/NotificationsSheet'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
 import { SegThumb } from './components/Segmented'
@@ -17,10 +19,11 @@ import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
 import { messages, useT } from './lib/i18n'
-import { addDays, fmtShortDate, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
+import { addDays, fmtShortDate, fmtTime, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { useLiveBoard, type LiveEvent } from './lib/live'
+import { resubscribePush } from './lib/push'
 import { applyUpdate, useUpdateReady } from './lib/pwa'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
@@ -73,7 +76,7 @@ function sortRides(rides: Ride[]): Ride[] {
 
 export default function App() {
   const t = useT()
-  const [userName, setUserName] = useUserName()
+  const [userName, setUserNameOnly] = useUserName()
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
   const [rides, setRides] = useState<Ride[]>([])
@@ -93,6 +96,9 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // The company-car help (components/CarGuide.tsx): from the sidebar or a ride's driver card.
   const [guideOpen, setGuideOpen] = useState(false)
+  // Your history and figures (components/MyRides.tsx) and the push switch (NotificationsSheet.tsx).
+  const [myRidesOpen, setMyRidesOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
   const [drag, setDrag] = useState<PassengerDrag | null>(null)
   const [dragOver, setDragOver] = useState<DropTarget | null>(null)
@@ -110,6 +116,32 @@ export default function App() {
   useEffect(() => {
     document.title = t.documentTitle
   }, [t])
+
+  // A push subscription is filed under a name (backend: app/push.py), so a
+  // renamed browser tells the server, or its pushes keep going to the old name.
+  const setUserName = useCallback(
+    (name: string) => {
+      setUserNameOnly(name)
+      void resubscribePush(name.trim().replace(/\s+/g, ' '))
+    },
+    [setUserNameOnly],
+  )
+
+  // A shared link, /ride/{id}: open that ride on its day, then tidy the URL so
+  // a reload does not replay it. The server sent the shell with a preview.
+  useEffect(() => {
+    const m = window.location.pathname.match(/^\/ride\/(\d+)\/?$/)
+    if (!m) return
+    window.history.replaceState(null, '', '/')
+    api
+      .ride(Number(m[1]))
+      .then((ride) => {
+        setViewState('week')
+        setSelectedDate(ride.ride_date)
+        setCarSel(ride.id)
+      })
+      .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
+  }, [])
 
   const setSelected = useCallback((iso: string) => {
     setSelectedDate(iso)
@@ -255,9 +287,9 @@ export default function App() {
     }
   }
 
-  const onJoin = (ride: Ride) =>
+  const onJoin = (ride: Ride, pickup = '') =>
     withBusy(ride, async () => {
-      upsertRide(await api.join(ride.id, userName, userName))
+      upsertRide(await api.join(ride.id, userName, userName, pickup))
       setToast({ kind: 'ok', text: t.toasts.youreIn(ride.driver_name) })
     })
 
@@ -265,6 +297,41 @@ export default function App() {
     withBusy(ride, async () => {
       upsertRide(await api.leave(ride.id, bookingId, userName))
     })
+
+  /** The keyboard's way of dragging the chip to another car: leave one, join the other. */
+  const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '') =>
+    withBusy(target, async () => {
+      upsertRide(await api.leave(from.ride.id, from.bookingId, userName))
+      upsertRide(await api.join(target.id, userName, userName, pickup))
+      setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
+    })
+
+  const onMovePickup = (ride: Ride, bookingId: number, pickup: string) =>
+    withBusy(ride, async () => {
+      upsertRide(await api.movePickup(ride.id, bookingId, pickup, userName))
+      setToast({ kind: 'ok', text: t.toasts.pickupChanged(pickup || ride.origin) })
+    })
+
+  /** The system share sheet where there is one, else the link goes to the clipboard. */
+  const onShare = async (ride: Ride) => {
+    const url = `${window.location.origin}/ride/${ride.id}`
+    const title = t.share.title(ride.driver_name, ride.origin, ride.destination)
+    const text = t.detail.shareText(ride.driver_name, ride.origin, ride.destination, `${fmtShortDate(ride.ride_date)} ${fmtTime(ride.departure_time)}`)
+    if (typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title, text, url })
+        return
+      } catch {
+        /* dismissed, or not allowed here: fall back to copying */
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setToast({ kind: 'ok', text: t.toasts.linkCopied })
+    } catch {
+      setToast({ kind: 'error', text: url })
+    }
+  }
 
   /** The driver, or a passenger when the driver allows it, puts a colleague in. */
   const onAddPassenger = (ride: Ride, name: string) =>
@@ -297,6 +364,22 @@ export default function App() {
       },
     })
   }
+
+  /** "Remove this and following": the rest of a weekly series goes with this ride. */
+  const onCancelFollowing = (ride: Ride) =>
+    setConfirm({
+      title: t.confirm.removeFollowingTitle,
+      body: t.confirm.removeFollowingBody,
+      label: t.common.remove,
+      onConfirm: () => {
+        setConfirm(null)
+        void withBusy(ride, async () => {
+          await api.deleteRide(ride.id, userName, 'following')
+          setRides((rs) => rs.filter((r) => !(r.series_id === ride.series_id && r.ride_date >= ride.ride_date)))
+          setToast({ kind: 'ok', text: t.toasts.ridesRemoved })
+        })
+      },
+    })
 
   /** Drop of the passenger chip onto a car: switch cars if already seated, else join. */
   const onDropPassenger = (target: Ride, drag: PassengerDrag) => {
@@ -340,6 +423,8 @@ export default function App() {
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
   const closeGuide = useCallback(() => setGuideOpen(false), [])
+  const closeMyRides = useCallback(() => setMyRidesOpen(false), [])
+  const closeNotif = useCallback(() => setNotifOpen(false), [])
 
   const closeForm = useCallback(() => {
     setForm(null)
@@ -359,7 +444,14 @@ export default function App() {
       } else {
         const created = await api.createRide(input)
         upsertRide(created)
-        setToast({ kind: 'ok', text: t.toasts.rideAdded })
+        if (input.repeat_until) {
+          // The other weeks reach this tab over the socket; a reload catches up if it is down.
+          void load()
+          const weeks = Math.floor((parseISODate(input.repeat_until).getTime() - parseISODate(input.ride_date).getTime()) / (7 * 86_400_000)) + 1
+          setToast({ kind: 'ok', text: t.toasts.ridesAdded(weeks) })
+        } else {
+          setToast({ kind: 'ok', text: t.toasts.rideAdded })
+        }
         setCarSel(created.id)
       }
       closeForm()
@@ -431,6 +523,8 @@ export default function App() {
   const onUpdateCar = (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
     void withAdminBusy(id, () => api.updateCar(id, patch, adminPassword).then(() => undefined))
 
+  const loadUsage = useCallback((days: number) => api.carUsage(days, adminPassword), [adminPassword])
+
   const onDeleteCar = (car: CorporateCar) =>
     setConfirm({
       title: t.confirm.deleteCarTitle,
@@ -483,6 +577,16 @@ export default function App() {
     if (ride) setSelectedDate(ride.ride_date)
   }
 
+  /** Your seat in another car on the same day, if any: the card offers a switch. */
+  const seatElsewhere = (ride: Ride) => {
+    if (!userName) return null
+    const other = rides.find(
+      (r) => r.ride_date === ride.ride_date && r.id !== ride.id && r.bookings.some((b) => sameName(b.passenger_name, userName)),
+    )
+    const booking = other?.bookings.find((b) => sameName(b.passenger_name, userName))
+    return other && booking ? { ride: other, bookingId: booking.id } : null
+  }
+
   const detailFor = (ride: Ride, inList: boolean) => (
     <CarDetail
       key={ride.id}
@@ -492,6 +596,11 @@ export default function App() {
       isPast={isPast}
       onJoin={onJoin}
       onLeave={onLeave}
+      switchFrom={seatElsewhere(ride)}
+      onSwitch={onSwitch}
+      onMovePickup={onMovePickup}
+      onShare={(r) => void onShare(r)}
+      onCancelFollowing={onCancelFollowing}
       onAddPassenger={onAddPassenger}
       onCancel={onCancel}
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
@@ -567,6 +676,7 @@ export default function App() {
                 userName={userName}
                 isPast={false}
                 emptyTitle={t.empty.noUpcoming}
+                intro
                 onEditName={() => setNameOpen(true)}
               />
             ) : (
@@ -612,7 +722,7 @@ export default function App() {
               )}
 
               {!loading && !openRide && (
-                <AddCarCard userName={userName} isPast={isPast} onEditName={() => setNameOpen(true)} />
+                <AddCarCard userName={userName} isPast={isPast} intro={rides.length === 0 && !isPast} onEditName={() => setNameOpen(true)} />
               )}
 
               {!loading && (
@@ -642,11 +752,23 @@ export default function App() {
           onEditName={() => setNameOpen(true)}
           onCompanyCars={openAdmin}
           onGuide={() => setGuideOpen(true)}
+          onMyRides={() => setMyRidesOpen(true)}
+          onNotifications={() => setNotifOpen(true)}
           onClose={closeSidebar}
         />
       )}
 
       {guideOpen && <CarGuide onClose={closeGuide} />}
+
+      {myRidesOpen && <MyRides userName={userName} onEditName={() => setNameOpen(true)} onClose={closeMyRides} />}
+
+      {notifOpen && (
+        <NotificationsSheet
+          userName={userName}
+          onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })}
+          onClose={closeNotif}
+        />
+      )}
 
       {nameOpen && <NameSheet name={userName} onChange={setUserName} onClose={() => setNameOpen(false)} />}
 
@@ -686,6 +808,7 @@ export default function App() {
           onCreate={onCreateCar}
           onUpdate={onUpdateCar}
           onDelete={onDeleteCar}
+          onLoadUsage={loadUsage}
           onClose={() => setAdminOpen(false)}
         />
       )}
@@ -700,8 +823,13 @@ export default function App() {
         />
       )}
 
+      {/* The live region is always in the tree, so a screen reader hears each toast
+          as it lands; the visible toast itself comes and goes. */}
+      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {toast?.text ?? ''}
+      </div>
       {toast ? (
-        <div className={`toast toast-${toast.kind}`} role="status">
+        <div className={`toast toast-${toast.kind}`} aria-hidden="true">
           {toast.text}
         </div>
       ) : (

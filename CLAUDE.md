@@ -11,6 +11,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload      # :8000, OpenAPI docs at /docs
 python -m pytest                   # full suite
 python -m pytest tests/test_rides.py::test_name -q   # one test
+python -m app.vapid                # print a VAPID key for KARPUL_VAPID_PRIVATE_KEY
 ```
 
 `conftest.py` imports `app.*`, so pytest must be run from `backend/`, not the repo root.
@@ -90,6 +91,39 @@ there is no login endpoint.
 
 `PATCH /api/rides/{id}` deliberately merges the partial payload onto the stored ride and re-validates the result through `RideCreate`, so a partial edit is held to the full creation rules. New invariants belong in `RideCreate`/`services.py` so both paths inherit them automatically.
 
+**More on a ride.** `Ride.stops` is the extra pickup points as one-per-line text (the API shows a
+list; `stops_from_text` / `stops_to_text` in `services.py`; at most `MAX_STOPS`, the origin and
+duplicates are dropped), and each `Booking.pickup` is `""` for the origin or one stop verbatim
+(`pickup_or_422`; an edit that removes a stop moves its passengers back to the origin with
+`drop_orphaned_pickups`). `distance_km` and `chip_in` are the driver's own words and only ever
+shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per
+week (`weekly_dates`, at most `MAX_REPEAT_WEEKS`) under one `series_id`, all or nothing, and a
+409 on a later week names the date in parentheses (the Serbian `apiError` regex knows that
+suffix). `DELETE ?scope=following` removes the rest of the series. The `X-User-Name` header
+arrives percent-encoded (`user_from_header`), because a header cannot carry a ć.
+
+**Push notifications.** `app/webpush.py` does RFC 8291 encryption and VAPID (RFC 8292) on the
+`cryptography` package rather than pywebpush, whose `http-ece` dependency does not build on a
+Debian-patched setuptools; `tests/test_push.py` holds it to the RFC test vector. `app/push.py`
+keeps one `PushSubscription` per endpoint under the normalised name and the app language, and
+`notify()` collects the targets inside the request and sends from a small thread pool
+(`deliver`, `forget` for 404/410 endpoints; tests replace both). It is all off until
+`KARPUL_VAPID_PRIVATE_KEY` is set (`python -m app.vapid` prints one), read per request like the
+admin password. Who is told: the driver when someone gets in or out on their own, a passenger
+when the driver takes them out, the passengers when the ride moves (date, times or route, not a
+note) or is removed, and everyone in the car 30 minutes before departure (`app/reminders.py`,
+a minute-by-minute task started in the lifespan; `Ride.reminder_sent` makes it once). The
+browser side is `lib/push.ts` plus `public/push-sw.js`, which Workbox pulls into `sw.js`
+through `importScripts`; a renamed browser re-subscribes (`resubscribePush` in `App.tsx`).
+
+**Calendar, sharing, figures.** `app/calendar.py` writes floating local times (no zone) for one
+ride and for a person's feed (`/api/calendar/{name}.ics`, a week back to a year ahead).
+`/ride/{id}` is the shell with Open Graph tags spliced before `</head>` (`ride_preview_tags` in
+`main.py`); the app reads the path on load, opens the ride and `replaceState`s to `/`.
+`person_stats` and `corporate_usage` in `services.py` are the *Your rides* and admin *Usage*
+figures: "km shared" is the one-way distance of every ride the person was in, a floor not a
+claim, and a car's use rate is days out over working days in the window.
+
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings` and the computed `free_seats`. Every ride-returning endpoint goes through it.
 
 **Styling.** The frontend is Tailwind v4 (via `@tailwindcss/vite`) plus a hand-written design
@@ -158,6 +192,14 @@ the segmented controls (`SegThumb`, `components/Segmented.tsx`) and the date pil
 (`.date-thumb`) move one marker element instead of recolouring buttons. Reduced motion collapses
 every duration, so the exits still fire `animationend`.
 
+**Theme.** Light, dark or the system's choice: `lib/theme.ts` is an external store like the
+locale, remembered as `karpul.theme`, and puts the choice on the root as `data-theme` and what
+is on screen as `data-resolved`. The dark tokens in `index.css` live under both
+`:root[data-theme='dark']` and the `prefers-color-scheme` media query (so a dark phone never
+paints light before the script runs); the rules that were never tokens (the pastel avatars,
+the illustrations, the toast, the error text) key off `data-resolved`. The switch
+(`ThemeSwitch`) sits above the language switch in the drawer.
+
 **Language.** The UI is switchable between English and Serbian (Latin script). Every string
 the screen shows lives in `lib/i18n.ts` as two dictionaries, `en` and `sr`; `en` is the
 reference and `sr` is typed as its shape, so a missing key is a type error, never a silent
@@ -176,7 +218,9 @@ Wording rule for both languages: no em dashes.
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: your name (the identity block and *Change name* both open
-`NameSheet`), *Company cars* (`CarAdmin`) and the *Company car guide* (`CarGuide`: how to charge
+`NameSheet`), *Your rides* (`MyRides`: figures, history, the calendar feed address),
+*Notifications* (`NotificationsSheet`, the push switch), *Company cars* (`CarAdmin`, with a
+*Usage* tab that reads `/api/cars/corporate/usage`) and the *Company car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
 line-icon style with the green accent on the one thing the step is about; also reachable from
@@ -187,13 +231,20 @@ remembered in `localStorage` (`karpul.view`): *Upcoming* (the default) and *Week
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
 unfolds `CarDetail` beneath it with `draggable={false}`, because there is no `YouPanel` tray and
-no other same-day tile to drop on. `App.tsx` loads whichever range the view needs (`range`) and
+no other same-day tile to drop on. Above the list sit the filter chips (*All*, *Free seats*, *My
+rides*, *I'm in*) and a search box, state local to `Upcoming`; the day headings are sticky under
+the top bar (`.upcoming-head`). `App.tsx` loads whichever range the view needs (`range`) and
 the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
 width — nothing scrolls; the arrows beside the week label and a sideways swipe on the strip step a
 week) →
-`CarCarousel` (one tile per ride that day, hidden when there are none; tiles are also drop targets) →
-either `CarDetail` (driver card, times, route, passenger list with the drop zone and the
-*Get in this car* row) or `AddCarCard` (the illustrated placeholder) → `YouPanel`. The design's
+`CarCarousel` (one tile per ride that day with its route line, hidden when there are none; tiles are also drop targets; the seat count goes red when full and green when you are in or driving) →
+either `CarDetail` (driver card, times, route with the pickup points, distance and chip-in
+tags, passenger list with the drop zone and the *Get in this car* row, which reads *Switch to
+this car* when `switchFrom` says you are seated elsewhere that day, the keyboard's way of
+dragging; a pickup `Select` above the seats when the ride has stops; ⋮ with *Share ride*,
+*Add to calendar* and, on a series, *Remove this and following rides*) or `AddCarCard` (the
+illustrated placeholder; `intro` adds the two-view explanation when the whole board is empty) →
+`YouPanel`. The design's
 "unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
 you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the
 "drop here to get out" target when you are. Every dialog is a `Sheet` (bottom sheet on a phone,
@@ -210,6 +261,11 @@ scrolling body and flips above the anchor when the viewport runs out. `TimePicke
 an explicit pick that still exists, else your own ride, else the first ride, else nothing (the empty card).
 **Wording:** the thing you add, edit, duplicate or remove is a *ride*; *car* is reserved for the
 vehicle (the pool, "Company car" / "Own car", "get in this car", "in this car").
+
+**Accessibility notes.** Toasts are announced through an always-mounted `sr-only` live region
+in `App.tsx`; the visible pill is `aria-hidden`. Every drag has a button equivalent (*Get in*,
+*Switch to this car*, *Leave*). The dark avatars pair a deep tint with a light ink so the
+initials keep their contrast.
 
 **Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.

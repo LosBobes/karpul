@@ -1,9 +1,16 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, sameName, shortCarName } from '../lib/dates'
 import { useT } from '../lib/i18n'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { ChevronDownIcon } from './icons'
+import { ChevronDownIcon, PinIcon, SearchIcon, XIcon } from './icons'
+
+type Filter = 'all' | 'free' | 'mine' | 'joined'
+const FILTERS: Filter[] = ['all', 'free', 'mine', 'joined']
+
+function fold(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
 
 interface Props {
   /** Every ride from today on, in the API's order (date, departure, id). */
@@ -23,8 +30,21 @@ interface Props {
  */
 export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Props) {
   const t = useT()
+  // Filters live here: they are a way of looking at the list, not board state.
+  const [filter, setFilter] = useState<Filter>('all')
+  const [query, setQuery] = useState('')
+  const q = fold(query.trim())
+  const matches = (r: Ride) => {
+    if (filter === 'free' && r.free_seats <= 0) return false
+    if (filter === 'mine' && !sameName(r.driver_name, userName)) return false
+    if (filter === 'joined' && !r.bookings.some((b) => sameName(b.passenger_name, userName))) return false
+    if (q && !fold(`${r.origin} ${r.destination} ${r.driver_name} ${r.car_name} ${r.stops.join(' ')}`).includes(q)) return false
+    return true
+  }
+  const shown = rides.filter(matches)
+  const filtered = filter !== 'all' || q !== ''
   const days: { date: string; rides: Ride[] }[] = []
-  for (const r of rides) {
+  for (const r of shown) {
     const last = days[days.length - 1]
     if (last && last.date === r.ride_date) last.rides.push(r)
     else days.push({ date: r.ride_date, rides: [r] })
@@ -32,11 +52,54 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
 
   return (
     <section className="upcoming" aria-label={t.upcoming.label}>
+      <div className="filters">
+        <div className="chips" role="radiogroup" aria-label={t.filters.label}>
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              role="radio"
+              aria-checked={filter === f}
+              className={filter === f ? 'chip chip-on' : 'chip'}
+              disabled={(f === 'mine' || f === 'joined') && !userName}
+              onClick={() => setFilter(f)}
+            >
+              {t.filters[f]}
+            </button>
+          ))}
+        </div>
+        <label className="input-icon search">
+          <SearchIcon size={16} />
+          <input type="search" placeholder={t.filters.search} aria-label={t.filters.search} value={query} onChange={(e) => setQuery(e.target.value)} />
+          {query && (
+            <button type="button" className="icon-btn icon-btn-sm input-clear" aria-label={t.common.close} onClick={() => setQuery('')}>
+              <XIcon size={16} />
+            </button>
+          )}
+        </label>
+      </div>
+
+      {shown.length === 0 && filtered && (
+        <div className="card empty-card empty-card-short">
+          <strong>{t.filters.noMatch}</strong>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setFilter('all')
+              setQuery('')
+            }}
+          >
+            {t.filters.clear}
+          </button>
+        </div>
+      )}
+
       {days.map((day) => {
         const free = day.rides.reduce((n, r) => n + r.free_seats, 0)
         return (
           <div key={day.date} className="upcoming-day">
-            <h3 className="section-title">
+            <h3 className="section-title upcoming-head">
               {fmtDayLabel(day.date)}
               <span className="section-count">{fmtDayDate(day.date)}</span>
               <span className="section-meta">{t.upcoming.meta(day.rides.length, free)}</span>
@@ -65,7 +128,14 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                           <span className="session-name">{shortCarName(r.car_name)}</span>
                           <PowertrainMark carName={r.car_name} />
                         </strong>
-                        <span>{t.upcoming.route(r.driver_name, r.origin, r.destination)}</span>
+                        <span>
+                          {t.upcoming.route(r.driver_name, r.origin, r.destination)}
+                          {r.stops.length > 0 && (
+                            <span className="session-stops" title={r.stops.join(', ')}>
+                              <PinIcon size={11} /> +{r.stops.length}
+                            </span>
+                          )}
+                        </span>
                       </span>
                       <span className="session-side">
                         {driving ? (
@@ -73,7 +143,7 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                         ) : riding ? (
                           <span className="tag tag-green">{t.upcoming.youreIn}</span>
                         ) : full ? (
-                          <span className="tag">{t.upcoming.full}</span>
+                          <span className="tag tag-muted">{t.upcoming.full}</span>
                         ) : (
                           <span className="session-seats">{t.upcoming.seats(r.free_seats)}</span>
                         )}
