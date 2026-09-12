@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
+import { addDays, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import type { CarType, CorporateCar, Ride, RideInput } from '../lib/types'
 import { Avatar } from './Avatar'
 import { DatePicker } from './DatePicker'
-import { CarIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon } from './icons'
+import { CarIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
 import { Select } from './Select'
 import { Sheet } from './Sheet'
@@ -25,8 +26,21 @@ interface Props {
 }
 
 const LAST_ROUTE_KEY = 'karpul.lastRoute'
+/** At most this many extra pickup points (backend: schemas.MAX_STOPS). */
+const MAX_STOPS = 3
+/** "Repeat weekly" may reach this far (backend: schemas.MAX_REPEAT_WEEKS). */
+const MAX_REPEAT_WEEKS = 26
 
-function loadLastRoute(): { origin: string; destination: string; car_name: string } {
+/** What the form remembers from the last ride you added: the route, your own
+ *  car and how many seats you offered in it, so a regular commute is two taps. */
+interface LastRoute {
+  origin: string
+  destination: string
+  car_name: string
+  seats?: number
+}
+
+function loadLastRoute(): LastRoute {
   try {
     const raw = localStorage.getItem(LAST_ROUTE_KEY)
     if (raw) return JSON.parse(raw)
@@ -34,6 +48,12 @@ function loadLastRoute(): { origin: string; destination: string; car_name: strin
     /* ignore */
   }
   return { origin: '', destination: messages().form.defaultDestination, car_name: '' }
+}
+
+/** How many rides "repeat weekly until" makes: the first plus one per full week. */
+function weeklyCount(from: string, until: string): number {
+  const days = Math.round((parseISODate(until).getTime() - parseISODate(from).getTime()) / 86_400_000)
+  return days < 0 ? 0 : Math.floor(days / 7) + 1
 }
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
@@ -50,9 +70,18 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
   const [departure, setDeparture] = useState(seed?.departure_time.slice(0, 5) ?? '08:00')
   const [ret, setRet] = useState(seed?.return_time?.slice(0, 5) ?? '17:00')
   const [oneWay, setOneWay] = useState(seed ? seed.return_time === null : false)
-  const [rawSeats, setSeats] = useState(seed?.seats ?? 3)
+  const [rawSeats, setSeats] = useState(seed?.seats ?? last.seats ?? 3)
   const [notes, setNotes] = useState(seed?.notes ?? '')
   const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
+  const [stops, setStops] = useState<string[]>(seed?.stops ?? [])
+  const [distance, setDistance] = useState(seed?.distance_km != null ? String(seed.distance_km) : '')
+  const [chipIn, setChipIn] = useState(seed?.chip_in ?? '')
+  // New rides only: one ride a week up to a date. Editing touches one ride.
+  const [repeat, setRepeat] = useState(false)
+  const [repeatUntil, setRepeatUntil] = useState(() => toISODate(addDays(parseISODate(existing?.ride_date ?? date), 7 * 4)))
+  const repeatCount = repeat ? weeklyCount(rideDate, repeatUntil) : 1
+  const repeatTooFar = repeat && weeklyCount(rideDate, repeatUntil) > MAX_REPEAT_WEEKS + 1
+  const repeatTooEarly = repeat && repeatUntil < rideDate
 
   const selectedCar = cars.find((c) => c.id === carId)
   const maxSeats = carType === 'corporate' && selectedCar ? selectedCar.passenger_seats : 8
@@ -60,13 +89,21 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
   // Clamp during render so switching to a smaller car never leaves an invalid value.
   const seats = Math.min(Math.max(rawSeats, minSeats), maxSeats)
 
-  const localError = !oneWay && ret <= departure ? t.form.returnAfter : null
+  const distanceNum = distance.trim() === '' ? null : Number(distance.replace(',', '.'))
+  const distanceBad = distanceNum !== null && (!Number.isFinite(distanceNum) || distanceNum < 0 || distanceNum > 2000)
+  const localError =
+    !oneWay && ret <= departure ? t.form.returnAfter : repeatTooFar ? t.form.repeatMax : repeatTooEarly ? t.form.repeatUntil : null
+
+  function setStop(i: number, value: string) {
+    setStops((ss) => ss.map((s, j) => (j === i ? value : s)))
+  }
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (localError) return
+    if (localError || distanceBad) return
     try {
-      localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify({ origin, destination, car_name: carName }))
+      const remembered: LastRoute = { origin, destination, car_name: carType === 'own' ? carName : last.car_name, seats }
+      localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify(remembered))
     } catch {
       /* ignore */
     }
@@ -83,6 +120,10 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       seats,
       notes,
       passengers_manage: passengersManage,
+      stops: stops.map((s) => s.trim()).filter(Boolean),
+      distance_km: distanceNum,
+      chip_in: chipIn.trim(),
+      repeat_until: !existing && repeat && repeatCount > 1 ? repeatUntil : null,
     })
   }
 
@@ -95,7 +136,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       onClose={onClose}
       footer={
         <>
-          <button type="submit" className="btn btn-primary btn-block" disabled={submitting || !!localError}>
+          <button type="submit" className="btn btn-primary btn-block" disabled={submitting || !!localError || distanceBad}>
             {submitting ? t.common.saving : existing ? t.form.saveChanges : t.form.addTitle}
           </button>
           {existing && onDelete && (
@@ -193,6 +234,26 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
         </div>
       </div>
 
+      {!existing && (
+        <div className="field">
+          <span className="field-label field-label-row">
+            {t.form.repeat}
+            <label className="toggle">
+              <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
+              <span>{t.form.repeatWeekly}</span>
+            </label>
+          </span>
+          {repeat && (
+            <>
+              <div className="grid-2">
+                <DatePicker label={t.form.repeatUntil} value={repeatUntil} onChange={setRepeatUntil} />
+                <p className="hint hint-inline">{repeatCount > 1 ? t.form.repeatCount(repeatCount) : t.form.repeatMax}</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="field">
         <span className="field-label field-label-row">
           {t.form.returns}
@@ -216,6 +277,38 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
         </span>
       </label>
 
+      <div className="field">
+        <span className="field-label field-label-row">
+          {t.form.stops} <span className="muted">{t.form.optional}</span>
+        </span>
+        {stops.map((stop, i) => (
+          <span key={i} className="input-icon input-row">
+            <PinIcon size={16} />
+            <input
+              aria-label={`${t.form.stops} ${i + 1}`}
+              maxLength={120}
+              placeholder={t.form.stopPlaceholder}
+              value={stop}
+              onChange={(e) => setStop(i, e.target.value)}
+            />
+            <button
+              type="button"
+              className="icon-btn icon-btn-sm input-clear"
+              aria-label={t.form.removeStop}
+              onClick={() => setStops((ss) => ss.filter((_, j) => j !== i))}
+            >
+              <XIcon size={16} />
+            </button>
+          </span>
+        ))}
+        {stops.length < MAX_STOPS && (
+          <button type="button" className="add-row add-row-quiet" onClick={() => setStops((ss) => [...ss, ''])}>
+            <PlusIcon size={18} /> {t.form.addStop}
+          </button>
+        )}
+        <p className="hint">{t.form.stopsHint}</p>
+      </div>
+
       <label className="field">
         <span className="field-label">{t.form.dropoff}</span>
         <span className="input-icon">
@@ -223,6 +316,33 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
           <input required maxLength={120} placeholder={t.form.dropoffPlaceholder} value={destination} onChange={(e) => setDestination(e.target.value)} />
         </span>
       </label>
+
+      <div className="grid-2">
+        <label className="field">
+          <span className="field-label">
+            {t.form.distance} <span className="muted">{t.form.optional}</span>
+          </span>
+          <span className="input-unit">
+            <input
+              inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
+              maxLength={7}
+              placeholder="0"
+              aria-invalid={distanceBad || undefined}
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+            />
+            <span aria-hidden="true">km</span>
+          </span>
+        </label>
+        <label className="field">
+          <span className="field-label">
+            {t.form.chipIn} <span className="muted">{t.form.optional}</span>
+          </span>
+          <input maxLength={40} placeholder={t.form.chipInPlaceholder} value={chipIn} onChange={(e) => setChipIn(e.target.value)} />
+        </label>
+      </div>
+      <p className="hint hint-tight">{t.form.distanceHint} {t.form.chipInHint}</p>
 
       <label className="field">
         <span className="field-label">

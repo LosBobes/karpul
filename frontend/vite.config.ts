@@ -22,7 +22,7 @@ export default defineConfig({
         id: '/',
         name: 'Karpul',
         short_name: 'Karpul',
-        description: 'Firm carpooling: who is driving, who is riding along.',
+        description: 'Community carpooling: who is driving, who is riding along.',
         start_url: '/',
         scope: '/',
         display: 'standalone',
@@ -38,6 +38,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Push notifications: the handlers live in public/push-sw.js and are
+        // pulled into the generated worker (lib/push.ts subscribes).
+        importScripts: ['push-sw.js'],
         // Navigations fall back to the shell, except the backend's own pages:
         // the API, the OpenAPI docs and the schema are served by FastAPI.
         navigateFallbackDenylist: [/^\/api\//, /^\/docs/, /^\/redoc/, /^\/openapi\.json/],

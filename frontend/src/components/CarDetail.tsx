@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
+import { api } from '../lib/api'
 import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carModels'
-import { fmtTime, sameName } from '../lib/dates'
+import { firstName, fmtTime, sameName } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import type { Ride } from '../lib/types'
@@ -10,6 +11,8 @@ import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  CalendarIcon,
+  CoinsIcon,
   CopyIcon,
   GripIcon,
   InfoIcon,
@@ -17,20 +20,33 @@ import {
   PencilIcon,
   PinIcon,
   PlusIcon,
+  RepeatIcon,
+  RoadIcon,
+  ShareIcon,
   TrashIcon,
   UserIcon,
   UsersIcon,
   XIcon,
 } from './icons'
 import { Menu } from './Menu'
+import { Select } from './Select'
 
 interface Props {
   ride: Ride
   userName: string
   busy: boolean
   isPast: boolean
-  onJoin: (ride: Ride) => void
+  /** Get in, at the origin ("") or one of the ride's stops. */
+  onJoin: (ride: Ride, pickup: string) => void
   onLeave: (ride: Ride, bookingId: number) => void
+  /** Your seat in another car that day; offered as "switch to this car". */
+  switchFrom?: { ride: Ride; bookingId: number } | null
+  onSwitch?: (ride: Ride, from: { ride: Ride; bookingId: number }, pickup: string) => void
+  /** Move a passenger (yourself, or anyone if you may manage seats) to another pickup point. */
+  onMovePickup: (ride: Ride, bookingId: number, pickup: string) => void
+  onShare: (ride: Ride) => void
+  /** Remove this ride and the later ones of its weekly series. */
+  onCancelFollowing: (ride: Ride) => void
   /** Put somebody else in the car (driver, or a passenger when the driver allows it). */
   onAddPassenger: (ride: Ride, name: string) => void
   onCancel: (ride: Ride) => void
@@ -61,6 +77,11 @@ export function CarDetail({
   isPast,
   onJoin,
   onLeave,
+  switchFrom = null,
+  onSwitch,
+  onMovePickup,
+  onShare,
+  onCancelFollowing,
   onAddPassenger,
   onCancel,
   onEdit,
@@ -90,6 +111,15 @@ export function CarDetail({
 
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
+  // Where you get in, when the driver offers more than the start.
+  const [pickup, setPickup] = useState('')
+  const [movingPickup, setMovingPickup] = useState(false)
+  const hasStops = ride.stops.length > 0
+  const pickupOptions = [{ value: '', label: ride.origin, hint: t.detail.start }, ...ride.stops.map((s) => ({ value: s, label: s }))]
+  const switching = !!switchFrom && !!onSwitch
+  const getIn = () => (switching ? onSwitch!(ride, switchFrom!, pickup) : onJoin(ride, pickup))
+  const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
+  const calendarUrl = api.rideCalendarUrl(ride.id)
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -100,6 +130,15 @@ export function CarDetail({
     setAdding(false)
   }
 
+  const shareItems = [
+    { label: t.detail.share, icon: <ShareIcon size={18} />, onSelect: () => onShare(ride) },
+    {
+      label: t.detail.addToCalendar,
+      icon: <CalendarIcon size={18} />,
+      // The .ics is served as an attachment: the browser downloads it, a phone opens its calendar.
+      onSelect: () => window.location.assign(calendarUrl),
+    },
+  ]
   const menuItems = isDriver
     ? [
         { label: t.detail.editRide, icon: <PencilIcon size={18} />, onSelect: () => onEdit(ride), disabled: busy },
@@ -110,9 +149,16 @@ export function CarDetail({
           disabled: busy || isPast,
         },
         { label: t.detail.duplicate, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: busy },
+        ...shareItems,
         { label: t.detail.removeRide, icon: <TrashIcon size={18} />, onSelect: () => onCancel(ride), danger: true, disabled: busy },
+        ...(ride.series_id
+          ? [{ label: t.detail.removeFollowing, icon: <RepeatIcon size={18} />, onSelect: () => onCancelFollowing(ride), danger: true, disabled: busy }]
+          : []),
       ]
-    : [{ label: t.detail.duplicateMine, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: !userName }]
+    : [
+        { label: t.detail.duplicateMine, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: !userName },
+        ...shareItems,
+      ]
 
   return (
     <div className="detail">
@@ -123,6 +169,11 @@ export function CarDetail({
             <strong>{ride.driver_name}</strong>
             <span className="tag tag-green">{t.detail.driver}</span>
             {isDriver && <span className="tag">{t.detail.you}</span>}
+            {ride.series_id && (
+              <span className="tag tag-icon" title={t.form.repeatWeekly}>
+                <RepeatIcon size={12} /> {t.detail.weekly}
+              </span>
+            )}
           </div>
           <Menu trigger={<KebabIcon />} label={t.detail.rideOptions} items={menuItems} />
         </header>
@@ -155,6 +206,12 @@ export function CarDetail({
               <b>{t.detail.from}</b> {ride.origin}
             </span>
           </span>
+          {ride.stops.map((stop) => (
+            <span key={stop} className="place place-stop">
+              <PinIcon size={15} />
+              <span>{stop}</span>
+            </span>
+          ))}
           <span className="place">
             <PinIcon size={15} />
             <span>
@@ -162,6 +219,21 @@ export function CarDetail({
             </span>
           </span>
         </div>
+
+        {(ride.chip_in || ride.distance_km != null) && (
+          <div className="driver-extras">
+            {ride.distance_km != null && (
+              <span className="tag tag-icon">
+                <RoadIcon size={13} /> {t.detail.distance(ride.distance_km)}
+              </span>
+            )}
+            {ride.chip_in && (
+              <span className="tag tag-icon tag-blue">
+                <CoinsIcon size={13} /> {t.detail.chipIn(ride.chip_in)}
+              </span>
+            )}
+          </div>
+        )}
 
         <div className={model || brand ? 'driver-car driver-car-illustrated' : 'driver-car'}>
           {model && (
@@ -219,6 +291,12 @@ export function CarDetail({
           )}
         </h3>
 
+        {canJoin && hasStops && (
+          <div className="pickup-pick">
+            <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={pickupOptions} onChange={setPickup} />
+          </div>
+        )}
+
         {ride.bookings.length === 0 && !canJoin ? (
           <div className="dropzone dropzone-still">
             <UsersIcon size={28} />
@@ -227,10 +305,18 @@ export function CarDetail({
         ) : null}
 
         {ride.bookings.length === 0 && canJoin ? (
-          <button type="button" className="dropzone" onClick={() => onJoin(ride)}>
+          <button type="button" className="dropzone" onClick={getIn}>
             <UsersIcon size={28} />
-            <strong>{dragActive ? t.detail.dropToGetIn : t.detail.getIn}</strong>
-            <span>{draggable ? (coarse ? t.detail.dragHintCoarse : t.detail.dragHint) : t.detail.tapSeat}</span>
+            <strong>{getInLabel}</strong>
+            <span>
+              {switching
+                ? t.detail.switchHint(firstName(switchFrom!.ride.driver_name))
+                : draggable
+                  ? coarse
+                    ? t.detail.dragHintCoarse
+                    : t.detail.dragHint
+                  : t.detail.tapSeat}
+            </span>
           </button>
         ) : null}
 
@@ -253,8 +339,37 @@ export function CarDetail({
                 >
                   <Avatar name={b.passenger_name} />
                   <span className="pax-name">
-                    {b.passenger_name}
-                    {mine && <span className="tag">{t.detail.you}</span>}
+                    <span className="pax-name-row">
+                      {b.passenger_name}
+                      {mine && <span className="tag">{t.detail.you}</span>}
+                    </span>
+                    {hasStops && (
+                      <span className="pax-pickup">
+                        <PinIcon size={12} /> {t.detail.getsInAt(b.pickup || ride.origin)}
+                        {mine && !isPast && !movingPickup && (
+                          <button type="button" className="link link-sm" disabled={busy} onClick={() => setMovingPickup(true)}>
+                            {t.common.edit}
+                          </button>
+                        )}
+                      </span>
+                    )}
+                    {hasStops && mine && movingPickup && (
+                      <span className="pax-pickup-pick">
+                        <Select
+                          label={t.detail.changePickup}
+                          icon={<PinIcon size={16} />}
+                          value={b.pickup}
+                          options={pickupOptions}
+                          onChange={(v) => {
+                            setMovingPickup(false)
+                            if (v !== b.pickup) onMovePickup(ride, b.id, v)
+                          }}
+                        />
+                        <button type="button" className="icon-btn icon-btn-sm" aria-label={t.common.cancel} onClick={() => setMovingPickup(false)}>
+                          <XIcon size={16} />
+                        </button>
+                      </span>
+                    )}
                   </span>
                   {canManage && !mine && (
                     <button
@@ -288,14 +403,16 @@ export function CarDetail({
             })}
             {canJoin && (
               <li>
-                <button type="button" className="add-row" onClick={() => onJoin(ride)}>
+                <button type="button" className="add-row" onClick={getIn}>
                   <PlusIcon size={18} />
-                  {dragActive ? t.detail.dropToGetIn : t.detail.getIn}
+                  {getInLabel}
                 </button>
+                {switching && <p className="hint hint-tight">{t.detail.switchHint(firstName(switchFrom!.ride.driver_name))}</p>}
               </li>
             )}
           </ul>
         )}
+
 
         {canAddOther && !adding && (
           <button type="button" className="add-row add-row-quiet" onClick={() => setAdding(true)}>

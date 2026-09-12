@@ -5,11 +5,17 @@ import {
   Car,
   CarProfile,
   CaretDown,
+  BellRinging,
+  ChartBar,
+  FunnelSimple,
+  MoonStars,
+  SunDim,
   CaretLeft,
   CaretRight,
   Check,
   CheckCircle,
   Clock,
+  Coins,
   Copy,
   DotsSixVertical,
   DotsThreeVertical,
@@ -26,6 +32,9 @@ import {
   Minus,
   PencilSimple,
   Plus,
+  Repeat,
+  RoadHorizon,
+  ShareNetwork,
   SignOut,
   Trash,
   User,
@@ -99,3 +108,14 @@ export const LogoutIcon = (p: IconProps) => <SignOut {...props(p)} />
 export const KeyIcon = (p: IconProps) => <Key {...props(p)} />
 export const SearchIcon = (p: IconProps) => <MagnifyingGlass {...props(p)} />
 export const InfoIcon = (p: IconProps) => <Info {...props(p)} />
+export const ShareIcon = (p: IconProps) => <ShareNetwork {...props(p)} />
+export const RepeatIcon = (p: IconProps) => <Repeat {...props(p)} />
+/** A road: the distance of a ride. */
+export const RoadIcon = (p: IconProps) => <RoadHorizon {...props(p)} />
+/** Coins: the "chip in" note. */
+export const CoinsIcon = (p: IconProps) => <Coins {...props(p)} />
+export const BellIcon = (p: IconProps) => <BellRinging {...props(p)} />
+export const ChartIcon = (p: IconProps) => <ChartBar {...props(p)} />
+export const FilterIcon = (p: IconProps) => <FunnelSimple {...props(p)} />
+export const SunIcon = (p: IconProps) => <SunDim {...props(p)} />
+export const MoonIcon = (p: IconProps) => <MoonStars {...props(p)} />

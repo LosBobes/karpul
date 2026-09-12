@@ -43,7 +43,7 @@ export interface GuideEntry {
 const enPlural = (n: number, one: string, other: string) => `${n} ${n === 1 ? one : other}`
 
 const en = {
-  documentTitle: 'Karpul · firm carpooling',
+  documentTitle: 'Karpul · community carpooling',
 
   common: {
     save: 'Save',
@@ -66,7 +66,10 @@ const en = {
     menu: 'Menu',
     language: 'Language',
     somethingWrong: 'Something went wrong',
+    copy: 'Copy link',
   },
+
+  theme: { label: 'Appearance', light: 'Light', dark: 'Dark', system: 'Auto' },
 
   live: {
     label: { connecting: 'Connecting', live: 'Live', offline: 'Offline' } as Record<LiveStatus, string>,
@@ -94,6 +97,41 @@ const en = {
     noName: 'No name yet',
     youHere: 'You, in this browser',
     tapIntro: 'Tap to introduce yourself',
+  },
+
+  myRides: {
+    title: 'Your rides',
+    hint: 'History, figures, calendar feed',
+    thisMonth: 'This month',
+    allTime: 'All time',
+    driven: 'Driven',
+    ridden: 'Ridden along',
+    carried: 'People carried',
+    km: 'km shared',
+    kmHint: 'One-way distances as the drivers entered them; a ride without one counts as 0.',
+    history: 'Past rides',
+    noHistory: 'No past rides yet.',
+    feed: 'Calendar feed',
+    feedHint: 'Subscribe to this address in your calendar app and every ride you drive or ride in shows up there, and stays current.',
+    asDriver: 'Driver',
+    asPassenger: 'Passenger',
+    pax: (n: number) => enPlural(n, 'passenger', 'passengers'),
+    route: (origin: string, destination: string) => `${origin} to ${destination}`,
+    nameFirst: 'Set your name to see your rides.',
+  },
+
+  notif: {
+    title: 'Notifications',
+    hint: 'Who got in, reminders before leaving',
+    body: 'A push when someone gets into your car or out of it, when a driver moves or removes a ride you are in, and 30 minutes before you leave.',
+    enable: 'Turn on',
+    disable: 'Turn off',
+    on: 'On, for this browser and this name.',
+    off: 'Off.',
+    unsupported: 'This browser cannot show push notifications. On an iPhone, install Karpul to the home screen first, then try again.',
+    unavailable: 'Push is not set up on this server.',
+    denied: 'The browser has blocked notifications for this site. Allow them in the site settings, then try again.',
+    nameFirst: 'Set your name first; notifications are sent to a name.',
   },
 
   name: {
@@ -154,6 +192,20 @@ const en = {
     dragHint: 'Drag your chip here or tap to join',
     tapSeat: 'Tap to take a seat',
     dragSwitch: 'Drag to another car to switch, or down to "You" to get out',
+    switchTo: 'Switch to this car',
+    switchHint: (first: string) => `You leave ${first}'s car for this day.`,
+    share: 'Share ride',
+    shareText: (driver: string, origin: string, destination: string, when: string) =>
+      `${driver} drives ${origin} to ${destination}, ${when}.`,
+    addToCalendar: 'Add to calendar',
+    removeFollowing: 'Remove this and following rides',
+    weekly: 'Weekly',
+    pickup: 'Pickup',
+    start: 'Start',
+    getsInAt: (place: string) => `Gets in at ${place}`,
+    changePickup: 'Change pickup',
+    chipIn: (amount: string) => `${amount} per seat`,
+    distance: (km: number) => `${km} km one way`,
     removeName: (name: string) => `Remove ${name}`,
     leave: 'Leave',
     addByName: 'Add a passenger by name',
@@ -200,6 +252,21 @@ const en = {
     notes: 'Notes',
     optional: '(optional)',
     notesPlaceholder: 'Meeting point, detours, luggage…',
+    repeat: 'Repeat',
+    repeatWeekly: 'Repeat every week',
+    repeatUntil: 'Until',
+    repeatCount: (n: number) => `${enPlural(n, 'ride', 'rides')}, one a week, same weekday.`,
+    repeatMax: 'Up to 26 weeks ahead.',
+    stops: 'Extra pickup points',
+    stopsHint: 'Up to 3 places on the way where a passenger can get in instead of the start.',
+    addStop: 'Add a pickup point',
+    stopPlaceholder: 'e.g. Liman bus stop',
+    removeStop: 'Remove this pickup point',
+    distance: 'Distance one way',
+    distanceHint: 'Feeds the "km shared" figures. Optional.',
+    chipIn: 'Chip in per seat',
+    chipInPlaceholder: 'e.g. 300 din',
+    chipInHint: 'Just the agreement, shown on the ride. Nothing is charged here.',
     /** Pre-filled destination on the very first ride in this browser. */
     defaultDestination: 'Office',
   },
@@ -225,6 +292,26 @@ const en = {
     platePlaceholder: 'FIRM-004',
   },
 
+  usage: {
+    tab: 'Usage',
+    carsTab: 'Cars',
+    window: (days: number) => (days === 365 ? 'Last year' : `Last ${days} days`),
+    ridesLabel: 'Rides',
+    daysOut: 'Days out',
+    useRate: 'Use rate',
+    useRateHint: (days: number) => `Days the car went out, over the ${days} working days in this window.`,
+    drivers: 'Drivers',
+    passengers: 'Passengers',
+    km: 'km',
+    lastUsed: 'Last used',
+    never: 'Never',
+    booked: (n: number) => (n === 1 ? '1 ride booked ahead' : `${n} rides booked ahead`),
+    history: 'Rides in this window',
+    noUsage: 'No company-car rides in this window.',
+    retired: 'Retired',
+    pax: (n: number, seats: number) => `${n} of ${seats}`,
+  },
+
   upcoming: {
     label: 'Next sessions',
     meta: (rides: number, free: number) => `${enPlural(rides, 'ride', 'rides')} · ${free} free ${free === 1 ? 'seat' : 'seats'}`,
@@ -235,6 +322,17 @@ const en = {
     youreIn: "You're in",
     full: 'Full',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
+  },
+
+  filters: {
+    label: 'Show',
+    all: 'All',
+    free: 'Free seats',
+    mine: 'My rides',
+    joined: "I'm in",
+    search: 'Search by place or driver',
+    noMatch: 'No rides match.',
+    clear: 'Clear filters',
   },
 
   dates: {
@@ -255,6 +353,8 @@ const en = {
     removeRidePax: (n: number) => `${n} passenger${n === 1 ? ' is' : 's are'} in this car. They will lose their seat.`,
     removeRideBody: (driver: string, car: string, date: string) =>
       `${driver}'s ride in the ${car} will be removed from ${date}.`,
+    removeFollowingTitle: 'Remove this and the following rides?',
+    removeFollowingBody: 'This ride and every later ride of this weekly series will be removed. Their passengers lose their seats.',
     deleteCarTitle: 'Delete this car?',
     deleteCarBody: (name: string, plate: string) =>
       `${name} (${plate}) will be deleted from the pool. Retiring it instead keeps it on past rides.`,
@@ -269,6 +369,13 @@ const en = {
     rideRemoved: 'Ride removed.',
     rideUpdated: 'Ride updated.',
     rideAdded: 'Ride added.',
+    ridesAdded: (n: number) => `${n} rides added, one a week.`,
+    ridesRemoved: 'Rides removed.',
+    linkCopied: 'Link copied.',
+    pickupChanged: (place: string) => `You get in at ${place}.`,
+    notifOn: 'Notifications are on.',
+    notifOff: 'Notifications are off.',
+    rideNotFound: 'That ride is gone.',
     carAdded: (name: string) => `${name} added to the pool.`,
     carDeleted: (name: string) => `${name} deleted.`,
     updateReady: 'A new version is ready.',
@@ -283,9 +390,15 @@ const en = {
     whoAreYou: 'Who are you?',
     enterToAdd: 'Enter your name to add a ride or get into a car.',
     usePlus: 'Add one with the + button at the bottom right.',
+    viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles.',
+    firstRide: 'The form remembers your route and car, and the destination starts as "Office".',
   },
 
   carousel: { label: 'Rides', scrollLeft: 'Scroll rides left', scrollRight: 'Scroll rides right' },
+
+  share: {
+    title: (driver: string, origin: string, destination: string) => `${driver} drives ${origin} to ${destination}`,
+  },
 
   powertrain: { electric: 'Electric', hybrid: 'Hybrid', diesel: 'Diesel', petrol: 'Petrol' } as Record<PowertrainKind, string>,
 
@@ -410,9 +523,16 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
     (m) => `Vožnja za ${m[2]} (${m[1]}) već nudi ${srSeats(Number(m[3]))} u ovom autu; prvo smanji tu vožnju`,
   ],
   [
-    /^That corporate car is already booked by (.+) from (\d\d:\d\d)(?: to (\d\d:\d\d))? that day$/,
-    (m) => `Taj službeni auto je tog dana već zauzet: ${m[1]}, od ${m[2]}${m[3] ? ` do ${m[3]}` : ''}`,
+    /^That corporate car is already booked by (.+) from (\d\d:\d\d)(?: to (\d\d:\d\d))? that day(?: \((\S+)\))?$/,
+    (m) => `Taj službeni auto je ${m[4] ? `${m[4]} ` : 'tog dana '}već zauzet: ${m[1]}, od ${m[2]}${m[3] ? ` do ${m[3]}` : ''}`,
   ],
+  [/^Pickup must be the ride's origin or one of its stops$/, () => 'Mesto ulaska mora biti polazak ili jedno od mesta ulaska ove vožnje'],
+  [/^Only the passenger or the driver can change this booking$/, () => 'Ovu rezervaciju može da izmeni samo taj putnik ili vozač'],
+  [/^Push notifications are not configured on this server$/, () => 'Obaveštenja nisu podešena na ovom serveru'],
+  [/^repeat_until must not be before ride_date$/, () => 'Kraj ponavljanja ne može biti pre dana vožnje'],
+  [/^repeat_until may be at most (\d+) weeks after ride_date$/, (m) => `Ponavljanje može trajati najviše ${srPlural(Number(m[1]), 'sedmicu', 'sedmice', 'sedmica')}`],
+  [/^at most (\d+) extra pickup points$/, (m) => `Najviše ${m[1]} dodatna mesta ulaska`],
+  [/^a pickup point may have at most (\d+) characters$/, (m) => `Mesto ulaska može imati najviše ${m[1]} znakova`],
   // Pydantic (schemas.py), possibly prefixed with the field by api.ts: "origin: must not be empty".
   [/^return_time must be after departure_time$/, () => 'Vreme povratka mora biti posle polaska'],
   [/^corporate_car_id is required for a corporate car$/, () => 'Izaberi službeni auto'],
@@ -433,6 +553,11 @@ const SR_FIELDS: Record<string, string> = {
   ride_date: 'Dan',
   departure_time: 'Vreme polaska',
   return_time: 'Vreme povratka',
+  stops: 'Mesta ulaska',
+  distance_km: 'Razdaljina',
+  chip_in: 'Doprinos',
+  repeat_until: 'Ponavljanje do',
+  pickup: 'Mesto ulaska',
 }
 
 const SR_FIELD_MSGS: [RegExp, string][] = [
@@ -466,7 +591,7 @@ function srApiError(message: string): string {
 }
 
 const sr: Messages = {
-  documentTitle: 'Karpul · zajednička vožnja na posao',
+  documentTitle: 'Karpul · zajednička vožnja',
 
   common: {
     save: 'Sačuvaj',
@@ -489,7 +614,10 @@ const sr: Messages = {
     menu: 'Meni',
     language: 'Jezik',
     somethingWrong: 'Nešto nije u redu',
+    copy: 'Kopiraj link',
   },
+
+  theme: { label: 'Izgled', light: 'Svetlo', dark: 'Tamno', system: 'Automatski' },
 
   live: {
     label: { connecting: 'Povezivanje', live: 'Uživo', offline: 'Van mreže' },
@@ -517,6 +645,41 @@ const sr: Messages = {
     noName: 'Još nema imena',
     youHere: 'Ti, u ovom pregledaču',
     tapIntro: 'Dodirni i predstavi se',
+  },
+
+  myRides: {
+    title: 'Tvoje vožnje',
+    hint: 'Istorija, brojke, kalendar',
+    thisMonth: 'Ovog meseca',
+    allTime: 'Ukupno',
+    driven: 'Vozio/la',
+    ridden: 'Vozio/la se',
+    carried: 'Prevezenih ljudi',
+    km: 'km zajedno',
+    kmHint: 'Razdaljine u jednom smeru kako su ih vozači upisali; vožnja bez razdaljine računa se kao 0.',
+    history: 'Prošle vožnje',
+    noHistory: 'Još nema prošlih vožnji.',
+    feed: 'Kalendar',
+    feedHint: 'Pretplati se na ovu adresu u aplikaciji za kalendar i svaka vožnja u kojoj voziš ili se voziš pojaviće se tamo, uvek ažurna.',
+    asDriver: 'Vozač',
+    asPassenger: 'Putnik',
+    pax: srPassengers,
+    route: (origin, destination) => `${origin} do ${destination}`,
+    nameFirst: 'Upiši svoje ime da vidiš svoje vožnje.',
+  },
+
+  notif: {
+    title: 'Obaveštenja',
+    hint: 'Ko je ušao, podsetnik pred polazak',
+    body: 'Obaveštenje kad neko uđe u tvoj auto ili izađe iz njega, kad vozač pomeri ili ukloni vožnju u kojoj si, i 30 minuta pre polaska.',
+    enable: 'Uključi',
+    disable: 'Isključi',
+    on: 'Uključeno, za ovaj pregledač i ovo ime.',
+    off: 'Isključeno.',
+    unsupported: 'Ovaj pregledač ne može da prikazuje obaveštenja. Na iPhone-u prvo dodaj Karpul na početni ekran, pa pokušaj ponovo.',
+    unavailable: 'Obaveštenja nisu podešena na ovom serveru.',
+    denied: 'Pregledač je blokirao obaveštenja za ovaj sajt. Dozvoli ih u podešavanjima sajta, pa pokušaj ponovo.',
+    nameFirst: 'Prvo upiši svoje ime; obaveštenja se šalju na ime.',
   },
 
   name: {
@@ -577,6 +740,19 @@ const sr: Messages = {
     dragHint: 'Prevuci svoju karticu ovde ili dodirni da uđeš',
     tapSeat: 'Dodirni da zauzmeš mesto',
     dragSwitch: 'Prevuci na drugi auto da pređeš, ili dole na „Ti“ da izađeš',
+    switchTo: 'Pređi u ovaj auto',
+    switchHint: (first) => `Za ovaj dan izlaziš iz auta koji vozi ${first}.`,
+    share: 'Podeli vožnju',
+    shareText: (driver, origin, destination, when) => `${driver} vozi ${origin} do ${destination}, ${when}.`,
+    addToCalendar: 'Dodaj u kalendar',
+    removeFollowing: 'Ukloni ovu i sledeće vožnje',
+    weekly: 'Nedeljno',
+    pickup: 'Ulazak',
+    start: 'Polazak',
+    getsInAt: (place) => `Ulazi: ${place}`,
+    changePickup: 'Promeni mesto ulaska',
+    chipIn: (amount) => `${amount} po mestu`,
+    distance: (km) => `${km} km u jednom smeru`,
     removeName: (name) => `Ukloni (${name})`,
     leave: 'Izađi',
     addByName: 'Dodaj putnika po imenu',
@@ -623,6 +799,21 @@ const sr: Messages = {
     notes: 'Napomene',
     optional: '(nije obavezno)',
     notesPlaceholder: 'Mesto sastanka, obilasci, prtljag…',
+    repeat: 'Ponavljanje',
+    repeatWeekly: 'Ponavljaj svake sedmice',
+    repeatUntil: 'Do',
+    repeatCount: (n) => `${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično, isti dan u sedmici.`,
+    repeatMax: 'Najviše 26 sedmica unapred.',
+    stops: 'Dodatna mesta ulaska',
+    stopsHint: 'Do 3 mesta usput gde putnik može da uđe umesto na polasku.',
+    addStop: 'Dodaj mesto ulaska',
+    stopPlaceholder: 'npr. stanica Liman',
+    removeStop: 'Ukloni ovo mesto ulaska',
+    distance: 'Razdaljina u jednom smeru',
+    distanceHint: 'Ulazi u brojke „km zajedno“. Nije obavezno.',
+    chipIn: 'Doprinos po mestu',
+    chipInPlaceholder: 'npr. 300 din',
+    chipInHint: 'Samo dogovor, prikazan na vožnji. Ovde se ništa ne naplaćuje.',
     defaultDestination: 'Kancelarija',
   },
 
@@ -647,6 +838,26 @@ const sr: Messages = {
     platePlaceholder: 'FIRM-004',
   },
 
+  usage: {
+    tab: 'Korišćenje',
+    carsTab: 'Automobili',
+    window: (days) => (days === 365 ? 'Poslednjih godinu dana' : `Poslednjih ${days} dana`),
+    ridesLabel: 'Vožnje',
+    daysOut: 'Dana u vožnji',
+    useRate: 'Iskorišćenost',
+    useRateHint: (days) => `Dani kad je auto išao, u odnosu na ${srPlural(days, 'radni dan', 'radna dana', 'radnih dana')} u ovom periodu.`,
+    drivers: 'Vozača',
+    passengers: 'Putnika',
+    km: 'km',
+    lastUsed: 'Poslednji put',
+    never: 'Nikad',
+    booked: (n) => `${srPlural(n, 'vožnja zakazana', 'vožnje zakazane', 'vožnji zakazano')} unapred`,
+    history: 'Vožnje u ovom periodu',
+    noUsage: 'U ovom periodu nije bilo vožnji službenim autom.',
+    retired: 'Povučen',
+    pax: (n, seats) => `${n} od ${seats}`,
+  },
+
   upcoming: {
     label: 'Predstojeće vožnje',
     meta: (rides, free) =>
@@ -658,6 +869,17 @@ const sr: Messages = {
     youreIn: 'Imaš mesto',
     full: 'Puno',
     seats: srSeats,
+  },
+
+  filters: {
+    label: 'Prikaži',
+    all: 'Sve',
+    free: 'Slobodna mesta',
+    mine: 'Moje vožnje',
+    joined: 'Imam mesto',
+    search: 'Traži po mestu ili vozaču',
+    noMatch: 'Nijedna vožnja ne odgovara.',
+    clear: 'Poništi filtere',
   },
 
   dates: {
@@ -677,6 +899,8 @@ const sr: Messages = {
     removeRideTitle: 'Ukloniti ovu vožnju?',
     removeRidePax: (n) => `${srPassengers(n)} ${srForm(n, 'je', 'su', 'je')} u ovom autu. ${srForm(n, 'Izgubiće mesto.', 'Izgubiće mesta.', 'Izgubiće mesta.')}`,
     removeRideBody: (driver, car, date) => `Vožnja za ${date} (${driver}, ${car}) biće uklonjena.`,
+    removeFollowingTitle: 'Ukloniti ovu i sledeće vožnje?',
+    removeFollowingBody: 'Ova vožnja i sve kasnije vožnje iz ove nedeljne serije biće uklonjene. Njihovi putnici gube mesta.',
     deleteCarTitle: 'Obrisati ovaj auto?',
     deleteCarBody: (name, plate) =>
       `${name} (${plate}) biće obrisan iz voznog parka. Ako ga umesto toga povučeš, ostaje na prošlim vožnjama.`,
@@ -691,6 +915,13 @@ const sr: Messages = {
     rideRemoved: 'Vožnja je uklonjena.',
     rideUpdated: 'Vožnja je izmenjena.',
     rideAdded: 'Vožnja je dodata.',
+    ridesAdded: (n) => `Dodato: ${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično.`,
+    ridesRemoved: 'Vožnje su uklonjene.',
+    linkCopied: 'Link je kopiran.',
+    pickupChanged: (place) => `Ulaziš: ${place}.`,
+    notifOn: 'Obaveštenja su uključena.',
+    notifOff: 'Obaveštenja su isključena.',
+    rideNotFound: 'Te vožnje više nema.',
     carAdded: (name) => `${name} je dodat u vozni park.`,
     carDeleted: (name) => `${name} je obrisan.`,
     updateReady: 'Nova verzija je spremna.',
@@ -705,9 +936,15 @@ const sr: Messages = {
     whoAreYou: 'Ko si ti?',
     enterToAdd: 'Upiši svoje ime da dodaš vožnju ili uđeš u auto.',
     usePlus: 'Dodaj je dugmetom + u donjem desnom uglu.',
+    viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama.',
+    firstRide: 'Obrazac pamti tvoju rutu i auto, a odredište na početku glasi „Kancelarija“.',
   },
 
   carousel: { label: 'Vožnje', scrollLeft: 'Pomeri vožnje ulevo', scrollRight: 'Pomeri vožnje udesno' },
+
+  share: {
+    title: (driver, origin, destination) => `${driver} vozi ${origin} do ${destination}`,
+  },
 
   powertrain: { electric: 'Električni', hybrid: 'Hibrid', diesel: 'Dizel', petrol: 'Benzin' },
 

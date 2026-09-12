@@ -47,7 +47,9 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
       </button>
       <div ref={strip} className="cars-strip">
         {rides.map((r) => {
-          const mine = sameName(r.driver_name, userName) || r.bookings.some((b) => sameName(b.passenger_name, userName))
+          const driving = sameName(r.driver_name, userName)
+          const seated = r.bookings.some((b) => sameName(b.passenger_name, userName))
+          const mine = driving || seated
           const full = r.free_seats <= 0
           const receives = dragActive && canReceive(r, userName)
           const isOver = over?.kind === 'ride' && over.rideId === r.id
@@ -79,7 +81,19 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
                 <span className="car-tile-name-text">{shortCarName(r.car_name) || firstName(r.driver_name)}</span>
                 <PowertrainMark carName={r.car_name} />
               </span>
-              <span className="car-tile-seats">
+              <span className="car-tile-route" title={`${r.origin}, ${r.destination}`}>
+                {r.origin}
+                <span className="car-tile-route-arrow" aria-hidden="true">
+                  ›
+                </span>
+                {r.destination}
+              </span>
+              <span
+                className={['car-tile-seats', full && 'car-tile-seats-full', seated && 'car-tile-seats-in', driving && 'car-tile-seats-driving']
+                  .filter(Boolean)
+                  .join(' ')}
+                aria-label={t.upcoming.seats(r.free_seats)}
+              >
                 {r.bookings.length} / {r.seats}
               </span>
             </button>

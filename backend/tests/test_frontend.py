@@ -57,3 +57,29 @@ def test_manifest_has_its_media_type(tmp_path):
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("application/manifest+json")
     assert r.json()["name"] == "Karpul"
+
+
+def test_shared_ride_link_carries_a_preview(tmp_path):
+    from datetime import date, time
+
+    from app.models import Booking, Ride
+
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<!doctype html><html><head><title>Karpul</title></head><body><div id='root'></div></body></html>")
+    app = FastAPI()
+    ride = Ride(
+        id=3, ride_date=date(2026, 9, 14), car_type="own", car_name="Golf <3", driver_name="Ana",
+        origin="Liman", destination="HQ", departure_time=time(7, 30), seats=2, bookings=[Booking(passenger_name="Bojan")],
+    )
+    mount_frontend(app, dist, lambda ride_id: ride if ride_id == 3 else None)
+    client = TestClient(app)
+
+    r = client.get("/ride/3")
+    assert r.status_code == 200
+    assert 'og:title" content="Ana drives Liman to HQ"' in r.text
+    assert "Mon 14 Sep at 07:30, Golf &lt;3. 1 free seat." in r.text
+    assert "id='root'" in r.text and r.headers["cache-control"] == "no-cache"
+    # An unknown ride is still the shell, so the app can say "not found" itself.
+    r = client.get("/ride/99")
+    assert r.status_code == 200 and "og:title" not in r.text and "id='root'" in r.text

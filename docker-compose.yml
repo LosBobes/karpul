@@ -11,6 +11,8 @@ services:
       # CORPORATE_CARS: "Skoda Octavia|B-123-XY|4;VW Transporter|B-456-ZZ|8"
       # Unset = the company-car admin screen is switched off (503).
       KARPUL_ADMIN_PASSWORD: ${KARPUL_ADMIN_PASSWORD:-}
+      KARPUL_VAPID_PRIVATE_KEY: ${KARPUL_VAPID_PRIVATE_KEY:-}
+      KARPUL_VAPID_SUBJECT: ${KARPUL_VAPID_SUBJECT:-}
     volumes:
       - karpul_data:/data
 

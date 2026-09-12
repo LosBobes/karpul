@@ -28,6 +28,8 @@ services:
       CORPORATE_CARS: ${CORPORATE_CARS:-}
       # Shared password for the company-car admin screen. Unset = admin off (503).
       KARPUL_ADMIN_PASSWORD: ${KARPUL_ADMIN_PASSWORD:-}
+      KARPUL_VAPID_PRIVATE_KEY: ${KARPUL_VAPID_PRIVATE_KEY:-}
+      KARPUL_VAPID_SUBJECT: ${KARPUL_VAPID_SUBJECT:-}
     volumes:
       # SQLite persists here across every rebuild/recreate. Only
       # `docker compose down -v` would delete it.
