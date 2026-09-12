@@ -186,7 +186,7 @@ and the drawer's `pick` closes on the spot on purpose so the sheet it opens owns
 entry alone. Sheets rise from the bottom edge on a phone and pop up on a desktop, the drawer
 slides from the left, confirmations and popovers scale out of their anchor (`Popover` sets
 `transform-origin` and measures itself with `offsetWidth`, which a transform does not change),
-the toast and the floating plus spring in, the Upcoming detail unfolds as a grid row from
+the toast and the floating plus spring in (the plus also contracts while pressed and springs back on release), the Upcoming detail unfolds as a grid row from
 `0fr` (the `.session-detail-clip` wrapper hides the overflow and leaves room for shadows), and
 the segmented controls (`SegThumb`, `components/Segmented.tsx`) and the date pills
 (`.date-thumb`) move one marker element instead of recolouring buttons. Reduced motion collapses

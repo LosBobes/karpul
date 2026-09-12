@@ -447,13 +447,18 @@ span.plus-circle svg {
 }
 .fab .plus-circle {
   box-shadow: 0 6px 18px color-mix(in srgb, var(--green) 40%, transparent), 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* The press pulse: the circle contracts the moment it is pressed (the short
+     ease-in below) and springs back when the finger lifts, overshooting a
+     touch on the way, so the tap reads as a press even under a thumb. */
+  transition: background 0.12s, box-shadow 0.12s, transform 0.3s var(--ease-spring);
 }
 .fab:hover .plus-circle {
   background: var(--green-dark);
   transform: scale(1.05);
 }
 .fab:active .plus-circle {
-  transform: scale(0.96);
+  transform: scale(0.88);
+  transition: background 0.12s, box-shadow 0.12s, transform 0.08s var(--ease-in);
 }
 .fab:focus-visible {
   outline: none;
@@ -3023,6 +3028,14 @@ body.dragging {
     /* The dashed outline is the only affordance on a phone (no cursor, no
        hover), so make it a touch louder than on desktop. */
     box-shadow: 0 0 0 2px var(--green-line);
+  }
+  .fab:hover .plus-circle {
+    /* Hover sticks after a tap on a phone; without this the plus would spring
+       back to the hover size and stay there instead of returning to rest. */
+    transform: none;
+  }
+  .fab:active .plus-circle {
+    transform: scale(0.88);
   }
 }
 
