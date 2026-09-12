@@ -96,6 +96,12 @@ engine = make_engine(DATABASE_URL)
 # ALTER TABLE; each entry is (table, column, DDL for the new column).
 ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("ride", "passengers_manage", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("ride", "stops", "VARCHAR NOT NULL DEFAULT ''"),
+    ("ride", "distance_km", "FLOAT"),
+    ("ride", "chip_in", "VARCHAR NOT NULL DEFAULT ''"),
+    ("ride", "series_id", "VARCHAR"),
+    ("ride", "reminder_sent", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("booking", "pickup", "VARCHAR NOT NULL DEFAULT ''"),
 ]
 
 

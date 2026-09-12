@@ -8,7 +8,7 @@ from ..database import get_session, get_write_session
 from ..events import cars_changed
 from ..models import CarType, CorporateCar, Ride
 from ..schemas import CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
-from ..services import relabel_rides_for_car
+from ..services import corporate_usage, relabel_rides_for_car
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
 
@@ -73,6 +73,13 @@ def list_corporate_cars(
     if not include_inactive:
         stmt = stmt.where(col(CorporateCar.active).is_(True))
     return session.exec(stmt.order_by(col(CorporateCar.active).desc(), CorporateCar.name)).all()
+
+
+@router.get("/corporate/usage", dependencies=[AdminOnly])
+def corporate_car_usage(session: SessionDep, days: int = Query(default=90, ge=7, le=730)):
+    """Admin-only: how the pool cars were used over the last `days` days, per
+    car and in total, with the rides as history (services.corporate_usage)."""
+    return corporate_usage(session, days)
 
 
 @router.post(
