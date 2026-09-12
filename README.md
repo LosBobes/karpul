@@ -1,4 +1,4 @@
-# Karpul – firm carpooling
+# Karpul – community carpooling
 
 A small internal tool for sharing rides between colleagues. No accounts: you type your
 name once, it's remembered in your browser, and you're good to go. The only password in

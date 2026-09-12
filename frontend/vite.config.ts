@@ -22,7 +22,7 @@ export default defineConfig({
         id: '/',
         name: 'Karpul',
         short_name: 'Karpul',
-        description: 'Firm carpooling: who is driving, who is riding along.',
+        description: 'Community carpooling: who is driving, who is riding along.',
         start_url: '/',
         scope: '/',
         display: 'standalone',

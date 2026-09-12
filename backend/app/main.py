@@ -1,4 +1,4 @@
-"""Karpul - lightweight carpooling for a firm."""
+"""Karpul - lightweight carpooling for a community."""
 
 import os
 from contextlib import asynccontextmanager

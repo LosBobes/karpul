@@ -43,7 +43,7 @@ export interface GuideEntry {
 const enPlural = (n: number, one: string, other: string) => `${n} ${n === 1 ? one : other}`
 
 const en = {
-  documentTitle: 'Karpul · firm carpooling',
+  documentTitle: 'Karpul · community carpooling',
 
   common: {
     save: 'Save',
@@ -466,7 +466,7 @@ function srApiError(message: string): string {
 }
 
 const sr: Messages = {
-  documentTitle: 'Karpul · zajednička vožnja na posao',
+  documentTitle: 'Karpul · zajednička vožnja',
 
   common: {
     save: 'Sačuvaj',
