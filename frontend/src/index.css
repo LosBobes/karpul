@@ -438,6 +438,10 @@ span.plus-circle svg {
   padding: 0;
   border: none;
   background: none;
+  /* A tap must fire click at once (no double-tap zoom wait) and without the
+     platform's grey tap flash over the circle. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   animation: fab-in 0.32s var(--ease-spring);
 }
 @keyframes fab-in {
@@ -449,14 +453,17 @@ span.plus-circle svg {
   box-shadow: 0 6px 18px color-mix(in srgb, var(--green) 40%, transparent), 0 1px 3px rgba(0, 0, 0, 0.12);
   /* The press pulse: the circle contracts the moment it is pressed (the short
      ease-in below) and springs back when the finger lifts, overshooting a
-     touch on the way, so the tap reads as a press even under a thumb. */
+     touch on the way, so the tap reads as a press even under a thumb.
+     `.fab-pressed` is set from pointer and key events (AddRideButton.tsx),
+     deliberately not `:active`: touch browsers apply that late and Chrome
+     holds it on after the finger lifts, which pinned the circle small. */
   transition: background 0.12s, box-shadow 0.12s, transform 0.3s var(--ease-spring);
 }
 .fab:hover .plus-circle {
   background: var(--green-dark);
   transform: scale(1.05);
 }
-.fab:active .plus-circle {
+.fab.fab-pressed .plus-circle {
   transform: scale(0.88);
   transition: background 0.12s, box-shadow 0.12s, transform 0.08s var(--ease-in);
 }
@@ -3034,7 +3041,7 @@ body.dragging {
        back to the hover size and stay there instead of returning to rest. */
     transform: none;
   }
-  .fab:active .plus-circle {
+  .fab.fab-pressed .plus-circle {
     transform: scale(0.88);
   }
 }
