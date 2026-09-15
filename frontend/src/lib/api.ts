@@ -1,6 +1,16 @@
-import type { CarUsage, CorporateCar, CorporateCarInput, PersonStats, PushConfig, Ride, RideInput } from './types'
+import { authToken, clearSession, type AuthUser, type Session } from './auth'
+import type { CarUsage, CorporateCar, CorporateCarInput, PersonStats, ProfilePatch, PushConfig, Ride, RideInput } from './types'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
+
+/** POST /api/auth/register */
+export interface RegisterInput {
+  username: string
+  email: string
+  first_name: string
+  last_name: string
+  password: string
+}
 
 export class ApiError extends Error {
   status: number
@@ -27,15 +37,24 @@ function extractDetail(body: unknown): string | null {
   return null
 }
 
-/** Karpul has no sessions: the actor (or the shared admin password) rides on each request. */
+/**
+ * Who the request is from. The signed-in browser's token is attached to
+ * everything by default (lib/auth.ts); `userName` is the older honour-based
+ * header, still sent so a server running without `KARPUL_REQUIRE_LOGIN` knows
+ * the actor, and the shared car-pool password rides on the admin calls.
+ */
 interface Auth {
   userName?: string
   adminPassword?: string
+  /** Register / login / logout: they carry their own credentials. */
+  anonymous?: boolean
 }
 
 async function request<T>(path: string, init: RequestInit = {}, auth: Auth = {}): Promise<T> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) }
   if (init.body) headers['Content-Type'] = 'application/json'
+  const token = auth.anonymous ? '' : authToken()
+  if (token) headers.Authorization = `Bearer ${token}`
   // A header value cannot carry a ć or a š (fetch refuses anything past
   // Latin-1), so the name travels percent-encoded; the server decodes it.
   if (auth.userName) headers['X-User-Name'] = encodeURIComponent(auth.userName)
@@ -50,12 +69,32 @@ async function request<T>(path: string, init: RequestInit = {}, auth: Auth = {})
     body = null
   }
   if (!res.ok) {
+    // The token we sent is dead (expired, or signed out elsewhere). Drop it so
+    // the app falls back to the sign-in screen instead of failing every call.
+    if (res.status === 401 && token) clearSession()
     throw new ApiError(res.status, extractDetail(body) ?? `${res.status} ${res.statusText}`)
   }
   return body as T
 }
 
 export const api = {
+  // --- accounts (backend: app/auth.py) ---
+
+  register: (input: RegisterInput) =>
+    request<Session>('/api/auth/register', { method: 'POST', body: JSON.stringify(input) }, { anonymous: true }),
+
+  login: (login: string, password: string) =>
+    request<Session>('/api/auth/login', { method: 'POST', body: JSON.stringify({ login, password }) }, { anonymous: true }),
+
+  /** Tell the server to forget this browser's token. The caller clears it locally. */
+  logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
+
+  me: () => request<AuthUser>('/api/auth/me'),
+
+  /** Change your own name, email or password; a new name follows you onto the board. */
+  updateMe: (patch: ProfilePatch) =>
+    request<AuthUser>('/api/auth/me', { method: 'PATCH', body: JSON.stringify(patch) }),
+
   corporateCars: () => request<CorporateCar[]>('/api/cars/corporate'),
 
   rides: (from: string, to: string) =>

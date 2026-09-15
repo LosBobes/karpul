@@ -79,15 +79,23 @@ nano .env
 
 Karpul has two secrets: the shared password for the company-car admin screen
 and the VAPID key that signs push notifications. Set the public origin, both,
-and optionally the car pool that is seeded on first start:
+the account rule, and optionally the car pool that is seeded on first start:
 
 ```env
 CORS_ORIGINS=https://www.karpul.dev
+KARPUL_REQUIRE_LOGIN=1
 KARPUL_ADMIN_PASSWORD=<long random string>
 KARPUL_VAPID_PRIVATE_KEY=<what `python -m app.vapid` printed>
 KARPUL_VAPID_SUBJECT=mailto:someone@example.com
 CORPORATE_CARS=Skoda Octavia|BG-123-XY|4;VW Transporter|BG-456-ZZ|8
 ```
+
+`KARPUL_REQUIRE_LOGIN=1` makes the API refuse anything but a signed-in request.
+The app has always asked for a sign-in on screen; without this the API would
+still honour the pre-accounts `X-User-Name` header, which on a public host means
+anyone can act as anyone with a plain `curl`. Set it. The first person to open
+the site registers themselves, as does everyone after them; there is no invite
+step and no admin account.
 
 `KARPUL_VAPID_PRIVATE_KEY` is generated once (`docker compose -f docker-compose.prod.yml
 run --rm app python -m app.vapid`, or any Python with the `cryptography` package) and

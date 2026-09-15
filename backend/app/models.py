@@ -15,6 +15,57 @@ class CarType(str, Enum):
     own = "own"
 
 
+class User(SQLModel, table=True):
+    """A person with an account: username, password, email and their real name.
+
+    The rest of the app identifies people by the name they show to colleagues
+    (`Ride.driver_name`, `Booking.passenger_name`), so the account owns that
+    name: `display_name` is "<first> <last>" and `name_key` is its normalised
+    form (services.norm_name), kept unique so two accounts can never answer to
+    the same name on the board.
+
+    The table is `appuser`, not `user`: "user" is a reserved word in some SQL
+    dialects and quoting it everywhere is a trap for later.
+    """
+
+    __tablename__ = "appuser"
+
+    id: int | None = Field(default=None, primary_key=True)
+    # Lowercased on the way in, so a login is case-insensitive.
+    username: str = Field(unique=True, index=True)
+    email: str = Field(unique=True, index=True)
+    first_name: str
+    last_name: str
+    # norm_name(display_name); unique, see the class docstring.
+    name_key: str = Field(unique=True, index=True)
+    # "pbkdf2_sha256$<rounds>$<salt hex>$<hash hex>" (app/auth.py). Never the password.
+    password_hash: str
+    created_at: datetime = Field(default_factory=utcnow)
+
+    sessions: list["AuthSession"] = Relationship(
+        back_populates="user",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan"},
+    )
+
+    @property
+    def display_name(self) -> str:
+        """How this person appears in a car."""
+        return f"{self.first_name} {self.last_name}".strip()
+
+
+class AuthSession(SQLModel, table=True):
+    """One signed-in browser. The token itself is never stored, only its SHA-256,
+    so a stolen database does not hand out sessions."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(unique=True, index=True)
+    user_id: int = Field(foreign_key="appuser.id", index=True)
+    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime
+
+    user: User = Relationship(back_populates="sessions")
+
+
 class CorporateCar(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(index=True)

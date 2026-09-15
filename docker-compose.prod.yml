@@ -26,6 +26,8 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://www.karpul.dev}
       # Optional company-car seed, applied only when the car table is empty.
       CORPORATE_CARS: ${CORPORATE_CARS:-}
+      # 1 = the API accepts only signed-in requests (see .env.prod.example).
+      KARPUL_REQUIRE_LOGIN: ${KARPUL_REQUIRE_LOGIN:-}
       # Shared password for the company-car admin screen. Unset = admin off (503).
       KARPUL_ADMIN_PASSWORD: ${KARPUL_ADMIN_PASSWORD:-}
       KARPUL_VAPID_PRIVATE_KEY: ${KARPUL_VAPID_PRIVATE_KEY:-}

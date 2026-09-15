@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
-from .models import Booking, CarType, CorporateCar, Ride
+from .models import Booking, CarType, CorporateCar, PushSubscription, Ride
 
 
 def user_from_header(value: str | None) -> str | None:
@@ -117,6 +117,42 @@ def relabel_rides_for_car(session: Session, car: CorporateCar) -> int:
         ride.car_name = label
         session.add(ride)
     return len(stale)
+
+
+def rename_person(session: Session, old_name: str, new_name: str) -> list[Ride]:
+    """Carry a renamed account across the board.
+
+    People are stored by the name they show colleagues (`Ride.driver_name`,
+    `Booking.passenger_name`, and the normalised name a push subscription is
+    filed under), so an account that changes its first or last name has to take
+    those with it or the person loses their own rides. Returns the rides whose
+    rows changed, so the caller can publish them after committing.
+
+    The match is `norm_name`, the same rule the ownership checks use, which
+    collapses inner whitespace as well as case; that cannot be expressed in
+    SQLite's `=`, so the rows are filtered here. The tables are one community's
+    worth of rides, not a warehouse.
+    """
+    old_key, new_key = norm_name(old_name), norm_name(new_name)
+    if old_key == new_key and old_name == new_name:
+        return []
+    touched: dict[int, Ride] = {}
+    for ride in session.exec(select(Ride)).all():
+        if norm_name(ride.driver_name) == old_key:
+            ride.driver_name = new_name
+            session.add(ride)
+            touched[ride.id] = ride
+    for booking in session.exec(select(Booking)).all():
+        if norm_name(booking.passenger_name) == old_key:
+            booking.passenger_name = new_name
+            session.add(booking)
+            ride = session.get(Ride, booking.ride_id)
+            if ride is not None:
+                touched[ride.id] = ride
+    for sub in session.exec(select(PushSubscription).where(PushSubscription.user_name == old_key)).all():
+        sub.user_name = new_key
+        session.add(sub)
+    return list(touched.values())
 
 
 def resolve_corporate_car(session: Session, car_id: int) -> CorporateCar:

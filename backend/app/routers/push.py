@@ -2,20 +2,20 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from ..auth import CredsDep, require_actor
 from ..database import get_session, get_write_session
 from ..models import PushSubscription
 from ..push import vapid
-from ..services import norm_name, user_from_header
+from ..services import norm_name
 
 router = APIRouter(prefix="/api/push", tags=["push"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 WriteSessionDep = Annotated[Session, Depends(get_write_session)]
-UserName = Annotated[str | None, Header(alias="X-User-Name")]
 
 
 class PushKeys(BaseModel):
@@ -45,14 +45,13 @@ def push_config():
 
 
 @router.post("/subscriptions", status_code=status.HTTP_201_CREATED)
-def subscribe(payload: SubscriptionIn, session: WriteSessionDep, user: UserName = None):
-    """Register this browser for the name it is using; the same endpoint sent
-    again (after a name change, say) is updated in place."""
+def subscribe(payload: SubscriptionIn, session: WriteSessionDep, creds: CredsDep):
+    """Register this browser for the name it is signed in as (or, without an
+    account, the name it is using); the same endpoint sent again is updated in
+    place."""
     if vapid() is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Push notifications are not configured on this server")
-    user = user_from_header(user)
-    if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Set your name first (X-User-Name header)")
+    user = require_actor(session, creds)
     if not payload.endpoint.startswith("https://"):
         raise HTTPException(422, "endpoint must be an https URL")
     locale = payload.locale if payload.locale in ("en", "sr") else "en"

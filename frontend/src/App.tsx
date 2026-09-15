@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab } from './components/AddRideButton'
+import { AuthGate } from './components/AuthGate'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
 import { CarCarousel } from './components/CarCarousel'
@@ -10,7 +12,6 @@ import { DateCarousel } from './components/DateCarousel'
 import { CalendarIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
-import { NameSheet } from './components/NameSheet'
 import { NotificationsSheet } from './components/NotificationsSheet'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
@@ -18,6 +19,7 @@ import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
+import { useSession, type Session } from './lib/auth'
 import { messages, useT } from './lib/i18n'
 import { addDays, fmtShortDate, fmtTime, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { slideClass, useSlideDir } from './lib/motion'
@@ -27,7 +29,6 @@ import { resubscribePush } from './lib/push'
 import { applyUpdate, useUpdateReady } from './lib/pwa'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
-import { useUserName } from './lib/useUserName'
 
 type FormState = { mode: 'create'; template?: Ride } | { mode: 'edit'; ride: Ride } | null
 
@@ -74,9 +75,14 @@ function sortRides(rides: Ride[]): Ride[] {
   )
 }
 
-export default function App() {
+/**
+ * The board, for a signed-in person. `userName` is the account's display name,
+ * which is what every ride and booking on the board is keyed by, so the rest of
+ * the app never learns that accounts exist.
+ */
+function Board({ session }: { session: Session }) {
   const t = useT()
-  const [userName, setUserNameOnly] = useUserName()
+  const userName = session.user.display_name
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
   const [rides, setRides] = useState<Ride[]>([])
@@ -90,8 +96,8 @@ export default function App() {
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useState<number | null>(null)
-  // First visit: ask for the name straight away rather than hiding it in a menu.
-  const [nameOpen, setNameOpen] = useState(() => !userName)
+  // Your account (components/AccountSheet.tsx), from the drawer or your name.
+  const [accountOpen, setAccountOpen] = useState(false)
   // The app menu (components/Sidebar.tsx), a drawer under the ☰ in the top bar.
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // The company-car help (components/CarGuide.tsx): from the sidebar or a ride's driver card.
@@ -117,15 +123,12 @@ export default function App() {
     document.title = t.documentTitle
   }, [t])
 
-  // A push subscription is filed under a name (backend: app/push.py), so a
-  // renamed browser tells the server, or its pushes keep going to the old name.
-  const setUserName = useCallback(
-    (name: string) => {
-      setUserNameOnly(name)
-      void resubscribePush(name.trim().replace(/\s+/g, ' '))
-    },
-    [setUserNameOnly],
-  )
+  // This browser may still be subscribed to pushes under whoever used it last
+  // (backend: app/push.py files a subscription under a name), so every sign-in
+  // re-files it. A no-op when nothing is subscribed.
+  useEffect(() => {
+    void resubscribePush(userName)
+  }, [userName])
 
   // A shared link, /ride/{id}: open that ride on its day, then tidy the URL so
   // a reload does not replay it. The server sent the shell with a preview.
@@ -555,7 +558,7 @@ export default function App() {
   // In the upcoming list only an explicit tap unfolds a car.
   const openUpcomingId = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
 
-  const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setNameOpen(true))
+  const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setAccountOpen(true))
 
   // Motion (lib/motion.ts): Upcoming sits left of Week, so switching slides
   // the new view in from that side; the day board slides the way the
@@ -604,7 +607,7 @@ export default function App() {
       onAddPassenger={onAddPassenger}
       onCancel={onCancel}
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
-      onDuplicate={(r) => (userName ? setForm({ mode: 'create', template: r }) : setNameOpen(true))}
+      onDuplicate={(r) => (userName ? setForm({ mode: 'create', template: r }) : setAccountOpen(true))}
       onTogglePassengersManage={onTogglePassengersManage}
       onGuide={() => setGuideOpen(true)}
       dragActive={drag !== null}
@@ -677,7 +680,7 @@ export default function App() {
                 isPast={false}
                 emptyTitle={t.empty.noUpcoming}
                 intro
-                onEditName={() => setNameOpen(true)}
+                onEditName={() => setAccountOpen(true)}
               />
             ) : (
               <>
@@ -722,7 +725,7 @@ export default function App() {
               )}
 
               {!loading && !openRide && (
-                <AddCarCard userName={userName} isPast={isPast} intro={rides.length === 0 && !isPast} onEditName={() => setNameOpen(true)} />
+                <AddCarCard userName={userName} isPast={isPast} intro={rides.length === 0 && !isPast} onEditName={() => setAccountOpen(true)} />
               )}
 
               {!loading && (
@@ -736,7 +739,7 @@ export default function App() {
                   over={dragOver?.kind === 'tray'}
                   onGrab={onGrab}
                   onOpenCar={setCarSel}
-                  onEditName={() => setNameOpen(true)}
+                  onEditName={() => setAccountOpen(true)}
                 />
               )}
             </div>
@@ -749,7 +752,8 @@ export default function App() {
       {sidebarOpen && (
         <Sidebar
           userName={userName}
-          onEditName={() => setNameOpen(true)}
+          handle={session.user.username}
+          onAccount={() => setAccountOpen(true)}
           onCompanyCars={openAdmin}
           onGuide={() => setGuideOpen(true)}
           onMyRides={() => setMyRidesOpen(true)}
@@ -760,7 +764,7 @@ export default function App() {
 
       {guideOpen && <CarGuide onClose={closeGuide} />}
 
-      {myRidesOpen && <MyRides userName={userName} onEditName={() => setNameOpen(true)} onClose={closeMyRides} />}
+      {myRidesOpen && <MyRides userName={userName} onEditName={() => setAccountOpen(true)} onClose={closeMyRides} />}
 
       {notifOpen && (
         <NotificationsSheet
@@ -770,7 +774,18 @@ export default function App() {
         />
       )}
 
-      {nameOpen && <NameSheet name={userName} onChange={setUserName} onClose={() => setNameOpen(false)} />}
+      {accountOpen && (
+        <AccountSheet
+          user={session.user}
+          // The board is keyed by the name, and a rename rewrites every ride
+          // the person is in (backend: services.rename_person), so the loaded
+          // week is out of date. The push subscription follows the name on its
+          // own, through the effect above.
+          onRenamed={() => void load()}
+          onSaved={() => setToast({ kind: 'ok', text: t.account.saved })}
+          onClose={() => setAccountOpen(false)}
+        />
+      )}
 
       {form && (
         <RideForm
@@ -841,4 +856,15 @@ export default function App() {
       )}
     </div>
   )
+}
+
+/**
+ * The door. Without a session there is nothing to show and nothing to load, so
+ * the sign-in screen is the whole app; signing in swaps the board in, keyed by
+ * account so switching people never leaves the last one's state behind.
+ */
+export default function App() {
+  const session = useSession()
+  if (!session) return <AuthGate />
+  return <Board key={session.user.id} session={session} />
 }

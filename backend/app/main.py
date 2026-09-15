@@ -16,7 +16,7 @@ from sqlmodel import Session
 from .database import engine, init_db
 from .models import Ride
 from .reminders import reminder_loop
-from .routers import cars, live, push, rides, stats
+from .routers import auth, cars, live, push, rides, stats
 from .seed import seed_corporate_cars
 
 # Built frontend location. The Docker image sets KARPUL_FRONTEND_DIST=/app/static;
@@ -54,6 +54,7 @@ app.add_middleware(
 # reconnect; compressed it is a fraction of the size on the office Wi-Fi.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+app.include_router(auth.router)
 app.include_router(cars.router)
 app.include_router(rides.router)
 app.include_router(live.router)

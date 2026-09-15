@@ -38,7 +38,34 @@ Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the sh
 
 FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, shipped as **one container**: the multi-stage `Dockerfile` builds the frontend and copies `dist` into the Python image, and `backend/app/main.py` mounts it at `/` behind the `/api` routes (`KARPUL_FRONTEND_DIST`). Anything unmatched falls through to `index.html` — so any new API route must live under `/api`, or the SPA catch-all will swallow it.
 
-**No auth, by design.** The user types a name once; it lives in `localStorage` (`lib/useUserName.ts`) and is sent as the `X-User-Name` header on mutations that need an actor (PATCH/DELETE ride, POST/DELETE booking). Joining a ride passes the passenger's name in the body; the header is who is doing it, and without it the passenger is taken to be the actor (a self-join). Name comparison is whitespace-collapsed + casefolded (`_norm` in `routers/rides.py`, `sameName` in `lib/dates.ts`) — keep both sides in sync if the rule changes.
+**Accounts, on top of a name-keyed board.** A person registers with a username, an email, a
+first name and a surname (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
+`display_name` and *that* is what every ride and booking stores, so the board itself never
+learned about accounts. `User.name_key` is the normalised display name, unique, so two
+accounts can never answer to one name. Passwords are PBKDF2-HMAC-SHA256 from the standard
+library in a `pbkdf2_sha256$rounds$salt$hash` string (no new dependency, for the same reason
+`app/webpush.py` avoids pywebpush); a session is an opaque token stored only as its SHA-256
+(`AuthSession`) and sent as `Authorization: Bearer`.
+
+Who is acting is resolved in one place: `actor_name` / `require_actor` in `app/auth.py`. A
+valid token wins; otherwise the old honour-based `X-User-Name` header is honoured, unless
+`KARPUL_REQUIRE_LOGIN` is set, which makes a token the only way to act (read per request,
+like the admin password). A token that is *present but dead* is a 401, not "anonymous", so
+the browser drops it and shows the door again. The lookup deliberately happens in the
+handler body, not as a dependency: `Credentials` (the `CredsDep` dependency) only reads the
+two headers, because a mutating route must take the write lock before anything queries its
+session (`database.begin_write`). Creating a ride overwrites `driver_name` with the
+signed-in account's name, the way a corporate ride's `car_name` is overwritten.
+
+Name comparison is whitespace-collapsed + casefolded (`_norm` in `routers/rides.py`,
+`sameName` in `lib/dates.ts`) — keep both sides in sync if the rule changes. Because names
+are the key, `PATCH /api/auth/me` renaming an account rewrites its rides, bookings and push
+subscriptions in one go (`rename_person` in `services.py`) and republishes the changed rides.
+
+On the frontend `lib/auth.ts` is an external store (like the theme and the locale) holding
+the token and the account in `localStorage` under `karpul.auth`; `lib/api.ts` attaches the
+bearer token to every call and clears the store on a 401. `App.tsx` is the door: with no
+session it renders `AuthGate` and nothing else, so the board never loads signed out.
 
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
@@ -58,12 +85,15 @@ are served immutable and `index.html` `no-cache`. On the frontend, `load()` in `
 sequence-guarded (only the newest request may set the board) and repeats itself while socket
 events keep landing mid-flight; mutation responses go through `upsertRide` instead of a reload.
 
-**Schema changes.** `create_all` never adds a column to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start and `tests/test_migrations.py` proves it. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
+**Schema changes.** A new *table* is created by `create_all` on start, which is how
+`appuser` and `authsession` reach a production database. `create_all` never adds a *column*
+to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start and `tests/test_migrations.py` proves it. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
 
-**One exception to the no-auth rule.** Managing the company-car pool sits behind a single shared
+**One shared password, still.** Managing the company-car pool sits behind a single shared
 password from `KARPUL_ADMIN_PASSWORD`, sent as `X-Admin-Password` and checked by `require_admin`
-(`app/admin.py`) with `secrets.compare_digest`. The variable is read per request, not at import, so
-tests monkeypatch it. Unset means the admin endpoints answer 503 rather than 401 — that is the
+(`app/admin.py`) with `secrets.compare_digest`. It is a password for a job, not an account:
+who you are signed in as has nothing to do with it. The variable is read per request, not at
+import, so tests monkeypatch it. Unset means the admin endpoints answer 503 rather than 401 — that is the
 default for a plain checkout, and `tests/test_cars.py` has an autouse fixture that clears it so a
 developer's shell can't leak in. The frontend stores the password in `localStorage`
 (`lib/useAdminPassword.ts`) and verifies it by calling `GET /api/cars/corporate?include_inactive=true`;
@@ -212,13 +242,13 @@ weekday and month names, the week range and 12/24-hour clocks follow the app lan
 than the browser. Backend error texts stay English on the wire and are rendered through
 `apiError` in the same file, which matches the server's wordings (keep it in step when a
 `detail` string changes). The switch is `LanguageSwitch`, at the foot of the drawer and on the
-first-run name sheet. `main.tsx` also bundles Inter's Latin Extended subset for č ć š ž đ.
+sign-in screen, the two places a newcomer looks first. `main.tsx` also bundles Inter's Latin Extended subset for č ć š ž đ.
 Wording rule for both languages: no em dashes.
 
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
-about one particular ride: your name (the identity block and *Change name* both open
-`NameSheet`), *Your rides* (`MyRides`: figures, history, the calendar feed address),
+about one particular ride: your account (the identity block and *Your account* both open
+`AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
 *Notifications* (`NotificationsSheet`, the push switch), *Company cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Company car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
