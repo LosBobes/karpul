@@ -48,14 +48,18 @@ const FINISH = STEPS - 3
 /** Long enough for the nudge to be seen, short enough to retry at once. */
 const SLIP_MS = 420
 
-interface Point {
+export interface Point {
   x: number
   y: number
 }
 
 interface Props {
-  /** The finger followed the whole bolt. */
-  onComplete: () => void
+  /**
+   * The finger followed the whole bolt. Carries the bolt's tail as a
+   * percentage of the viewport, so whatever plays next can start from the
+   * point the finger finished on rather than the middle of the screen.
+   */
+  onComplete: (tail: Point | null) => void
   /** The finger left the line, or landed away from the start. */
   onSlip?: () => void
   /** Traced: the bolt stays full, flashes over and stops taking input. */
@@ -120,6 +124,21 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
     return { x: p.x, y: p.y }
   }
 
+  /**
+   * The tail of the bolt as a percentage of the viewport: the last place the
+   * finger was, and so where the flare belongs. It goes the other way through
+   * the same matrix `local` uses, and is measured while the pad still sits
+   * where the finger left it, before the charge pops it.
+   */
+  const tail = (): Point | null => {
+    const svg = svgRef.current
+    const m = svg?.getScreenCTM()
+    const end = points[STEPS]
+    if (!svg || !m || !end) return null
+    const p = new DOMPoint(end.x, end.y).matrixTransform(m)
+    return { x: (p.x / window.innerWidth) * 100, y: (p.y / window.innerHeight) * 100 }
+  }
+
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (charged || !points.length) return
     const p = local(e)
@@ -163,9 +182,10 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
     // the bolt: hold the trail where it is and let it be picked back up.
     if (bestGap <= STRAY_R && best > from) set(best)
     if (atRef.current >= FINISH) {
+      const origin = tail()
       set(STEPS)
       setTracing(false)
-      onComplete()
+      onComplete(origin)
     }
   }
 

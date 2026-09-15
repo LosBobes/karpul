@@ -335,7 +335,12 @@ horizontal jog between two 27° strokes, because a finger crossing the screen si
 for than one dragged down a narrow lane; `STRAY_R` stays under the gap between the two long strokes, so
 a finger on one is never nearer the other, and that gap is what sets how thick the lane can be drawn. The bolt fills green behind the finger
 (`pathLength=100`, so the dashes are percentages), then pops, a white spark runs down it and a green
-flare washes the screen, which is also what hides the reload's blank frame. The sheet's plain button
+flare washes the screen, which is also what hides the reload's blank frame. The flare opens from the
+tail of the bolt rather than the middle of the screen, so it carries on from where the finger stopped:
+`BoltTrace` hands its last point to `onComplete` as a percentage of the viewport (through the same
+matrix that puts the finger in the bolt's coordinates, measured before the charge pops the pad) and
+`UpdateSheet` sets it as `--flare-x` / `--flare-y`, which `.update-flare` uses for both the gradient's
+centre and its `transform-origin`. The sheet's plain button
 is the same update for anyone who would rather not draw, the button equivalent every drag here has.
 Both run `applyUpdate`, which is a hard refresh: it listens for `controllerchange` itself, empties the
 Cache Storage (the precache an ordinary reload would be served from, kept when the browser says it is
