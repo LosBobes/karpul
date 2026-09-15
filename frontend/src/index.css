@@ -2472,17 +2472,172 @@ body.dragging {
 .toast-error {
   background: var(--red);
 }
-/* A waiting build (lib/pwa.ts): the whole pill is the button, the bold word the verb. */
+/* A waiting build (lib/pwa.ts). The whole green pill is the button and the tap
+   hard-refreshes the page, so the verb is spelled out as a chip inside it: on a
+   phone the plain bold word read as part of the sentence, not as something to
+   press. It keeps the green in both themes, unlike the toasts above it. */
 .toast-update {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   border: none;
+  padding: 0.45rem 0.45rem 0.45rem 1rem;
   background: var(--green);
+  color: #fff;
   font: inherit;
   font-size: 0.9rem;
   font-weight: 500;
+  text-align: left;
   cursor: pointer;
 }
 .toast-update b {
+  flex: none;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green-dark);
   font-weight: 700;
+}
+
+/* --- Trace the bolt ------------------------------------------------------ */
+/* Taking a waiting build (components/UpdateSheet.tsx). The app's own
+   thunderbolt, drawn with a finger: the grey track is the bolt waiting, the
+   green trail is how far the finger has got, and the whole thing flashes over
+   and throws a flare across the screen when it closes. `touch-action: none` is
+   what keeps the browser from scrolling the sheet instead, the same bargain
+   the drag handles make in lib/dnd.ts. */
+.update-lead {
+  margin: 0 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+  min-height: 2.6em;
+}
+.bolt-pad {
+  display: block;
+  width: 150px;
+  max-width: 55vw;
+  margin: 0 auto 0.5rem;
+  aspect-ratio: 120 / 180;
+  touch-action: none;
+  cursor: grab;
+  overflow: visible;
+}
+.bolt-pad-live {
+  cursor: grabbing;
+}
+.bolt-track,
+.bolt-trail,
+.bolt-flash {
+  fill: none;
+  stroke-width: 16;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bolt-track {
+  stroke: var(--surface-2);
+}
+.bolt-trail {
+  stroke: var(--green);
+  /* Fast enough to sit under the finger, slow enough to smooth a jump. */
+  transition: stroke-dashoffset 0.09s linear;
+}
+.bolt-flash {
+  stroke: #fff;
+  stroke-dasharray: 12 100;
+  animation: bolt-flash 0.5s ease-out forwards;
+}
+@keyframes bolt-flash {
+  from {
+    stroke-dashoffset: 12;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+.bolt-start {
+  fill: var(--green);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bolt-wait 1.7s ease-in-out infinite;
+}
+@keyframes bolt-wait {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.5;
+  }
+}
+.bolt-head {
+  fill: #fff;
+  stroke: var(--green);
+  stroke-width: 4;
+}
+/* A finger that left the line: the bolt shrugs and waits to be started again. */
+.bolt-pad-slip {
+  animation: bolt-slip 0.38s var(--ease-spring);
+}
+@keyframes bolt-slip {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px);
+  }
+  60% {
+    transform: translateX(5px);
+  }
+}
+.bolt-pad-charged {
+  animation: bolt-charge 0.5s var(--ease-spring);
+  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--green) 55%, transparent));
+}
+@keyframes bolt-charge {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.update-plain {
+  margin-top: 0.25rem;
+}
+/* The green wash the refresh happens behind. It ends opaque on purpose: the
+   reload's blank frame lands under it, and the new build paints over it. */
+.update-flare {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--green) 55%, #fff), var(--green) 38%, transparent 72%);
+  /* The delay is the bolt's moment: it pops and a spark runs down it before
+     the screen floods. Reduced motion collapses durations but not delays, so
+     the block at the end of this file zeroes this one too. */
+  animation: update-flare 0.8s ease-out 0.45s forwards;
+  opacity: 0;
+}
+@keyframes update-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(3);
+  }
 }
 
 /* --- Motion -------------------------------------------------------------- */
@@ -2983,9 +3138,14 @@ body.dragging {
   background: #eceef1;
   color: #15171b;
 }
-:root[data-resolved='dark'] .toast-error,
-:root[data-resolved='dark'] .toast-update {
+:root[data-resolved='dark'] .toast-error {
   color: #10141a;
+}
+/* The light pill above carries a message; the update button is the one toast
+   you are meant to press, so it keeps the green and the white chip here too. */
+:root[data-resolved='dark'] .toast-update {
+  background: var(--green);
+  color: #fff;
 }
 :root[data-resolved='dark'] .avatar-violet {
   background: #2e2352;
@@ -3133,5 +3293,10 @@ body.dragging {
   *::after {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+  /* The one delay in the file. It waits for an animation that no longer plays,
+     and the refresh behind it waits on this one ending. */
+  .update-flare {
+    animation-delay: 0.01ms !important;
   }
 }
