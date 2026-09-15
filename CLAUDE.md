@@ -292,6 +292,23 @@ an explicit pick that still exists, else your own ride, else the first ride, els
 **Wording:** the thing you add, edit, duplicate or remove is a *ride*; *car* is reserved for the
 vehicle (the pool, "Company car" / "Own car", "get in this car", "in this car").
 
+**Adding a ride.** `RideForm` is one form at two depths, switched by the segmented control
+stuck to the head of the sheet's body and remembered as `karpul.formMode` (*Simple* is the
+default). Simple asks only what a ride cannot be made without: the car, the seats, the day and
+its two clocks, and where from and to. Advanced reveals the rest *in place* rather than in a
+tail, so nothing you have already filled in moves when you switch: the passenger-list switch
+under the seats, the weekly repeat under the day, the pickup points inside the route, then
+distance, chip-in and the note. Switching back to Simple hides those fields but keeps their
+values and still submits them, so the foot of the simple form names the ones carrying a value
+(`.form-extras`) and a tap on it goes to look; editing a ride that already has any of them opens
+on Advanced for the same reason. The driver is a line that states who it is (`.form-driver`),
+not a field, because `driver_name` can never change. The day, departure and return sit in one
+`.when-grid` row: rides are same-day, so the return has a time and no date of its own, and
+turning on *One way* removes the return clock instead of grey-ing it out. The start, the stops
+and the destination are one `.route` box with one focus ring and one `.route-tag` column, the
+way `CarDetail` draws the same journey. Every boolean here is a switch (`.toggle`, and
+`.switch-row` for one that is boxed on its own line with its explanation beside it).
+
 **Accessibility notes.** Toasts are announced through an always-mounted `sr-only` live region
 in `App.tsx`; the visible pill is `aria-hidden`. Every drag has a button equivalent (*Get in*,
 *Switch to this car*, *Leave*). The dark avatars pair a deep tint with a light ink so the
