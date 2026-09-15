@@ -410,6 +410,15 @@ const en = {
     updateAction: 'Update',
   },
 
+  /** Taking a waiting build: components/UpdateSheet.tsx and the bolt you trace. */
+  update: {
+    title: 'A new version is ready',
+    lead: 'Trace the bolt to charge it up.',
+    slip: 'Start at the top and stay on the line.',
+    charged: 'Charged. Refreshing.',
+    plain: 'Update without the trace',
+  },
+
   empty: {
     noRidesDay: 'No rides on this day yet',
     noUpcoming: 'No upcoming sessions yet',
@@ -1007,6 +1016,14 @@ const sr: Messages = {
     carDeleted: (name) => `${name} je obrisan.`,
     updateReady: 'Nova verzija je spremna.',
     updateAction: 'Ažuriraj',
+  },
+
+  update: {
+    title: 'Nova verzija je spremna',
+    lead: 'Prevuci munju da je napuniš.',
+    slip: 'Kreni od vrha i ostani na liniji.',
+    charged: 'Napunjeno. Osvežavam.',
+    plain: 'Ažuriraj bez crtanja',
   },
 
   empty: {

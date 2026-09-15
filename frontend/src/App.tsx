@@ -13,6 +13,7 @@ import { CalendarIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
+import { UpdateSheet } from './components/UpdateSheet'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
 import { SegThumb } from './components/Segmented'
@@ -26,7 +27,7 @@ import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { useLiveBoard, type LiveEvent } from './lib/live'
 import { resubscribePush } from './lib/push'
-import { applyUpdate, useUpdateReady } from './lib/pwa'
+import { useUpdateReady } from './lib/pwa'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
 
@@ -105,6 +106,8 @@ function Board({ session }: { session: Session }) {
   // Your history and figures (components/MyRides.tsx) and the push switch (NotificationsSheet.tsx).
   const [myRidesOpen, setMyRidesOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  // Taking a waiting build (components/UpdateSheet.tsx): the bolt you trace.
+  const [updateOpen, setUpdateOpen] = useState(false)
   // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
   const [drag, setDrag] = useState<PassengerDrag | null>(null)
   const [dragOver, setDragOver] = useState<DropTarget | null>(null)
@@ -774,6 +777,8 @@ function Board({ session }: { session: Session }) {
         />
       )}
 
+      {updateOpen && <UpdateSheet onClose={() => setUpdateOpen(false)} />}
+
       {accountOpen && (
         <AccountSheet
           user={session.user}
@@ -849,7 +854,7 @@ function Board({ session }: { session: Session }) {
         </div>
       ) : (
         updateReady && (
-          <button type="button" className="toast toast-update" onClick={applyUpdate}>
+          <button type="button" className="toast toast-update" onClick={() => setUpdateOpen(true)}>
             <span>{t.toasts.updateReady}</span>
             <b>{t.toasts.updateAction}</b>
           </button>

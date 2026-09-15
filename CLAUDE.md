@@ -308,11 +308,17 @@ Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc
 are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
 (`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
 shows it as a tappable "A new version is ready" toast (`useUpdateReady`, in the toast slot whenever no
-other toast shows), a green pill with the verb as a white chip so it reads as a button in both themes,
-and the tap runs `applyUpdate`, which is a hard refresh: it listens for `controllerchange` itself,
-empties the Cache Storage (the precache an ordinary reload would be served from, kept when the browser
-says it is offline) and reloads, with a 3 s timer so a tap still refreshes when no worker claims the
-page. That listener is deliberate: workbox-window only calls a controller change an update when a
+other toast shows), a green pill with the verb as a white chip so it reads as a button in both themes.
+The tap opens `UpdateSheet`, where you **trace the app's own thunderbolt** to take the build:
+`BoltTrace` walks the bolt path once with `getPointAtLength` and matches the finger against a window
+of points ahead of where it has got to, so a corner may be cut and a wander is forgiven, while leaving
+the line or lifting early starts it over with a shrug. The bolt fills green behind the finger
+(`pathLength=100`, so the dashes are percentages), then pops, a white spark runs down it and a green
+flare washes the screen, which is also what hides the reload's blank frame. The sheet's plain button
+is the same update for anyone who would rather not draw, the button equivalent every drag here has.
+Both run `applyUpdate`, which is a hard refresh: it listens for `controllerchange` itself, empties the
+Cache Storage (the precache an ordinary reload would be served from, kept when the browser says it is
+offline) and reloads, with a 3 s timer so it still refreshes when no worker claims the page. That listener is deliberate: workbox-window only calls a controller change an update when a
 worker already controlled the page at registration, false on a first visit, and `clientsClaim: true`
 in the worker is what makes the new worker take that page over at all. An installed app can stay open
 for days, so the hook also asks the browser for a new worker every hour and when the app comes back to
