@@ -16,17 +16,35 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * a button equivalent, and this one's lives in the sheet below the pad.
  */
 
-/** The bolt in its own box: down the left, a jog right, down again. */
-const BOLT_D = 'M84 14L40 82L70 82L32 166'
-const BOX = { w: 120, h: 180 }
+/**
+ * The bolt in its own box: down the left, a long flat jog right, down again.
+ * Wider and shallower than the mark's own bolt, because a finger crossing the
+ * screen sideways is an easier thing to ask for than one dragged down a narrow
+ * lane, and the two long strokes stay far enough apart that a finger on one is
+ * never nearer the other.
+ */
+const BOLT_D = 'M149 9L39 65L119 65L9 121'
+const BOX = { w: 158, h: 130 }
 /** Points the finger is matched against. More is smoother and no slower. */
-const STEPS = 180
-/** How near the top of the bolt a finger must land to pick it up. */
-const START_R = 32
-/** How far off the line the finger may stray before the trace lets go. */
-const STRAY_R = 36
+const STEPS = 200
+/** How near the head of the bolt a finger must land to pick it up. */
+const START_R = 34
+/**
+ * How far off the line the finger may drift and still pull the trace along.
+ * It stays under the gap between the two long strokes (36 units), so a finger
+ * on one of them is never nearer a point on the other.
+ */
+const STRAY_R = 26
+/**
+ * Past this the finger has left the bolt and the trace starts over. Between
+ * the two the trace simply holds where it is, so a wobble costs nothing and
+ * only a deliberate departure does.
+ */
+const LOST_R = 58
 /** How far along the bolt the finger may jump in one move, as a fraction. */
-const REACH = 0.16
+const REACH = 0.18
+/** The last stretch is a formality; reaching here counts as the whole bolt. */
+const FINISH = STEPS - 3
 /** Long enough for the nudge to be seen, short enough to retry at once. */
 const SLIP_MS = 420
 
@@ -118,7 +136,9 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
   }
 
   const onPointerMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!tracing || charged) return
+    // `tracing` is a render behind a move that has already finished the bolt,
+    // so the traced point, which is not, is what says the work is done.
+    if (!tracing || charged || atRef.current >= STEPS) return
     const p = local(e)
     if (!p) return
     const from = atRef.current
@@ -135,12 +155,15 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
         best = i
       }
     }
-    if (bestGap > STRAY_R) {
+    if (bestGap > LOST_R) {
       slip()
       return
     }
-    if (best > from) set(best)
-    if (best >= STEPS) {
+    // Between STRAY_R and LOST_R the finger is off the line but has not left
+    // the bolt: hold the trail where it is and let it be picked back up.
+    if (bestGap <= STRAY_R && best > from) set(best)
+    if (atRef.current >= FINISH) {
+      set(STEPS)
       setTracing(false)
       onComplete()
     }
@@ -149,7 +172,7 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
   const onPointerUp = () => {
     if (!tracing || charged) return
     // Lifting anywhere short of the tail starts the bolt over.
-    if (atRef.current < STEPS) slip()
+    if (atRef.current < FINISH) slip()
     setTracing(false)
   }
 
@@ -185,8 +208,8 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
       />
       {charged && <path className="bolt-flash" d={BOLT_D} pathLength={100} />}
       {/* Where to put the finger. It has said its piece once the finger is down. */}
-      {!done && !tracing && start && <circle className="bolt-start" cx={start.x} cy={start.y} r="9" />}
-      {tracing && head && <circle className="bolt-head" cx={head.x} cy={head.y} r="7" />}
+      {!done && !tracing && start && <circle className="bolt-start" cx={start.x} cy={start.y} r="10" />}
+      {tracing && head && <circle className="bolt-head" cx={head.x} cy={head.y} r="12" />}
     </svg>
   )
 }

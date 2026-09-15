@@ -328,8 +328,12 @@ shows it as a tappable "A new version is ready" toast (`useUpdateReady`, in the 
 other toast shows), a green pill with the verb as a white chip so it reads as a button in both themes.
 The tap opens `UpdateSheet`, where you **trace the app's own thunderbolt** to take the build:
 `BoltTrace` walks the bolt path once with `getPointAtLength` and matches the finger against a window
-of points ahead of where it has got to, so a corner may be cut and a wander is forgiven, while leaving
-the line or lifting early starts it over with a shrug. The bolt fills green behind the finger
+of points ahead of where it has got to, so a corner may be cut and a wander is forgiven: past `STRAY_R`
+the trail holds where it is and can be picked back up, and only past `LOST_R`, or a lift short of the
+tail, does it start over with a shrug. The bolt is drawn wider and shallower than the mark's own, a long
+horizontal jog between two 27° strokes, because a finger crossing the screen sideways is easier to ask
+for than one dragged down a narrow lane; `STRAY_R` stays under the gap between the two long strokes, so
+a finger on one is never nearer the other, and that gap is what sets how thick the lane can be drawn. The bolt fills green behind the finger
 (`pathLength=100`, so the dashes are percentages), then pops, a white spark runs down it and a green
 flare washes the screen, which is also what hides the reload's blank frame. The sheet's plain button
 is the same update for anyone who would rather not draw, the button equivalent every drag here has.
