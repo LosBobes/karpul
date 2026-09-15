@@ -2,11 +2,12 @@ from datetime import date, timedelta
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
+from ..auth import CredsDep, actor_name, require_actor
 from ..calendar import ride_ics
 from ..database import get_session, get_write_session
 from ..events import ride_deleted, ride_saved
@@ -23,7 +24,6 @@ from ..services import (
     ride_to_create_dict,
     stops_to_text,
     to_ride_read_dict,
-    user_from_header,
     weekly_dates,
 )
 
@@ -33,16 +33,8 @@ SessionDep = Annotated[Session, Depends(get_session)]
 # Every mutation is check-then-write (free seats, car availability, ownership),
 # so it runs under the write lock from the first statement (database.begin_write).
 WriteSessionDep = Annotated[Session, Depends(get_write_session)]
-UserName = Annotated[str | None, Header(alias="X-User-Name")]
 
 _norm = norm_name
-
-
-def _require_user(user: str | None) -> str:
-    user = user_from_header(user)
-    if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Set your name first (X-User-Name header)")
-    return user
 
 
 def _get_ride_or_404(session: Session, ride_id: int) -> Ride:
@@ -113,12 +105,19 @@ def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_
 
 
 @router.post("", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def create_ride(payload: RideCreate, session: WriteSessionDep):
+def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
     """Add a ride. With `repeat_until` one ride per week is added, all or
     nothing: a clash of the company car on any of the weeks fails the whole
     request and says which day. The first ride is returned; the rest reach
     every tab (this one included) over the live socket.
+
+    A signed-in account drives its own rides: `driver_name` is overwritten with
+    the account's name, the way `car_name` is overwritten for a company car.
+    Without an account the payload's `driver_name` stands, as it always did.
     """
+    driver = actor_name(session, creds)
+    if driver:
+        payload = payload.model_copy(update={"driver_name": driver})
     dates = weekly_dates(payload.ride_date, payload.repeat_until)
     series_id = uuid4().hex if len(dates) > 1 else None
     rides: list[Ride] = []
@@ -159,8 +158,8 @@ def ride_calendar(ride_id: int, session: SessionDep):
 
 
 @router.patch("/{ride_id}", response_model=RideRead)
-def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, user: UserName = None):
-    user = _require_user(user)
+def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, creds: CredsDep):
+    user = require_actor(session, creds)
     ride = _get_ride_or_404(session, ride_id)
     if _norm(ride.driver_name) != _norm(user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver can edit this ride")
@@ -197,12 +196,12 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, use
 def delete_ride(
     ride_id: int,
     session: WriteSessionDep,
-    user: UserName = None,
+    creds: CredsDep,
     scope: Literal["one", "following"] = Query(default="one"),
 ):
     """Remove a ride; `scope=following` also removes the later rides of the
     same weekly series (the earlier ones, already gone or not, stay)."""
-    user = _require_user(user)
+    user = require_actor(session, creds)
     ride = _get_ride_or_404(session, ride_id)
     if _norm(ride.driver_name) != _norm(user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver can cancel this ride")
@@ -239,17 +238,18 @@ def _may_manage_seats(ride: Ride, actor: str) -> bool:
 
 
 @router.post("/{ride_id}/bookings", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, user: UserName = None):
+def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, creds: CredsDep):
     """Put `passenger_name` in the car.
 
-    Without `X-User-Name` this is a self-join: the passenger is the actor. With
-    it, someone else can be added, but only by the driver or, when the driver
+    The actor is the signed-in account, or `X-User-Name` where the server still
+    allows that; with neither, this is a self-join and the passenger is the
+    actor. Someone else can be added, but only by the driver or, when the driver
     allows it (`passengers_manage`), by a passenger already in the car.
     `pickup` is where they get in: the origin by default, or one of the stops.
     """
     ride = _get_ride_or_404(session, ride_id)
     name = payload.passenger_name
-    actor = user_from_header(user) or name
+    actor = actor_name(session, creds) or name
     if _norm(actor) != _norm(name) and not _may_manage_seats(ride, actor):
         if ride.passengers_manage:
             detail = "Only the driver or a passenger in this car can add someone"
@@ -279,11 +279,11 @@ def list_bookings(ride_id: int, session: SessionDep):
 
 @router.patch("/{ride_id}/bookings/{booking_id}", response_model=RideRead)
 def move_booking(
-    ride_id: int, booking_id: int, payload: BookingUpdate, session: WriteSessionDep, user: UserName = None
+    ride_id: int, booking_id: int, payload: BookingUpdate, session: WriteSessionDep, creds: CredsDep
 ):
     """Change where a passenger gets in. The passenger themself, or whoever may
     manage the seats, can do it."""
-    user = _require_user(user)
+    user = require_actor(session, creds)
     ride = _get_ride_or_404(session, ride_id)
     booking = next((b for b in ride.bookings if b.id == booking_id), None)
     if booking is None:
@@ -299,8 +299,8 @@ def move_booking(
 
 
 @router.delete("/{ride_id}/bookings/{booking_id}", response_model=RideRead)
-def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, user: UserName = None):
-    user = _require_user(user)
+def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: CredsDep):
+    user = require_actor(session, creds)
     ride = _get_ride_or_404(session, ride_id)
     booking = next((b for b in ride.bookings if b.id == booking_id), None)
     if booking is None:

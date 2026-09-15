@@ -10,7 +10,9 @@ import { ThemeSwitch } from './ThemeSwitch'
 
 interface Props {
   userName: string
-  onEditName: () => void
+  /** The account's username, shown under the name in the identity block. */
+  handle: string
+  onAccount: () => void
   onCompanyCars: () => void
   onGuide: () => void
   onMyRides: () => void
@@ -28,12 +30,12 @@ interface Item {
 
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the things that are not about one particular ride: who
- * you are, your rides and figures, notifications, the company-car pool and its
+ * top bar. It holds the things that are not about one particular ride: your
+ * account, your rides and figures, notifications, the company-car pool and its
  * guide, and at the bottom the appearance and the language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
  * it opens is the only thing left on screen.
  */
-export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onMyRides, onNotifications, onClose }: Props) {
+export function Sidebar({ userName, handle, onAccount, onCompanyCars, onGuide, onMyRides, onNotifications, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
   // The drawer slides back out before it unmounts, whichever way it is closed.
@@ -72,10 +74,10 @@ export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onMyRide
 
   const items: Item[] = [
     {
-      label: userName ? t.sidebar.changeName : t.sidebar.enterName,
-      hint: userName ? t.sidebar.nameHint : t.sidebar.nameNeeded,
+      label: t.sidebar.account,
+      hint: t.sidebar.accountHint,
       icon: <UserIcon size={20} />,
-      onSelect: pick(onEditName),
+      onSelect: pick(onAccount),
     },
     {
       label: t.myRides.title,
@@ -127,11 +129,11 @@ export function Sidebar({ userName, onEditName, onCompanyCars, onGuide, onMyRide
           </button>
         </header>
 
-        <button type="button" className="drawer-me" onClick={pick(onEditName)}>
+        <button type="button" className="drawer-me" onClick={pick(onAccount)}>
           <Avatar name={userName || '?'} size="lg" />
           <span className="drawer-me-text">
-            <span className="drawer-me-name">{userName || t.sidebar.noName}</span>
-            <span className="drawer-me-hint">{userName ? t.sidebar.youHere : t.sidebar.tapIntro}</span>
+            <span className="drawer-me-name">{userName}</span>
+            <span className="drawer-me-hint">{t.sidebar.signedInAs(`@${handle}`)}</span>
           </span>
         </button>
 

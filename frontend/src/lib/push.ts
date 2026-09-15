@@ -110,11 +110,25 @@ export function usePush(userName: string) {
 /**
  * A subscription is filed under a name; when the name changes the server has
  * to learn the new one, or the pushes keep going to the old name. Called from
- * App on every name change; a no-op while nothing is subscribed.
+ * App on every name change and whenever an account signs in, since the browser
+ * may still be subscribed under whoever used it last. A no-op while nothing is
+ * subscribed.
  */
 export async function resubscribePush(userName: string): Promise<void> {
   if (!userName) return
   const sub = await currentSubscription()
   if (!sub) return
   await api.subscribePush(sub.toJSON(), getLocale(), userName).catch(() => undefined)
+}
+
+/**
+ * Signing out: this browser stops receiving pushes altogether. Without it the
+ * subscription would stay filed under the person who just left, and their ride
+ * notifications would keep arriving on a machine they walked away from.
+ */
+export async function forgetPushHere(): Promise<void> {
+  const sub = await currentSubscription()
+  if (!sub) return
+  await api.unsubscribePush(sub.endpoint).catch(() => undefined)
+  await sub.unsubscribe().catch(() => undefined)
 }

@@ -2124,6 +2124,87 @@ body.dragging {
   border-top: 1px solid var(--border);
 }
 
+/* --- Sign in (components/AuthGate.tsx) ----------------------------------- */
+/* The door: one card, centred in the same 560px column the board lives in, so
+   signing in and then seeing the board feels like one screen rather than two
+   places. The card pops in the way a dialog does; it is the only thing on the
+   page, so nothing has to slide out of its way. */
+.auth {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: max(2rem, 8vh) 1rem calc(2rem + env(safe-area-inset-bottom));
+}
+.auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.25rem 1.1rem 1.1rem;
+  animation: pop-in-up 0.24s var(--ease-spring);
+}
+.auth-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+.auth-title svg {
+  color: var(--green);
+}
+.auth-tagline {
+  margin: -0.5rem 0 0.15rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+/* The two tabs hold different numbers of fields; the wrapper is what slides,
+   so the card grows and shrinks around it without the inputs jumping. */
+.auth-form .stack {
+  gap: 0.8rem;
+}
+.auth-switch {
+  align-self: center;
+}
+
+/* --- Your account (components/AccountSheet.tsx) -------------------------- */
+.account-me {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.account-me-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.account-me-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-me-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.account-section {
+  margin: 0.4rem 0 -0.2rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
 /* --- App menu drawer (components/Sidebar.tsx) ---------------------------- */
 /* Slides in from the left edge under the ☰; a column of tall rows rather
    than a popover, so it has room for who you are and a hint per entry. */

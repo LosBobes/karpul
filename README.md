@@ -1,8 +1,8 @@
 # Karpul – community carpooling
 
-A small internal tool for sharing rides between colleagues. No accounts: you type your
-name once, it's remembered in your browser, and you're good to go. The only password in
-the app guards the company-car pool.
+A small internal tool for sharing rides between colleagues. You register once with a
+username, a password, your email and your name, and from then on the browser stays signed
+in; your name and surname are what colleagues see in a car.
 
 **Backend:** FastAPI + SQLModel (SQLite) · **Frontend:** React + Vite + TypeScript
 
@@ -75,9 +75,27 @@ the app guards the company-car pool.
 - Phone-first: one column, horizontal carousels, forms open as bottom sheets, and tap
   targets are sized for fingers. On a desktop the same column sits centred.
 
-Identity is honour-based: actions that change a ride are checked against the `X-User-Name`
-header (driver-only edit/cancel, passenger-or-driver leave). That's deliberate – it's an
-internal tool for a firm, and the goal is zero friction.
+### Accounts
+
+Registering takes a username, an email, your first name and surname, and a password of at
+least eight characters. The browser keeps the token the server hands back and sends it as
+`Authorization: Bearer …`; passwords are stored as PBKDF2-HMAC-SHA256 with a per-password
+salt and the token only as its SHA-256, so neither is recoverable from the database.
+
+Your first name and surname are your identity on the board: a ride's driver and each seat
+are that name, so no two accounts may go by the same one. Editing your name in *Your
+account* renames you on every ride you drive or sit in, which is how a misspelt surname
+gets fixed without losing your history. Changing your password signs your other browsers
+out.
+
+Everything on the board stays honour-based within that: a driver edits their own ride, a
+passenger takes their own seat, and the driver may let passengers manage the seat list.
+Who you are is no longer a claim, though, but the account you signed in with.
+
+The API keeps accepting the pre-accounts `X-User-Name` header so an existing deployment
+does not break the moment it updates. Set `KARPUL_REQUIRE_LOGIN=1` and it stops: every
+ride action then needs a session token. The app's own screens always ask for a sign-in
+either way.
 
 ### Company-car admin
 
@@ -144,6 +162,7 @@ See [docs/deployment-hetzner.md](docs/deployment-hetzner.md).
 | `KARPUL_FRONTEND_DIST` | backend | `frontend/dist` | Built frontend to serve from `/` |
 | `CORS_ORIGINS` | backend | `http://localhost:5173` | Comma-separated allowed origins |
 | `CORPORATE_CARS` | backend | 3 sample cars | Seed for the car pool on first start: `Name\|PLATE\|seats;Name\|PLATE\|seats` |
+| `KARPUL_REQUIRE_LOGIN` | backend | *(unset)* | `1` makes the API refuse anything but a signed-in request; unset keeps honouring the pre-accounts `X-User-Name` header |
 | `KARPUL_ADMIN_PASSWORD` | backend | *(unset)* | Shared password for the company-car admin screen. Unset = admin endpoints off |
 | `KARPUL_VAPID_PRIVATE_KEY` | backend | *(unset)* | VAPID private key for push notifications; `python -m app.vapid` prints one. Unset = push off |
 | `KARPUL_VAPID_SUBJECT` | backend | `https://www.karpul.dev` | Contact the push services see: a `mailto:` or `https:` URL |
@@ -155,27 +174,36 @@ The car pool is seeded only when the table is empty; after that it is managed fr
 
 ## API
 
+Everything below takes the signed-in browser's `Authorization: Bearer …` token, which is
+what decides who is acting; where a row says "driver only" it is that account being
+checked. `POST /api/auth/register` and `POST /api/auth/login` are the two open endpoints.
+
 | Method | Path | Notes |
 | --- | --- | --- |
+| `POST` | `/api/auth/register` | `{ "username", "email", "first_name", "last_name", "password" }` – creates the account and signs it in; 409 on a taken username, email or name |
+| `POST` | `/api/auth/login` | `{ "login", "password" }` – `login` is the username or the email |
+| `POST` | `/api/auth/logout` | Drops this browser's session |
+| `GET` | `/api/auth/me` | The signed-in account |
+| `PATCH` | `/api/auth/me` | Change your name, email or password (a new password needs `current_password`); a new name follows you onto every ride |
 | `GET` | `/api/cars/corporate` | Active company cars; `?include_inactive=true` adds retired ones (admin) |
 | `POST` | `/api/cars/corporate` | Add a company car (admin) |
 | `PATCH` | `/api/cars/corporate/{id}` | Edit name/plate/seats, or retire with `{"active": false}` (admin) |
 | `DELETE` | `/api/cars/corporate/{id}` | Admin; 409 when any ride uses the car |
 | `GET` | `/api/rides?date=YYYY-MM-DD` or `?from=&to=` | Rides with bookings and `free_seats`; defaults to this week |
-| `POST` | `/api/rides` | Create a ride; `repeat_until` adds one per week up to that date (all or nothing) |
+| `POST` | `/api/rides` | Create a ride; the signed-in account is the driver, and `repeat_until` adds one per week up to that date (all or nothing) |
 | `GET` | `/api/rides/{id}` | |
 | `GET` | `/api/rides/{id}/calendar.ics` | The ride as a calendar file |
 | `WS` | `/api/ws` | Live updates: `ride.created` / `ride.updated` (with the ride), `ride.deleted`, `cars.changed`, `ping` |
-| `PATCH` | `/api/rides/{id}` | Driver only (`X-User-Name`) |
+| `PATCH` | `/api/rides/{id}` | Driver only |
 | `DELETE` | `/api/rides/{id}` | Driver only; `?scope=following` also removes the later rides of the same weekly series |
-| `POST` | `/api/rides/{id}/bookings` | `{ "passenger_name": "…", "pickup": "" }` – 409 when full / duplicate / driver; `pickup` is the origin (`""`) or one of the ride's stops. Adding someone else needs `X-User-Name`: the driver always may, a passenger only while the ride's `passengers_manage` is on (403 otherwise) |
+| `POST` | `/api/rides/{id}/bookings` | `{ "passenger_name": "…", "pickup": "" }` – 409 when full / duplicate / driver; `pickup` is the origin (`""`) or one of the ride's stops. Adding someone else is the driver's to do: they always may, a passenger only while the ride's `passengers_manage` is on (403 otherwise) |
 | `PATCH` | `/api/rides/{id}/bookings/{booking_id}` | `{ "pickup": "…" }` – the passenger or whoever may manage the seats |
 | `DELETE` | `/api/rides/{id}/bookings/{booking_id}` | Passenger or driver, or another passenger while `passengers_manage` is on |
 | `GET` | `/api/stats/me?name=` | Rides driven and ridden, people carried, km shared (this month, all time) and the past rides |
 | `GET` | `/api/calendar/{name}.ics` | Subscribable calendar of everything `name` drives or rides in |
 | `GET` | `/api/cars/corporate/usage?days=90` | Per-car usage over the window, totals and history (admin) |
 | `GET` | `/api/push/config` | Whether push is on and the VAPID public key |
-| `POST` / `DELETE` | `/api/push/subscriptions` | Register this browser's push subscription under `X-User-Name` / drop it |
+| `POST` / `DELETE` | `/api/push/subscriptions` | Register this browser's push subscription under the signed-in name / drop it |
 | `GET` | `/ride/{id}` | The app shell with Open Graph tags for that ride (a shareable link) |
 
 Interactive docs: http://localhost:8000/docs
@@ -186,15 +214,16 @@ Interactive docs: http://localhost:8000/docs
 backend/
   app/
     main.py        FastAPI app, CORS, static hosting of the built frontend, /ride/{id} previews
-    models.py      CorporateCar, Ride, Booking, PushSubscription
+    models.py      User, AuthSession, CorporateCar, Ride, Booking, PushSubscription
     schemas.py     Pydantic request/response models + validation rules
     services.py    Car-availability (overlap) check, ride serialisation, stats and usage figures
+    auth.py        Passwords, session tokens and who a request is acting as
     admin.py       Shared-password gate for the company-car endpoints
     events.py      In-process hub that fans board changes out to the WebSocket clients
     push.py        Who subscribed, and telling them what happened (webpush.py: the encryption)
     reminders.py   The departure reminder, once a minute from the lifespan
     calendar.py    .ics for one ride and the per-person feed
-    routers/       cars.py, rides.py, live.py (the /api/ws socket), push.py, stats.py
+    routers/       auth.py, cars.py, rides.py, live.py (the /api/ws socket), push.py, stats.py
     seed.py        Company-car seed
   tests/           pytest suite (in-memory SQLite)
 Dockerfile         frontend build + FastAPI in one image
@@ -204,8 +233,10 @@ frontend/
     App.tsx                  Day/car selection, joins, drag-and-drop and live-update orchestration
     components/              DateCarousel, CarCarousel, CarDetail, YouPanel, AddCarCard, RideForm,
                              CarAdmin (with the Usage tab), MyRides, NotificationsSheet, ThemeSwitch,
-                             NameSheet, Sheet, ConfirmDialog, Menu, Avatar, icons
+                             AuthGate (the sign-in screen), AccountSheet, Sheet, ConfirmDialog, Menu,
+                             Avatar, icons
     lib/                     api client, dates, pointer drag-and-drop (dnd.ts), live socket (live.ts),
-                             push.ts (subscribing), theme.ts, useUserName, useAdminPassword, useCoarsePointer
+                             push.ts (subscribing), auth.ts (the session store), theme.ts,
+                             useAdminPassword, useCoarsePointer
   public/push-sw.js          The push and notification-click handlers, pulled into the service worker
 ```

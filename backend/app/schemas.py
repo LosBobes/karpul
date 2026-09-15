@@ -1,5 +1,6 @@
 """Request / response schemas."""
 
+import re
 from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -67,6 +68,132 @@ class CorporateCarUpdate(BaseModel):
     @classmethod
     def clean_plate(cls, v: str | None) -> str | None:
         return _clean_plate(v) if v is not None else None
+
+
+# --- accounts (app/auth.py) --------------------------------------------------
+
+# A username is a handle, not a name: lowercase letters, digits and . _ -, with
+# a letter or digit at each end, 3 to 32 characters. The display name (first +
+# last) is where accents and spaces belong.
+USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,30}[a-z0-9]$")
+# Deliberately loose: an address is proved by a person receiving mail at it, not
+# by a regular expression. This only catches typing the wrong thing in the box.
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
+MIN_PASSWORD = 8
+
+
+def _clean_username(value: str) -> str:
+    value = value.strip().lower()
+    if not USERNAME_RE.match(value):
+        raise ValueError(
+            "3 to 32 characters: lowercase letters, digits, dot, dash or underscore, "
+            "starting and ending with a letter or digit"
+        )
+    return value
+
+
+def _clean_email(value: str) -> str:
+    value = value.strip().lower()
+    if not EMAIL_RE.match(value):
+        raise ValueError("must be an email address")
+    return value
+
+
+def _check_password(value: str) -> str:
+    if len(value) < MIN_PASSWORD:
+        raise ValueError(f"must be at least {MIN_PASSWORD} characters")
+    return value
+
+
+class RegisterIn(BaseModel):
+    """A new account. `first_name` + `last_name` become the name colleagues see."""
+
+    username: str = Field(min_length=3, max_length=32)
+    email: str = Field(min_length=3, max_length=200)
+    first_name: str = Field(min_length=1, max_length=40)
+    last_name: str = Field(min_length=1, max_length=40)
+    password: str = Field(min_length=1, max_length=200)
+
+    @field_validator("username")
+    @classmethod
+    def clean_username(cls, v: str) -> str:
+        return _clean_username(v)
+
+    @field_validator("email")
+    @classmethod
+    def clean_email(cls, v: str) -> str:
+        return _clean_email(v)
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def clean_person_name(cls, v: str) -> str:
+        return _clean_name(v)
+
+    @field_validator("password")
+    @classmethod
+    def check_password(cls, v: str) -> str:
+        return _check_password(v)
+
+
+class LoginIn(BaseModel):
+    """`login` is the username or the email; either signs the same account in."""
+
+    login: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=1, max_length=200)
+
+
+class ProfileUpdate(BaseModel):
+    """Partial update of your own account. Changing the password needs the
+    current one; changing the name renames you everywhere on the board."""
+
+    first_name: str | None = Field(default=None, min_length=1, max_length=40)
+    last_name: str | None = Field(default=None, min_length=1, max_length=40)
+    email: str | None = Field(default=None, min_length=3, max_length=200)
+    current_password: str | None = Field(default=None, max_length=200)
+    new_password: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def clean_person_name(cls, v: str | None) -> str | None:
+        return _clean_name(v) if v is not None else None
+
+    @field_validator("email")
+    @classmethod
+    def clean_email(cls, v: str | None) -> str | None:
+        return _clean_email(v) if v is not None else None
+
+    @field_validator("new_password")
+    @classmethod
+    def check_password(cls, v: str | None) -> str | None:
+        return _check_password(v) if v is not None else None
+
+    @model_validator(mode="after")
+    def check_password_pair(self) -> "ProfileUpdate":
+        if self.new_password is not None and not self.current_password:
+            raise ValueError("current_password is required to set a new password")
+        return self
+
+
+class UserRead(BaseModel):
+    """An account as its owner sees it. Never carries the password hash."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    email: str
+    first_name: str
+    last_name: str
+    display_name: str
+    created_at: datetime
+
+
+class AuthOut(BaseModel):
+    """What a successful register or login hands the browser."""
+
+    token: str
+    expires_at: datetime
+    user: UserRead
 
 
 class BookingRead(BaseModel):

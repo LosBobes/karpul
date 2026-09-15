@@ -140,3 +140,12 @@ export interface PushConfig {
   enabled: boolean
   public_key: string | null
 }
+
+/** PATCH /api/auth/me — every field optional; a new password needs the current one. */
+export interface ProfilePatch {
+  first_name?: string
+  last_name?: string
+  email?: string
+  current_password?: string
+  new_password?: string
+}
