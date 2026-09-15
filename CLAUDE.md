@@ -308,8 +308,11 @@ Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc
 are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
 (`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
 shows it as a tappable "A new version is ready" toast (`useUpdateReady`, in the toast slot whenever no
-other toast shows) and the tap runs `applyUpdate`, which listens for `controllerchange` itself and
-reloads. That listener is deliberate: workbox-window only calls a controller change an update when a
+other toast shows), a green pill with the verb as a white chip so it reads as a button in both themes,
+and the tap runs `applyUpdate`, which is a hard refresh: it listens for `controllerchange` itself,
+empties the Cache Storage (the precache an ordinary reload would be served from, kept when the browser
+says it is offline) and reloads, with a 3 s timer so a tap still refreshes when no worker claims the
+page. That listener is deliberate: workbox-window only calls a controller change an update when a
 worker already controlled the page at registration, false on a first visit, and `clientsClaim: true`
 in the worker is what makes the new worker take that page over at all. An installed app can stay open
 for days, so the hook also asks the browser for a new worker every hour and when the app comes back to

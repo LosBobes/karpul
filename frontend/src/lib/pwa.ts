@@ -6,15 +6,18 @@ import { registerSW } from 'virtual:pwa-register'
  * precaches the built shell so the app opens offline and starts instantly once
  * installed. A new build does not take over on its own: the worker waits, the
  * app shows "a new version is ready" (`useUpdateReady`) and the user applies it
- * with a tap (`applyUpdate`), which reloads the page onto the new bundles.
+ * with a tap (`applyUpdate`), which hard-refreshes the page onto the new build.
  *
  * In `npm run dev` the virtual module is a stub and none of this runs.
  */
 
 const CHECK_EVERY_MS = 60 * 60 * 1000
+/** How long a tap waits for the new worker before reloading regardless. */
+const RELOAD_AFTER_MS = 3000
 
 let ready = false
 let update: ((reloadPage?: boolean) => Promise<void>) | null = null
+let applying = false
 const listeners = new Set<() => void>()
 
 function subscribe(listener: () => void) {
@@ -55,14 +58,50 @@ export function useUpdateReady(): boolean {
 }
 
 /**
- * Hands the page over to the waiting build and reloads onto it. The reload is
- * ours: the plugin only reloads when a worker already controlled the page at
- * registration, which is false on a first visit, and a tap must never do
- * nothing. `clientsClaim` (vite.config.ts) makes the new worker take the page,
- * which is what fires `controllerchange` here.
+ * Empties the Cache Storage so the reload comes off the network. Workbox's
+ * precache is what an ordinary reload would be served from, so clearing it is
+ * what makes this a *hard* refresh; the new worker fills it again on the way
+ * back. Skipped when the browser says it is offline, where the precache is the
+ * only copy of the app there is.
+ */
+async function dropCaches() {
+  if (!('caches' in window) || navigator.onLine === false) return
+  try {
+    const names = await caches.keys()
+    await Promise.all(names.map((name) => caches.delete(name)))
+  } catch {
+    // A browser with site data blocked. Reload on what it has.
+  }
+}
+
+/**
+ * Hands the page over to the waiting build and hard-refreshes onto it. The
+ * reload is ours: the plugin only reloads when a worker already controlled the
+ * page at registration, which is false on a first visit, and a tap must never
+ * do nothing. `clientsClaim` (vite.config.ts) makes the new worker take the
+ * page, which is what fires `controllerchange` here; the timer is the promise
+ * that the tap refreshes anyway when it does not (no worker waiting any more,
+ * a lost message, a browser that never claims). Whichever lands first wins,
+ * once.
  */
 export function applyUpdate() {
-  if (!update) return
-  navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true })
-  void update()
+  if (applying) return
+  applying = true
+
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let reloading = false
+  const reload = () => window.location.reload()
+  const hardReload = () => {
+    if (reloading) return
+    reloading = true
+    if (timer !== undefined) clearTimeout(timer)
+    void dropCaches().then(reload, reload)
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('controllerchange', hardReload, { once: true })
+  }
+  timer = setTimeout(hardReload, RELOAD_AFTER_MS)
+  if (update) void update().catch(hardReload)
+  else hardReload()
 }

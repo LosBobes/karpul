@@ -850,7 +850,8 @@ function Board({ session }: { session: Session }) {
       ) : (
         updateReady && (
           <button type="button" className="toast toast-update" onClick={applyUpdate}>
-            {t.toasts.updateReady} <b>{t.toasts.updateAction}</b>
+            <span>{t.toasts.updateReady}</span>
+            <b>{t.toasts.updateAction}</b>
           </button>
         )
       )}

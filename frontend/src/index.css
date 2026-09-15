@@ -2472,16 +2472,30 @@ body.dragging {
 .toast-error {
   background: var(--red);
 }
-/* A waiting build (lib/pwa.ts): the whole pill is the button, the bold word the verb. */
+/* A waiting build (lib/pwa.ts). The whole green pill is the button and the tap
+   hard-refreshes the page, so the verb is spelled out as a chip inside it: on a
+   phone the plain bold word read as part of the sentence, not as something to
+   press. It keeps the green in both themes, unlike the toasts above it. */
 .toast-update {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   border: none;
+  padding: 0.45rem 0.45rem 0.45rem 1rem;
   background: var(--green);
+  color: #fff;
   font: inherit;
   font-size: 0.9rem;
   font-weight: 500;
+  text-align: left;
   cursor: pointer;
 }
 .toast-update b {
+  flex: none;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green-dark);
   font-weight: 700;
 }
 
@@ -2983,9 +2997,14 @@ body.dragging {
   background: #eceef1;
   color: #15171b;
 }
-:root[data-resolved='dark'] .toast-error,
-:root[data-resolved='dark'] .toast-update {
+:root[data-resolved='dark'] .toast-error {
   color: #10141a;
+}
+/* The light pill above carries a message; the update button is the one toast
+   you are meant to press, so it keeps the green and the white chip here too. */
+:root[data-resolved='dark'] .toast-update {
+  background: var(--green);
+  color: #fff;
 }
 :root[data-resolved='dark'] .avatar-violet {
   background: #2e2352;
