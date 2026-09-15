@@ -2871,13 +2871,28 @@ body.dragging {
   margin-top: 0.25rem;
 }
 /* The green wash the refresh happens behind. It ends opaque on purpose: the
-   reload's blank frame lands under it, and the new build paints over it. */
+   reload's blank frame lands under it, and the new build paints over it.
+   It opens from the tail of the bolt, not the middle of the screen: the sheet
+   measures where the finger finished and sets the two properties below
+   (components/UpdateSheet.tsx), so the wash carries on from the trace instead
+   of starting somewhere else. The values here are what a flare with nothing
+   to go on gets. */
 .update-flare {
+  --flare-x: 50%;
+  --flare-y: 45%;
   position: fixed;
   inset: 0;
   z-index: 60;
   pointer-events: none;
-  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--green) 55%, #fff), var(--green) 38%, transparent 72%);
+  background: radial-gradient(
+    circle at var(--flare-x) var(--flare-y),
+    color-mix(in srgb, var(--green) 55%, #fff),
+    var(--green) 38%,
+    transparent 72%
+  );
+  /* The scale has to grow out of the same point, or the gradient's centre
+     slides across the screen while the wash opens. */
+  transform-origin: var(--flare-x) var(--flare-y);
   /* The delay is the bolt's moment: it pops and a spark runs down it before
      the screen floods. Reduced motion collapses durations but not delays, so
      the block at the end of this file zeroes this one too. */
