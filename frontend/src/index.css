@@ -2769,10 +2769,10 @@ body.dragging {
 }
 .bolt-pad {
   display: block;
-  width: 150px;
-  max-width: 55vw;
+  width: 100%;
+  max-width: 280px;
   margin: 0 auto 0.5rem;
-  aspect-ratio: 120 / 180;
+  aspect-ratio: 158 / 130;
   touch-action: none;
   cursor: grab;
   overflow: visible;
@@ -2780,11 +2780,13 @@ body.dragging {
 .bolt-pad-live {
   cursor: grabbing;
 }
+/* A thick lane rather than a line: the width is the margin for error a finger
+   gets, and it has to read at arm's length as well as under a fingertip. */
 .bolt-track,
 .bolt-trail,
 .bolt-flash {
   fill: none;
-  stroke-width: 16;
+  stroke-width: 18;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -2798,7 +2800,7 @@ body.dragging {
 }
 .bolt-flash {
   stroke: #fff;
-  stroke-dasharray: 12 100;
+  stroke-dasharray: 10 100;
   animation: bolt-flash 0.5s ease-out forwards;
 }
 @keyframes bolt-flash {
@@ -2826,10 +2828,13 @@ body.dragging {
     opacity: 0.5;
   }
 }
+/* What the finger is steering. It rides inside the lane, so it is sized
+   against the stroke above: big enough to find without hunting, and to stay
+   visible around a fingertip. */
 .bolt-head {
   fill: #fff;
-  stroke: var(--green);
-  stroke-width: 4;
+  stroke: var(--green-dark);
+  stroke-width: 5;
 }
 /* A finger that left the line: the bolt shrugs and waits to be started again. */
 .bolt-pad-slip {
