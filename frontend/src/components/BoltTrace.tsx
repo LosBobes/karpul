@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * strokes a finger can follow. The drag is pointer-event based for the same
  * reason the passenger chips are (lib/dnd.ts): HTML5 drag never worked with a
  * finger, and the pad carries `touch-action: none` so the browser scrolls the
- * sheet instead of stealing the gesture.
+ * screen instead of stealing the gesture.
  *
  * Following it is meant to be satisfying, not a test. The finger is matched
  * against a window of points ahead of where it has got to, so it may cut a
@@ -17,30 +17,33 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  */
 
 /**
- * The bolt in its own box: down the left, a long flat jog right, down again.
- * Wider and shallower than the mark's own bolt, because a finger crossing the
- * screen sideways is an easier thing to ask for than one dragged down a narrow
- * lane, and the two long strokes stay far enough apart that a finger on one is
- * never nearer the other.
+ * The bolt in its own box: down the right, a jog back across, down again. It
+ * falls the way a bolt falls, steeply, because it has a phone screen's height
+ * to use and a stroke pulled down one is the gesture a thumb makes without
+ * thinking. The two long strokes are parallel and 53 units apart, so `STRAY_R`
+ * below can be generous and a finger on one is still never nearer a point on
+ * the other; that gap is also what sets how thick the lane can be drawn.
  */
-const BOLT_D = 'M149 9L39 65L119 65L9 121'
-const BOX = { w: 158, h: 130 }
+const BOLT_D = 'M108 14L40 120L104 120L36 226'
+const BOX = { w: 140, h: 240 }
+/** How thick the lane is drawn, in the box's own units (index.css matches it). */
+const LANE = 26
 /** Points the finger is matched against. More is smoother and no slower. */
 const STEPS = 200
 /** How near the head of the bolt a finger must land to pick it up. */
-const START_R = 34
+const START_R = 38
 /**
  * How far off the line the finger may drift and still pull the trace along.
- * It stays under the gap between the two long strokes (36 units), so a finger
+ * It stays under the gap between the two long strokes (53 units), so a finger
  * on one of them is never nearer a point on the other.
  */
-const STRAY_R = 26
+const STRAY_R = 30
 /**
  * Past this the finger has left the bolt and the trace starts over. Between
  * the two the trace simply holds where it is, so a wobble costs nothing and
  * only a deliberate departure does.
  */
-const LOST_R = 58
+const LOST_R = 66
 /** How far along the bolt the finger may jump in one move, as a fraction. */
 const REACH = 0.18
 /** The last stretch is a formality; reaching here counts as the whole bolt. */
@@ -198,7 +201,10 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
 
   const head = points[at]
   const start = points[0]
+  const end = points[STEPS]
   const done = charged || at >= STEPS
+  // How much of the bolt is lit, as the percentage `pathLength` normalises to.
+  const drawn = 100 - (at / STEPS) * 100
   const cls = ['bolt-pad', tracing && 'bolt-pad-live', slipped && 'bolt-pad-slip', charged && 'bolt-pad-charged']
     .filter(Boolean)
     .join(' ')
@@ -214,22 +220,47 @@ export function BoltTrace({ onComplete, onSlip, charged }: Props) {
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {/* The bolt waiting to be drawn. */}
+      <defs>
+        {/* Everything that is only allowed to show on the part already drawn
+            rides this mask: the lit lane paints it white as the finger goes. */}
+        <mask id="bolt-drawn" maskUnits="userSpaceOnUse" x="0" y="0" width={BOX.w} height={BOX.h}>
+          <path
+            d={BOLT_D}
+            fill="none"
+            stroke="#fff"
+            strokeWidth={LANE}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength={100}
+            strokeDasharray={100}
+            strokeDashoffset={drawn}
+          />
+        </mask>
+      </defs>
+      {/* The bolt waiting to be drawn, with a spark running down it to say
+          which way it goes. */}
       <path ref={pathRef} className="bolt-track" d={BOLT_D} />
-      {/* The part of it the finger has covered. `pathLength` normalises the
-          dashes to 100, so the fill is a percentage and the flash below is a
-          fixed sliver whatever the box is scaled to. */}
-      <path
-        className="bolt-trail"
-        d={BOLT_D}
-        pathLength={100}
-        strokeDasharray={100}
-        strokeDashoffset={100 - (at / STEPS) * 100}
-      />
+      {!done && !tracing && <path className="bolt-hint" d={BOLT_D} pathLength={100} />}
+      {/* The lit part, three times over: the haze it throws, the lane itself,
+          and the current running inside it. `pathLength` normalises the dashes
+          to 100, so every offset here is a percentage of the bolt. */}
+      <path className="bolt-glow" d={BOLT_D} pathLength={100} strokeDasharray={100} strokeDashoffset={drawn} />
+      <path className="bolt-trail" d={BOLT_D} pathLength={100} strokeDasharray={100} strokeDashoffset={drawn} />
+      <g mask="url(#bolt-drawn)">
+        <path className="bolt-current-aura" d={BOLT_D} pathLength={100} />
+        <path className="bolt-current" d={BOLT_D} pathLength={100} />
+      </g>
       {charged && <path className="bolt-flash" d={BOLT_D} pathLength={100} />}
+      {/* The bolt landing: a ring thrown off the tail the finger stopped on. */}
+      {charged && end && <circle className="bolt-burst" cx={end.x} cy={end.y} r="18" />}
       {/* Where to put the finger. It has said its piece once the finger is down. */}
-      {!done && !tracing && start && <circle className="bolt-start" cx={start.x} cy={start.y} r="10" />}
-      {tracing && head && <circle className="bolt-head" cx={head.x} cy={head.y} r="12" />}
+      {!done && !tracing && start && <circle className="bolt-start" cx={start.x} cy={start.y} r="12" />}
+      {tracing && head && (
+        <>
+          <circle className="bolt-halo" cx={head.x} cy={head.y} r="20" />
+          <circle className="bolt-head" cx={head.x} cy={head.y} r="12" />
+        </>
+      )}
     </svg>
   )
 }

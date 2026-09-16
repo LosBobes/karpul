@@ -339,15 +339,23 @@ locked body), because it comes out of the toast down there. The words and the wa
 bolt with `pointer-events: none`, so only the two buttons take a tap of their own, and the screen
 hands the bolt its colours as `--bolt` / `--bolt-dark` (the light board's green is too dark to glow).
 `BoltTrace` walks the bolt path once with `getPointAtLength` and matches the finger against a window
-`BoltTrace` walks the bolt path once with `getPointAtLength` and matches the finger against a window
 of points ahead of where it has got to, so a corner may be cut and a wander is forgiven: past `STRAY_R`
 the trail holds where it is and can be picked back up, and only past `LOST_R`, or a lift short of the
-tail, does it start over with a shrug. The bolt is drawn wider and shallower than the mark's own, a long
-horizontal jog between two 27° strokes, because a finger crossing the screen sideways is easier to ask
-for than one dragged down a narrow lane; `STRAY_R` stays under the gap between the two long strokes, so
-a finger on one is never nearer the other, and that gap is what sets how thick the lane can be drawn. The bolt fills green behind the finger
-(`pathLength=100`, so the dashes are percentages), then pops, a white spark runs down it and a green
-flare washes the screen, which is also what hides the reload's blank frame. The flare opens from the
+tail, does it start over with a shrug. The bolt falls the way a bolt falls: two steep strokes with a jog
+back across between them, because the screen's height is what there is most of and a stroke pulled down
+it is the gesture a thumb makes without thinking. The two long strokes are parallel and 53 units apart,
+which is what lets `STRAY_R` be generous (a finger on one is never nearer a point on the other) and what
+sets how thick the lane can be drawn: `LANE` in `BoltTrace.tsx` and the `stroke-width` in `index.css`
+are the same number, because `LANE` also cuts the mask below. The lit part of the bolt is four layers on
+one path, all keyed to how far the finger has got (`pathLength=100`, so every dash is a percentage): a
+blurred `.bolt-glow` for the light it throws, the `.bolt-trail` itself, and `.bolt-current` pulses
+falling down the inside, clipped to the drawn part by a mask cut from the same dash. A blurred filter
+*inside* that mask leaks its own rectangular filter region in Chrome, so the current's softness is a
+second wider pass at low opacity instead. The head the finger steers is a white core in a blurred
+`.bolt-halo`, and before anyone touches it a `.bolt-hint` spark falls down the empty lane to say which
+way it goes. When it closes, the pad pops, the lane goes white-hot and cools back to green, the current
+speeds up, a white spark runs the length of it, a ring is thrown off the tail and a green flare washes
+the screen, which is also what hides the reload's blank frame. The flare opens from the
 tail of the bolt rather than the middle of the screen, so it carries on from where the finger stopped:
 `BoltTrace` hands its last point to `onComplete` as a percentage of the viewport (through the same
 matrix that puts the finger in the bolt's coordinates, measured before the charge pops the pad) and

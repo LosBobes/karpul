@@ -2899,15 +2899,18 @@ body.dragging {
   justify-content: center;
 }
 /* The bolt itself: the whole screen on a phone, which is what the stroke was
-   drawn for, and capped on a desktop, where a bolt as wide as a browser window
+   drawn for, and capped on a desktop, where a bolt as tall as a browser window
    would be a lane four fingers thick. `inset: 0` with auto margins centres what
-   is left over. */
+   is left over, and the caps never kiss an edge. */
 .bolt-pad {
   position: absolute;
-  inset: 0 1.1rem;
+  /* The top and bottom insets are the bands the words and the button sit in:
+     the bolt is behind them, and on a short window it would otherwise run up
+     under the line telling you to trace it. */
+  inset: 5.2rem 1.1rem 4rem;
   margin: auto;
-  max-width: 620px;
-  max-height: 520px;
+  max-width: 430px;
+  max-height: 700px;
   touch-action: none;
   cursor: grab;
   overflow: visible;
@@ -2916,24 +2919,80 @@ body.dragging {
   cursor: grabbing;
 }
 /* A thick lane rather than a line: the width is the margin for error a finger
-   gets, and it has to read at arm's length as well as under a fingertip. */
+   gets, and it has to read at arm's length as well as under a fingertip. The
+   number is `LANE` in components/BoltTrace.tsx, which cuts the mask the lit
+   layers ride on; change the two together. */
 .bolt-track,
+.bolt-hint,
 .bolt-trail,
 .bolt-flash {
   fill: none;
-  stroke-width: 18;
+  stroke-width: 26;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 .bolt-track {
-  stroke: rgba(255, 255, 255, 0.1);
+  stroke: rgba(255, 255, 255, 0.09);
+}
+/* Which way the bolt goes, said once a second by a spark falling down the
+   empty lane. It is the only thing on this screen that moves before you do. */
+.bolt-hint {
+  stroke: color-mix(in srgb, var(--bolt) 50%, transparent);
+  stroke-dasharray: 5 95;
+  filter: blur(1px);
+  animation: bolt-hint 2.4s cubic-bezier(0.5, 0, 0.6, 1) infinite;
+}
+@keyframes bolt-hint {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: -5;
+  }
+}
+/* The haze the lit lane throws on the ink. It is the same dash as the trail,
+   drawn fatter and blurred, so the glow grows with the trace instead of
+   sitting under the whole bolt from the start. */
+.bolt-glow {
+  fill: none;
+  stroke: var(--bolt);
+  stroke-width: 44;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.45;
+  filter: blur(14px);
+  transition: stroke-dashoffset 0.09s linear;
 }
 .bolt-trail {
   stroke: var(--bolt);
-  /* The green is a light source on this screen, not a fill. */
-  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--bolt) 45%, transparent));
   /* Fast enough to sit under the finger, slow enough to smooth a jump. */
   transition: stroke-dashoffset 0.09s linear;
+}
+/* The current inside the lane: short pulses falling down it, clipped by the
+   mask to the part the finger has drawn. This is what makes a filled bolt look
+   live rather than painted. The softness is a second, wider pass at low
+   opacity rather than a blur: a blurred filter inside a mask leaks its own
+   rectangular filter region in Chrome, and round caps carry the shape anyway. */
+.bolt-current,
+.bolt-current-aura {
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-dasharray: 5 13;
+  animation: bolt-current 0.9s linear infinite;
+}
+.bolt-current {
+  stroke-width: 7;
+  opacity: 0.8;
+}
+.bolt-current-aura {
+  stroke-width: 17;
+  opacity: 0.2;
+}
+@keyframes bolt-current {
+  to {
+    stroke-dashoffset: -18;
+  }
 }
 .bolt-flash {
   stroke: #fff;
@@ -2946,6 +3005,25 @@ body.dragging {
   }
   to {
     stroke-dashoffset: -100;
+  }
+}
+/* The bolt landing: a ring thrown off the tail, once. */
+.bolt-burst {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bolt-burst 0.75s var(--ease-out) forwards;
+}
+@keyframes bolt-burst {
+  from {
+    transform: scale(0.35);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(5);
+    opacity: 0;
   }
 }
 .bolt-start {
@@ -2965,13 +3043,32 @@ body.dragging {
     opacity: 0.5;
   }
 }
-/* What the finger is steering. It rides inside the lane, so it is sized
-   against the stroke above: big enough to find without hunting, and to stay
-   visible around a fingertip. */
+/* What the finger is steering: a white-hot core in a halo of its own light.
+   It rides inside the lane, so both are sized against the stroke above, big
+   enough to find without hunting and to stay visible around a fingertip. */
+.bolt-halo {
+  fill: var(--bolt);
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: blur(7px);
+  animation: bolt-halo 0.9s ease-in-out infinite;
+}
+@keyframes bolt-halo {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.45;
+  }
+}
 .bolt-head {
   fill: #fff;
   stroke: var(--bolt-dark);
   stroke-width: 5;
+  filter: drop-shadow(0 0 10px #fff);
 }
 /* A finger that left the line: the bolt shrugs and waits to be started again. */
 .bolt-pad-slip {
@@ -2989,6 +3086,8 @@ body.dragging {
     transform: translateX(5px);
   }
 }
+/* The moment it closes: the pad pops, the whole lane goes white-hot and cools
+   back to green, the current speeds up and the glow swells behind it. */
 .bolt-pad-charged {
   animation: bolt-charge 0.5s var(--ease-spring);
   filter: drop-shadow(0 0 26px color-mix(in srgb, var(--bolt) 65%, transparent));
@@ -3003,6 +3102,36 @@ body.dragging {
   100% {
     transform: scale(1);
   }
+}
+.bolt-pad-charged .bolt-trail {
+  animation: bolt-whiteout 0.6s ease-out;
+}
+@keyframes bolt-whiteout {
+  0%,
+  35% {
+    stroke: #fff;
+  }
+  100% {
+    stroke: var(--bolt);
+  }
+}
+.bolt-pad-charged .bolt-glow {
+  animation: bolt-swell 0.6s ease-out;
+}
+@keyframes bolt-swell {
+  0% {
+    opacity: 0.45;
+  }
+  30% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+.bolt-pad-charged .bolt-current,
+.bolt-pad-charged .bolt-current-aura {
+  animation-duration: 0.35s;
 }
 .update-plain {
   width: 100%;
@@ -3730,5 +3859,15 @@ body.dragging {
      and the refresh behind it waits on this one ending. */
   .update-flare {
     animation-delay: 0.01ms !important;
+  }
+  /* The bolt's idle loops are decoration, and a loop collapsed to 0.01ms is a
+     repaint every frame for nothing. They stop here instead, each leaving the
+     still frame it starts on. */
+  .bolt-hint,
+  .bolt-current,
+  .bolt-current-aura,
+  .bolt-halo,
+  .bolt-start {
+    animation: none !important;
   }
 }
