@@ -90,12 +90,7 @@ export function YouPanel({
 
   return (
     <section className={cls} {...dropZone(seated && !isPast ? { kind: 'tray' } : null)}>
-      <h3 className="section-title">
-        {t.you.title}
-        <button type="button" className="link section-action" onClick={onEditName}>
-          <PencilIcon size={14} /> {userName}
-        </button>
-      </h3>
+      <h3 className="section-title">{t.you.title}</h3>
 
       {seated && !isPast && !dragActive && (
         <div className="banner banner-ok">
