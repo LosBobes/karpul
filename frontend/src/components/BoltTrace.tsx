@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 /**
- * The bolt you trace to take a new build (components/UpdateSheet.tsx).
+ * The bolt you trace to take a new build (components/UpdateScreen.tsx).
  *
  * It is the thunderbolt the app's mark ends in, straightened into three
  * strokes a finger can follow. The drag is pointer-event based for the same
@@ -13,7 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * against a window of points ahead of where it has got to, so it may cut a
  * corner, wander a little off the line or stop dead, and only a real departure
  * from the bolt (or lifting early) starts it over. Every drag in this app has
- * a button equivalent, and this one's lives in the sheet below the pad.
+ * a button equivalent, and this one's lives at the foot of the screen.
  */
 
 /**
