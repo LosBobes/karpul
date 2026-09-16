@@ -2704,6 +2704,10 @@ body.dragging {
   bottom: calc(1.25rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 20;
+  /* Anchored by its left edge, a fixed box gets half the viewport to lay out
+     in, so it would wrap at the middle of the screen; max-content is what lets
+     it use the whole width the cap below allows. */
+  width: max-content;
   max-width: calc(100vw - 2rem);
   padding: 0.6rem 1rem;
   border-radius: 999px;
@@ -2722,53 +2726,188 @@ body.dragging {
 .toast-error {
   background: var(--red);
 }
-/* A waiting build (lib/pwa.ts). The whole green pill is the button and the tap
-   hard-refreshes the page, so the verb is spelled out as a chip inside it: on a
-   phone the plain bold word read as part of the sentence, not as something to
-   press. It keeps the green in both themes, unlike the toasts above it. */
+/* A waiting build (lib/pwa.ts). The other toasts are a line of ink that comes
+   and goes; this one is the only toast you are meant to press, and it sits
+   there until you do, so it is built like the cards above it instead: the app's
+   own mark on a green tile, the line and its hint, the verb as a chip. The mark
+   is lit by a charge running across it every few seconds, the same idea as the
+   trace filling the bolt on the screen it opens. It keeps its green line and
+   its glow in both themes, unlike the toasts above it. */
 .toast-update {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  border: none;
-  padding: 0.45rem 0.45rem 0.45rem 1rem;
-  background: var(--green);
-  color: #fff;
+  gap: 0.7rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--green-line);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
   font: inherit;
-  font-size: 0.9rem;
-  font-weight: 500;
   text-align: left;
   cursor: pointer;
+  box-shadow:
+    0 10px 30px color-mix(in srgb, var(--green) 24%, transparent),
+    var(--shadow-pop);
 }
-.toast-update b {
+/* The mark, in its own tile: the Logo draws the tile in `currentColor`, so the
+   wrapper only has to say green, clip the corners and hold the charge. */
+.update-toast-mark {
+  position: relative;
   flex: none;
-  padding: 0.3rem 0.85rem;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  overflow: hidden;
+  color: var(--green);
+  line-height: 0;
+}
+.update-toast-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.5) 50%, transparent 62%);
+  transform: translateX(-130%);
+  animation: update-charge 3.6s ease-in-out 1.2s infinite;
+}
+@keyframes update-charge {
+  0% {
+    transform: translateX(-130%);
+  }
+  32%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+.update-toast-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.update-toast-text strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.update-toast-text span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.update-toast-go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.8rem;
   border-radius: 999px;
-  background: #fff;
-  color: var(--green-dark);
+  background: var(--green);
+  color: #fff;
+  font-size: 0.82rem;
   font-weight: 700;
+}
+@media (hover: hover) {
+  .toast-update:hover {
+    /* The pill is centred by a transform, so a lift has to carry it along. */
+    transform: translateX(-50%) translateY(-2px);
+    border-color: var(--green);
+  }
 }
 
 /* --- Trace the bolt ------------------------------------------------------ */
-/* Taking a waiting build (components/UpdateSheet.tsx). The app's own
-   thunderbolt, drawn with a finger: the grey track is the bolt waiting, the
-   green trail is how far the finger has got, and the whole thing flashes over
-   and throws a flare across the screen when it closes. `touch-action: none` is
-   what keeps the browser from scrolling the sheet instead, the same bargain
-   the drag handles make in lib/dnd.ts. */
+/* Taking a waiting build (components/UpdateScreen.tsx). The app's own
+   thunderbolt, drawn with a finger, and it takes the whole screen: the grey
+   track is the bolt waiting, the green trail is how far the finger has got,
+   and the whole thing flashes over and throws a flare across the screen when
+   it closes. `touch-action: none` is what keeps the browser from scrolling the
+   page instead, the same bargain the drag handles make in lib/dnd.ts.
+
+   It is its own screen rather than a sheet because the bolt is the screen: a
+   stroke that crosses a phone from edge to edge is the whole point, and a
+   pad in the middle of a panel gave the finger a lane the width of a thumb.
+   It still arrives and leaves like a sheet, rising from the bottom edge,
+   because it comes out of the toast down there. */
+/* The one screen in the app that is not the light board: a bolt is a thing you
+   see in the dark, and the ink is what lets the green throw light on it. It is
+   a moment, not a place, so it keeps its own colours in both themes and hands
+   them to the bolt below as `--bolt`; the light board comes back with the new
+   build a second later. */
+.update-screen {
+  --bolt: #3ecf8e;
+  --bolt-dark: #0f5c3d;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: radial-gradient(115% 70% at 50% 46%, #1b2b24, #0d1013 72%);
+  color: #f4f6f8;
+  animation: update-up 0.3s var(--ease-out);
+}
+.update-screen-closing {
+  animation: update-down 0.24s var(--ease-in) forwards;
+}
+@keyframes update-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes update-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+/* The words and the way out float over the bolt and let the finger through;
+   only the two buttons take a tap of their own. */
+.update-chrome {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: calc(0.9rem + env(safe-area-inset-top)) 1rem calc(1.1rem + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+.update-chrome button {
+  pointer-events: auto;
+}
+.update-head {
+  position: relative;
+  text-align: center;
+}
+.update-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.update-close {
+  position: absolute;
+  top: -0.35rem;
+  right: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+.update-close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
 .update-lead {
-  margin: 0 0 0.25rem;
-  color: var(--muted);
+  margin: 0.3rem 0 0;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.95rem;
   text-align: center;
   min-height: 2.6em;
 }
+.update-foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}
+/* The bolt itself: the whole screen on a phone, which is what the stroke was
+   drawn for, and capped on a desktop, where a bolt as wide as a browser window
+   would be a lane four fingers thick. `inset: 0` with auto margins centres what
+   is left over. */
 .bolt-pad {
-  display: block;
-  width: 100%;
-  max-width: 280px;
-  margin: 0 auto 0.5rem;
-  aspect-ratio: 158 / 130;
+  position: absolute;
+  inset: 0 1.1rem;
+  margin: auto;
+  max-width: 620px;
+  max-height: 520px;
   touch-action: none;
   cursor: grab;
   overflow: visible;
@@ -2787,10 +2926,12 @@ body.dragging {
   stroke-linejoin: round;
 }
 .bolt-track {
-  stroke: var(--surface-2);
+  stroke: rgba(255, 255, 255, 0.1);
 }
 .bolt-trail {
-  stroke: var(--green);
+  stroke: var(--bolt);
+  /* The green is a light source on this screen, not a fill. */
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--bolt) 45%, transparent));
   /* Fast enough to sit under the finger, slow enough to smooth a jump. */
   transition: stroke-dashoffset 0.09s linear;
 }
@@ -2808,7 +2949,7 @@ body.dragging {
   }
 }
 .bolt-start {
-  fill: var(--green);
+  fill: var(--bolt);
   transform-box: fill-box;
   transform-origin: center;
   animation: bolt-wait 1.7s ease-in-out infinite;
@@ -2829,7 +2970,7 @@ body.dragging {
    visible around a fingertip. */
 .bolt-head {
   fill: #fff;
-  stroke: var(--green-dark);
+  stroke: var(--bolt-dark);
   stroke-width: 5;
 }
 /* A finger that left the line: the bolt shrugs and waits to be started again. */
@@ -2850,7 +2991,7 @@ body.dragging {
 }
 .bolt-pad-charged {
   animation: bolt-charge 0.5s var(--ease-spring);
-  filter: drop-shadow(0 0 16px color-mix(in srgb, var(--green) 55%, transparent));
+  filter: drop-shadow(0 0 26px color-mix(in srgb, var(--bolt) 65%, transparent));
 }
 @keyframes bolt-charge {
   0% {
@@ -2864,7 +3005,16 @@ body.dragging {
   }
 }
 .update-plain {
-  margin-top: 0.25rem;
+  width: 100%;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+.update-plain:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+.update-plain:disabled {
+  opacity: 0.4;
 }
 /* The green wash the refresh happens behind. It ends opaque on purpose: the
    reload's blank frame lands under it, and the new build paints over it.
@@ -2882,8 +3032,8 @@ body.dragging {
   pointer-events: none;
   background: radial-gradient(
     circle at var(--flare-x) var(--flare-y),
-    color-mix(in srgb, var(--green) 55%, #fff),
-    var(--green) 38%,
+    color-mix(in srgb, var(--bolt) 55%, #fff),
+    var(--bolt) 38%,
     transparent 72%
   );
   /* The scale has to grow out of the same point, or the gradient's centre
@@ -3401,7 +3551,8 @@ body.dragging {
 }
 :root[data-resolved='dark'] .btn-primary,
 :root[data-resolved='dark'] .btn-danger,
-:root[data-resolved='dark'] .chip-on {
+:root[data-resolved='dark'] .chip-on,
+:root[data-resolved='dark'] .update-toast-go {
   color: #10141a;
 }
 :root[data-resolved='dark'] .toast {
@@ -3412,10 +3563,12 @@ body.dragging {
   color: #10141a;
 }
 /* The light pill above carries a message; the update button is the one toast
-   you are meant to press, so it keeps the green and the white chip here too. */
+   you are meant to press, so it stays a card here rather than flipping to ink,
+   with the green line and the green chip doing the calling. */
 :root[data-resolved='dark'] .toast-update {
-  background: var(--green);
-  color: #fff;
+  background: var(--surface);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--green) 55%, transparent);
 }
 :root[data-resolved='dark'] .avatar-violet {
   background: #2e2352;

@@ -9,11 +9,11 @@ import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
-import { CalendarIcon, ListIcon, MenuIcon } from './components/icons'
+import { ArrowRightIcon, CalendarIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
-import { UpdateSheet } from './components/UpdateSheet'
+import { UpdateScreen } from './components/UpdateScreen'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
 import { SegThumb } from './components/Segmented'
@@ -106,7 +106,7 @@ function Board({ session }: { session: Session }) {
   // Your history and figures (components/MyRides.tsx) and the push switch (NotificationsSheet.tsx).
   const [myRidesOpen, setMyRidesOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
-  // Taking a waiting build (components/UpdateSheet.tsx): the bolt you trace.
+  // Taking a waiting build (components/UpdateScreen.tsx): the bolt you trace.
   const [updateOpen, setUpdateOpen] = useState(false)
   // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
   const [drag, setDrag] = useState<PassengerDrag | null>(null)
@@ -777,7 +777,7 @@ function Board({ session }: { session: Session }) {
         />
       )}
 
-      {updateOpen && <UpdateSheet onClose={() => setUpdateOpen(false)} />}
+      {updateOpen && <UpdateScreen onClose={() => setUpdateOpen(false)} />}
 
       {accountOpen && (
         <AccountSheet
@@ -855,8 +855,17 @@ function Board({ session }: { session: Session }) {
       ) : (
         updateReady && (
           <button type="button" className="toast toast-update" onClick={() => setUpdateOpen(true)}>
-            <span>{t.toasts.updateReady}</span>
-            <b>{t.toasts.updateAction}</b>
+            <span className="update-toast-mark" aria-hidden="true">
+              <Logo size={38} />
+            </span>
+            <span className="update-toast-text">
+              <strong>{t.toasts.updateReady}</strong>
+              <span>{t.toasts.updateHint}</span>
+            </span>
+            <span className="update-toast-go">
+              {t.toasts.updateAction}
+              <ArrowRightIcon size={14} />
+            </span>
           </button>
         )
       )}

@@ -422,11 +422,12 @@ const en = {
     rideNotFound: 'That ride is gone.',
     carAdded: (name: string) => `${name} added to the pool.`,
     carDeleted: (name: string) => `${name} deleted.`,
-    updateReady: 'A new version is ready.',
+    updateReady: 'A new version is ready',
+    updateHint: 'Trace the bolt to take it.',
     updateAction: 'Update',
   },
 
-  /** Taking a waiting build: components/UpdateSheet.tsx and the bolt you trace. */
+  /** Taking a waiting build: components/UpdateScreen.tsx and the bolt you trace. */
   update: {
     title: 'A new version is ready',
     lead: 'Trace the bolt to charge it up.',
@@ -1044,7 +1045,8 @@ const sr: Messages = {
     rideNotFound: 'Te vožnje više nema.',
     carAdded: (name) => `${name} je dodat u vozni park.`,
     carDeleted: (name) => `${name} je obrisan.`,
-    updateReady: 'Nova verzija je spremna.',
+    updateReady: 'Nova verzija je spremna',
+    updateHint: 'Prevuci munju da je preuzmeš.',
     updateAction: 'Ažuriraj',
   },
 

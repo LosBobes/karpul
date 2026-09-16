@@ -278,7 +278,8 @@ illustrated placeholder; `intro` adds the two-view explanation when the whole bo
 "unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
 you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the
 "drop here to get out" target when you are. Every dialog is a `Sheet` (bottom sheet on a phone,
-centred panel on a desktop); destructive actions go through `ConfirmDialog` instead of
+centred panel on a desktop), the one exception being `UpdateScreen`, which takes the whole screen
+because the bolt you trace on it is the screen; destructive actions go through `ConfirmDialog` instead of
 `window.confirm`. Every overlay (`Sheet`, `Sidebar`, `ConfirmDialog`, `Popover`) calls
 `useBackClose` (`lib/useBackClose.ts`), so a phone's back button closes the topmost one instead
 of leaving the page: the first overlay to open pushes one history entry, the ones stacked on top
@@ -325,8 +326,19 @@ Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc
 are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
 (`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
 shows it as a tappable "A new version is ready" toast (`useUpdateReady`, in the toast slot whenever no
-other toast shows), a green pill with the verb as a white chip so it reads as a button in both themes.
-The tap opens `UpdateSheet`, where you **trace the app's own thunderbolt** to take the build:
+other toast shows). The other toasts are a line of ink that comes and goes; this one waits to be
+pressed, so it is built like the cards instead: the app's own mark on a green tile (a charge sweeps
+across it every few seconds), the line with its hint under it and the verb as a green chip, on a card
+with a green line and a green glow that it keeps in both themes.
+The tap opens `UpdateScreen`, which takes the **whole screen** and turns the lights out: an ink
+ground in either theme, with the app's own thunderbolt glowing across it for you to **trace** to take
+the build. It is its own screen rather than a sheet because the bolt is the screen, a stroke that
+crosses a phone edge to edge, and a pad inside a panel gave the finger a lane the width of a thumb;
+it still rises from the bottom edge and carries a sheet's manners (escape, the phone's back button, a
+locked body), because it comes out of the toast down there. The words and the way out float over the
+bolt with `pointer-events: none`, so only the two buttons take a tap of their own, and the screen
+hands the bolt its colours as `--bolt` / `--bolt-dark` (the light board's green is too dark to glow).
+`BoltTrace` walks the bolt path once with `getPointAtLength` and matches the finger against a window
 `BoltTrace` walks the bolt path once with `getPointAtLength` and matches the finger against a window
 of points ahead of where it has got to, so a corner may be cut and a wander is forgiven: past `STRAY_R`
 the trail holds where it is and can be picked back up, and only past `LOST_R`, or a lift short of the
@@ -339,8 +351,8 @@ flare washes the screen, which is also what hides the reload's blank frame. The 
 tail of the bolt rather than the middle of the screen, so it carries on from where the finger stopped:
 `BoltTrace` hands its last point to `onComplete` as a percentage of the viewport (through the same
 matrix that puts the finger in the bolt's coordinates, measured before the charge pops the pad) and
-`UpdateSheet` sets it as `--flare-x` / `--flare-y`, which `.update-flare` uses for both the gradient's
-centre and its `transform-origin`. The sheet's plain button
+`UpdateScreen` sets it as `--flare-x` / `--flare-y`, which `.update-flare` uses for both the gradient's
+centre and its `transform-origin`. The plain button at the foot of the screen
 is the same update for anyone who would rather not draw, the button equivalent every drag here has.
 Both run `applyUpdate`, which is a hard refresh: it listens for `controllerchange` itself, empties the
 Cache Storage (the precache an ordinary reload would be served from, kept when the browser says it is
