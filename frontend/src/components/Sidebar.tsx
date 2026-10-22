@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { BellIcon, CarProfileIcon, ChartIcon, InfoIcon, UserIcon, XIcon } from './icons'
+import { AccountIcon, BellDotIcon, GarageIcon, PlugIcon, RouteIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -24,6 +24,8 @@ interface Item {
   label: string
   hint?: string
   icon: ReactNode
+  /** The tint of the icon's tile, one per item so the menu reads by colour too. */
+  tone: 'blue' | 'violet' | 'amber' | 'green' | 'teal'
   onSelect: () => void
   disabled?: boolean
 }
@@ -76,31 +78,36 @@ export function Sidebar({ userName, handle, onAccount, onCompanyCars, onGuide, o
     {
       label: t.sidebar.account,
       hint: t.sidebar.accountHint,
-      icon: <UserIcon size={20} />,
+      icon: <AccountIcon size={20} />,
+      tone: 'blue',
       onSelect: pick(onAccount),
     },
     {
       label: t.myRides.title,
       hint: t.myRides.hint,
-      icon: <ChartIcon size={20} />,
+      icon: <RouteIcon size={20} />,
+      tone: 'violet',
       onSelect: pick(onMyRides),
     },
     {
       label: t.notif.title,
       hint: t.notif.hint,
-      icon: <BellIcon size={20} />,
+      icon: <BellDotIcon size={20} />,
+      tone: 'amber',
       onSelect: pick(onNotifications),
     },
     {
       label: t.sidebar.cars,
       hint: t.sidebar.carsHint,
-      icon: <CarProfileIcon size={22} />,
+      icon: <GarageIcon size={20} />,
+      tone: 'green',
       onSelect: pick(onCompanyCars),
     },
     {
       label: t.sidebar.guide,
       hint: t.sidebar.guideHint,
-      icon: <InfoIcon size={20} />,
+      icon: <PlugIcon size={20} />,
+      tone: 'teal',
       onSelect: pick(onGuide),
     },
   ]
@@ -140,7 +147,7 @@ export function Sidebar({ userName, handle, onAccount, onCompanyCars, onGuide, o
         <nav className="drawer-nav" aria-label={t.common.menu}>
           {items.map((it) => (
             <button key={it.label} type="button" className="drawer-item" disabled={it.disabled} onClick={it.onSelect}>
-              <span className="drawer-item-icon">{it.icon}</span>
+              <span className={`drawer-item-icon drawer-tone-${it.tone}`}>{it.icon}</span>
               <span className="drawer-item-text">
                 <span className="drawer-item-label">{it.label}</span>
                 {it.hint && <span className="drawer-item-hint">{it.hint}</span>}

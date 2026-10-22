@@ -30,6 +30,7 @@ import { resubscribePush } from './lib/push'
 import { useUpdateReady } from './lib/pwa'
 import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
 import { useAdminPassword } from './lib/useAdminPassword'
+import { useWide } from './lib/useWide'
 
 type FormState = { mode: 'create'; template?: Ride } | { mode: 'edit'; ride: Ride } | null
 
@@ -558,8 +559,19 @@ function Board({ session }: { session: Session }) {
   const selection: number | null =
     carSel !== null && dayRides.some((r) => r.id === carSel) ? carSel : (myRideToday?.id ?? dayRides[0]?.id ?? null)
   const openRide = selection !== null ? (dayRides.find((r) => r.id === selection) ?? null) : null
-  // In the upcoming list only an explicit tap unfolds a car.
-  const openUpcomingId = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
+  // In the upcoming list only an explicit tap unfolds a car. Side by side on
+  // a wide screen the pane beside the list is never empty: with nothing
+  // picked it shows your next ride, else the first one.
+  const wide = useWide()
+  const pickedUpcoming = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
+  const openUpcomingId =
+    pickedUpcoming ??
+    (upcoming && wide
+      ? (rides.find((r) => sameName(r.driver_name, userName) || r.bookings.some((b) => sameName(b.passenger_name, userName)))?.id ??
+        rides[0]?.id ??
+        null)
+      : null)
+  const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
 
   const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setAccountOpen(true))
 
@@ -621,8 +633,73 @@ function Board({ session }: { session: Session }) {
     />
   )
 
+  // The week view's three parts: one column on a phone, the tiles and your
+  // own place beside the open ride on a wide screen.
+  const dayTiles = loading ? (
+    <div className="cars cars-skeleton" aria-busy="true">
+      <span className="car-tile skeleton" />
+      <span className="car-tile skeleton" />
+      <span className="car-tile skeleton" />
+    </div>
+  ) : dayRides.length === 0 ? null : (
+    <CarCarousel
+      rides={dayRides}
+      selected={selection}
+      userName={userName}
+      dragActive={drag !== null}
+      over={dragOver}
+      onSelect={setCarSel}
+      vertical={wide}
+    />
+  )
+  const dayDetail = loading ? null : openRide ? (
+    <div key={openRide.id} className={['stack', slideClass(tileDir)].filter(Boolean).join(' ')}>
+      {detailFor(openRide, false)}
+    </div>
+  ) : (
+    <AddCarCard userName={userName} isPast={isPast} intro={rides.length === 0 && !isPast} onEditName={() => setAccountOpen(true)} />
+  )
+  const dayYou = loading ? null : (
+    <YouPanel
+      userName={userName}
+      dayRides={dayRides}
+      currentRide={myRideToday}
+      currentBookingId={myBookingToday?.id ?? null}
+      isPast={isPast}
+      dragActive={drag !== null}
+      over={dragOver?.kind === 'tray'}
+      onGrab={onGrab}
+      onOpenCar={setCarSel}
+      onEditName={() => setAccountOpen(true)}
+    />
+  )
+
+  const viewSwitch = (
+    <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
+      <SegThumb count={2} index={upcoming ? 0 : 1} />
+      <button
+        type="button"
+        role="radio"
+        aria-checked={upcoming}
+        className={upcoming ? 'seg seg-on' : 'seg'}
+        onClick={() => setView('upcoming')}
+      >
+        <ListIcon size={16} /> {t.view.upcoming}
+      </button>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={!upcoming}
+        className={upcoming ? 'seg' : 'seg seg-on'}
+        onClick={() => setView('week')}
+      >
+        <CalendarIcon size={16} /> {t.view.week}
+      </button>
+    </div>
+  )
+
   return (
-    <div className="app">
+    <div className={wide ? 'app app-wide' : 'app'}>
       <header className="topbar">
         <button
           type="button"
@@ -638,6 +715,7 @@ function Board({ session }: { session: Session }) {
         <h1 className="topbar-title">
           <Logo /> Karpul
         </h1>
+        {wide && <div className="topbar-center">{viewSwitch}</div>}
         <div className="topbar-right">
           <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
             <span className="live-dot" aria-hidden="true" />
@@ -647,27 +725,7 @@ function Board({ session }: { session: Session }) {
       </header>
 
       <main>
-        <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
-          <SegThumb count={2} index={upcoming ? 0 : 1} />
-          <button
-            type="button"
-            role="radio"
-            aria-checked={upcoming}
-            className={upcoming ? 'seg seg-on' : 'seg'}
-            onClick={() => setView('upcoming')}
-          >
-            <ListIcon size={16} /> {t.view.upcoming}
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={!upcoming}
-            className={upcoming ? 'seg' : 'seg seg-on'}
-            onClick={() => setView('week')}
-          >
-            <CalendarIcon size={16} /> {t.view.week}
-          </button>
-        </div>
+        {!wide && viewSwitch}
 
         {upcoming && (
           <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
@@ -686,66 +744,53 @@ function Board({ session }: { session: Session }) {
                 onEditName={() => setAccountOpen(true)}
               />
             ) : (
-              <>
+              <div className={wide ? 'split' : undefined}>
                 <Upcoming
                   rides={rides}
                   userName={userName}
                   openId={openUpcomingId}
-                  onOpen={openUpcoming}
-                  renderDetail={(ride) => detailFor(ride, true)}
+                  onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
+                  renderDetail={wide ? undefined : (ride) => detailFor(ride, true)}
                 />
-              </>
+                {wide && openUpcomingRide && (
+                  <aside className="split-pane" aria-label={openUpcomingRide.car_name}>
+                    <div key={openUpcomingRide.id} className="stack swap-right">
+                      {detailFor(openUpcomingRide, true)}
+                    </div>
+                  </aside>
+                )}
+              </div>
             )}
           </div>
         )}
 
         {!upcoming && (
           <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-            <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
-
-            <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
-              {loading ? (
-                <div className="cars cars-skeleton" aria-busy="true">
-                  <span className="car-tile skeleton" />
-                  <span className="car-tile skeleton" />
-                  <span className="car-tile skeleton" />
+            {wide ? (
+              <div className="split split-week">
+                <div className="split-side">
+                  <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
+                  <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                    {dayTiles}
+                    {dayYou}
+                  </div>
                 </div>
-              ) : dayRides.length === 0 ? null : (
-                <CarCarousel
-                  rides={dayRides}
-                  selected={selection}
-                  userName={userName}
-                  dragActive={drag !== null}
-                  over={dragOver}
-                  onSelect={setCarSel}
-                />
-              )}
-
-              {!loading && openRide && (
-                <div key={openRide.id} className={['stack', slideClass(tileDir)].filter(Boolean).join(' ')}>
-                  {detailFor(openRide, false)}
+                <div className="split-pane">
+                  <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                    {dayDetail}
+                  </div>
                 </div>
-              )}
-
-              {!loading && !openRide && (
-                <AddCarCard userName={userName} isPast={isPast} intro={rides.length === 0 && !isPast} onEditName={() => setAccountOpen(true)} />
-              )}
-
-              {!loading && (
-                <YouPanel
-                  userName={userName}
-                  dayRides={dayRides}
-                  currentRide={myRideToday}
-                  currentBookingId={myBookingToday?.id ?? null}
-                  isPast={isPast}
-                  dragActive={drag !== null}
-                  over={dragOver?.kind === 'tray'}
-                  onGrab={onGrab}
-                  onOpenCar={setCarSel}
-                  onEditName={() => setAccountOpen(true)}
-                />
-              )}
-            </div>
+              </div>
+            ) : (
+              <>
+                <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
+                <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                  {dayTiles}
+                  {dayDetail}
+                  {dayYou}
+                </div>
+              </>
+            )}
           </div>
         )}
       </main>

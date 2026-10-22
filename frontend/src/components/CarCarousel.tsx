@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { firstName, sameName, shortCarName } from '../lib/dates'
+import { firstName, fmtTime, sameName, shortCarName } from '../lib/dates'
 import { useT } from '../lib/i18n'
 import { dropZone, type DropTarget } from '../lib/dnd'
 import type { Ride } from '../lib/types'
@@ -14,6 +14,8 @@ interface Props {
   dragActive: boolean
   over: DropTarget | null
   onSelect: (rideId: number) => void
+  /** A list down the side column on a wide screen instead of a sideways strip. */
+  vertical?: boolean
 }
 
 function canReceive(ride: Ride, userName: string): boolean {
@@ -28,7 +30,7 @@ function canReceive(ride: Ride, userName: string): boolean {
  * chip can be dropped straight onto another car without opening it first.
  * Adding a ride is the floating plus (AddRideButton.tsx), not a tile here.
  */
-export function CarCarousel({ rides, selected, userName, dragActive, over, onSelect }: Props) {
+export function CarCarousel({ rides, selected, userName, dragActive, over, onSelect, vertical = false }: Props) {
   const t = useT()
   const strip = useRef<HTMLDivElement>(null)
 
@@ -41,10 +43,12 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
   const scrollBy = (dir: -1 | 1) => strip.current?.scrollBy({ left: dir * 200, behavior: 'smooth' })
 
   return (
-    <section className="cars" aria-label={t.carousel.label}>
-      <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollLeft} onClick={() => scrollBy(-1)}>
-        <ChevronLeftIcon />
-      </button>
+    <section className={vertical ? 'cars cars-vertical' : 'cars'} aria-label={t.carousel.label}>
+      {!vertical && (
+        <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollLeft} onClick={() => scrollBy(-1)}>
+          <ChevronLeftIcon />
+        </button>
+      )}
       <div ref={strip} className="cars-strip">
         {rides.map((r) => {
           const driving = sameName(r.driver_name, userName)
@@ -77,6 +81,7 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
               <span className="car-tile-art">
                 <CarGlyph carName={r.car_name} size={22} />
               </span>
+              {vertical && <span className="car-tile-time when-value">{fmtTime(r.departure_time)}</span>}
               <span className="car-tile-name">
                 <span className="car-tile-name-text">{shortCarName(r.car_name) || firstName(r.driver_name)}</span>
                 <PowertrainMark carName={r.car_name} />
@@ -88,6 +93,7 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
                 </span>
                 {r.destination}
               </span>
+              {vertical && <span className="car-tile-driver">{r.driver_name}</span>}
               <span
                 className={['car-tile-seats', full && 'car-tile-seats-full', seated && 'car-tile-seats-in', driving && 'car-tile-seats-driving']
                   .filter(Boolean)
@@ -100,9 +106,11 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
           )
         })}
       </div>
-      <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollRight} onClick={() => scrollBy(1)}>
-        <ChevronRightIcon />
-      </button>
+      {!vertical && (
+        <button type="button" className="icon-btn cars-arrow" aria-label={t.carousel.scrollRight} onClick={() => scrollBy(1)}>
+          <ChevronRightIcon />
+        </button>
+      )}
     </section>
   )
 }

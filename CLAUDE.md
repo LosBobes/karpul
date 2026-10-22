@@ -158,11 +158,18 @@ claim, and a car's use rate is days out over working days in the window.
 
 **Styling.** The frontend is Tailwind v4 (via `@tailwindcss/vite`) plus a hand-written design
 system in `src/index.css`: a light, phone-first, card-based UI — off-white ground, white cards with
-1px borders and a faint shadow, 12px corners, one green accent for "selected / go", red only for
+hairline borders and a faint shadow that deepens under a mouse (`--shadow-hover`, in the *Hover* block,
+`hover: hover and pointer: fine` only), 14px corners, one green accent for "selected / go", red only for
 removal, Inter throughout (bundled from `@fontsource/inter` in `main.tsx`, because the app ships as
 one self-hosted container). The semantic class names (`.card`, `.date`, `.car-tile`, `.pax-row`,
-`.panel`, `.btn`, …) are the contract the components render against. The layout is a single
-560px column centred on a desktop; two media blocks at the end carry the phone layout:
+`.panel`, `.btn`, …) are the contract the components render against. On a phone the layout is
+one 600px column. From 1024px (`lib/useWide.ts`, the *Wide screens* block in `index.css`) the shell
+widens to 1440px, the view switch moves into the top bar and both views become two panes (`.split`):
+Upcoming is the list beside the open ride (no unfolding in place: `Upcoming` gets no `renderDetail`,
+and the pane shows your next ride when nothing is picked), Week is the days, the day's rides as a
+vertical list (`CarCarousel vertical`) and `YouPanel` beside the open ride. The pane is sticky and a
+container: past 760px the ride itself splits into the driver card and the passengers. Two media
+blocks carry the phone layout:
 `max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
 query to components that need to change their wording. The app's own mark (the top bar, the drawer head, the favicon and the installed-app
@@ -171,14 +178,13 @@ tile, nothing else. `public/favicon.svg` is the source, split by `<!-- tile -->`
 comments that `scripts/render-icons.mjs` uses to derive the PNGs (`pwa-192`/`pwa-512` with rounded
 transparent corners, `pwa-maskable-512` full-bleed with the mark scaled into the platform's safe
 zone, `apple-touch-icon` full-bleed and opaque), and `components/Logo.tsx` repeats the same drawing
-inline with the tile in `currentColor`. Change the mark in all three places. Icons come from Phosphor
-(`@phosphor-icons/react`) through the named wrappers in `components/icons.tsx`, which are the
-contract the components render against (`size` in px, optional `weight`); nothing imports the
-package directly. The default weight is *regular*. Phosphor's *duotone* weight paints a 20% fill
-of the glyph's silhouette under the stroke, and for line icons that silhouette is a slab (a
-rectangle behind the three bars of the menu icon, a triangle behind a chevron) that showed on
-phones as a grey grating around the lines; duotone is therefore opt-in and used only for the two
-car marks, where the fill is the car's body. Adding a ride has exactly one control: `AddRideFab`
+inline with the tile in `currentColor`. Change the mark in all three places. Icons are drawn in
+`components/icons.tsx` itself (no icon package): one 24px grid, one round stroke (`light` /
+`regular` / `bold`, a touch heavier below 16px so small glyphs stay crisp), no fills except the
+dots. The named exports are the contract the components render against (`size` in px, optional
+`weight`). The drawer has its own marks (`AccountIcon`, `RouteIcon`, `BellDotIcon`,
+`GarageIcon`, `PlugIcon`), each on its own tinted tile (`.drawer-tone-*`), so the menu reads by
+shape and colour before it reads by word. Adding a ride has exactly one control: `AddRideFab`
 (`components/AddRideButton.tsx`), a white plus in a green circle floating at the bottom right of
 the column on both views whenever a ride can be added (`.fab`, under every sheet's backdrop).
 There is deliberately no *Add ride* tile in the carousel, no plus in the empty card and no drawer
@@ -193,7 +199,7 @@ petrol so "plug-in hybrid electric" is a hybrid; then models sold only one way) 
 `PowertrainMark` draws it as a 12px glyph (bolt / leaf / drop / pump) *after the car's name* on
 the tile, the Upcoming row and the admin list (`.pt-mark`). It is deliberately not on the
 picture: a sticker big enough to read on a phone hid the car. The driver card spells it out as
-an "Electric" / "Hybrid" / "Diesel" / "Petrol" tag.
+"Electric" / "Hybrid" / "Diesel" / "Petrol" beside *Company car* / *Own car* under the car's name.
 Below that, `carBrand()` in the same file recognises a *make* from the name (make words and
 the models people write instead of one: "grey Golf", "Octavia"; words that are also plain
 English, like "Seat" or "Focus", must be capitalised to count) and `BrandLogo` /`CarGlyph` show
