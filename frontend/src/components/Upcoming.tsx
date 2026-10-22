@@ -3,7 +3,7 @@ import { fmtDayDate, fmtDayLabel, fmtTime, sameName, shortCarName } from '../lib
 import { useT } from '../lib/i18n'
 import type { Ride } from '../lib/types'
 import { PowertrainMark } from './CarArt'
-import { ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, SearchIcon, XIcon } from './icons'
+import { ArrowRightIcon, SearchIcon, XIcon } from './icons'
 
 type Filter = 'all' | 'free' | 'mine' | 'joined'
 const FILTERS: Filter[] = ['all', 'free', 'mine', 'joined']
@@ -118,25 +118,13 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                   <li key={r.id} className="session-item">
                     <button type="button" className={cls} aria-expanded={renderDetail ? open : undefined}
                       aria-current={!renderDetail && open ? 'true' : undefined} onClick={() => onOpen(open ? null : r.id)}>
-                      <span className="session-time">
-                        <span className="when-value">{fmtTime(r.departure_time)}</span>
-                        <small>{r.return_time ? t.upcoming.back(fmtTime(r.return_time)) : t.upcoming.oneWay}</small>
-                      </span>
-                      <span className="session-text">
-                        <strong className="session-route">
-                          <span className="session-place">{r.origin}</span>
-                          <ArrowRightIcon size={13} className="session-arrow" />
-                          <span className="session-place">{r.destination}</span>
-                        </strong>
-                        <span className="session-sub">
-                          <span className="session-name">
-                            {r.driver_name} · {shortCarName(r.car_name)}
-                          </span>
-                          <PowertrainMark carName={r.car_name} />
-                          {r.stops.length > 0 && <span className="session-stops">{t.upcoming.stops(r.stops.length)}</span>}
+                      {/* Three lines, each with the whole width: when (and your
+                          place in it), the way, who drives what. */}
+                      <span className="session-top">
+                        <span className="session-time">
+                          <span className="when-value">{fmtTime(r.departure_time)}</span>
+                          <small>{r.return_time ? t.upcoming.back(fmtTime(r.return_time)) : t.upcoming.oneWay}</small>
                         </span>
-                      </span>
-                      <span className="session-side">
                         {driving ? (
                           <span className="tag tag-green">{t.upcoming.driving}</span>
                         ) : riding ? (
@@ -146,11 +134,18 @@ export function Upcoming({ rides, userName, openId, onOpen, renderDetail }: Prop
                         ) : (
                           <span className="session-seats">{t.upcoming.seats(r.free_seats)}</span>
                         )}
-                        {renderDetail ? (
-                          <ChevronDownIcon size={16} className="session-chevron" />
-                        ) : (
-                          <ChevronRightIcon size={16} className="session-chevron session-chevron-side" />
-                        )}
+                      </span>
+                      <strong className="session-route">
+                        {r.origin}
+                        <ArrowRightIcon size={14} className="session-arrow" />
+                        {r.destination}
+                      </strong>
+                      <span className="session-sub">
+                        <span className="session-name">
+                          {r.driver_name} · {shortCarName(r.car_name)}
+                        </span>
+                        <PowertrainMark carName={r.car_name} />
+                        {r.stops.length > 0 && <span className="session-stops">{t.upcoming.stops(r.stops.length)}</span>}
                       </span>
                     </button>
                     {open && renderDetail && (
