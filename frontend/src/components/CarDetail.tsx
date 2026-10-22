@@ -9,16 +9,16 @@ import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
 import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
 import {
-  ArrowLeftIcon,
   ArrowRightIcon,
   CalendarIcon,
+  CarIcon,
   CoinsIcon,
   CopyIcon,
   GripIcon,
-  InfoIcon,
   KebabIcon,
   PencilIcon,
   PinIcon,
+  PlugIcon,
   PlusIcon,
   RepeatIcon,
   RoadIcon,
@@ -165,106 +165,107 @@ export function CarDetail({
       <article className="card driver-card">
         <header className="driver-head">
           <Avatar name={ride.driver_name} size="lg" />
-          <div className="driver-name">
+          <div className="driver-id">
             <strong>{ride.driver_name}</strong>
-            <span className="tag tag-green">{t.detail.driver}</span>
-            {isDriver && <span className="tag">{t.detail.you}</span>}
-            {ride.series_id && (
-              <span className="tag tag-icon" title={t.form.repeatWeekly}>
-                <RepeatIcon size={12} /> {t.detail.weekly}
-              </span>
-            )}
+            <span className="driver-role">
+              {t.detail.driver}
+              {isDriver && <span className="tag">{t.detail.you}</span>}
+              {ride.series_id && (
+                <span className="driver-weekly" title={t.form.repeatWeekly}>
+                  <RepeatIcon size={13} /> {t.detail.weekly}
+                </span>
+              )}
+            </span>
           </div>
           <Menu trigger={<KebabIcon />} label={t.detail.rideOptions} items={menuItems} />
         </header>
 
         <div className="driver-times">
           <div className="when">
-            <span className="when-icon">
-              <ArrowRightIcon size={16} />
-            </span>
-            <span>
-              <span className="when-label">{t.detail.leaves}</span>
-              <span className="when-value">{fmtTime(ride.departure_time)}</span>
-            </span>
+            <span className="when-label">{t.detail.leaves}</span>
+            <span className="when-value">{fmtTime(ride.departure_time)}</span>
           </div>
+          <span className="when-sep" aria-hidden="true">
+            <ArrowRightIcon size={16} />
+          </span>
           <div className="when">
-            <span className="when-icon">
-              <ArrowLeftIcon size={16} />
-            </span>
-            <span>
-              <span className="when-label">{t.detail.returns}</span>
-              <span className="when-value">{ride.return_time ? fmtTime(ride.return_time) : t.detail.oneWay}</span>
-            </span>
+            <span className="when-label">{t.detail.returns}</span>
+            <span className="when-value">{ride.return_time ? fmtTime(ride.return_time) : t.detail.oneWay}</span>
           </div>
         </div>
 
-        <div className="driver-route">
-          <span className="place">
-            <PinIcon size={15} />
-            <span>
-              <b>{t.detail.from}</b> {ride.origin}
-            </span>
-          </span>
+        <ol className="trip" aria-label={`${ride.origin}, ${ride.destination}`}>
+          <li className="trip-stop trip-start">
+            <span className="trip-dot" aria-hidden="true" />
+            <span className="trip-place">{ride.origin}</span>
+          </li>
           {ride.stops.map((stop) => (
-            <span key={stop} className="place place-stop">
-              <PinIcon size={15} />
-              <span>{stop}</span>
-            </span>
+            <li key={stop} className="trip-stop trip-via">
+              <span className="trip-dot" aria-hidden="true" />
+              <span className="trip-place">{stop}</span>
+              <span className="trip-note">{t.detail.pickup}</span>
+            </li>
           ))}
-          <span className="place">
-            <PinIcon size={15} />
-            <span>
-              <b>{t.detail.to}</b> {ride.destination}
-            </span>
-          </span>
-        </div>
-
-        {(ride.chip_in || ride.distance_km != null) && (
-          <div className="driver-extras">
-            {ride.distance_km != null && (
-              <span className="tag tag-icon">
-                <RoadIcon size={13} /> {t.detail.distance(ride.distance_km)}
-              </span>
-            )}
-            {ride.chip_in && (
-              <span className="tag tag-icon tag-blue">
-                <CoinsIcon size={13} /> {t.detail.chipIn(ride.chip_in)}
-              </span>
-            )}
-          </div>
-        )}
+          <li className="trip-stop trip-end">
+            <span className="trip-dot" aria-hidden="true" />
+            <span className="trip-place">{ride.destination}</span>
+          </li>
+        </ol>
 
         <div className={model || brand ? 'driver-car driver-car-illustrated' : 'driver-car'}>
           {model && (
             <span className="driver-car-art" aria-hidden="true">
-              <CarArt model={model.key} width={104} />
+              <CarArt model={model.key} width={96} />
             </span>
           )}
           {brand && (
             <span className="driver-car-logo" title={brand.name}>
-              <BrandLogo brand={brand.key} size={30} />
+              <BrandLogo brand={brand.key} size={26} />
+            </span>
+          )}
+          {!model && !brand && (
+            <span className="driver-car-logo" aria-hidden="true">
+              <CarIcon size={24} />
             </span>
           )}
           <span className="driver-car-text">
-            <span className="driver-car-tags">
-              <span className={`tag ${ride.car_type === 'corporate' ? 'tag-blue' : ''}`}>
-                {ride.car_type === 'corporate' ? t.detail.companyCar : t.detail.ownCar}
-              </span>
+            <span className="driver-car-name">{ride.car_name}</span>
+            <span className="driver-car-meta">
+              {ride.car_type === 'corporate' ? t.detail.companyCar : t.detail.ownCar}
               {powertrain && (
-                <span className={powertrain === 'electric' || powertrain === 'hybrid' ? 'tag tag-green tag-icon' : 'tag tag-icon'}>
-                  <PowertrainIcon kind={powertrain} size={13} /> {powertrainLabel(powertrain)}
+                <span className={`driver-car-pt driver-car-pt-${powertrain}`}>
+                  <PowertrainIcon kind={powertrain} size={12} /> {powertrainLabel(powertrain)}
                 </span>
               )}
             </span>
-            <span className="driver-car-name">{ride.car_name}</span>
             {ride.car_type === 'corporate' && onGuide && (
               <button type="button" className="link driver-car-guide" onClick={onGuide}>
-                <InfoIcon size={15} /> {t.detail.howTo}
+                <PlugIcon size={15} /> {t.detail.howTo}
               </button>
             )}
           </span>
         </div>
+
+        {(ride.chip_in || ride.distance_km != null) && (
+          <dl className="facts">
+            {ride.distance_km != null && (
+              <div className="fact">
+                <dt>
+                  <RoadIcon size={14} /> {t.form.distance}
+                </dt>
+                <dd>{t.detail.distance(ride.distance_km)}</dd>
+              </div>
+            )}
+            {ride.chip_in && (
+              <div className="fact">
+                <dt>
+                  <CoinsIcon size={14} /> {t.form.chipIn}
+                </dt>
+                <dd>{t.detail.chipIn(ride.chip_in)}</dd>
+              </div>
+            )}
+          </dl>
+        )}
         {ride.notes && <p className="driver-notes">{ride.notes}</p>}
       </article>
 
@@ -282,7 +283,7 @@ export function CarDetail({
         <h3 className="section-title">
           {t.detail.passengersTitle}{' '}
           <span className="section-count">
-            ({ride.bookings.length} / {ride.seats})
+            {ride.bookings.length} / {ride.seats}
           </span>
           {ride.passengers_manage && (
             <span className="tag tag-icon section-tag" title={t.detail.openListTitle}>

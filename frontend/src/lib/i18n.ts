@@ -366,6 +366,7 @@ const en = {
     youreIn: "You're in",
     full: 'Full',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
+    stops: (n: number) => enPlural(n, 'stop', 'stops'),
   },
 
   filters: {
@@ -990,6 +991,7 @@ const sr: Messages = {
     youreIn: 'Imaš mesto',
     full: 'Puno',
     seats: srSeats,
+    stops: (n) => srPlural(n, 'usputna stanica', 'usputne stanice', 'usputnih stanica'),
   },
 
   filters: {
