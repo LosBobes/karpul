@@ -3193,13 +3193,15 @@ body.dragging {
 .bolt-track {
   stroke: rgba(255, 255, 255, 0.09);
 }
-/* Which way the bolt goes, said once a second by a spark falling down the
-   empty lane. It is the only thing on this screen that moves before you do. */
+/* Which way the bolt goes, said by a spark falling down the empty lane. It is
+   the only thing on this screen that moves before you do. It runs at an even
+   pace: an ease-in-out is fastest at the middle of the path, which is the jog
+   across, and there the spark skipped from left to right instead of moving. */
 .bolt-hint {
   stroke: color-mix(in srgb, var(--bolt) 50%, transparent);
   stroke-dasharray: 5 95;
   filter: blur(1px);
-  animation: bolt-hint 2.4s cubic-bezier(0.5, 0, 0.6, 1) infinite;
+  animation: bolt-hint 3.2s linear infinite;
 }
 @keyframes bolt-hint {
   from {
