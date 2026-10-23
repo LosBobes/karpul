@@ -173,6 +173,12 @@ input[type='checkbox'] {
   font-weight: 500;
   color: var(--text);
 }
+/* "optional", after the label of a field that may stay empty. */
+.field-optional {
+  margin-left: 0.35rem;
+  font-weight: 400;
+  color: var(--muted);
+}
 .field-label-row {
   display: flex;
   align-items: center;
@@ -1322,6 +1328,19 @@ main,
   gap: 0.45rem;
   font-size: 0.82rem;
   color: var(--muted);
+}
+/* "Call the driver": a plain tel: link dressed as a button, the number beside
+   the words so you can see whom you are ringing. */
+.driver-call {
+  justify-content: flex-start;
+}
+.driver-call-number {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .driver-weekly {
   display: inline-flex;

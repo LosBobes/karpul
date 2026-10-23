@@ -92,6 +92,8 @@ def test_username_and_email_are_stored_lowercase(client):
         ({"username": "no"}, "username"),
         ({"username": "Ana Petrović"}, "username"),
         ({"email": "not-an-email"}, "email"),
+        ({"phone": "call me"}, "phone"),
+        ({"phone": "12345"}, "phone"),
         ({"password": "short"}, "password"),
         ({"first_name": "  "}, "first_name"),
     ],
@@ -316,6 +318,44 @@ def test_changing_the_email(client):
     assert r.status_code == 200
     assert r.json()["email"] == "ana.new@example.com"
     assert client.post("/api/auth/login", json={"login": "ana.new@example.com", "password": ANA["password"]}).status_code == 200
+
+
+def test_email_and_phone_are_optional(client):
+    no_email = {k: v for k, v in ANA.items() if k != "email"}
+    body = register(client, no_email)
+    assert body["user"]["email"] is None and body["user"]["phone"] is None
+    # A blank box is no email too, and two accounts without one do not clash.
+    marko = register(client, MARKO, email="  ", phone=" +381  64 123 4567 ")["user"]
+    assert marko["email"] is None
+    assert marko["phone"] == "+381 64 123 4567"
+    assert client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).status_code == 200
+
+
+def test_changing_and_clearing_the_email_and_phone(client):
+    ana = register(client)["token"]
+    r = client.patch("/api/auth/me", json={"phone": "064/123-45-67"}, headers=bearer(ana))
+    assert r.status_code == 200 and r.json()["phone"] == "064/123-45-67"
+    # Leaving a field out keeps it; an empty one removes it.
+    r = client.patch("/api/auth/me", json={"first_name": "Ana"}, headers=bearer(ana))
+    assert r.json()["phone"] == "064/123-45-67" and r.json()["email"] == "ana@example.com"
+    r = client.patch("/api/auth/me", json={"email": "", "phone": ""}, headers=bearer(ana))
+    assert r.status_code == 200
+    assert r.json()["email"] is None and r.json()["phone"] is None
+    assert client.post("/api/auth/login", json={"login": "ana@example.com", "password": ANA["password"]}).status_code == 401
+
+
+def test_a_ride_carries_its_drivers_phone(client):
+    ana = register(client, phone="+381 64 123 4567")["token"]
+    marko = register(client, MARKO)["token"]
+    with_phone = client.post("/api/rides", json=own_ride(), headers=bearer(ana))
+    assert with_phone.status_code == 201, with_phone.text
+    assert with_phone.json()["driver_phone"] == "+381 64 123 4567"
+    without = client.post("/api/rides", json=own_ride(car_name="Red Clio"), headers=bearer(marko))
+    assert without.json()["driver_phone"] is None
+
+    board = {r["driver_name"]: r["driver_phone"] for r in client.get(f"/api/rides?date={TOMORROW}").json()}
+    assert board == {"Ana Petrović": "+381 64 123 4567", "Marko Jovanović": None}
+    assert client.get(f"/api/rides/{with_phone.json()['id']}").json()["driver_phone"] == "+381 64 123 4567"
 
 
 def test_changing_the_password_needs_the_old_one_and_drops_other_browsers(client):

@@ -47,6 +47,8 @@ export interface Ride {
   /** Shared by the rides of one "repeat weekly" series. */
   series_id: string | null
   created_at: string
+  /** The driver's mobile number, when their account has one. */
+  driver_phone: string | null
   bookings: Booking[]
   free_seats: number
 }
@@ -145,7 +147,10 @@ export interface PushConfig {
 export interface ProfilePatch {
   first_name?: string
   last_name?: string
+  /** `''` removes it. */
   email?: string
+  /** `''` removes it. */
+  phone?: string
   current_password?: string
   new_password?: string
 }

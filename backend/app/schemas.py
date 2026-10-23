@@ -79,6 +79,10 @@ USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,30}[a-z0-9]$")
 # Deliberately loose: an address is proved by a person receiving mail at it, not
 # by a regular expression. This only catches typing the wrong thing in the box.
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
+# A mobile number as people type it: digits with spaces, dashes, dots, slashes
+# or brackets between them and an optional leading +. 6 to 15 digits (E.164 tops
+# out at 15) catches a typo without knowing every country's numbering plan.
+PHONE_RE = re.compile(r"^\+?[0-9 ()./-]+$")
 MIN_PASSWORD = 8
 
 
@@ -92,10 +96,24 @@ def _clean_username(value: str) -> str:
     return value
 
 
-def _clean_email(value: str) -> str:
-    value = value.strip().lower()
+def _clean_email(value: str | None) -> str | None:
+    """Optional: an empty box means no email."""
+    value = (value or "").strip().lower()
+    if not value:
+        return None
     if not EMAIL_RE.match(value):
         raise ValueError("must be an email address")
+    return value
+
+
+def _clean_phone(value: str | None) -> str | None:
+    """Optional, kept as typed (spaces collapsed) so it reads the way its owner wrote it."""
+    value = " ".join((value or "").split())
+    if not value:
+        return None
+    digits = sum(c.isdigit() for c in value)
+    if not PHONE_RE.match(value) or not 6 <= digits <= 15:
+        raise ValueError("must be a phone number")
     return value
 
 
@@ -109,7 +127,8 @@ class RegisterIn(BaseModel):
     """A new account. `first_name` + `last_name` become the name colleagues see."""
 
     username: str = Field(min_length=3, max_length=32)
-    email: str = Field(min_length=3, max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=40)
     first_name: str = Field(min_length=1, max_length=40)
     last_name: str = Field(min_length=1, max_length=40)
     password: str = Field(min_length=1, max_length=200)
@@ -121,8 +140,13 @@ class RegisterIn(BaseModel):
 
     @field_validator("email")
     @classmethod
-    def clean_email(cls, v: str) -> str:
+    def clean_email(cls, v: str | None) -> str | None:
         return _clean_email(v)
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone(cls, v: str | None) -> str | None:
+        return _clean_phone(v)
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -148,7 +172,8 @@ class ProfileUpdate(BaseModel):
 
     first_name: str | None = Field(default=None, min_length=1, max_length=40)
     last_name: str | None = Field(default=None, min_length=1, max_length=40)
-    email: str | None = Field(default=None, min_length=3, max_length=200)
+    email: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, max_length=40)
     current_password: str | None = Field(default=None, max_length=200)
     new_password: str | None = Field(default=None, min_length=1, max_length=200)
 
@@ -160,7 +185,12 @@ class ProfileUpdate(BaseModel):
     @field_validator("email")
     @classmethod
     def clean_email(cls, v: str | None) -> str | None:
-        return _clean_email(v) if v is not None else None
+        return _clean_email(v)
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone(cls, v: str | None) -> str | None:
+        return _clean_phone(v)
 
     @field_validator("new_password")
     @classmethod
@@ -181,7 +211,8 @@ class UserRead(BaseModel):
 
     id: int
     username: str
-    email: str
+    email: str | None
+    phone: str | None
     first_name: str
     last_name: str
     display_name: str
@@ -348,5 +379,7 @@ class RideRead(BaseModel):
     chip_in: str
     series_id: str | None
     created_at: datetime
+    # The driver's mobile number when their account has one, for "Call the driver".
+    driver_phone: str | None = None
     bookings: list[BookingRead]
     free_seats: int

@@ -5,10 +5,10 @@ from datetime import date, datetime, time, timedelta
 from urllib.parse import unquote
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import object_session, selectinload
 from sqlmodel import Session, select
 
-from .models import Booking, CarType, CorporateCar, PushSubscription, Ride
+from .models import Booking, CarType, CorporateCar, PushSubscription, Ride, User
 
 
 def user_from_header(value: str | None) -> str | None:
@@ -35,9 +35,27 @@ def stops_to_text(stops: list[str]) -> str:
     return "\n".join(stops)
 
 
-def to_ride_read_dict(ride: Ride) -> dict:
+def driver_phones(session: Session, rides: list[Ride]) -> dict[str, str]:
+    """The mobile numbers of the accounts driving `rides`, by normalised name,
+    in one query. A driver without an account or without a number is absent."""
+    keys = {norm_name(r.driver_name) for r in rides}
+    if not keys:
+        return {}
+    rows = session.exec(
+        select(User.name_key, User.phone).where(User.name_key.in_(keys), User.phone.is_not(None))  # type: ignore[attr-defined,union-attr]
+    ).all()
+    return {key: phone for key, phone in rows}
+
+
+def to_ride_read_dict(ride: Ride, phones: dict[str, str] | None = None) -> dict:
+    """`phones` is `driver_phones` for a whole list; without it the driver's
+    number is looked up on the ride's own session."""
+    if phones is None:
+        session = object_session(ride)
+        phones = driver_phones(session, [ride]) if session is not None else {}  # type: ignore[arg-type]
     data = ride.model_dump()
     data["stops"] = stops_from_text(ride.stops)
+    data["driver_phone"] = phones.get(norm_name(ride.driver_name))
     data["bookings"] = ride.bookings
     data["free_seats"] = max(ride.seats - len(ride.bookings), 0)
     return data

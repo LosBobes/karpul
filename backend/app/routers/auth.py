@@ -71,12 +71,13 @@ def register(payload: RegisterIn, session: WriteSessionDep):
     if clash is not None:
         if clash.username == payload.username:
             raise HTTPException(status.HTTP_409_CONFLICT, "That username is taken")
-        if clash.email == payload.email:
+        if payload.email is not None and clash.email == payload.email:
             raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
         raise HTTPException(status.HTTP_409_CONFLICT, f"Another account already goes by {name}")
     user = User(
         username=payload.username,
         email=payload.email,
+        phone=payload.phone,
         first_name=payload.first_name,
         last_name=payload.last_name,
         name_key=name_key,
@@ -118,7 +119,8 @@ def me(session: SessionDep, creds: CredsDep):
 
 @router.patch("/me", response_model=UserRead)
 def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep):
-    """Change your own name, email or password.
+    """Change your own name, email, mobile number or password. An empty email
+    or number removes it; both are optional.
 
     A new name is carried across every ride and booking you are in
     (`services.rename_person`), so your history stays yours; the changed rides
@@ -128,10 +130,13 @@ def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep)
     data = payload.model_dump(exclude_unset=True)
     old_name = user.display_name
 
-    if payload.email is not None and payload.email != user.email:
-        if _taken(session, email=payload.email) is not None:
+    if "email" in data and payload.email != user.email:
+        if payload.email is not None and _taken(session, email=payload.email) is not None:
             raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
         user.email = payload.email
+
+    if "phone" in data:
+        user.phone = payload.phone
 
     first = payload.first_name if payload.first_name is not None else user.first_name
     last = payload.last_name if payload.last_name is not None else user.last_name

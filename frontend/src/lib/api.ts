@@ -6,7 +6,8 @@ const BASE = import.meta.env.VITE_API_URL ?? ''
 /** POST /api/auth/register */
 export interface RegisterInput {
   username: string
-  email: string
+  email?: string
+  phone?: string
   first_name: string
   last_name: string
   password: string
@@ -91,7 +92,7 @@ export const api = {
 
   me: () => request<AuthUser>('/api/auth/me'),
 
-  /** Change your own name, email or password; a new name follows you onto the board. */
+  /** Change your own name, email, phone or password; a new name follows you onto the board. */
   updateMe: (patch: ProfilePatch) =>
     request<AuthUser>('/api/auth/me', { method: 'PATCH', body: JSON.stringify(patch) }),
 

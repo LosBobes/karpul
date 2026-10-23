@@ -32,6 +32,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.schema import CreateTable
 from sqlmodel import Session, SQLModel, create_engine
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
@@ -102,6 +103,14 @@ ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("ride", "series_id", "VARCHAR"),
     ("ride", "reminder_sent", "BOOLEAN NOT NULL DEFAULT 0"),
     ("booking", "pickup", "VARCHAR NOT NULL DEFAULT ''"),
+    ("appuser", "phone", "VARCHAR"),
+]
+
+# Columns that started out NOT NULL and are optional now. SQLite cannot drop a
+# NOT NULL with ALTER TABLE, so such a table is rebuilt from its model
+# (`relax_not_null`); each entry is (table, column).
+RELAXED_COLUMNS: list[tuple[str, str]] = [
+    ("appuser", "email"),
 ]
 
 
@@ -128,10 +137,51 @@ def add_missing_columns(target: Engine) -> list[str]:
     return [f"{table}.{column}" for table, column, _ in missing]
 
 
+def relax_not_null(target: Engine) -> list[str]:
+    """Rebuild the tables in RELAXED_COLUMNS whose column is still NOT NULL.
+
+    The SQLite recipe: create the table afresh from the model under a scratch
+    name, copy the rows across (the columns both sides have), drop the old one,
+    rename the new one into place and recreate its indexes. Row ids are copied,
+    so `authsession.user_id` still points at the same people; the legacy rename
+    keeps SQLite from rewriting that foreign key on the way. Returns the
+    "table.column" names that were relaxed; an up-to-date database is a no-op.
+    """
+    inspector = inspect(target)
+    tables = set(inspector.get_table_names())
+    todo = sorted(
+        {
+            table
+            for table, column in RELAXED_COLUMNS
+            if table in tables
+            and any(c["name"] == column and not c["nullable"] for c in inspector.get_columns(table))
+        }
+    )
+    if not todo:
+        return []
+    old_columns = {table: [c["name"] for c in inspector.get_columns(table)] for table in todo}
+    with target.begin() as conn:
+        conn.exec_driver_sql("PRAGMA legacy_alter_table=ON")
+        for name in todo:
+            table = SQLModel.metadata.tables[name]
+            scratch = f"{name}__rebuild"
+            ddl = str(CreateTable(table).compile(conn)).replace(f"CREATE TABLE {name} ", f"CREATE TABLE {scratch} ", 1)
+            conn.exec_driver_sql(ddl)
+            shared = ", ".join(c for c in old_columns[name] if c in table.columns)
+            conn.exec_driver_sql(f"INSERT INTO {scratch} ({shared}) SELECT {shared} FROM {name}")
+            conn.exec_driver_sql(f"DROP TABLE {name}")
+            conn.exec_driver_sql(f"ALTER TABLE {scratch} RENAME TO {name}")
+            for index in table.indexes:
+                index.create(conn)
+        conn.exec_driver_sql("PRAGMA legacy_alter_table=OFF")
+    return [f"{t}.{c}" for t, c in RELAXED_COLUMNS if t in todo]
+
+
 def init_db() -> None:
     if DATABASE_URL == DEFAULT_DB_URL:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
+    relax_not_null(engine)
     add_missing_columns(engine)
 
 

@@ -16,6 +16,7 @@ from ..push import notify
 from ..schemas import BookingCreate, BookingRead, BookingUpdate, RideCreate, RideRead, RideUpdate
 from ..services import (
     corporate_car_label,
+    driver_phones,
     drop_orphaned_pickups,
     ensure_car_available,
     norm_name,
@@ -78,7 +79,9 @@ def list_rides(
         .options(selectinload(Ride.bookings))  # type: ignore[arg-type]
         .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
     )
-    return [to_ride_read_dict(r) for r in session.exec(stmt).all()]
+    rides = session.exec(stmt).all()
+    phones = driver_phones(session, list(rides))
+    return [to_ride_read_dict(r, phones) for r in rides]
 
 
 def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_id: int | None = None) -> dict:
