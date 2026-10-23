@@ -17,6 +17,7 @@ import {
   GripIcon,
   KebabIcon,
   PencilIcon,
+  PhoneIcon,
   PinIcon,
   PlugIcon,
   PlusIcon,
@@ -30,6 +31,11 @@ import {
 } from './icons'
 import { Menu } from './Menu'
 import { Select } from './Select'
+
+/** `tel:` takes the digits and a leading +, not the spaces and dashes people type. */
+function telHref(phone: string): string {
+  return `tel:${phone.trim().startsWith('+') ? '+' : ''}${phone.replace(/\D/g, '')}`
+}
 
 interface Props {
   ride: Ride
@@ -179,6 +185,14 @@ export function CarDetail({
           </div>
           <Menu trigger={<KebabIcon />} label={t.detail.rideOptions} items={menuItems} />
         </header>
+
+        {ride.driver_phone && !isDriver && (
+          <a className="btn btn-soft btn-block driver-call" href={telHref(ride.driver_phone)}>
+            <PhoneIcon size={18} />
+            {t.detail.callDriver}
+            <span className="driver-call-number">{ride.driver_phone}</span>
+          </a>
+        )}
 
         <div className="driver-times">
           <div className="when">

@@ -16,7 +16,8 @@ class CarType(str, Enum):
 
 
 class User(SQLModel, table=True):
-    """A person with an account: username, password, email and their real name.
+    """A person with an account: username, password and their real name, plus
+    an email and a mobile number if they choose to give them.
 
     The rest of the app identifies people by the name they show to colleagues
     (`Ride.driver_name`, `Booking.passenger_name`), so the account owns that
@@ -33,7 +34,10 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     # Lowercased on the way in, so a login is case-insensitive.
     username: str = Field(unique=True, index=True)
-    email: str = Field(unique=True, index=True)
+    # Optional. Several NULLs never clash under SQLite's UNIQUE.
+    email: str | None = Field(default=None, unique=True, index=True)
+    # Optional; shown on the rides this person drives, for a "call the driver" button.
+    phone: str | None = Field(default=None)
     first_name: str
     last_name: str
     # norm_name(display_name); unique, see the class docstring.

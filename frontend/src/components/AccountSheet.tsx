@@ -23,8 +23,8 @@ interface Props {
 }
 
 /**
- * Your account: who you are on the board, and the three things you can change
- * about it. A new name is carried onto every ride you drive or sit in by the
+ * Your account: who you are on the board, and the things you can change about
+ * it (the mobile number and the email are optional; emptying one removes it). A new name is carried onto every ride you drive or sit in by the
  * server (`services.rename_person`), so this is also how a misspelt surname
  * gets fixed without losing your history.
  */
@@ -32,7 +32,8 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
   const t = useT()
   const [firstName, setFirstName] = useState(user.first_name)
   const [lastName, setLastName] = useState(user.last_name)
-  const [email, setEmail] = useState(user.email)
+  const [email, setEmail] = useState(user.email ?? '')
+  const [phone, setPhone] = useState(user.phone ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -41,9 +42,10 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
   const changed =
     firstName.trim() !== user.first_name ||
     lastName.trim() !== user.last_name ||
-    email.trim() !== user.email ||
+    email.trim() !== (user.email ?? '') ||
+    phone.trim() !== (user.phone ?? '') ||
     newPassword.length > 0
-  const ready = changed && firstName.trim() && lastName.trim() && email.trim() && (!newPassword || currentPassword)
+  const ready = changed && firstName.trim() && lastName.trim() && (!newPassword || currentPassword)
 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -51,7 +53,9 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
     const patch: ProfilePatch = {}
     if (firstName.trim() !== user.first_name) patch.first_name = firstName.trim()
     if (lastName.trim() !== user.last_name) patch.last_name = lastName.trim()
-    if (email.trim() !== user.email) patch.email = email.trim()
+    // An emptied box goes out as '', which removes it.
+    if (email.trim() !== (user.email ?? '')) patch.email = email.trim()
+    if (phone.trim() !== (user.phone ?? '')) patch.phone = phone.trim()
     if (newPassword) {
       patch.current_password = currentPassword
       patch.new_password = newPassword
@@ -118,7 +122,24 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
       <p className="hint">{t.account.nameHint}</p>
 
       <label className="field">
-        <span className="field-label">{t.account.emailSection}</span>
+        <span className="field-label">
+          {t.account.phoneSection} <span className="field-optional">{t.auth.optional}</span>
+        </span>
+        <input
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          maxLength={40}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </label>
+      <p className="hint">{t.auth.phoneHint}</p>
+
+      <label className="field">
+        <span className="field-label">
+          {t.account.emailSection} <span className="field-optional">{t.auth.optional}</span>
+        </span>
         <input
           type="email"
           autoComplete="email"
@@ -129,6 +150,7 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
           onChange={(e) => setEmail(e.target.value)}
         />
       </label>
+      <p className="hint">{t.auth.emailHint}</p>
 
       <h3 className="account-section">{t.account.passwordSection}</h3>
       <div className="grid-2">

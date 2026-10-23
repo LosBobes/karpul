@@ -38,8 +38,8 @@ Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the sh
 
 FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, shipped as **one container**: the multi-stage `Dockerfile` builds the frontend and copies `dist` into the Python image, and `backend/app/main.py` mounts it at `/` behind the `/api` routes (`KARPUL_FRONTEND_DIST`). Anything unmatched falls through to `index.html` — so any new API route must live under `/api`, or the SPA catch-all will swallow it.
 
-**Accounts, on top of a name-keyed board.** A person registers with a username, an email, a
-first name and a surname (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
+**Accounts, on top of a name-keyed board.** A person registers with a username, a
+first name and a surname, plus an optional email and mobile number (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
 `display_name` and *that* is what every ride and booking stores, so the board itself never
 learned about accounts. `User.name_key` is the normalised display name, unique, so two
 accounts can never answer to one name. Passwords are PBKDF2-HMAC-SHA256 from the standard
@@ -66,6 +66,12 @@ On the frontend `lib/auth.ts` is an external store (like the theme and the local
 the token and the account in `localStorage` under `karpul.auth`; `lib/api.ts` attaches the
 bearer token to every call and clears the store on a 401. `App.tsx` is the door: with no
 session it renders `AuthGate` and nothing else, so the board never loads signed out.
+
+**Calling the driver.** `User.phone` is optional and shown on the rides that person drives:
+`RideRead.driver_phone` is looked up by `name_key` (`driver_phones` in `services.py`, one query for
+the whole board in `GET /api/rides`), and `CarDetail` turns it into a *Call the driver* `tel:` link
+for everyone but the driver. Email is optional too; the production `appuser.email` started out
+NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
 
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 

@@ -13,7 +13,8 @@ const MODES: Mode[] = ['in', 'up']
 /**
  * The door. Nothing of the board is drawn until somebody is signed in, so this
  * is the whole screen: sign in with a username (or the email) and a password,
- * or register, which signs the new account in straight away.
+ * or register, which signs the new account in straight away. The email and the
+ * mobile number are optional and say so in their labels.
  *
  * The two tabs slide the way the other switched views do (lib/motion.ts), and
  * the language switch sits at the foot because a newcomer meets this screen
@@ -25,6 +26,7 @@ export function AuthGate() {
   const [login, setLogin] = useState('')
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
@@ -35,7 +37,7 @@ export function AuthGate() {
   const ready =
     mode === 'in'
       ? login.trim().length > 0 && password.length > 0
-      : [username, email, firstName, lastName].every((v) => v.trim().length > 0) && password.length > 0
+      : [username, firstName, lastName].every((v) => v.trim().length > 0) && password.length > 0
 
   function pick(next: Mode) {
     if (next === mode) return
@@ -54,7 +56,8 @@ export function AuthGate() {
           ? await api.login(login.trim(), password)
           : await api.register({
               username: username.trim(),
-              email: email.trim(),
+              email: email.trim() || undefined,
+              phone: phone.trim() || undefined,
               first_name: firstName.trim(),
               last_name: lastName.trim(),
               password,
@@ -144,7 +147,23 @@ export function AuthGate() {
                 </label>
                 <p className="hint">{t.auth.usernameHint}</p>
                 <label className="field">
-                  <span className="field-label">{t.auth.email}</span>
+                  <span className="field-label">
+                    {t.auth.phone} <span className="field-optional">{t.auth.optional}</span>
+                  </span>
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    maxLength={40}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </label>
+                <p className="hint">{t.auth.phoneHint}</p>
+                <label className="field">
+                  <span className="field-label">
+                    {t.auth.email} <span className="field-optional">{t.auth.optional}</span>
+                  </span>
                   <input
                     type="email"
                     autoComplete="email"
@@ -155,6 +174,7 @@ export function AuthGate() {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </label>
+                <p className="hint">{t.auth.emailHint}</p>
               </>
             )}
 
