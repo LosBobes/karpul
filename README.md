@@ -110,7 +110,10 @@ first admin of a deployment comes to be: register, put your username there, rest
 admins are made from the app; the last one cannot be removed. An admin can also delete an
 account: its coming rides are cancelled (the passengers are told), its seats go to whoever is
 waiting and its requests are withdrawn, while its past rides keep its name. *Company cars* has
-a *Usage* tab whose rides download as a spreadsheet.
+a *Usage* tab whose rides download as a spreadsheet. *All rides* is every ride between two dates,
+coming or past, as one sortable table (driver, car, route, passengers, km, chip-in, note), with
+filters for the car type and a search, and a download of the rows on screen as a spreadsheet that
+Excel opens directly with German or Serbian settings.
 
 ### Countries
 
@@ -210,6 +213,7 @@ its secret).
 | `GET` | `/api/admin/users` | Every account (admin) |
 | `PATCH` | `/api/admin/users/{id}` | `{ "is_admin": true }` (admin; the last admin stays) |
 | `POST` | `/api/admin/users/{id}/reset-link` | A one-time password reset link (admin) |
+| `GET` | `/api/admin/rides?from=&to=` | Every ride in a window of up to three years, past included (admin) |
 | `DELETE` | `/api/admin/users/{id}` | Delete an account: its coming rides, seats, queue places and requests go, its past stays (admin; not yourself, not the last admin) |
 | `GET` | `/api/cars/corporate` | Active company cars; `?include_inactive=true` adds retired ones (admin) |
 | `POST` | `/api/cars/corporate` | Add a company car (admin) |

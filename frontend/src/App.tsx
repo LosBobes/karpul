@@ -14,6 +14,7 @@ import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
 import { PeopleAdmin } from './components/PeopleAdmin'
+import { RideLog } from './components/RideLog'
 import { RequestForm } from './components/RequestForm'
 import { RequestList } from './components/RequestList'
 import { UpdateScreen } from './components/UpdateScreen'
@@ -113,6 +114,7 @@ function Board({ session }: { session: Session }) {
   const isAdmin = user.is_admin
   const [adminOpen, setAdminOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
+  const [rideLogOpen, setRideLogOpen] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -734,6 +736,7 @@ function Board({ session }: { session: Session }) {
             onAccount={() => setAccountOpen(true)}
             onCompanyCars={openAdmin}
             onPeople={() => setPeopleOpen(true)}
+            onRideLog={() => setRideLogOpen(true)}
             onGuide={() => setGuideOpen(true)}
             onMyRides={() => setMyRidesOpen(true)}
             onNotifications={() => setNotifOpen(true)}
@@ -807,6 +810,8 @@ function Board({ session }: { session: Session }) {
         )}
 
         {peopleOpen && isAdmin && <PeopleAdmin onNotice={notice} onClose={closePeople} />}
+
+        {rideLogOpen && isAdmin && <RideLog onClose={() => setRideLogOpen(false)} />}
 
         {confirmState && (
           <ConfirmDialog

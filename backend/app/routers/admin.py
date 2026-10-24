@@ -2,13 +2,16 @@
 `routers/cars.py`). An admin sees every account, can make another account an
 admin or stop it being one, and can hand someone who forgot their password a
 one-time link to set a new one; there is no email to send it by, so the admin
-passes it on however the team talks. An admin can also delete an account.
+passes it on however the team talks. An admin can also delete an account,
+and look every ride up in one table (`/rides`), past ones included; the
+app turns what is on screen into a spreadsheet itself.
 """
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, delete, select
 
 from ..admin import admin_by_config, configured_admins, is_admin, require_admin
@@ -26,8 +29,8 @@ from ..models import (
     WaitlistEntry,
 )
 from ..push import notify
-from ..schemas import AdminUserRead, AdminUserUpdate, ResetLinkOut
-from ..services import promote_waitlist
+from ..schemas import AdminUserRead, AdminUserUpdate, ResetLinkOut, RideRead
+from ..services import board_extras, promote_waitlist, to_ride_read_dict
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -194,3 +197,43 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
     for request in reopened:
         session.refresh(request)
         request_saved(request)
+
+
+# The rides table looks further than the board's 92 days: an office keeps a
+# year or two of history, and this is an admin's lookup, not every tab's reload.
+MAX_LOG_DAYS = 3 * 366
+
+
+def _log_rides(session: Session, date_from: date | None, date_to: date | None) -> tuple[date, date, list[Ride]]:
+    """Every ride from `date_from` to `date_to` inclusive, in the board's order.
+    Without dates: the last 30 days and the next 90."""
+    today = date.today()
+    date_from = date_from or (date_to - timedelta(days=120) if date_to else today - timedelta(days=30))
+    date_to = date_to or date_from + timedelta(days=120)
+    if date_to < date_from:
+        raise HTTPException(422, "`to` must not be before `from`")
+    if (date_to - date_from).days > MAX_LOG_DAYS:
+        raise HTTPException(422, f"Range may not exceed {MAX_LOG_DAYS} days")
+    stmt = (
+        select(Ride)
+        .where(Ride.ride_date >= date_from, Ride.ride_date <= date_to)
+        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist))  # type: ignore[arg-type]
+        .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
+    )
+    return date_from, date_to, list(session.exec(stmt).all())
+
+
+@router.get("/rides", response_model=list[RideRead])
+def ride_log(
+    session: SessionDep,
+    creds: CredsDep,
+    date_from: date | None = Query(default=None, alias="from"),
+    date_to: date | None = Query(default=None, alias="to"),
+):
+    """Admin-only: every ride in a window of up to MAX_LOG_DAYS, past or
+    coming, as the board shows them."""
+    require_admin(session, creds)
+    _, _, rides = _log_rides(session, date_from, date_to)
+    extras = board_extras(session, rides)
+    return [to_ride_read_dict(r, extras) for r in rides]
+

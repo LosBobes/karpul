@@ -31,6 +31,7 @@
   "Only the person who asked can withdraw a request",
   "Pickup must be the ride's origin or one of its stops",
   "Push notifications are not configured on this server",
+  "Range may not exceed 3 days",
   "Range may not exceed 92 days",
   "Ride not found",
   "Ride request not found",

@@ -293,6 +293,13 @@ export const GarageIcon = icon(
     <path d="M7 17.5h10" />
   </>,
 )
+/** A sheet of rows and columns: the admin's table of every ride. */
+export const TableIcon = icon(
+  <>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" />
+    <path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10" />
+  </>,
+)
 /** A charging plug on its cable: the company car guide. */
 export const PlugIcon = icon(
   <>

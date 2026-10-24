@@ -235,6 +235,9 @@ export const api = {
   /** Delete an account: its coming rides, seats and requests go, its past stays. */
   deleteUser: (userId: number) => request<void>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
 
+  /** Every ride from `from` to `to`, past ones included (the admin's table, components/RideLog.tsx). */
+  rideLog: (from: string, to: string) => request<Ride[]>(`/api/admin/rides?from=${from}&to=${to}`),
+
   /** A one-time link for someone who forgot their password; any older one stops working. */
   resetLink: (userId: number) =>
     request<{ path: string; expires_at: string }>(`/api/admin/users/${userId}/reset-link`, { method: 'POST' }),
