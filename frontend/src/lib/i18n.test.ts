@@ -35,6 +35,10 @@ describe('server errors in Serbian', () => {
     )
   })
 
+  it('says plainly when the server could not be reached', () => {
+    expect(sr().apiError('No connection to the server')).toBe('Nema veze sa serverom')
+  })
+
   it('leaves English alone', () => {
     setLocale('en')
     expect(messages().apiError('Ride not found')).toBe('Ride not found')

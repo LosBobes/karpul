@@ -683,6 +683,8 @@ const srPassengers = (n: number) => srPlural(n, 'putnik', 'putnika', 'putnika')
 /** The server's wordings (routers/rides.py, routers/cars.py, services.py, schemas.py), in Serbian. */
 const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Ride not found$/, () => 'Vožnja nije pronađena'],
+  // Not the server's: lib/api.ts says this when no answer came back at all.
+  [/^No connection to the server$/, () => 'Nema veze sa serverom'],
   [/^Booking not found$/, () => 'Rezervacija nije pronađena'],
   [/^Corporate car not found$/, () => 'Službeni auto nije pronađen'],
   [/^No free seats left$/, () => 'Nema više slobodnih mesta'],
