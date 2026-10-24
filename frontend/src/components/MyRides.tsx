@@ -1,42 +1,58 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { setUser, type AuthUser } from '../lib/auth'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import type { PersonStats, StatBucket } from '../lib/types'
 import { Avatar } from './Avatar'
-import { CalendarIcon, CopyIcon } from './icons'
+import { CalendarIcon, CopyIcon, RepeatIcon } from './icons'
 import { Sheet } from './Sheet'
 
 interface Props {
-  userName: string
-  onEditName: () => void
+  user: AuthUser
+  /** A line for the board's toast. */
+  onNotice: (text: string) => void
   onClose: () => void
 }
 
 /**
  * Your rides: the figures for this month and all time, the past rides, and
- * the calendar feed address. Read from `/api/stats/me` for the name in this
- * browser; there is no account, so it is the name's history, not a person's.
+ * the calendar feed address. The figures are the signed-in account's own
+ * (`/api/stats/me`); the feed address carries a secret of its own, because a
+ * calendar app cannot sign in, and a new one cuts off every old subscription.
  */
-export function MyRides({ userName, onEditName, onClose }: Props) {
+export function MyRides({ user, onNotice, onClose }: Props) {
   const t = useT()
+  const userName = user.display_name
   const [stats, setStats] = useState<PersonStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [rotating, setRotating] = useState(false)
 
   useEffect(() => {
-    if (!userName) return
     let live = true
     api
-      .myStats(userName)
+      .myStats()
       .then((s) => live && setStats(s))
       .catch((e) => live && setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong))
     return () => {
       live = false
     }
-  }, [userName])
+  }, [])
 
-  const feedUrl = userName ? new URL(api.calendarFeedUrl(userName), window.location.origin).href : ''
+  const feedUrl = user.calendar_token ? new URL(api.calendarFeedUrl(user.calendar_token), window.location.origin).href : ''
+
+  async function rotateFeed() {
+    setRotating(true)
+    try {
+      setUser(await api.rotateCalendarToken())
+      onNotice(messages().myRides.feedChanged)
+    } catch (e) {
+      setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong)
+    } finally {
+      setRotating(false)
+    }
+  }
 
   async function copyFeed() {
     try {
@@ -50,13 +66,7 @@ export function MyRides({ userName, onEditName, onClose }: Props) {
 
   return (
     <Sheet id="my-rides-title" title={t.myRides.title} onClose={onClose}>
-      {!userName ? (
-        <button type="button" className="card empty-card empty-card-btn" onClick={onEditName}>
-          <strong>{t.empty.whoAreYou}</strong>
-          <span>{t.myRides.nameFirst}</span>
-        </button>
-      ) : (
-        <>
+      <>
           <div className="driver-pill">
             <Avatar name={userName} size="sm" />
             <span>{userName}</span>
@@ -72,11 +82,15 @@ export function MyRides({ userName, onEditName, onClose }: Props) {
               <div className="feed-row">
                 <CalendarIcon size={18} />
                 <code className="feed-url">{feedUrl}</code>
-                <button type="button" className="btn btn-soft" onClick={() => void copyFeed()}>
+                <button type="button" className="btn btn-soft" disabled={!feedUrl} onClick={() => void copyFeed()}>
                   <CopyIcon size={16} /> {copied ? t.toasts.linkCopied : t.common.copy}
                 </button>
               </div>
               <p className="hint">{t.myRides.feedHint}</p>
+              <button type="button" className="link feed-new" disabled={rotating} onClick={() => void rotateFeed()}>
+                <RepeatIcon size={15} /> {t.myRides.feedNew}
+              </button>
+              <p className="hint hint-tight">{t.myRides.feedNewHint}</p>
 
               <h3 className="section-title">{t.myRides.history}</h3>
               {stats.history.length === 0 ? (
@@ -105,8 +119,7 @@ export function MyRides({ userName, onEditName, onClose }: Props) {
           ) : (
             !error && <p className="hint">{t.common.loading}</p>
           )}
-        </>
-      )}
+      </>
     </Sheet>
   )
 }

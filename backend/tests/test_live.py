@@ -7,8 +7,6 @@ import pytest
 from app.events import hub
 
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
-PASSWORD = "let-me-in"
-AUTH = {"X-Admin-Password": PASSWORD}
 
 
 def own_ride(**overrides):
@@ -87,24 +85,33 @@ def test_every_client_gets_the_event(client):
         assert b.receive_json()["type"] == "ride.created"
 
 
-@pytest.fixture()
-def admin(monkeypatch):
-    monkeypatch.setenv("KARPUL_ADMIN_PASSWORD", PASSWORD)
-
-
-def test_car_pool_edits_are_broadcast(client, admin):
+def test_car_pool_edits_are_broadcast(client, admin_auth):
     with client.websocket_connect("/api/ws") as ws:
         ws.receive_json()  # hello
         car = client.post(
-            "/api/cars/corporate", json={"name": "Fiat Panda", "plate": "FIRM-009", "passenger_seats": 3}, headers=AUTH
+            "/api/cars/corporate", json={"name": "Fiat Panda", "plate": "FIRM-009", "passenger_seats": 3}, headers=admin_auth
         ).json()
         assert ws.receive_json() == {"type": "cars.changed"}
-        client.patch(f"/api/cars/corporate/{car['id']}", json={"name": "Fiat Panda II"}, headers=AUTH)
+        client.patch(f"/api/cars/corporate/{car['id']}", json={"name": "Fiat Panda II"}, headers=admin_auth)
         assert ws.receive_json() == {"type": "cars.changed"}
-        client.delete(f"/api/cars/corporate/{car['id']}", headers=AUTH)
+        client.delete(f"/api/cars/corporate/{car['id']}", headers=admin_auth)
         assert ws.receive_json() == {"type": "cars.changed"}
 
 
 def test_publish_with_no_subscribers_is_a_noop(client):
     # No socket open: mutations must not fail just because nobody is listening.
     assert client.post("/api/rides", json=own_ride()).status_code == 201
+
+
+def test_a_socket_that_does_not_sign_in_is_closed(client):
+    from starlette.websockets import WebSocketDisconnect
+
+    from app.routers.live import CLOSE_UNAUTHORIZED
+
+    for first in ({"type": "auth", "token": "not-a-token"}, {"type": "hello"}):
+        with client.anon.websocket_connect("/api/ws") as ws:
+            ws.send_json(first)
+            with pytest.raises(WebSocketDisconnect) as closed:
+                ws.receive_json()
+            assert closed.value.code == CLOSE_UNAUTHORIZED
+    assert hub.connections == 0

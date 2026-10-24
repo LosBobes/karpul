@@ -4,20 +4,20 @@ import { BellIcon } from './icons'
 import { Sheet } from './Sheet'
 
 interface Props {
-  userName: string
   onChanged: (on: boolean) => void
   onClose: () => void
 }
 
 /**
  * The push switch. What it can offer depends on the browser (Push API and a
- * service worker), the server (a VAPID key) and the person (a name and the
- * permission); `usePush` works that out and this sheet says it in words.
+ * service worker), the server (a VAPID key) and the person (the permission);
+ * `usePush` works that out and this sheet says it in words. The pushes go to
+ * the signed-in account, whichever browsers it switched them on in.
  */
-export function NotificationsSheet({ userName, onChanged, onClose }: Props) {
+export function NotificationsSheet({ onChanged, onClose }: Props) {
   const t = useT()
-  const { state, error, enable, disable } = usePush(userName)
-  const canToggle = !!userName && (state === 'on' || state === 'off')
+  const { state, error, enable, disable } = usePush()
+  const canToggle = state === 'on' || state === 'off'
 
   const status =
     state === 'unsupported'
@@ -26,13 +26,11 @@ export function NotificationsSheet({ userName, onChanged, onClose }: Props) {
         ? t.notif.unavailable
         : state === 'denied'
           ? t.notif.denied
-          : !userName
-            ? t.notif.nameFirst
-            : state === 'on'
-              ? t.notif.on
-              : state === 'off'
-                ? t.notif.off
-                : t.common.loading
+          : state === 'on'
+            ? t.notif.on
+            : state === 'off'
+              ? t.notif.off
+              : t.common.loading
 
   return (
     <Sheet

@@ -11,17 +11,16 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import Session
 
-from .models import Ride
-from .services import norm_name, stops_from_text
+from .models import Ride, User
+from .services import rides_of, stops_from_text
 
 PRODID = "-//Karpul//Karpul rides//EN"
 
 
 def _escape(text: str) -> str:
-    return text.replace("\\", "\\\\").replace(";", "\;").replace(",", "\\,").replace("\n", "\\n")
+    return text.replace("\\", "\\\\").replace(";", r"\;").replace(",", "\\,").replace("\n", "\\n")
 
 
 def _fold(line: str) -> str:
@@ -90,19 +89,8 @@ def ride_ics(ride: Ride) -> str:
     return _calendar("Karpul", [ride_event(ride)])
 
 
-def person_ics(session: Session, name: str, today: date | None = None) -> str:
-    """Every ride `name` drives or rides in, from a week back to a year ahead."""
+def person_ics(session: Session, user: User, today: date | None = None) -> str:
+    """Every ride `user` drives or rides in, from a week back to a year ahead."""
     today = today or date.today()
-    who = norm_name(name)
-    stmt = (
-        select(Ride)
-        .where(Ride.ride_date >= today - timedelta(days=7), Ride.ride_date <= today + timedelta(days=365))
-        .options(selectinload(Ride.bookings))  # type: ignore[arg-type]
-        .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
-    )
-    rides = [
-        r
-        for r in session.exec(stmt)
-        if norm_name(r.driver_name) == who or any(norm_name(b.passenger_name) == who for b in r.bookings)
-    ]
-    return _calendar(f"Karpul: {name}", [ride_event(r) for r in rides])
+    rides = rides_of(session, user, today - timedelta(days=7), today + timedelta(days=365))
+    return _calendar(f"Karpul: {user.display_name}", [ride_event(r) for r in rides])

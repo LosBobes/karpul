@@ -205,7 +205,9 @@ class ProfileUpdate(BaseModel):
 
 
 class UserRead(BaseModel):
-    """An account as its owner sees it. Never carries the password hash."""
+    """An account as its owner sees it. Never carries the password hash.
+    Build it with `routers.auth.user_read`, which fills in `is_admin` as the
+    server sees it (the flag or KARPUL_ADMINS)."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -216,7 +218,52 @@ class UserRead(BaseModel):
     first_name: str
     last_name: str
     display_name: str
+    is_admin: bool = False
+    # The secret in this person's calendar feed address; theirs alone to see.
+    calendar_token: str | None = None
     created_at: datetime
+
+
+class AdminUserRead(BaseModel):
+    """An account in the admin's list of people."""
+
+    id: int
+    username: str
+    display_name: str
+    email: str | None
+    phone: str | None
+    is_admin: bool
+    # An admin through KARPUL_ADMINS, which the app cannot change.
+    admin_by_config: bool
+    created_at: datetime
+
+
+class AdminUserUpdate(BaseModel):
+    is_admin: bool
+
+
+class ResetLinkOut(BaseModel):
+    """A one-time password reset link for the admin to pass on."""
+
+    path: str
+    expires_at: datetime
+
+
+class ResetInfo(BaseModel):
+    """Who a reset link belongs to, so the page can greet them by name."""
+
+    username: str
+    display_name: str
+
+
+class ResetIn(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=1, max_length=200)
+
+    @field_validator("new_password")
+    @classmethod
+    def check_password(cls, v: str) -> str:
+        return _check_password(v)
 
 
 class AuthOut(BaseModel):
@@ -231,8 +278,61 @@ class BookingRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    # None for a colleague put in by name who has no account yet.
+    passenger_id: int | None
     passenger_name: str
     pickup: str
+    created_at: datetime
+
+
+class WaitlistRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    name: str
+    pickup: str
+    created_at: datetime
+
+
+class WaitlistJoin(BaseModel):
+    # Where to get in once a seat frees up: "" is the origin, else one of the stops.
+    pickup: str = Field(default="", max_length=120)
+
+    @field_validator("pickup")
+    @classmethod
+    def clean_pickup(cls, v: str) -> str:
+        return " ".join(v.split())
+
+
+MAX_MESSAGE = 500
+
+
+class MessageIn(BaseModel):
+    body: str = Field(min_length=1, max_length=MAX_MESSAGE)
+
+    @field_validator("body")
+    @classmethod
+    def clean_body(cls, v: str) -> str:
+        # Line breaks are kept (a message may be an address on two lines);
+        # runs of blank lines and the edges are not.
+        lines = [" ".join(line.split()) for line in v.strip().splitlines()]
+        cleaned = "\n".join(lines)
+        while "\n\n\n" in cleaned:
+            cleaned = cleaned.replace("\n\n\n", "\n\n")
+        if not cleaned:
+            raise ValueError("must not be empty")
+        return cleaned
+
+
+class MessageRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ride_id: int
+    author_id: int | None
+    author_name: str
+    body: str
     created_at: datetime
 
 
@@ -288,7 +388,9 @@ class RideBase(BaseModel):
     car_type: CarType
     car_name: str = Field(default="", max_length=80)
     corporate_car_id: int | None = None
-    driver_name: str = Field(min_length=1, max_length=80)
+    # Always the signed-in account's name on the way in (routers/rides.py);
+    # a client-supplied value is ignored.
+    driver_name: str = Field(default="", max_length=80)
     origin: str = Field(min_length=1, max_length=120)
     destination: str = Field(min_length=1, max_length=120)
     departure_time: time
@@ -328,6 +430,9 @@ class RideCreate(RideBase):
     # "Repeat weekly until": one ride per week on the same weekday, from
     # `ride_date` to this date inclusive. Not stored; the rides share a series id.
     repeat_until: date | None = None
+    # A ride offered in answer to someone's request (RideRequest): the
+    # requester is put in the car. Not stored on the ride.
+    request_id: int | None = None
 
     @model_validator(mode="after")
     def check_repeat(self) -> "RideCreate":
@@ -379,7 +484,50 @@ class RideRead(BaseModel):
     chip_in: str
     series_id: str | None
     created_at: datetime
+    driver_id: int | None
     # The driver's mobile number when their account has one, for "Call the driver".
     driver_phone: str | None = None
     bookings: list[BookingRead]
+    # Waiting for a seat while the car is full, first in line first.
+    waitlist: list[WaitlistRead] = []
+    message_count: int = 0
     free_seats: int
+
+
+# --- ride requests ------------------------------------------------------------
+
+
+class RideRequestCreate(BaseModel):
+    request_date: date
+    origin: str = Field(min_length=1, max_length=120)
+    destination: str = Field(min_length=1, max_length=120)
+    departure_time: time
+    note: str = Field(default="", max_length=300)
+
+    @field_validator("origin", "destination", "note")
+    @classmethod
+    def strip_text(cls, v: str) -> str:
+        return " ".join(v.split())
+
+    @field_validator("origin", "destination")
+    @classmethod
+    def not_blank(cls, v: str) -> str:
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+
+class RideRequestRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    request_date: date
+    user_id: int
+    name: str
+    origin: str
+    destination: str
+    departure_time: time
+    note: str
+    # The ride that answered it; None while it is open.
+    ride_id: int | None
+    created_at: datetime

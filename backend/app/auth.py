@@ -1,27 +1,18 @@
 """Accounts: username + password sign-in.
 
-Karpul was built without accounts (see `app/admin.py` and the README): whoever
-typed a name into the browser was that person, and `X-User-Name` carried it.
-This module adds real accounts on top of that, without throwing the old rule
-away:
-
 * A browser signs in once and keeps an opaque token (`AuthSession`), sent as
   `Authorization: Bearer <token>`. The token is stored only as its SHA-256.
 * Passwords are PBKDF2-HMAC-SHA256 from the standard library, in the
   `pbkdf2_sha256$<rounds>$<salt>$<hash>` shape, so the cost can be raised later
   without invalidating anybody's password. No new dependency: the deployment
   already fights with packages that need a compiler (see `app/webpush.py`).
-* `actor_name` is the one answer to "who is doing this?". A valid token wins;
-  otherwise the old `X-User-Name` header is honoured, unless the server is
-  started with `KARPUL_REQUIRE_LOGIN=1`, which turns the honour system off and
-  makes a token the only way to act.
-
-The flag is read per request, not at import, like `KARPUL_ADMIN_PASSWORD`.
+* `require_user` is the one answer to "who is doing this?", for reading the
+  board as much as for changing it. There is no anonymous way in: the
+  honour-based `X-User-Name` header Karpul started with is gone.
 """
 
 import hashlib
 import hmac
-import os
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -31,8 +22,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 from sqlmodel import Session, select
 
-from .models import AuthSession, User, utcnow
-from .services import norm_name, user_from_header
+from .models import AuthSession, PasswordReset, User, utcnow
 
 HASH_ALGO = "sha256"
 HASH_NAME = f"pbkdf2_{HASH_ALGO}"
@@ -128,13 +118,50 @@ def end_session(session: Session, raw: str) -> bool:
     return True
 
 
-def end_other_sessions(session: Session, user: User, keep: str | None) -> None:
-    """Sign every other browser of `user` out (after a password change)."""
+def end_other_sessions(session: Session, user: User, keep: str | None) -> int:
+    """Sign every other browser of `user` out (after a password change, or on
+    request); `keep=None` signs them all out. Returns how many. The caller commits."""
     keep_hash = hash_token(keep) if keep else None
     rows = session.exec(select(AuthSession).where(AuthSession.user_id == user.id)).all()
+    ended = 0
     for row in rows:
         if row.token_hash != keep_hash:
             session.delete(row)
+            ended += 1
+    return ended
+
+
+# --- password reset links ----------------------------------------------------
+
+# How long an admin-issued reset link works.
+RESET_HOURS = 48
+
+
+def issue_reset(session: Session, user: User) -> tuple[str, PasswordReset]:
+    """A fresh one-time reset token for `user`; any older unused one stops
+    working, so only the link handed over last is live. The caller commits."""
+    for old in session.exec(
+        select(PasswordReset).where(PasswordReset.user_id == user.id, PasswordReset.used_at.is_(None))  # type: ignore[union-attr]
+    ):
+        session.delete(old)
+    raw = secrets.token_urlsafe(TOKEN_BYTES)
+    row = PasswordReset(
+        token_hash=hash_token(raw),
+        user_id=user.id,  # type: ignore[arg-type]
+        expires_at=utcnow() + timedelta(hours=RESET_HOURS),
+    )
+    session.add(row)
+    return raw, row
+
+
+def reset_for_token(session: Session, raw: str) -> PasswordReset | None:
+    """The live reset behind a raw token: known, unused and not expired."""
+    row = session.exec(select(PasswordReset).where(PasswordReset.token_hash == hash_token(raw))).first()
+    if row is None or row.used_at is not None:
+        return None
+    if _as_utc(row.expires_at) <= datetime.now(timezone.utc):
+        return None
+    return row
 
 
 # --- who is doing this? ------------------------------------------------------
@@ -142,7 +169,7 @@ def end_other_sessions(session: Session, user: User, keep: str | None) -> None:
 
 @dataclass(frozen=True)
 class Credentials:
-    """The identity headers of one request, read but not yet resolved.
+    """The bearer token of one request, read but not yet resolved.
 
     Deliberately free of database access: a mutating route takes the write lock
     on its session first (`database.begin_write`, which refuses a session that
@@ -151,69 +178,40 @@ class Credentials:
     """
 
     token: str | None = None
-    name: str | None = None
 
 
-def credentials(
-    authorization: Annotated[str | None, Header()] = None,
-    x_user_name: Annotated[str | None, Header(alias="X-User-Name")] = None,
-) -> Credentials:
-    token = None
+def bearer_token(authorization: str | None) -> str | None:
     if authorization and authorization.lower().startswith("bearer "):
-        token = authorization[7:].strip() or None
-    return Credentials(token=token, name=user_from_header(x_user_name))
+        return authorization[7:].strip() or None
+    return None
+
+
+def credentials(authorization: Annotated[str | None, Header()] = None) -> Credentials:
+    return Credentials(token=bearer_token(authorization))
 
 
 CredsDep = Annotated[Credentials, Depends(credentials)]
 
 
-def login_required() -> bool:
-    """`KARPUL_REQUIRE_LOGIN=1`: no account, no actions. Off by default, which
-    keeps the honour-based `X-User-Name` path the README describes."""
-    return os.getenv("KARPUL_REQUIRE_LOGIN", "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def current_user(session: Session, creds: Credentials) -> User | None:
-    """The signed-in account, or None when the request carries no token.
-
-    A token that is unknown or expired is an error, not "anonymous": the
-    browser is holding a dead session and has to be told to sign in again.
-    """
-    if not creds.token:
+def user_for_token(session: Session, token: str | None) -> User | None:
+    """The account behind a raw token, or None when it is unknown or expired."""
+    if not token:
         return None
-    row = session_for_token(session, creds.token)
-    if row is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired; sign in again")
-    user = session.get(User, row.user_id)
-    if user is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired; sign in again")
-    return user
-
-
-def actor_name(session: Session, creds: Credentials) -> str | None:
-    """Who the request acts as, by display name, or None if it says nobody."""
-    user = current_user(session, creds)
-    if user is not None:
-        return user.display_name
-    if login_required():
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in to do that")
-    return creds.name
-
-
-def require_actor(session: Session, creds: Credentials) -> str:
-    name = actor_name(session, creds)
-    if not name:
-        raise HTTPException(
-            status.HTTP_401_UNAUTHORIZED, "Sign in first (or send the X-User-Name header)"
-        )
-    return name
+    row = session_for_token(session, token)
+    return session.get(User, row.user_id) if row is not None else None
 
 
 def require_user(session: Session, creds: Credentials) -> User:
-    """For the account endpoints themselves: a token, or 401."""
-    user = current_user(session, creds)
-    if user is None:
+    """The signed-in account, or 401.
+
+    A token that is unknown or expired gets its own wording: the browser is
+    holding a dead session and drops it (lib/api.ts), which shows the door again.
+    """
+    if not creds.token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in first")
+    user = user_for_token(session, creds.token)
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired; sign in again")
     return user
 
 
@@ -225,7 +223,3 @@ def user_by_login(session: Session, login: str) -> User | None:
     return session.exec(
         select(User).where((User.username == key) | (User.email == key))
     ).first()
-
-
-def user_by_name_key(session: Session, name: str) -> User | None:
-    return session.exec(select(User).where(User.name_key == norm_name(name))).first()

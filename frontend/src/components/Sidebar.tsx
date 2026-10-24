@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AccountIcon, BellDotIcon, GarageIcon, PlugIcon, RouteIcon, XIcon } from './icons'
+import { AccountIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -12,8 +12,11 @@ interface Props {
   userName: string
   /** The account's username, shown under the name in the identity block. */
   handle: string
+  /** An admin also sees the company-car pool and the people (backend: app/admin.py). */
+  isAdmin: boolean
   onAccount: () => void
   onCompanyCars: () => void
+  onPeople: () => void
   onGuide: () => void
   onMyRides: () => void
   onNotifications: () => void
@@ -25,7 +28,7 @@ interface Item {
   hint?: string
   icon: ReactNode
   /** The tint of the icon's tile, one per item so the menu reads by colour too. */
-  tone: 'blue' | 'violet' | 'amber' | 'green' | 'teal'
+  tone: 'blue' | 'violet' | 'amber' | 'green' | 'teal' | 'rose'
   onSelect: () => void
   disabled?: boolean
 }
@@ -33,11 +36,12 @@ interface Item {
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
  * top bar. It holds the things that are not about one particular ride: your
- * account, your rides and figures, notifications, the company-car pool and its
- * guide, and at the bottom the appearance and the language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
+ * account, your rides and figures, notifications, the company-car guide, and
+ * for an admin the pool and the people; at the bottom the appearance and the
+ * language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
  * it opens is the only thing left on screen.
  */
-export function Sidebar({ userName, handle, onAccount, onCompanyCars, onGuide, onMyRides, onNotifications, onClose }: Props) {
+export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onGuide, onMyRides, onNotifications, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
   // The drawer slides back out before it unmounts, whichever way it is closed.
@@ -97,19 +101,30 @@ export function Sidebar({ userName, handle, onAccount, onCompanyCars, onGuide, o
       onSelect: pick(onNotifications),
     },
     {
-      label: t.sidebar.cars,
-      hint: t.sidebar.carsHint,
-      icon: <GarageIcon size={20} />,
-      tone: 'green',
-      onSelect: pick(onCompanyCars),
-    },
-    {
       label: t.sidebar.guide,
       hint: t.sidebar.guideHint,
       icon: <PlugIcon size={20} />,
       tone: 'teal',
       onSelect: pick(onGuide),
     },
+    ...(isAdmin
+      ? ([
+          {
+            label: t.sidebar.cars,
+            hint: t.sidebar.carsHint,
+            icon: <GarageIcon size={20} />,
+            tone: 'green',
+            onSelect: pick(onCompanyCars),
+          },
+          {
+            label: t.sidebar.people,
+            hint: t.sidebar.peopleHint,
+            icon: <PeopleIcon size={20} />,
+            tone: 'rose',
+            onSelect: pick(onPeople),
+          },
+        ] satisfies Item[])
+      : []),
   ]
 
   return (

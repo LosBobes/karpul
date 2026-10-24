@@ -2,13 +2,11 @@ import { useT } from '../lib/i18n'
 import { CarIcon } from './icons'
 
 interface Props {
-  userName: string
   isPast: boolean
   /** Title when there is nothing yet; the default speaks of a day. */
   emptyTitle?: string
   /** The board is empty altogether: say what the two views are for. */
   intro?: boolean
-  onEditName: () => void
 }
 
 /**
@@ -16,7 +14,7 @@ interface Props {
  * "nothing went". It does not add a ride itself; that is the floating plus
  * (components/AddRideButton.tsx), which the hint points at.
  */
-export function AddCarCard({ userName, isPast, emptyTitle, intro = false, onEditName }: Props) {
+export function AddCarCard({ isPast, emptyTitle, intro = false }: Props) {
   const t = useT()
   if (isPast) {
     return (
@@ -25,15 +23,6 @@ export function AddCarCard({ userName, isPast, emptyTitle, intro = false, onEdit
         <strong>{t.empty.noRidesWent}</strong>
         <span>{t.empty.pastReadOnly}</span>
       </div>
-    )
-  }
-  if (!userName) {
-    return (
-      <button type="button" className="card empty-card empty-card-btn" onClick={onEditName}>
-        <Illustration />
-        <strong>{t.empty.whoAreYou}</strong>
-        <span>{t.empty.enterToAdd}</span>
-      </button>
     )
   }
   return (

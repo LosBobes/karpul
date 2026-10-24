@@ -33,7 +33,7 @@ from fastapi import Depends
 from sqlalchemy import event, inspect, text
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.schema import CreateTable
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel, create_engine, select
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 DEFAULT_DB_URL = f"sqlite:///{DATA_DIR / 'karpul.db'}"
@@ -104,6 +104,11 @@ ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("ride", "reminder_sent", "BOOLEAN NOT NULL DEFAULT 0"),
     ("booking", "pickup", "VARCHAR NOT NULL DEFAULT ''"),
     ("appuser", "phone", "VARCHAR"),
+    ("appuser", "is_admin", "BOOLEAN NOT NULL DEFAULT 0"),
+    ("appuser", "calendar_token", "VARCHAR"),
+    ("ride", "driver_id", "INTEGER REFERENCES appuser (id)"),
+    ("booking", "passenger_id", "INTEGER REFERENCES appuser (id)"),
+    ("pushsubscription", "user_id", "INTEGER REFERENCES appuser (id)"),
 ]
 
 # Columns that started out NOT NULL and are optional now. SQLite cannot drop a
@@ -134,6 +139,12 @@ def add_missing_columns(target: Engine) -> list[str]:
     with target.begin() as conn:
         for table, column, ddl in missing:
             conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+            # The model's index on the new column, which `create_all` would
+            # have made for a fresh table but never adds to an existing one.
+            model = SQLModel.metadata.tables.get(table)
+            for index in model.indexes if model is not None else ():
+                if column in index.columns:
+                    index.create(conn, checkfirst=True)
     return [f"{table}.{column}" for table, column, _ in missing]
 
 
@@ -177,12 +188,58 @@ def relax_not_null(target: Engine) -> list[str]:
     return [f"{t}.{c}" for t, c in RELAXED_COLUMNS if t in todo]
 
 
+def link_people(target: Engine) -> dict[str, int]:
+    """Point the rows that only carry a name at the account that goes by it.
+
+    Before accounts the board knew people by name alone (`Ride.driver_name`,
+    `Booking.passenger_name`, the name a push subscription was filed under);
+    `driver_id` / `passenger_id` / `user_id` came later. This fills them in by
+    the same rule the names were always compared with (`services.norm_name`,
+    which is what `User.name_key` holds), and gives every account its calendar
+    feed token. Safe on every start: a linked database is a no-op. Returns how
+    many rows of each kind were linked.
+    """
+    from .models import Booking, PushSubscription, Ride, User
+    from .services import new_calendar_token, norm_name
+
+    linked = {"rides": 0, "bookings": 0, "subscriptions": 0, "calendar_tokens": 0}
+    with Session(target) as session:
+        users = session.exec(select(User)).all()
+        by_key = {u.name_key: u.id for u in users}
+        for user in users:
+            if not user.calendar_token:
+                user.calendar_token = new_calendar_token()
+                session.add(user)
+                linked["calendar_tokens"] += 1
+        for ride in session.exec(select(Ride).where(Ride.driver_id.is_(None))):  # type: ignore[union-attr]
+            uid = by_key.get(norm_name(ride.driver_name))
+            if uid is not None:
+                ride.driver_id = uid
+                session.add(ride)
+                linked["rides"] += 1
+        for booking in session.exec(select(Booking).where(Booking.passenger_id.is_(None))):  # type: ignore[union-attr]
+            uid = by_key.get(norm_name(booking.passenger_name))
+            if uid is not None:
+                booking.passenger_id = uid
+                session.add(booking)
+                linked["bookings"] += 1
+        for sub in session.exec(select(PushSubscription).where(PushSubscription.user_id.is_(None))):  # type: ignore[union-attr]
+            uid = by_key.get(sub.user_name)
+            if uid is not None:
+                sub.user_id = uid
+                session.add(sub)
+                linked["subscriptions"] += 1
+        session.commit()
+    return linked
+
+
 def init_db() -> None:
     if DATABASE_URL == DEFAULT_DB_URL:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
     relax_not_null(engine)
     add_missing_columns(engine)
+    link_people(engine)
 
 
 def get_session() -> Iterator[Session]:

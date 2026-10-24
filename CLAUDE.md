@@ -11,6 +11,8 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload      # :8000, OpenAPI docs at /docs
 python -m pytest                   # full suite
 python -m pytest tests/test_rides.py::test_name -q   # one test
+ruff check .                       # lint (ruff.toml); CI runs it
+python -m tests.error_catalogue    # rewrite frontend/src/lib/api-errors.json after changing an error text
 python -m app.vapid                # print a VAPID key for KARPUL_VAPID_PRIVATE_KEY
 ```
 
@@ -22,7 +24,9 @@ Frontend (from `frontend/`, Node 20+; CI uses 22):
 npm install
 npm run dev      # :5173, proxies /api to VITE_API_PROXY (default localhost:8000)
 npm run lint     # oxlint (not ESLint)
+npm test         # vitest: src/**/*.test.ts (the lib code, and Serbian for every API error)
 npm run build    # tsc -b && vite build -> frontend/dist
+npm run e2e      # Playwright smoke test against the built app (build first; PYTHON=... picks the interpreter)
 ```
 
 Whole app in one process: `npm run build`, then `uvicorn app.main:app` serves API + SPA on :8000.
@@ -30,7 +34,9 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `pytest -q`, frontend `npm run lint` and `npm run build`. There is no frontend test runner and no Python linter/formatter configured. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file. There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+
+**Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
 Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`. The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits.
 
@@ -38,42 +44,83 @@ Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the sh
 
 FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, shipped as **one container**: the multi-stage `Dockerfile` builds the frontend and copies `dist` into the Python image, and `backend/app/main.py` mounts it at `/` behind the `/api` routes (`KARPUL_FRONTEND_DIST`). Anything unmatched falls through to `index.html` — so any new API route must live under `/api`, or the SPA catch-all will swallow it.
 
-**Accounts, on top of a name-keyed board.** A person registers with a username, a
+**Accounts, and nothing without one.** A person registers with a username, a
 first name and a surname, plus an optional email and mobile number (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
-`display_name` and *that* is what every ride and booking stores, so the board itself never
-learned about accounts. `User.name_key` is the normalised display name, unique, so two
+`display_name`. `User.name_key` is the normalised display name, unique, so two
 accounts can never answer to one name. Passwords are PBKDF2-HMAC-SHA256 from the standard
 library in a `pbkdf2_sha256$rounds$salt$hash` string (no new dependency, for the same reason
 `app/webpush.py` avoids pywebpush); a session is an opaque token stored only as its SHA-256
 (`AuthSession`) and sent as `Authorization: Bearer`.
 
-Who is acting is resolved in one place: `actor_name` / `require_actor` in `app/auth.py`. A
-valid token wins; otherwise the old honour-based `X-User-Name` header is honoured, unless
-`KARPUL_REQUIRE_LOGIN` is set, which makes a token the only way to act (read per request,
-like the admin password). A token that is *present but dead* is a 401, not "anonymous", so
-the browser drops it and shows the door again. The lookup deliberately happens in the
+Every endpoint that shows or changes the board needs a session, reads included (the board
+carries names, routes and phone numbers): `require_user` in `app/auth.py` is the one answer to
+"who is this", and there is no anonymous or name-header path any more (the honour-based
+`X-User-Name` and `KARPUL_REQUIRE_LOGIN` are gone). Open without a token: `/api/health`,
+`/api/push/config`, register/login/reset, the calendar feed (its own secret, below) and the
+`/ride/{id}` share preview. A token that is *present but dead* is a 401 with its own wording,
+so the browser drops it and shows the door again. The lookup deliberately happens in the
 handler body, not as a dependency: `Credentials` (the `CredsDep` dependency) only reads the
-two headers, because a mutating route must take the write lock before anything queries its
-session (`database.begin_write`). Creating a ride overwrites `driver_name` with the
-signed-in account's name, the way a corporate ride's `car_name` is overwritten.
+header, because a mutating route must take the write lock before anything queries its
+session (`database.begin_write`). `require_admin` (`app/admin.py`) follows the same rule.
 
-Name comparison is whitespace-collapsed + casefolded (`_norm` in `routers/rides.py`,
-`sameName` in `lib/dates.ts`) — keep both sides in sync if the rule changes. Because names
-are the key, `PATCH /api/auth/me` renaming an account rewrites its rides, bookings and push
-subscriptions in one go (`rename_person` in `services.py`) and republishes the changed rides.
+**People are accounts on the rows.** `Ride.driver_id`, `Booking.passenger_id`,
+`PushSubscription.user_id` (and the newer tables' `user_id`/`author_id`) point at `appuser`;
+the names next to them (`driver_name`, `passenger_name`, ...) are display snapshots. Ownership
+is decided by id through `is_person(user, id, name)` in `services.py` (the frontend's twin is
+`isMe` in `lib/me.ts`, read through `useMe()` / `MeContext`); only a row with no id, from before
+accounts, falls back to the normalised name (`norm_name`, mirrored by `sameName` in
+`lib/dates.ts`, keep both in sync). `database.link_people` fills the ids in by name on every
+start (and gives every account a calendar token); registering claims the id-less rows that go
+by the new name (`claim_rows`), which is also how a seat a driver gave a colleague by name
+becomes theirs. A driver can still add someone without an account by name (`passenger_id`
+null). `PATCH /api/auth/me` renaming an account rewrites the snapshots (`rename_person`, by
+id) and republishes the changed rides.
+
+**The doors are throttled** (`app/ratelimit.py`, in-process, which is fine for one worker):
+wrong passwords per account (10/15 min) and per address (30/15 min), registrations per address,
+reset-link guesses per address; 429 with `Retry-After`. Production sets `FORWARDED_ALLOW_IPS=*`
+(docker-compose.prod.yml) so uvicorn believes Caddy's `X-Forwarded-For`. Tests reset the
+counters in the autouse `clean_env` fixture.
+
+**Account housekeeping.** `POST /api/auth/logout-others` signs every other browser out (the
+*Your account* sheet). An admin issues a one-time reset link (`POST
+/api/admin/users/{id}/reset-link`, `PasswordReset` stored as a hash, 48 h, the newest only);
+the app opened on `/reset/<token>` shows `AuthGate`'s reset card, which sets the password,
+signs every browser out and this one in. There is no email: the admin passes the link on.
 
 On the frontend `lib/auth.ts` is an external store (like the theme and the locale) holding
 the token and the account in `localStorage` under `karpul.auth`; `lib/api.ts` attaches the
 bearer token to every call and clears the store on a 401. `App.tsx` is the door: with no
-session it renders `AuthGate` and nothing else, so the board never loads signed out.
+session it renders `AuthGate` and nothing else, so the board never loads signed out; it
+refreshes the account from `/api/auth/me` on start (an admin may have been made one).
 
 **Calling the driver.** `User.phone` is optional and shown on the rides that person drives:
-`RideRead.driver_phone` is looked up by `name_key` (`driver_phones` in `services.py`, one query for
-the whole board in `GET /api/rides`), and `CarDetail` turns it into a *Call the driver* `tel:` link
+`RideRead.driver_phone` is looked up by `driver_id` (`board_extras` in `services.py`, one query for
+the whole board in `GET /api/rides`, next to the thread's message counts), and `CarDetail` turns it into a *Call the driver* `tel:` link
 for everyone but the driver. Email is optional too; the production `appuser.email` started out
 NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
 
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
+
+**Waiting list, thread, requests.** A full car has a queue (`WaitlistEntry`, `POST/DELETE
+/api/rides/{id}/waitlist`): only for yourself, refused while seats are free. When a seat frees
+up (someone leaves, the driver adds seats) `promote_waitlist` books the first in line who is
+not already in a car that day and pushes `seat_freed`; getting a seat anywhere drops your
+other queue places that day (`leave_waitlists_that_day`). Each ride has a thread
+(`RideMessage`, `/api/rides/{id}/messages`): anyone signed in may write, the driver and
+passengers are pushed, the author or the driver may delete. Messages are not in `RideRead`;
+its `message_count` (counted in bulk by `board_extras`) changes and an open `RideThread`
+refetches. Ride requests (`RideRequest`, `routers/requests.py`) are "I need a ride on day X
+around T from A to B": answered by a driver creating a ride with `request_id` (the requester
+gets a seat, `request_answered` push) or by the requester getting into any car that day;
+deleting the answering ride reopens it. Live events `request.saved` / `request.deleted`.
+On screen: requests under each Upcoming day and under `YouPanel` in Week (`RequestList`,
+"Offer a ride" opens `RideForm` with `request`), asked through `RequestForm`.
+
+**Operations.** `/api/health` queries the database (503 when it cannot). `KARPUL_SENTRY_DSN`
+turns on Sentry (`app/monitoring.py`, no PII, traces only with `KARPUL_SENTRY_TRACES`); unset sends
+nothing. A middleware in `main.py` logs 5xx answers, crashes (then re-raises, for Sentry) and
+requests slower than 1 s under `karpul.http`; uvicorn's access log has the rest.
 
 **Many people at once.** Twenty colleagues tap "get in" at the same minute, so the DB layer
 (`database.py`) is built for it: SQLite runs in WAL mode with a busy timeout (readers never wait
@@ -92,18 +139,17 @@ sequence-guarded (only the newest request may set the board) and repeats itself 
 events keep landing mid-flight; mutation responses go through `upsertRide` instead of a reload.
 
 **Schema changes.** A new *table* is created by `create_all` on start, which is how
-`appuser` and `authsession` reach a production database. `create_all` never adds a *column*
-to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start and `tests/test_migrations.py` proves it. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
+`appuser`, `authsession` and the newer tables reach a production database. `create_all` never adds a *column*
+to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start (and creates the model's indexes on the new column) and `tests/test_migrations.py` proves it. A NOT NULL column needs a `server_default` too, or `relax_not_null`'s table rebuild cannot copy old rows. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
 
-**One shared password, still.** Managing the company-car pool sits behind a single shared
-password from `KARPUL_ADMIN_PASSWORD`, sent as `X-Admin-Password` and checked by `require_admin`
-(`app/admin.py`) with `secrets.compare_digest`. It is a password for a job, not an account:
-who you are signed in as has nothing to do with it. The variable is read per request, not at
-import, so tests monkeypatch it. Unset means the admin endpoints answer 503 rather than 401 — that is the
-default for a plain checkout, and `tests/test_cars.py` has an autouse fixture that clears it so a
-developer's shell can't leak in. The frontend stores the password in `localStorage`
-(`lib/useAdminPassword.ts`) and verifies it by calling `GET /api/cars/corporate?include_inactive=true`;
-there is no login endpoint.
+**Admins are accounts.** An admin manages the company-car pool and the people: `User.is_admin`,
+or a username listed in `KARPUL_ADMINS` (comma-separated, read per request, cannot be undone
+from the app; it is how the first admin exists). `require_admin` (`app/admin.py`) is 401
+signed out, 403 for a non-admin. `routers/admin.py`: list accounts, make or unmake an admin
+(the last one cannot be removed; a configured one is 409), issue a reset link. `UserRead.is_admin`
+is the effective value (`routers/auth.user_read`). The drawer shows *Company cars* and *People*
+(`CarAdmin`, `PeopleAdmin`) to admins only. Tests: the `admin_auth` fixture in `conftest.py`;
+the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak in.
 
 **Where the rules live:**
 - `schemas.py` — field validation and cross-field consistency (`corporate_car_id` required for corporate rides, `car_name` required for own cars, `return_time > departure_time`).
@@ -135,8 +181,7 @@ duplicates are dropped), and each `Booking.pickup` is `""` for the origin or one
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per
 week (`weekly_dates`, at most `MAX_REPEAT_WEEKS`) under one `series_id`, all or nothing, and a
 409 on a later week names the date in parentheses (the Serbian `apiError` regex knows that
-suffix). `DELETE ?scope=following` removes the rest of the series. The `X-User-Name` header
-arrives percent-encoded (`user_from_header`), because a header cannot carry a ć.
+suffix). `DELETE ?scope=following` removes the rest of the series.
 
 **Push notifications.** `app/webpush.py` does RFC 8291 encryption and VAPID (RFC 8292) on the
 `cryptography` package rather than pywebpush, whose `http-ece` dependency does not build on a
@@ -145,22 +190,27 @@ keeps one `PushSubscription` per endpoint under the normalised name and the app 
 `notify()` collects the targets inside the request and sends from a small thread pool
 (`deliver`, `forget` for 404/410 endpoints; tests replace both). It is all off until
 `KARPUL_VAPID_PRIVATE_KEY` is set (`python -m app.vapid` prints one), read per request like the
-admin password. Who is told: the driver when someone gets in or out on their own, a passenger
+admin password. Pushes are addressed by account (`notify(session, user_ids, ...)`;
+a seat with no account is skipped). Who is told: the driver when someone gets in or out on their own, a passenger
 when the driver takes them out, the passengers when the ride moves (date, times or route, not a
-note) or is removed, and everyone in the car 30 minutes before departure (`app/reminders.py`,
+note) or is removed, the first in line when a seat frees up, the car when someone writes in its
+thread, a requester when a driver answers, and everyone in the car 30 minutes before departure (`app/reminders.py`,
 a minute-by-minute task started in the lifespan; `Ride.reminder_sent` makes it once). The
 browser side is `lib/push.ts` plus `public/push-sw.js`, which Workbox pulls into `sw.js`
-through `importScripts`; a renamed browser re-subscribes (`resubscribePush` in `App.tsx`).
+through `importScripts`; every sign-in re-files the browser's subscription under the account (`resubscribePush` in `App.tsx`).
 
 **Calendar, sharing, figures.** `app/calendar.py` writes floating local times (no zone) for one
-ride and for a person's feed (`/api/calendar/{name}.ics`, a week back to a year ahead).
+ride (`/api/rides/{id}/calendar.ics`, signed in; the app fetches it and hands it over as a
+download) and for a person's feed (`/api/calendar/{token}.ics`, a week back to a year ahead).
+A calendar app cannot sign in, so `User.calendar_token` in the address is the credential;
+*Your rides* shows it and `POST /api/auth/me/calendar-token` rotates it.
 `/ride/{id}` is the shell with Open Graph tags spliced before `</head>` (`ride_preview_tags` in
 `main.py`); the app reads the path on load, opens the ride and `replaceState`s to `/`.
 `person_stats` and `corporate_usage` in `services.py` are the *Your rides* and admin *Usage*
 figures: "km shared" is the one-way distance of every ride the person was in, a floor not a
 claim, and a car's use rate is days out over working days in the window.
 
-`RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings` and the computed `free_seats`. Every ride-returning endpoint goes through it.
+`RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings`, `waitlist`, `message_count`, `driver_phone` and the computed `free_seats`. Every ride-returning endpoint goes through it (pass `board_extras` for a list).
 
 **Styling.** The frontend is Tailwind v4 (via `@tailwindcss/vite`) plus a hand-written design
 system in `src/index.css`: a light, phone-first, card-based UI — off-white ground, white cards with
@@ -327,7 +377,7 @@ in `App.tsx`; the visible pill is `aria-hidden`. Every drag has a button equival
 *Switch to this car*, *Leave*). The dark avatars pair a deep tint with a light ink so the
 initials keep their contrast.
 
-**Frontend data flow.** `App.tsx` is the only stateful component; the rest are presentational. It loads a whole Mon–Sun week at a time (`/api/rides?from=&to=`), and mutating endpoints return the updated `Ride` so `replaceRide()` can patch state without a full reload. On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
+**Frontend data flow.** `App.tsx` holds the UI state; the board's data lives in `lib/useBoard.ts`: rides and requests for the range on screen (a Mon–Sun week, or the Upcoming 90 days), both car lists, the sequence-guarded `load`, the live-event reducer and the 30 s fallback poll. Mutating endpoints return the updated `Ride` so `upsertRide()` can patch state without a full reload. The rest of the components are presentational, plus a few sheets that fetch their own data (`MyRides`, `PeopleAdmin`, `RideThread`). On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
 
 **Installable (PWA).** `vite-plugin-pwa` in `vite.config.ts` writes the web app manifest
@@ -387,8 +437,10 @@ virtual register module is a stub and no worker runs; index.html carries the App
 manifest cannot express (`apple-touch-icon`, standalone mode, the app title).
 
 **Live updates.** Every tab keeps one WebSocket open to `/api/ws` (`lib/live.ts`, `useLiveBoard`).
-The server pushes `ride.created` / `ride.updated` (carrying the full `RideRead`), `ride.deleted`
-and `cars.changed`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
+A browser cannot put a header on a WebSocket, so the first message is `{"type": "auth", "token": ...}`;
+the server answers `hello` (the client's cue that it is live) or closes with 4401, which drops the session.
+The server pushes `ride.created` / `ride.updated` (carrying the full `RideRead`), `ride.deleted`,
+`request.saved` / `request.deleted` and `cars.changed`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
 (re-sorting with the API's order: date, departure, id) and treats `cars.changed` as "reload
 both car lists and the board", because a pool edit can relabel rides. The hook reconnects with
 exponential backoff and immediately on `visibilitychange`/`online`/`focus`, and calls
@@ -414,7 +466,7 @@ then `join`; dropping on the tray issues `leave`.
 
 **Company cars** are seeded from `CORPORATE_CARS` (`Name|PLATE|seats;…`) only while the `corporatecar` table is empty (`seed.py`); after that the pool is managed through the admin endpoints. `GET /api/cars/corporate` stays public and active-only, so `App.tsx` keeps the admin list (`adminCars`, everything) and the ride-form list (`cars`, `active` only) as two views of one fetch — `applyCars()`.
 
-Tests (`backend/tests/conftest.py`) use an in-memory SQLite engine (`make_engine("sqlite://", poolclass=StaticPool)`) and override `get_session`; `get_write_session` wraps it, so the override covers both. `TestClient` is intentionally used **without** a context manager so the lifespan never runs and the on-disk DB is never touched.
+Tests (`backend/tests/conftest.py`) use an in-memory SQLite engine (`make_engine("sqlite://", poolclass=StaticPool)`) and override `get_session`; `get_write_session` wraps it, so the override covers both. `TestClient` is intentionally used **without** a context manager so the lifespan never runs and the on-disk DB is never touched. The `client` fixture is a `BoardClient`: it signs requests in as accounts made per name on first use (`headers={"X-User-Name": "Ana"}`, or the payload's `driver_name` / `passenger_name`, else "Test Viewer"), so tests read in names while the API only sees bearer tokens; `client.anon` is a plain client, `client.auth(name)` the headers, and `websocket_connect` sends the auth message itself.
 
 ## Deployment
 

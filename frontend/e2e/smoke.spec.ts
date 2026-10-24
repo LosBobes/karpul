@@ -1,0 +1,80 @@
+import { expect, test, type Browser, type Page } from '@playwright/test'
+
+/**
+ * The whole app in one walk: two colleagues register, one offers a ride, the
+ * other gets in and writes in the ride's thread, and the driver sees both
+ * arrive live. If this passes, the shell, the API, the socket and the board's
+ * main path all work together.
+ */
+
+// Each project (phone, desktop) gets its own people, so the runs never meet.
+function person(project: string, who: 'ana' | 'marko') {
+  const tag = project === 'phone' ? 'p' : 'd'
+  return who === 'ana'
+    ? { username: project === 'phone' ? 'ana' : 'ana.d', first: 'Ana', last: `Petrović ${tag.toUpperCase()}` }
+    : { username: `marko.${tag}`, first: 'Marko', last: `Jovanović ${tag.toUpperCase()}` }
+}
+
+/** A toast, as the screen reader hears it (the visible pill is aria-hidden). */
+function toast(page: Page, text: string) {
+  return page.getByRole('status').filter({ hasText: text })
+}
+
+async function register(browser: Browser, who: ReturnType<typeof person>, options: object): Promise<Page> {
+  const context = await browser.newContext(options)
+  const page = await context.newPage()
+  await page.goto('/')
+  await page.getByRole('tab', { name: 'Register' }).click()
+  await page.getByLabel('First name').fill(who.first)
+  await page.getByLabel('Surname').fill(who.last)
+  await page.getByLabel('Username').fill(who.username)
+  await page.getByLabel('Password').fill('a-long-enough-password')
+  await page.getByRole('button', { name: 'Create account' }).click()
+  // The board replaces the door.
+  await expect(page.getByRole('radiogroup', { name: 'View' })).toBeVisible()
+  return page
+}
+
+test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
+  const options = info.project.use
+  const ana = await register(browser, person(info.project.name, 'ana'), options)
+  const marko = await register(browser, person(info.project.name, 'marko'), options)
+  const anaName = `Ana Petrović ${info.project.name === 'phone' ? 'P' : 'D'}`
+  const markoName = `Marko Jovanović ${info.project.name === 'phone' ? 'P' : 'D'}`
+
+  // Ana adds a ride with the floating plus, in her own car.
+  await ana.getByRole('button', { name: 'Add ride' }).click()
+  const form = ana.getByRole('dialog', { name: 'Add ride' })
+  await form.getByRole('radio', { name: 'My own car' }).click()
+  await form.getByPlaceholder('e.g. grey Octavia').fill('Blue Golf')
+  await form.getByLabel('Pickup location').fill('Novi Sad')
+  await form.getByLabel('Drop-off location').fill('HQ')
+  await form.getByRole('button', { name: 'Add ride' }).click()
+  await expect(toast(ana, 'Ride added.')).toBeAttached()
+
+  // Marko sees it arrive over the socket, without reloading, and gets in.
+  const row = marko.getByRole('button', { name: new RegExp(`${anaName} · Blue Golf`) })
+  await expect(row).toBeVisible()
+  await row.click()
+  await marko.getByRole('button', { name: 'Get in this car' }).first().click()
+  await expect(toast(marko, `You're in with ${anaName}.`)).toBeAttached()
+
+  // And writes in the thread.
+  await marko.getByRole('button', { name: 'Write to the car' }).first().click()
+  await marko.getByLabel('Write a message').first().fill('See you at the fountain')
+  await marko.getByRole('button', { name: 'Send' }).first().click()
+  await expect(marko.getByText('See you at the fountain').first()).toBeVisible()
+
+  // Ana's board shows him in the car and the message count, live.
+  // Adding the ride opened it already on a phone (the row is unfolded); a tap would fold it.
+  const anaRow = ana.getByRole('button', { name: new RegExp(`${anaName} · Blue Golf`) })
+  if ((await anaRow.getAttribute('aria-expanded')) !== 'true') await anaRow.click()
+  await expect(ana.getByText(markoName).first()).toBeVisible()
+  await expect(ana.getByRole('button', { name: 'Messages (1)' }).first()).toBeVisible()
+})
+
+test('signed out, the API shows nothing', async ({ request }) => {
+  expect((await request.get('/api/rides')).status()).toBe(401)
+  expect((await request.get('/api/stats/me')).status()).toBe(401)
+  expect((await request.get('/api/health')).status()).toBe(200)
+})

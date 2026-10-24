@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { firstName, fmtTime, sameName, shortCarName } from '../lib/dates'
+import { firstName, fmtTime, shortCarName } from '../lib/dates'
 import { useT } from '../lib/i18n'
 import { dropZone, type DropTarget } from '../lib/dnd'
+import { drives, seatedIn, useMe, type Me } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
@@ -9,7 +10,6 @@ import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 interface Props {
   rides: Ride[]
   selected: number | null
-  userName: string
   /** Someone is dragging the passenger chip; cards that can take it light up. */
   dragActive: boolean
   over: DropTarget | null
@@ -18,10 +18,8 @@ interface Props {
   vertical?: boolean
 }
 
-function canReceive(ride: Ride, userName: string): boolean {
-  if (!userName) return false
-  if (sameName(ride.driver_name, userName)) return false
-  if (ride.bookings.some((b) => sameName(b.passenger_name, userName))) return false
+function canReceive(ride: Ride, me: Me): boolean {
+  if (drives(ride, me) || seatedIn(ride, me)) return false
   return ride.free_seats > 0
 }
 
@@ -30,8 +28,9 @@ function canReceive(ride: Ride, userName: string): boolean {
  * chip can be dropped straight onto another car without opening it first.
  * Adding a ride is the floating plus (AddRideButton.tsx), not a tile here.
  */
-export function CarCarousel({ rides, selected, userName, dragActive, over, onSelect, vertical = false }: Props) {
+export function CarCarousel({ rides, selected, dragActive, over, onSelect, vertical = false }: Props) {
   const t = useT()
+  const me = useMe()
   const strip = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -51,11 +50,11 @@ export function CarCarousel({ rides, selected, userName, dragActive, over, onSel
       )}
       <div ref={strip} className="cars-strip">
         {rides.map((r) => {
-          const driving = sameName(r.driver_name, userName)
-          const seated = r.bookings.some((b) => sameName(b.passenger_name, userName))
+          const driving = drives(r, me)
+          const seated = seatedIn(r, me)
           const mine = driving || seated
           const full = r.free_seats <= 0
-          const receives = dragActive && canReceive(r, userName)
+          const receives = dragActive && canReceive(r, me)
           const isOver = over?.kind === 'ride' && over.rideId === r.id
           const cls = [
             'car-tile',

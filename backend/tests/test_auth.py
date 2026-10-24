@@ -36,12 +36,6 @@ def cheap_hashing(monkeypatch):
     auth._decoy_hash.cache_clear()
 
 
-@pytest.fixture(autouse=True)
-def no_forced_login(monkeypatch):
-    """A developer's shell must not decide how these tests run (see test_cars.py)."""
-    monkeypatch.delenv("KARPUL_REQUIRE_LOGIN", raising=False)
-
-
 def register(client, who=ANA, **overrides):
     payload = {**who, **overrides}
     r = client.post("/api/auth/register", json=payload)
@@ -214,46 +208,178 @@ def test_joining_is_done_as_the_signed_in_account(client):
     assert r.status_code == 403
 
 
-def test_a_token_beats_the_x_user_name_header(client):
+def test_the_old_name_header_counts_for_nothing(client):
     ana = register(client)["token"]
     ride = client.post("/api/rides", json=own_ride(), headers=bearer(ana)).json()
-    # Claiming to be the driver in the header does not make you the driver.
+    # Claiming to be the driver in the header does not make you the driver,
+    # with a token of your own or without any.
     marko = register(client, MARKO)["token"]
-    r = client.patch(
-        f"/api/rides/{ride['id']}",
-        json={"seats": 1},
-        headers={**bearer(marko), "X-User-Name": "Ana%20Petrovi%C4%87"},
-    )
+    claim = {"X-User-Name": "Ana%20Petrovi%C4%87"}
+    r = client.anon.patch(f"/api/rides/{ride['id']}", json={"seats": 1}, headers={**bearer(marko), **claim})
     assert r.status_code == 403
-
-
-# --- KARPUL_REQUIRE_LOGIN ----------------------------------------------------
-
-
-def test_without_the_flag_the_honour_system_still_works(client):
-    r = client.post("/api/rides", json=own_ride(driver_name="Nobody In Particular"))
-    assert r.status_code == 201
-    assert r.json()["driver_name"] == "Nobody In Particular"
-
-
-def test_with_the_flag_a_name_header_is_not_enough(client, monkeypatch):
-    monkeypatch.setenv("KARPUL_REQUIRE_LOGIN", "1")
-    assert client.post("/api/rides", json=own_ride()).status_code == 401
-    r = client.post("/api/rides", json=own_ride(), headers={"X-User-Name": "Ana"})
+    r = client.anon.patch(f"/api/rides/{ride['id']}", json={"seats": 1}, headers=claim)
     assert r.status_code == 401
-    assert "Sign in" in r.json()["detail"]
 
-    # Registering is of course still open, and a token gets you through.
+
+@pytest.mark.parametrize(
+    "method, path",
+    [
+        ("GET", "/api/rides"),
+        ("GET", "/api/rides/1"),
+        ("GET", "/api/rides/1/bookings"),
+        ("GET", "/api/rides/1/calendar.ics"),
+        ("GET", "/api/rides/1/messages"),
+        ("GET", "/api/stats/me"),
+        ("GET", "/api/cars/corporate"),
+        ("GET", f"/api/requests?from={TOMORROW}&to={TOMORROW}"),
+        ("DELETE", "/api/rides/1"),
+        ("POST", "/api/rides/1/waitlist"),
+    ],
+)
+def test_nothing_on_the_board_is_open_to_a_signed_out_request(client, method, path):
+    """The board carries names, routes and phone numbers: signed out, the API
+    shows none of it and changes nothing."""
     token = register(client)["token"]
-    assert client.post("/api/rides", json=own_ride(), headers=bearer(token)).status_code == 201
+    client.post("/api/rides", json=own_ride(), headers=bearer(token))
+    r = client.anon.request(method, path, json={} if method == "POST" else None)
+    assert r.status_code == 401, r.text
 
 
-def test_with_the_flag_a_seat_still_needs_an_account(client, monkeypatch):
+def test_a_seat_needs_an_account(client):
     token = register(client)["token"]
     ride = client.post("/api/rides", json=own_ride(), headers=bearer(token)).json()
-    monkeypatch.setenv("KARPUL_REQUIRE_LOGIN", "1")
-    r = client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Gost"})
+    r = client.anon.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Gost"})
     assert r.status_code == 401
+
+
+def test_registering_claims_the_seats_that_already_go_by_your_name(client):
+    """A driver can put a colleague in by name before that colleague has an
+    account; registering under the name makes the seat theirs."""
+    ana = register(client)["token"]
+    ride = client.post("/api/rides", json=own_ride(), headers=bearer(ana)).json()
+    r = client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Marko Jovanović"}, headers=bearer(ana))
+    assert r.status_code == 201
+    assert r.json()["bookings"][0]["passenger_id"] is None
+
+    marko = register(client, MARKO)
+    after = client.get(f"/api/rides/{ride['id']}", headers=bearer(ana)).json()
+    assert after["bookings"][0]["passenger_id"] == marko["user"]["id"]
+    # And it is his to give up.
+    bid = after["bookings"][0]["id"]
+    assert client.delete(f"/api/rides/{ride['id']}/bookings/{bid}", headers=bearer(marko["token"])).status_code == 200
+
+
+# --- the doors are throttled -------------------------------------------------
+
+
+def test_too_many_wrong_passwords_lock_the_account_for_a_while(client):
+    register(client)
+    for _ in range(10):
+        assert client.post("/api/auth/login", json={"login": "ana", "password": "wrong-wrong"}).status_code == 401
+    r = client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]})
+    assert r.status_code == 429
+    assert "try again" in r.json()["detail"]
+    assert int(r.headers["Retry-After"]) > 0
+    # Another account is not held up by it.
+    register(client, MARKO)
+    assert client.post("/api/auth/login", json={"login": "marko", "password": MARKO["password"]}).status_code == 200
+
+
+def test_a_right_password_clears_the_count(client):
+    register(client)
+    for _ in range(9):
+        client.post("/api/auth/login", json={"login": "ana", "password": "wrong-wrong"})
+    assert client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).status_code == 200
+    for _ in range(9):
+        client.post("/api/auth/login", json={"login": "ana", "password": "wrong-wrong"})
+    assert client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).status_code == 200
+
+
+def test_registrations_are_throttled_per_address(client):
+    for i in range(10):
+        client.post(
+            "/api/auth/register",
+            json={**ANA, "username": f"ana{i}", "email": f"a{i}@example.com", "last_name": f"P{i}"},
+        )
+    assert client.post("/api/auth/register", json=MARKO).status_code == 429
+
+
+# --- other browsers, the calendar feed, reset links ---------------------------
+
+
+def test_signing_out_every_other_browser(client):
+    first = register(client)["token"]
+    second = client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).json()["token"]
+    third = client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).json()["token"]
+    r = client.post("/api/auth/logout-others", headers=bearer(first))
+    assert r.status_code == 200 and r.json() == {"ended": 2}
+    assert client.get("/api/auth/me", headers=bearer(first)).status_code == 200
+    assert client.get("/api/auth/me", headers=bearer(second)).status_code == 401
+    assert client.get("/api/auth/me", headers=bearer(third)).status_code == 401
+    assert client.post("/api/auth/logout-others").status_code == 401
+
+
+def test_the_calendar_feed_is_behind_a_secret_that_can_be_changed(client):
+    body = register(client)
+    token, feed = body["token"], body["user"]["calendar_token"]
+    assert feed and len(feed) >= 24
+    client.post("/api/rides", json=own_ride(), headers=bearer(token))
+    r = client.anon.get(f"/api/calendar/{feed}.ics")
+    assert r.status_code == 200 and "Novi Sad" in r.text
+    # A name, the old way in, is just a wrong secret now.
+    assert client.anon.get("/api/calendar/Ana Petrović.ics").status_code == 404
+
+    new = client.post("/api/auth/me/calendar-token", headers=bearer(token)).json()["calendar_token"]
+    assert new != feed
+    assert client.anon.get(f"/api/calendar/{feed}.ics").status_code == 404
+    assert client.anon.get(f"/api/calendar/{new}.ics").status_code == 200
+
+
+def test_a_reset_link_sets_a_new_password_once(client, admin_auth):
+    ana = register(client)
+    other_browser = ana["token"]
+    link = client.post(f"/api/admin/users/{ana['user']['id']}/reset-link", headers=admin_auth)
+    assert link.status_code == 201, link.text
+    token = link.json()["path"].removeprefix("/reset/")
+
+    info = client.anon.get(f"/api/auth/reset/{token}")
+    assert info.status_code == 200 and info.json()["display_name"] == "Ana Petrović"
+
+    assert client.anon.post("/api/auth/reset", json={"token": token, "new_password": "short"}).status_code == 422
+    r = client.anon.post("/api/auth/reset", json={"token": token, "new_password": "a-whole-new-one"})
+    assert r.status_code == 200, r.text
+    assert r.json()["user"]["username"] == "ana"
+    # Signed in with it; every other browser is out; the old password is gone.
+    assert client.get("/api/auth/me", headers=bearer(r.json()["token"])).status_code == 200
+    assert client.get("/api/auth/me", headers=bearer(other_browser)).status_code == 401
+    assert client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).status_code == 401
+    assert client.post("/api/auth/login", json={"login": "ana", "password": "a-whole-new-one"}).status_code == 200
+    # Spent.
+    assert client.anon.get(f"/api/auth/reset/{token}").status_code == 404
+    assert client.anon.post("/api/auth/reset", json={"token": token, "new_password": "and-again-again"}).status_code == 404
+
+
+def test_only_the_latest_reset_link_works_and_none_for_long(client, admin_auth, session_factory):
+    from app.models import PasswordReset
+
+    ana = register(client)
+    url = f"/api/admin/users/{ana['user']['id']}/reset-link"
+    first = client.post(url, headers=admin_auth).json()["path"].removeprefix("/reset/")
+    second = client.post(url, headers=admin_auth).json()["path"].removeprefix("/reset/")
+    assert client.anon.get(f"/api/auth/reset/{first}").status_code == 404
+    assert client.anon.get(f"/api/auth/reset/{second}").status_code == 200
+    with session_factory() as s:
+        row = s.exec(select(PasswordReset)).one()
+        row.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+        s.add(row)
+        s.commit()
+    assert client.anon.get(f"/api/auth/reset/{second}").status_code == 404
+
+
+def test_guessing_reset_links_is_throttled(client):
+    for _ in range(20):
+        assert client.anon.get("/api/auth/reset/not-a-token").status_code == 404
+    assert client.anon.get("/api/auth/reset/not-a-token").status_code == 429
 
 
 # --- your own account --------------------------------------------------------

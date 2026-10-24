@@ -2,22 +2,38 @@
 
 import asyncio
 import html
+import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 from sqlmodel import Session
 
-from .database import engine, init_db
+from .database import engine, get_session, init_db
 from .models import Ride
+from .monitoring import init_sentry
 from .reminders import reminder_loop
-from .routers import auth, cars, live, push, rides, stats
+from .routers import admin, auth, cars, live, push, requests, rides, stats
 from .seed import seed_corporate_cars
+
+# The app's own loggers (karpul.*) at INFO next to uvicorn's: push, reminders,
+# slow and failed requests. uvicorn configures only its own loggers.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("karpul.http")
+
+# A request slower than this is logged; on one SQLite file that means
+# something is waiting for the write lock.
+SLOW_REQUEST_S = 1.0
+
+init_sentry()
 
 # Built frontend location. The Docker image sets KARPUL_FRONTEND_DIST=/app/static;
 # a source checkout falls back to frontend/dist after `npm run build`.
@@ -54,16 +70,45 @@ app.add_middleware(
 # reconnect; compressed it is a fraction of the size on the office Wi-Fi.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+
+@app.middleware("http")
+async def log_slow_and_failed(request: Request, call_next):
+    """uvicorn's access log has every request; this adds the ones worth a
+    look: answered with a 5xx, slower than SLOW_REQUEST_S, or crashed (with
+    the traceback; the exception carries on to Starlette's 500 and to Sentry)."""
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        log.exception("%s %s crashed", request.method, request.url.path)
+        raise
+    elapsed = time.perf_counter() - started
+    if response.status_code >= 500:
+        log.error("%s %s -> %s in %.0f ms", request.method, request.url.path, response.status_code, elapsed * 1000)
+    elif elapsed > SLOW_REQUEST_S:
+        log.warning("%s %s took %.0f ms", request.method, request.url.path, elapsed * 1000)
+    return response
+
+
 app.include_router(auth.router)
+app.include_router(admin.router)
 app.include_router(cars.router)
 app.include_router(rides.router)
 app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)
+app.include_router(requests.router)
 
 
 @app.get("/api/health", tags=["meta"])
-def health():
+def health(session: Annotated[Session, Depends(get_session)]):
+    """For the container's health check and an uptime monitor: 200 while the
+    database answers, 503 when it does not."""
+    try:
+        session.exec(text("SELECT 1"))  # type: ignore[call-overload]
+    except Exception:
+        log.exception("health check: database unreachable")
+        return JSONResponse({"status": "error", "database": "unreachable"}, status_code=503)
     return {"status": "ok"}
 
 

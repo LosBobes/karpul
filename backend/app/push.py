@@ -1,9 +1,9 @@
 """Push notifications: who asked for them, and telling them what happened.
 
-A browser that turns notifications on sends its push subscription with the
-name it is using (`POST /api/push/subscriptions`, routers/push.py); it is
-stored against the normalised name, so "someone got into Ana's car" reaches
-every browser that calls itself Ana. Nothing is sent unless
+A browser that turns notifications on sends its push subscription while
+signed in (`POST /api/push/subscriptions`, routers/push.py); it is stored
+against the account, so "someone got into Ana's car" reaches every browser
+Ana has switched notifications on in. Nothing is sent unless
 KARPUL_VAPID_PRIVATE_KEY is set (`python -m app.vapid` prints one); without it
 the endpoints answer that push is off and the app hides the switch.
 
@@ -30,7 +30,6 @@ import httpx
 from sqlmodel import Session, select
 
 from .models import PushSubscription, Ride
-from .services import norm_name
 from .webpush import Vapid, encrypt
 
 log = logging.getLogger("karpul.push")
@@ -63,11 +62,11 @@ class Target:
     locale: str
 
 
-def targets_for(session: Session, names: list[str]) -> list[Target]:
-    wanted = {norm_name(n) for n in names if n and n.strip()}
+def targets_for(session: Session, user_ids: list[int | None]) -> list[Target]:
+    wanted = {uid for uid in user_ids if uid is not None}
     if not wanted:
         return []
-    stmt = select(PushSubscription).where(PushSubscription.user_name.in_(wanted))  # type: ignore[attr-defined]
+    stmt = select(PushSubscription).where(PushSubscription.user_id.in_(wanted))  # type: ignore[union-attr]
     return [Target(s.endpoint, s.p256dh, s.auth, s.locale) for s in session.exec(stmt)]
 
 
@@ -81,6 +80,9 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver: f"{driver} removed the ride",
         "ride_changed": lambda driver: f"{driver} changed the ride",
         "leaving_soon": lambda minutes: f"Leaving in {minutes} min",
+        "seat_freed": lambda driver: f"A seat freed up: you're in {driver}'s car",
+        "message": lambda name, text: f"{name}: {text}",
+        "request_answered": lambda driver: f"{driver} offers you a ride",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} to {destination}",
     },
     "sr": {
@@ -90,6 +92,9 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver: f"{driver} je uklonio/la vožnju",
         "ride_changed": lambda driver: f"{driver} je izmenio/la vožnju",
         "leaving_soon": lambda minutes: f"Polazak za {minutes} min",
+        "seat_freed": lambda driver: f"Oslobodilo se mesto: u autu si, vozi {driver}",
+        "message": lambda name, text: f"{name}: {text}",
+        "request_answered": lambda driver: f"{driver} ti nudi prevoz",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} do {destination}",
     },
 }
@@ -167,8 +172,9 @@ def deliver_all(targets: list[Target], make_message, identity: Vapid) -> list[st
     return dead
 
 
-def notify(session: Session, names: list[str], kind: str, ride: Ride, **args: Any) -> int:
-    """Queue `kind` about `ride` for every browser subscribed under `names`.
+def notify(session: Session, user_ids: list[int | None], kind: str, ride: Ride, **args: Any) -> int:
+    """Queue `kind` about `ride` for every browser of the accounts in `user_ids`
+    (None, a seat with no account behind it, is skipped).
 
     Returns how many subscriptions were found. Call it before the session is
     closed; the ride's fields are copied so the send can outlive the request.
@@ -176,7 +182,7 @@ def notify(session: Session, names: list[str], kind: str, ride: Ride, **args: An
     identity = vapid()
     if identity is None:
         return 0
-    targets = targets_for(session, names)
+    targets = targets_for(session, user_ids)
     if not targets:
         return 0
     snapshot = Ride.model_validate(ride.model_dump())

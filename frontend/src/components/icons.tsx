@@ -301,3 +301,61 @@ export const PlugIcon = icon(
     <path d="M12 15.25V17a3.5 3.5 0 0 0 3.5 3.5H18" />
   </>,
 )
+/** Three people, one standing forward: the admin's list of accounts. */
+export const PeopleIcon = icon(
+  <>
+    <circle cx="12" cy="8" r="3" />
+    <path d="M6.5 19.5c.55-3 2.6-4.75 5.5-4.75s4.95 1.75 5.5 4.75" />
+    <circle cx="5" cy="9.5" r="2" />
+    <path d="M2.5 16.5c.3-1.5 1.2-2.4 2.5-2.6" />
+    <circle cx="19" cy="9.5" r="2" />
+    <path d="M21.5 16.5c-.3-1.5-1.2-2.4-2.5-2.6" />
+  </>,
+)
+
+/* The board's newer actions. */
+
+/** A speech bubble with two lines: a ride's thread. */
+export const MessageIcon = icon(
+  <>
+    <path d="M5.5 4.75h13a2.25 2.25 0 0 1 2.25 2.25v8.25a2.25 2.25 0 0 1-2.25 2.25H11l-4.25 3.25V17.5H5.5a2.25 2.25 0 0 1-2.25-2.25V7A2.25 2.25 0 0 1 5.5 4.75Z" />
+    <path d="M7.75 9.25h8.5M7.75 12.75h5.5" />
+  </>,
+)
+/** A paper plane: send. */
+export const SendIcon = icon(
+  <>
+    <path d="M20.5 3.5 3.75 10.4l6.6 2.6 2.6 6.6L20.5 3.5Z" />
+    <path d="m10.35 13 4.4-4.4" />
+  </>,
+)
+/** A raised hand: asking for a ride. */
+export const HandIcon = icon(
+  <>
+    <path d="M8.5 12V5.75a1.5 1.5 0 0 1 3 0V11" />
+    <path d="M11.5 11V4.5a1.5 1.5 0 0 1 3 0V11" />
+    <path d="M14.5 11V6a1.5 1.5 0 0 1 3 0v7.5a7 7 0 0 1-7 7h-.4a6 6 0 0 1-4.6-2.15L3.4 15.8a1.5 1.5 0 0 1 2.3-1.9L8.5 16" />
+  </>,
+)
+/** An hourglass: waiting for a seat. */
+export const HourglassIcon = icon(
+  <>
+    <path d="M6.5 3.75h11M6.5 20.25h11" />
+    <path d="M7.5 3.75v2.5c0 2 1.5 3.5 4.5 5.75 3-2.25 4.5-3.75 4.5-5.75v-2.5" />
+    <path d="M7.5 20.25v-2.5c0-2 1.5-3.5 4.5-5.75 3 2.25 4.5 3.75 4.5 5.75v2.5" />
+  </>,
+)
+/** An arrow into a tray: download. */
+export const DownloadIcon = icon(
+  <>
+    <path d="M12 3.75V14M8.25 10.25 12 14l3.75-3.75" />
+    <path d="M4.5 14.5v2.75a2.5 2.5 0 0 0 2.5 2.5h10a2.5 2.5 0 0 0 2.5-2.5V14.5" />
+  </>,
+)
+/** A shield with a tick: an admin. */
+export const ShieldIcon = icon(
+  <>
+    <path d="M12 3.5 5 6v5.5c0 4.25 2.9 7.6 7 9 4.1-1.4 7-4.75 7-9V6l-7-2.5Z" />
+    <path d="m9.25 12 2 2 3.75-4" />
+  </>,
+)

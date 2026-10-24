@@ -107,10 +107,10 @@ def test_push_off_without_a_key(client):
     assert r.status_code == 503
 
 
-def test_subscribe_needs_a_name_and_updates_in_place(client, configured):
+def test_subscribe_needs_an_account_and_updates_in_place(client, configured):
     cfg = client.get("/api/push/config").json()
     assert cfg["enabled"] and len(b64url_decode(cfg["public_key"])) == 65
-    assert client.post("/api/push/subscriptions", json=subscription()).status_code == 401
+    assert client.anon.post("/api/push/subscriptions", json=subscription()).status_code == 401
     assert client.post("/api/push/subscriptions", json=subscription(), headers={"X-User-Name": "Ana"}).status_code == 201
     # Same endpoint, new name: one row, renamed.
     assert client.post("/api/push/subscriptions", json=subscription(locale="sr"), headers={"X-User-Name": "Ana P"}).status_code == 201

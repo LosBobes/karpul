@@ -115,8 +115,8 @@ def test_join_and_leave_ride(client):
     booking_id = r.json()["bookings"][0]["id"]
     # Random person cannot remove the booking
     assert client.delete(f"{url}/{booking_id}", headers={"X-User-Name": "Petar"}).status_code == 403
-    # Without a name -> 401
-    assert client.delete(f"{url}/{booking_id}").status_code == 401
+    # Signed out -> 401
+    assert client.anon.delete(f"{url}/{booking_id}").status_code == 401
     # Passenger can leave
     r = client.delete(f"{url}/{booking_id}", headers={"X-User-Name": "Marko"})
     assert r.status_code == 200
@@ -135,7 +135,7 @@ def test_driver_can_kick_passenger(client):
 def test_only_driver_can_edit_or_delete(client):
     ride = client.post("/api/rides", json=own_ride()).json()
     rid = ride["id"]
-    assert client.patch(f"/api/rides/{rid}", json={"seats": 3}).status_code == 401
+    assert client.anon.patch(f"/api/rides/{rid}", json={"seats": 3}).status_code == 401
     assert (
         client.patch(f"/api/rides/{rid}", json={"seats": 3}, headers={"X-User-Name": "Zoran"}).status_code
         == 403

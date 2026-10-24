@@ -13,6 +13,9 @@ import { ArrowRightIcon, CalendarIcon, ListIcon, MenuIcon } from './components/i
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
+import { PeopleAdmin } from './components/PeopleAdmin'
+import { RequestForm } from './components/RequestForm'
+import { RequestList } from './components/RequestList'
 import { UpdateScreen } from './components/UpdateScreen'
 import { RideForm } from './components/RideForm'
 import { Sidebar } from './components/Sidebar'
@@ -20,19 +23,19 @@ import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
-import { useSession, type Session } from './lib/auth'
+import { setUser, useSession, type Session } from './lib/auth'
 import { messages, useT } from './lib/i18n'
-import { addDays, fmtShortDate, fmtTime, parseISODate, sameName, startOfWeek, toISODate, todayISO } from './lib/dates'
+import { addDays, fmtShortDate, fmtTime, parseISODate, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
-import { useLiveBoard, type LiveEvent } from './lib/live'
+import { inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateReady } from './lib/pwa'
-import type { CorporateCar, CorporateCarInput, Ride, RideInput } from './lib/types'
-import { useAdminPassword } from './lib/useAdminPassword'
+import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
+import { useBoard } from './lib/useBoard'
 import { useWide } from './lib/useWide'
 
-type FormState = { mode: 'create'; template?: Ride } | { mode: 'edit'; ride: Ride } | null
+type FormState = { mode: 'create'; template?: Ride; request?: RideRequest } | { mode: 'edit'; ride: Ride } | null
 
 /**
  * "Upcoming" lists every session from today on; "Week" is the day board with
@@ -67,34 +70,26 @@ function errMsg(e: unknown): string {
   return t.common.somethingWrong
 }
 
-/** Same order the API lists in, so a ride pushed over the socket lands in the right row. */
-function sortRides(rides: Ride[]): Ride[] {
-  return [...rides].sort(
-    (a, b) =>
-      a.ride_date.localeCompare(b.ride_date) ||
-      a.departure_time.localeCompare(b.departure_time) ||
-      a.id - b.id,
-  )
-}
-
 /**
- * The board, for a signed-in person. `userName` is the account's display name,
- * which is what every ride and booking on the board is keyed by, so the rest of
- * the app never learns that accounts exist.
+ * The board, for a signed-in person. Who they are travels down as `MeContext`
+ * (lib/me.ts): the account's id is what rides and seats point at, its display
+ * name is what the board shows.
  */
 function Board({ session }: { session: Session }) {
   const t = useT()
-  const userName = session.user.display_name
+  const user = session.user
+  const userName = user.display_name
+  const me = useMemo<Me>(() => ({ id: user.id, name: user.display_name }), [user.id, user.display_name])
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
-  const [rides, setRides] = useState<Ride[]>([])
-  const [cars, setCars] = useState<CorporateCar[]>([])
-  const [loadedRange, setLoadedRange] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
   const [toast, setToast] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
   const [form, setForm] = useState<FormState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // "Ask for a ride" (components/RequestForm.tsx): the day it opens on, or closed.
+  const [askDate, setAskDate] = useState<string | null>(null)
+  const [askError, setAskError] = useState<string | null>(null)
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useState<number | null>(null)
@@ -113,13 +108,11 @@ function Board({ session }: { session: Session }) {
   const [drag, setDrag] = useState<PassengerDrag | null>(null)
   const [dragOver, setDragOver] = useState<DropTarget | null>(null)
 
-  // Car-pool admin (shared password, see backend/app/admin.py). Everything else on
-  // this board is honour-based; only editing the company cars is gated.
-  const [adminPassword, setAdminPassword] = useAdminPassword()
+  // Admin (backend: app/admin.py): the company-car pool and the people. The
+  // drawer offers them to admins only; the server checks every call anyway.
+  const isAdmin = user.is_admin
   const [adminOpen, setAdminOpen] = useState(false)
-  const [adminUnlocked, setAdminUnlocked] = useState(false)
-  const [adminCars, setAdminCars] = useState<CorporateCar[]>([])
-  const [adminLoading, setAdminLoading] = useState(false)
+  const [peopleOpen, setPeopleOpen] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -127,12 +120,21 @@ function Board({ session }: { session: Session }) {
     document.title = t.documentTitle
   }, [t])
 
-  // This browser may still be subscribed to pushes under whoever used it last
-  // (backend: app/push.py files a subscription under a name), so every sign-in
-  // re-files it. A no-op when nothing is subscribed.
+  // The account as the server sees it now: an admin may have been made one,
+  // or a session saved by an older build lacks the newer fields.
   useEffect(() => {
-    void resubscribePush(userName)
-  }, [userName])
+    api
+      .me()
+      .then(setUser)
+      .catch(() => undefined)
+  }, [])
+
+  // This browser may still be subscribed to pushes under whoever used it last
+  // (backend: app/push.py files a subscription under an account), so every
+  // sign-in files it again. A no-op when nothing is subscribed.
+  useEffect(() => {
+    void resubscribePush()
+  }, [user.id])
 
   // A shared link, /ride/{id}: open that ride on its day, then tidy the URL so
   // a reload does not replay it. The server sent the shell with a preview.
@@ -175,106 +177,14 @@ function Board({ session }: { session: Session }) {
     const monday = startOfWeek(parseISODate(selected))
     return { from: toISODate(monday), to: toISODate(addDays(monday, 6)) }
   }, [view, selected])
-  const rangeKey = `${range.from}:${range.to}`
 
-  // Loads overlap when twenty people are busy: a reconnect, a range change and a
-  // `cars.changed` can all be in flight together, and a live event can land
-  // between sending the request and getting the answer. Only the newest load
-  // may set the board, and an answer that an event may have overtaken is
-  // fetched once more instead of being trusted.
-  const loadSeq = useRef(0)
-  const eventDuringLoad = useRef(false)
+  const onLoadError = useCallback((e: unknown) => setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) }), [])
+  const board = useBoard(range, { isAdmin, onLoadError })
+  const { rides, requests, cars, adminCars, loading, liveStatus, load, upsertRide, removeRides, upsertRequest, removeRequest, reloadCars } = board
+  const openRequests = useMemo(() => requests.filter((r) => r.ride_id === null), [requests])
 
-  const load = useCallback(async (): Promise<void> => {
-    const seq = ++loadSeq.current
-    let next: Ride[] | null = null
-    // One more round trip whenever an event overtook the answer; a quiet one ends it.
-    do {
-      eventDuringLoad.current = false
-      try {
-        next = await api.rides(range.from, range.to)
-      } catch (e) {
-        if (seq === loadSeq.current) setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) })
-        next = null
-        break
-      }
-    } while (seq === loadSeq.current && eventDuringLoad.current)
-    if (seq !== loadSeq.current) return // superseded; that load sets the board
-    if (next) setRides(next)
-    setLoadedRange(rangeKey)
-  }, [range, rangeKey])
-
-  useEffect(() => {
-    // Data fetching: the state update happens after the await, not synchronously.
-    // oxlint-disable-next-line react/set-state-in-effect
-    void load()
-  }, [load])
-
-  const loading = loadedRange !== rangeKey
-
-  useEffect(() => {
-    api.corporateCars().then(setCars).catch(() => setCars([]))
-  }, [])
-
-  /** The admin list is the superset; the ride form only ever sees active cars. */
-  const applyCars = useCallback((all: CorporateCar[]) => {
-    setAdminCars(all)
-    setCars(all.filter((c) => c.active))
-  }, [])
-
-  /** Put a ride the server just returned (over REST or the socket) in its row.
-   *  An edit can move a ride into or out of the loaded range. */
-  const upsertRide = useCallback(
-    (ride: Ride) =>
-      setRides((rs) => {
-        const inRange = ride.ride_date >= range.from && ride.ride_date <= range.to
-        const rest = rs.filter((r) => r.id !== ride.id)
-        return inRange ? sortRides([...rest, ride]) : rest
-      }),
-    [range],
-  )
-
-  // Live board: the server pushes every change anyone makes (lib/live.ts).
-  const onLiveEvent = useCallback(
-    (ev: LiveEvent) => {
-      switch (ev.type) {
-        case 'ride.created':
-        case 'ride.updated':
-          eventDuringLoad.current = true
-          upsertRide(ev.ride)
-          break
-        case 'ride.deleted':
-          eventDuringLoad.current = true
-          setRides((rs) => rs.filter((r) => r.id !== ev.ride_id))
-          break
-        case 'cars.changed':
-          // A pool edit can relabel rides (backend: relabel_rides_for_car), so
-          // both lists are reloaded rather than patched.
-          if (adminUnlocked) api.allCorporateCars(adminPassword).then(applyCars).catch(() => undefined)
-          else api.corporateCars().then(setCars).catch(() => undefined)
-          void load()
-          break
-        default:
-          break
-      }
-    },
-    [upsertRide, load, adminUnlocked, adminPassword, applyCars],
-  )
-  const liveStatus = useLiveBoard({ onEvent: onLiveEvent, onConnect: load })
   // A newer build is installed and waiting (lib/pwa.ts); offered as a toast when no other shows.
   const updateReady = useUpdateReady()
-
-  // Keep the board fresh for people who leave the tab open. Polling is the
-  // fallback for when the socket is down; a focus always re-syncs.
-  useEffect(() => {
-    const id = liveStatus === 'live' ? null : setInterval(() => void load(), 30_000)
-    const onFocus = () => void load()
-    window.addEventListener('focus', onFocus)
-    return () => {
-      if (id !== null) clearInterval(id)
-      window.removeEventListener('focus', onFocus)
-    }
-  }, [load, liveStatus])
 
   useEffect(() => {
     if (!toast) return
@@ -282,8 +192,11 @@ function Board({ session }: { session: Session }) {
     return () => clearTimeout(id)
   }, [toast])
 
-  async function withBusy(ride: Ride, fn: () => Promise<void>) {
-    setBusyId(ride.id)
+  const notice = useCallback((text: string) => setToast({ kind: 'ok', text }), [])
+  const failure = useCallback((text: string) => setToast({ kind: 'error', text }), [])
+
+  async function withBusy(id: number, fn: () => Promise<void>) {
+    setBusyId(id)
     try {
       await fn()
     } catch (e) {
@@ -295,28 +208,44 @@ function Board({ session }: { session: Session }) {
   }
 
   const onJoin = (ride: Ride, pickup = '') =>
-    withBusy(ride, async () => {
-      upsertRide(await api.join(ride.id, userName, userName, pickup))
+    withBusy(ride.id, async () => {
+      upsertRide(await api.join(ride.id, userName, pickup))
       setToast({ kind: 'ok', text: t.toasts.youreIn(ride.driver_name) })
     })
 
   const onLeave = (ride: Ride, bookingId: number) =>
-    withBusy(ride, async () => {
-      upsertRide(await api.leave(ride.id, bookingId, userName))
+    withBusy(ride.id, async () => {
+      upsertRide(await api.leave(ride.id, bookingId))
     })
 
   /** The keyboard's way of dragging the chip to another car: leave one, join the other. */
   const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '') =>
-    withBusy(target, async () => {
-      upsertRide(await api.leave(from.ride.id, from.bookingId, userName))
-      upsertRide(await api.join(target.id, userName, userName, pickup))
+    withBusy(target.id, async () => {
+      upsertRide(await api.leave(from.ride.id, from.bookingId))
+      upsertRide(await api.join(target.id, userName, pickup))
       setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
     })
 
   const onMovePickup = (ride: Ride, bookingId: number, pickup: string) =>
-    withBusy(ride, async () => {
-      upsertRide(await api.movePickup(ride.id, bookingId, pickup, userName))
+    withBusy(ride.id, async () => {
+      upsertRide(await api.movePickup(ride.id, bookingId, pickup))
       setToast({ kind: 'ok', text: t.toasts.pickupChanged(pickup || ride.origin) })
+    })
+
+  /** Queue for a seat in a full car. */
+  const onWait = (ride: Ride, pickup: string) =>
+    withBusy(ride.id, async () => {
+      const updated = await api.joinWaitlist(ride.id, pickup)
+      upsertRide(updated)
+      setToast({ kind: 'ok', text: t.toasts.waiting(placeInLine(updated, me)) })
+    })
+
+  /** Leave the queue yourself, or (the driver) take someone off it. */
+  const onLeaveLine = (ride: Ride, entryId: number) =>
+    withBusy(ride.id, async () => {
+      const mine = ride.waitlist.find((w) => w.id === entryId)?.user_id === me.id
+      upsertRide(await api.leaveWaitlist(ride.id, entryId))
+      if (mine) setToast({ kind: 'ok', text: t.toasts.stoppedWaiting })
     })
 
   /** The system share sheet where there is one, else the link goes to the clipboard. */
@@ -340,18 +269,22 @@ function Board({ session }: { session: Session }) {
     }
   }
 
+  const onDownloadCalendar = (ride: Ride) => {
+    api.downloadRideCalendar(ride.id).catch((e) => setToast({ kind: 'error', text: errMsg(e) }))
+  }
+
   /** The driver, or a passenger when the driver allows it, puts a colleague in. */
   const onAddPassenger = (ride: Ride, name: string) =>
-    withBusy(ride, async () => {
-      upsertRide(await api.join(ride.id, name, userName))
+    withBusy(ride.id, async () => {
+      upsertRide(await api.join(ride.id, name))
       setToast({ kind: 'ok', text: t.toasts.nameIn(name, ride.driver_name) })
     })
 
   /** The driver's switch: may the passengers add and remove each other? */
   const onTogglePassengersManage = (ride: Ride) =>
-    withBusy(ride, async () => {
+    withBusy(ride.id, async () => {
       const on = !ride.passengers_manage
-      upsertRide(await api.updateRide(ride.id, { passengers_manage: on }, userName))
+      upsertRide(await api.updateRide(ride.id, { passengers_manage: on }))
       setToast({ kind: 'ok', text: on ? t.toasts.manageOn : t.toasts.manageOff })
     })
 
@@ -363,9 +296,9 @@ function Board({ session }: { session: Session }) {
       label: t.common.remove,
       onConfirm: () => {
         setConfirm(null)
-        void withBusy(ride, async () => {
-          await api.deleteRide(ride.id, userName)
-          setRides((rs) => rs.filter((r) => r.id !== ride.id))
+        void withBusy(ride.id, async () => {
+          await api.deleteRide(ride.id)
+          removeRides((r) => r.id === ride.id)
           setToast({ kind: 'ok', text: t.toasts.rideRemoved })
         })
       },
@@ -380,9 +313,9 @@ function Board({ session }: { session: Session }) {
       label: t.common.remove,
       onConfirm: () => {
         setConfirm(null)
-        void withBusy(ride, async () => {
-          await api.deleteRide(ride.id, userName, 'following')
-          setRides((rs) => rs.filter((r) => !(r.series_id === ride.series_id && r.ride_date >= ride.ride_date)))
+        void withBusy(ride.id, async () => {
+          await api.deleteRide(ride.id, 'following')
+          removeRides((r) => r.series_id === ride.series_id && r.ride_date >= ride.ride_date)
           setToast({ kind: 'ok', text: t.toasts.ridesRemoved })
         })
       },
@@ -390,13 +323,12 @@ function Board({ session }: { session: Session }) {
 
   /** Drop of the passenger chip onto a car: switch cars if already seated, else join. */
   const onDropPassenger = (target: Ride, drag: PassengerDrag) => {
-    if (!sameName(drag.name, userName)) return
     setCarSel(target.id)
-    void withBusy(target, async () => {
+    void withBusy(target.id, async () => {
       if (drag.fromRideId !== null && drag.bookingId !== null && drag.fromRideId !== target.id) {
-        upsertRide(await api.leave(drag.fromRideId, drag.bookingId, userName))
+        upsertRide(await api.leave(drag.fromRideId, drag.bookingId))
       }
-      upsertRide(await api.join(target.id, userName, userName))
+      upsertRide(await api.join(target.id, userName))
       setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
     })
   }
@@ -432,6 +364,7 @@ function Board({ session }: { session: Session }) {
   const closeGuide = useCallback(() => setGuideOpen(false), [])
   const closeMyRides = useCallback(() => setMyRidesOpen(false), [])
   const closeNotif = useCallback(() => setNotifOpen(false), [])
+  const closePeople = useCallback(() => setPeopleOpen(false), [])
 
   const closeForm = useCallback(() => {
     setForm(null)
@@ -443,22 +376,27 @@ function Board({ session }: { session: Session }) {
     setFormError(null)
     try {
       if (form?.mode === 'edit') {
-        const { driver_name: _driver, ...patch } = input
+        // The driver of a ride never changes, and the API has no field for it.
+        const { driver_name: _driver, request_id: _request, ...patch } = input
         void _driver
-        upsertRide(await api.updateRide(form.ride.id, patch, userName))
+        void _request
+        upsertRide(await api.updateRide(form.ride.id, patch))
         setToast({ kind: 'ok', text: t.toasts.rideUpdated })
         setCarSel(form.ride.id)
       } else {
         const created = await api.createRide(input)
         upsertRide(created)
+        const answered = form?.mode === 'create' ? form.request : undefined
         if (input.repeat_until) {
           // The other weeks reach this tab over the socket; a reload catches up if it is down.
           void load()
           const weeks = Math.floor((parseISODate(input.repeat_until).getTime() - parseISODate(input.ride_date).getTime()) / (7 * 86_400_000)) + 1
           setToast({ kind: 'ok', text: t.toasts.ridesAdded(weeks) })
         } else {
-          setToast({ kind: 'ok', text: t.toasts.rideAdded })
+          setToast({ kind: 'ok', text: answered ? t.toasts.requestAnswered(answered.name) : t.toasts.rideAdded })
         }
+        // The request is answered now; the socket brings that too, this is just sooner.
+        if (answered) upsertRequest({ ...answered, ride_id: created.id })
         setCarSel(created.id)
       }
       closeForm()
@@ -472,36 +410,43 @@ function Board({ session }: { session: Session }) {
     }
   }
 
-  const unlockAdmin = useCallback(
-    async (password: string) => {
-      setAdminLoading(true)
-      setAdminError(null)
-      try {
-        applyCars(await api.allCorporateCars(password))
-        setAdminPassword(password)
-        setAdminUnlocked(true)
-      } catch (e) {
-        setAdminUnlocked(false)
-        setAdminError(errMsg(e))
-      } finally {
-        setAdminLoading(false)
-      }
-    },
-    [applyCars, setAdminPassword],
-  )
+  // --- asking for a ride ---
+
+  const openAsk = (date: string) => {
+    setAskError(null)
+    setAskDate(date)
+  }
+  const closeAsk = useCallback(() => setAskDate(null), [])
+
+  async function onSubmitAsk(input: RideRequestInput) {
+    setSubmitting(true)
+    setAskError(null)
+    try {
+      upsertRequest(await api.createRequest(input))
+      setAskDate(null)
+      setToast({ kind: 'ok', text: t.toasts.requestAdded })
+    } catch (e) {
+      setAskError(errMsg(e))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const onOffer = (request: RideRequest) => setForm({ mode: 'create', request })
+
+  const onWithdraw = (request: RideRequest) =>
+    withBusy(-request.id, async () => {
+      await api.deleteRequest(request.id)
+      removeRequest(request.id)
+      setToast({ kind: 'ok', text: t.toasts.requestWithdrawn })
+    })
+
+  // --- admin: the car pool ---
 
   function openAdmin() {
     setAdminOpen(true)
     setAdminError(null)
-    // A password remembered from last time unlocks straight away (or fails loudly).
-    if (adminPassword && !adminUnlocked) void unlockAdmin(adminPassword)
-  }
-
-  function lockAdmin() {
-    setAdminPassword('')
-    setAdminUnlocked(false)
-    setAdminCars([])
-    setAdminError(null)
+    reloadCars().catch((e) => setAdminError(errMsg(e)))
   }
 
   async function withAdminBusy(id: number, fn: () => Promise<void>) {
@@ -509,10 +454,10 @@ function Board({ session }: { session: Session }) {
     setAdminError(null)
     try {
       await fn()
-      applyCars(await api.allCorporateCars(adminPassword))
+      await reloadCars()
       // A car edit can rewrite `car_name` on rides already booked in it
       // (backend: relabel_rides_for_car), so the board has to be reloaded or it
-      // keeps the old name and plate until the 30 s poll comes round.
+      // keeps the old name and plate until the next event.
       await load()
     } catch (e) {
       setAdminError(errMsg(e))
@@ -523,16 +468,17 @@ function Board({ session }: { session: Session }) {
 
   const onCreateCar = (input: CorporateCarInput) =>
     void withAdminBusy(NEW_CAR_BUSY_ID, async () => {
-      await api.createCar(input, adminPassword)
+      await api.createCar(input)
       setToast({ kind: 'ok', text: t.toasts.carAdded(input.name) })
     })
 
   const onUpdateCar = (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
-    void withAdminBusy(id, () => api.updateCar(id, patch, adminPassword).then(() => undefined))
+    void withAdminBusy(id, () => api.updateCar(id, patch).then(() => undefined))
 
-  const loadUsage = useCallback((days: number) => api.carUsage(days, adminPassword), [adminPassword])
+  const loadUsage = useCallback((days: number) => api.carUsage(days), [])
+  const downloadUsage = useCallback((days: number) => api.downloadCarUsage(days), [])
 
-  const onDeleteCar = (car: CorporateCar) =>
+  const onDeleteCar = (car: { id: number; name: string; plate: string }) =>
     setConfirm({
       title: t.confirm.deleteCarTitle,
       body: t.confirm.deleteCarBody(car.name, car.plate),
@@ -540,7 +486,7 @@ function Board({ session }: { session: Session }) {
       onConfirm: () => {
         setConfirm(null)
         void withAdminBusy(car.id, async () => {
-          await api.deleteCar(car.id, adminPassword)
+          await api.deleteCar(car.id)
           setToast({ kind: 'ok', text: t.toasts.carDeleted(car.name) })
         })
       },
@@ -548,9 +494,11 @@ function Board({ session }: { session: Session }) {
 
   const upcoming = view === 'upcoming'
   const dayRides = upcoming ? [] : rides.filter((r) => r.ride_date === selected)
+  const dayRequests = upcoming ? [] : openRequests.filter((r) => r.request_date === selected)
   const isPast = !upcoming && selected < todayISO()
-  const myRideToday = dayRides.find((r) => r.bookings.some((b) => sameName(b.passenger_name, userName))) ?? null
-  const myBookingToday = myRideToday?.bookings.find((b) => sameName(b.passenger_name, userName)) ?? null
+  const myRideToday = dayRides.find((r) => myBooking(r, me) !== undefined) ?? null
+  const myBookingToday = myRideToday ? (myBooking(myRideToday, me) ?? null) : null
+  const askedToday = dayRequests.some((r) => isMyRequest(r, me))
   const canAdd = !isPast
 
   // Resolve the open tile: an explicit pick that still exists, else your own
@@ -564,16 +512,10 @@ function Board({ session }: { session: Session }) {
   // picked it shows your next ride, else the first one.
   const wide = useWide()
   const pickedUpcoming = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
-  const openUpcomingId =
-    pickedUpcoming ??
-    (upcoming && wide
-      ? (rides.find((r) => sameName(r.driver_name, userName) || r.bookings.some((b) => sameName(b.passenger_name, userName)))?.id ??
-        rides[0]?.id ??
-        null)
-      : null)
+  const openUpcomingId = pickedUpcoming ?? (upcoming && wide ? (rides.find((r) => inRide(r, me))?.id ?? rides[0]?.id ?? null) : null)
   const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
 
-  const openNewCar = () => (userName ? setForm({ mode: 'create' }) : setAccountOpen(true))
+  const openNewCar = () => setForm({ mode: 'create' })
 
   // Motion (lib/motion.ts): Upcoming sits left of Week, so switching slides
   // the new view in from that side; the day board slides the way the
@@ -597,11 +539,8 @@ function Board({ session }: { session: Session }) {
 
   /** Your seat in another car on the same day, if any: the card offers a switch. */
   const seatElsewhere = (ride: Ride) => {
-    if (!userName) return null
-    const other = rides.find(
-      (r) => r.ride_date === ride.ride_date && r.id !== ride.id && r.bookings.some((b) => sameName(b.passenger_name, userName)),
-    )
-    const booking = other?.bookings.find((b) => sameName(b.passenger_name, userName))
+    const other = rides.find((r) => r.ride_date === ride.ride_date && r.id !== ride.id && myBooking(r, me) !== undefined)
+    const booking = other ? myBooking(other, me) : undefined
     return other && booking ? { ride: other, bookingId: booking.id } : null
   }
 
@@ -609,7 +548,6 @@ function Board({ session }: { session: Session }) {
     <CarDetail
       key={ride.id}
       ride={ride}
-      userName={userName}
       busy={busyId === ride.id}
       isPast={isPast}
       onJoin={onJoin}
@@ -618,13 +556,17 @@ function Board({ session }: { session: Session }) {
       onSwitch={onSwitch}
       onMovePickup={onMovePickup}
       onShare={(r) => void onShare(r)}
+      onDownloadCalendar={onDownloadCalendar}
       onCancelFollowing={onCancelFollowing}
       onAddPassenger={onAddPassenger}
       onCancel={onCancel}
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
-      onDuplicate={(r) => (userName ? setForm({ mode: 'create', template: r }) : setAccountOpen(true))}
+      onDuplicate={(r) => setForm({ mode: 'create', template: r })}
       onTogglePassengersManage={onTogglePassengersManage}
       onGuide={() => setGuideOpen(true)}
+      onWait={onWait}
+      onLeaveLine={onLeaveLine}
+      onError={failure}
       dragActive={drag !== null}
       lifted={drag?.fromRideId === ride.id}
       over={dragOver?.kind === 'ride' && dragOver.rideId === ride.id}
@@ -642,289 +584,292 @@ function Board({ session }: { session: Session }) {
       <span className="car-tile skeleton" />
     </div>
   ) : dayRides.length === 0 ? null : (
-    <CarCarousel
-      rides={dayRides}
-      selected={selection}
-      userName={userName}
-      dragActive={drag !== null}
-      over={dragOver}
-      onSelect={setCarSel}
-      vertical={wide}
-    />
+    <CarCarousel rides={dayRides} selected={selection} dragActive={drag !== null} over={dragOver} onSelect={setCarSel} vertical={wide} />
   )
   const dayDetail = loading ? null : openRide ? (
     <div key={openRide.id} className={['stack', slideClass(tileDir)].filter(Boolean).join(' ')}>
       {detailFor(openRide, false)}
     </div>
   ) : (
-    <AddCarCard userName={userName} isPast={isPast} intro={rides.length === 0 && !isPast} onEditName={() => setAccountOpen(true)} />
+    <AddCarCard isPast={isPast} intro={rides.length === 0 && !isPast} />
   )
   const dayYou = loading ? null : (
-    <YouPanel
-      userName={userName}
-      dayRides={dayRides}
-      currentRide={myRideToday}
-      currentBookingId={myBookingToday?.id ?? null}
-      isPast={isPast}
-      dragActive={drag !== null}
-      over={dragOver?.kind === 'tray'}
-      onGrab={onGrab}
-      onOpenCar={setCarSel}
-      onEditName={() => setAccountOpen(true)}
-    />
+    <>
+      <YouPanel
+        dayRides={dayRides}
+        currentRide={myRideToday}
+        currentBookingId={myBookingToday?.id ?? null}
+        isPast={isPast}
+        dragActive={drag !== null}
+        over={dragOver?.kind === 'tray'}
+        onGrab={onGrab}
+        onOpenCar={setCarSel}
+        onAsk={() => openAsk(selected)}
+        asked={askedToday}
+      />
+      <RequestList requests={dayRequests} isPast={isPast} busy={busyId !== null} onOffer={onOffer} onWithdraw={(r) => void onWithdraw(r)} />
+    </>
   )
 
   const viewSwitch = (
     <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
       <SegThumb count={2} index={upcoming ? 0 : 1} />
-      <button
-        type="button"
-        role="radio"
-        aria-checked={upcoming}
-        className={upcoming ? 'seg seg-on' : 'seg'}
-        onClick={() => setView('upcoming')}
-      >
+      <button type="button" role="radio" aria-checked={upcoming} className={upcoming ? 'seg seg-on' : 'seg'} onClick={() => setView('upcoming')}>
         <ListIcon size={16} /> {t.view.upcoming}
       </button>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={!upcoming}
-        className={upcoming ? 'seg' : 'seg seg-on'}
-        onClick={() => setView('week')}
-      >
+      <button type="button" role="radio" aria-checked={!upcoming} className={upcoming ? 'seg' : 'seg seg-on'} onClick={() => setView('week')}>
         <CalendarIcon size={16} /> {t.view.week}
       </button>
     </div>
   )
 
   return (
-    <div className={wide ? 'app app-wide' : 'app'}>
-      <header className="topbar">
-        <button
-          type="button"
-          className="icon-btn topbar-menu"
-          aria-label={t.common.menu}
-          aria-haspopup="dialog"
-          aria-expanded={sidebarOpen}
-          aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
-          onClick={() => setSidebarOpen(true)}
-        >
-          <MenuIcon size={22} />
-        </button>
-        <h1 className="topbar-title">
-          <Logo /> Karpul
-        </h1>
-        {wide && <div className="topbar-center">{viewSwitch}</div>}
-        <div className="topbar-right">
-          <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
-            <span className="live-dot" aria-hidden="true" />
-            <span className="sr-only">{t.live.label[liveStatus]}</span>
-          </span>
-        </div>
-      </header>
-
-      <main>
-        {!wide && viewSwitch}
-
-        {upcoming && (
-          <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-            {loading ? (
-              <div className="session-list session-skeleton" aria-busy="true">
-                <span className="card session skeleton" />
-                <span className="card session skeleton" />
-                <span className="card session skeleton" />
-              </div>
-            ) : rides.length === 0 ? (
-              <AddCarCard
-                userName={userName}
-                isPast={false}
-                emptyTitle={t.empty.noUpcoming}
-                intro
-                onEditName={() => setAccountOpen(true)}
-              />
-            ) : (
-              <div className={wide ? 'split' : undefined}>
-                <Upcoming
-                  rides={rides}
-                  userName={userName}
-                  openId={openUpcomingId}
-                  onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
-                  renderDetail={wide ? undefined : (ride) => detailFor(ride, true)}
-                />
-                {wide && openUpcomingRide && (
-                  <aside className="split-pane" aria-label={openUpcomingRide.car_name}>
-                    <div key={openUpcomingRide.id} className="stack swap-right">
-                      {detailFor(openUpcomingRide, true)}
-                    </div>
-                  </aside>
-                )}
-              </div>
-            )}
+    <MeContext.Provider value={me}>
+      <div className={wide ? 'app app-wide' : 'app'}>
+        <header className="topbar">
+          <button
+            type="button"
+            className="icon-btn topbar-menu"
+            aria-label={t.common.menu}
+            aria-haspopup="dialog"
+            aria-expanded={sidebarOpen}
+            aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
+            onClick={() => setSidebarOpen(true)}
+          >
+            <MenuIcon size={22} />
+          </button>
+          <h1 className="topbar-title">
+            <Logo /> Karpul
+          </h1>
+          {wide && <div className="topbar-center">{viewSwitch}</div>}
+          <div className="topbar-right">
+            <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
+              <span className="live-dot" aria-hidden="true" />
+              <span className="sr-only">{t.live.label[liveStatus]}</span>
+            </span>
           </div>
-        )}
+        </header>
 
-        {!upcoming && (
-          <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-            {wide ? (
-              <div className="split split-week">
-                <div className="split-side">
+        <main>
+          {!wide && viewSwitch}
+
+          {upcoming && (
+            <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
+              {loading ? (
+                <div className="session-list session-skeleton" aria-busy="true">
+                  <span className="card session skeleton" />
+                  <span className="card session skeleton" />
+                  <span className="card session skeleton" />
+                </div>
+              ) : rides.length === 0 && openRequests.length === 0 ? (
+                <>
+                  <AddCarCard isPast={false} emptyTitle={t.empty.noUpcoming} intro />
+                  <button type="button" className="add-row add-row-quiet" onClick={() => openAsk(todayISO())}>
+                    {t.requests.ask}
+                  </button>
+                </>
+              ) : (
+                <div className={wide ? 'split' : undefined}>
+                  <Upcoming
+                    rides={rides}
+                    requests={openRequests}
+                    busy={busyId !== null}
+                    onAsk={() => openAsk(todayISO())}
+                    onOffer={onOffer}
+                    onWithdraw={(r) => void onWithdraw(r)}
+                    openId={openUpcomingId}
+                    onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
+                    renderDetail={wide ? undefined : (ride) => detailFor(ride, true)}
+                  />
+                  {wide && openUpcomingRide && (
+                    <aside className="split-pane" aria-label={openUpcomingRide.car_name}>
+                      <div key={openUpcomingRide.id} className="stack swap-right">
+                        {detailFor(openUpcomingRide, true)}
+                      </div>
+                    </aside>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!upcoming && (
+            <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
+              {wide ? (
+                <div className="split split-week">
+                  <div className="split-side">
+                    <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
+                    <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                      {dayTiles}
+                      {dayYou}
+                    </div>
+                  </div>
+                  <div className="split-pane">
+                    <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                      {dayDetail}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
                   <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
                   <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
                     {dayTiles}
+                    {dayDetail}
                     {dayYou}
                   </div>
-                </div>
-                <div className="split-pane">
-                  <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
-                    {dayDetail}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <>
-                <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
-                <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
-                  {dayTiles}
-                  {dayDetail}
-                  {dayYou}
-                </div>
-              </>
-            )}
-          </div>
+                </>
+              )}
+            </div>
+          )}
+        </main>
+
+        {canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
+
+        {sidebarOpen && (
+          <Sidebar
+            userName={userName}
+            handle={user.username}
+            isAdmin={isAdmin}
+            onAccount={() => setAccountOpen(true)}
+            onCompanyCars={openAdmin}
+            onPeople={() => setPeopleOpen(true)}
+            onGuide={() => setGuideOpen(true)}
+            onMyRides={() => setMyRidesOpen(true)}
+            onNotifications={() => setNotifOpen(true)}
+            onClose={closeSidebar}
+          />
         )}
-      </main>
 
-      {canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
+        {guideOpen && <CarGuide onClose={closeGuide} />}
 
-      {sidebarOpen && (
-        <Sidebar
-          userName={userName}
-          handle={session.user.username}
-          onAccount={() => setAccountOpen(true)}
-          onCompanyCars={openAdmin}
-          onGuide={() => setGuideOpen(true)}
-          onMyRides={() => setMyRidesOpen(true)}
-          onNotifications={() => setNotifOpen(true)}
-          onClose={closeSidebar}
-        />
-      )}
+        {myRidesOpen && <MyRides user={user} onNotice={notice} onClose={closeMyRides} />}
 
-      {guideOpen && <CarGuide onClose={closeGuide} />}
+        {notifOpen && (
+          <NotificationsSheet onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })} onClose={closeNotif} />
+        )}
 
-      {myRidesOpen && <MyRides userName={userName} onEditName={() => setAccountOpen(true)} onClose={closeMyRides} />}
+        {updateOpen && <UpdateScreen onClose={() => setUpdateOpen(false)} />}
 
-      {notifOpen && (
-        <NotificationsSheet
-          userName={userName}
-          onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })}
-          onClose={closeNotif}
-        />
-      )}
+        {accountOpen && (
+          <AccountSheet
+            user={user}
+            // A rename rewrites the name on every ride the person is in
+            // (backend: services.rename_person) and those come over the socket;
+            // the reload is for a socket that is down.
+            onRenamed={() => void load()}
+            onSaved={() => setToast({ kind: 'ok', text: t.account.saved })}
+            onNotice={notice}
+            onClose={() => setAccountOpen(false)}
+          />
+        )}
 
-      {updateOpen && <UpdateScreen onClose={() => setUpdateOpen(false)} />}
+        {form && (
+          <RideForm
+            key={form.mode === 'edit' ? form.ride.id : form.request ? `request-${form.request.id}` : 'new'}
+            date={selected}
+            userName={userName}
+            cars={cars}
+            existing={form.mode === 'edit' ? form.ride : null}
+            template={form.mode === 'create' ? form.template : null}
+            request={form.mode === 'create' ? form.request : null}
+            submitting={submitting}
+            error={formError}
+            onSubmit={onSubmitForm}
+            onDelete={
+              form.mode === 'edit'
+                ? () => {
+                    const ride = form.ride
+                    closeForm()
+                    onCancel(ride)
+                  }
+                : undefined
+            }
+            onClose={closeForm}
+          />
+        )}
 
-      {accountOpen && (
-        <AccountSheet
-          user={session.user}
-          // The board is keyed by the name, and a rename rewrites every ride
-          // the person is in (backend: services.rename_person), so the loaded
-          // week is out of date. The push subscription follows the name on its
-          // own, through the effect above.
-          onRenamed={() => void load()}
-          onSaved={() => setToast({ kind: 'ok', text: t.account.saved })}
-          onClose={() => setAccountOpen(false)}
-        />
-      )}
+        {askDate !== null && <RequestForm date={askDate} submitting={submitting} error={askError} onSubmit={onSubmitAsk} onClose={closeAsk} />}
 
-      {form && (
-        <RideForm
-          key={form.mode === 'edit' ? form.ride.id : 'new'}
-          date={selected}
-          userName={userName}
-          cars={cars}
-          existing={form.mode === 'edit' ? form.ride : null}
-          template={form.mode === 'create' ? form.template : null}
-          submitting={submitting}
-          error={formError}
-          onSubmit={onSubmitForm}
-          onDelete={
-            form.mode === 'edit'
-              ? () => {
-                  const ride = form.ride
-                  closeForm()
-                  onCancel(ride)
-                }
-              : undefined
-          }
-          onClose={closeForm}
-        />
-      )}
+        {adminOpen && isAdmin && (
+          <CarAdmin
+            cars={adminCars}
+            loading={adminCars.length === 0}
+            error={adminError}
+            busyId={adminBusyId}
+            onCreate={onCreateCar}
+            onUpdate={onUpdateCar}
+            onDelete={onDeleteCar}
+            onLoadUsage={loadUsage}
+            onDownloadUsage={downloadUsage}
+            onClose={() => setAdminOpen(false)}
+          />
+        )}
 
-      {adminOpen && (
-        <CarAdmin
-          unlocked={adminUnlocked}
-          cars={adminCars}
-          loading={adminLoading}
-          error={adminError}
-          busyId={adminBusyId}
-          onUnlock={(p) => void unlockAdmin(p)}
-          onLock={lockAdmin}
-          onCreate={onCreateCar}
-          onUpdate={onUpdateCar}
-          onDelete={onDeleteCar}
-          onLoadUsage={loadUsage}
-          onClose={() => setAdminOpen(false)}
-        />
-      )}
+        {peopleOpen && isAdmin && <PeopleAdmin onNotice={notice} onClose={closePeople} />}
 
-      {confirmState && (
-        <ConfirmDialog
-          title={confirmState.title}
-          body={confirmState.body}
-          confirmLabel={confirmState.label}
-          onConfirm={confirmState.onConfirm}
-          onCancel={() => setConfirm(null)}
-        />
-      )}
+        {confirmState && (
+          <ConfirmDialog
+            title={confirmState.title}
+            body={confirmState.body}
+            confirmLabel={confirmState.label}
+            onConfirm={confirmState.onConfirm}
+            onCancel={() => setConfirm(null)}
+          />
+        )}
 
-      {/* The live region is always in the tree, so a screen reader hears each toast
-          as it lands; the visible toast itself comes and goes. */}
-      <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {toast?.text ?? ''}
-      </div>
-      {toast ? (
-        <div className={`toast toast-${toast.kind}`} aria-hidden="true">
-          {toast.text}
+        {/* The live region is always in the tree, so a screen reader hears each toast
+            as it lands; the visible toast itself comes and goes. */}
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {toast?.text ?? ''}
         </div>
-      ) : (
-        updateReady && (
-          <button type="button" className="toast toast-update" onClick={() => setUpdateOpen(true)}>
-            <span className="update-toast-mark" aria-hidden="true">
-              <Logo size={38} />
-            </span>
-            <span className="update-toast-text">
-              <strong>{t.toasts.updateReady}</strong>
-              <span>{t.toasts.updateHint}</span>
-            </span>
-            <span className="update-toast-go">
-              {t.toasts.updateAction}
-              <ArrowRightIcon size={14} />
-            </span>
-          </button>
-        )
-      )}
-    </div>
+        {toast ? (
+          <div className={`toast toast-${toast.kind}`} aria-hidden="true">
+            {toast.text}
+          </div>
+        ) : (
+          updateReady && (
+            <button type="button" className="toast toast-update" onClick={() => setUpdateOpen(true)}>
+              <span className="update-toast-mark" aria-hidden="true">
+                <Logo size={38} />
+              </span>
+              <span className="update-toast-text">
+                <strong>{t.toasts.updateReady}</strong>
+                <span>{t.toasts.updateHint}</span>
+              </span>
+              <span className="update-toast-go">
+                {t.toasts.updateAction}
+                <ArrowRightIcon size={14} />
+              </span>
+            </button>
+          )
+        )}
+      </div>
+    </MeContext.Provider>
   )
+}
+
+/** `/reset/<token>`: the app was opened on an admin's password reset link. */
+function readResetToken(): string | null {
+  const m = window.location.pathname.match(/^\/reset\/([A-Za-z0-9_-]+)\/?$/)
+  return m ? m[1] : null
 }
 
 /**
  * The door. Without a session there is nothing to show and nothing to load, so
  * the sign-in screen is the whole app; signing in swaps the board in, keyed by
- * account so switching people never leaves the last one's state behind.
+ * account so switching people never leaves the last one's state behind. A
+ * password reset link takes the door's place, signed in or not: it is for
+ * whoever it was made for.
  */
 export default function App() {
   const session = useSession()
+  const [resetToken, setResetToken] = useState(readResetToken)
+  const doneResetting = useCallback(() => {
+    window.history.replaceState(null, '', '/')
+    setResetToken(null)
+  }, [])
+  if (resetToken) return <AuthGate resetToken={resetToken} onResetDone={doneResetting} />
   if (!session) return <AuthGate />
   return <Board key={session.user.id} session={session} />
 }

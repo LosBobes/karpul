@@ -1,13 +1,13 @@
-import { firstName, fmtTime, sameName } from '../lib/dates'
+import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
+import { drives, useMe } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
-import { CheckCircleIcon, GripIcon, LogoutIcon, PencilIcon } from './icons'
+import { CheckCircleIcon, GripIcon, HandIcon, LogoutIcon } from './icons'
 
 interface Props {
-  userName: string
   dayRides: Ride[]
   /** The ride the user is booked on that day, if any. */
   currentRide: Ride | null
@@ -18,7 +18,10 @@ interface Props {
   over: boolean
   onGrab: (e: React.PointerEvent<HTMLElement>, drag: PassengerDrag) => void
   onOpenCar: (rideId: number) => void
-  onEditName: () => void
+  /** Nothing suits you that day: ask for a ride (components/RequestForm.tsx). */
+  onAsk: () => void
+  /** You already asked for that day; the button says so instead. */
+  asked: boolean
 }
 
 /**
@@ -27,7 +30,6 @@ interface Props {
  * onto a car; seated, it is where you drop the chip to get out.
  */
 export function YouPanel({
-  userName,
   dayRides,
   currentRide,
   currentBookingId,
@@ -36,33 +38,18 @@ export function YouPanel({
   over,
   onGrab,
   onOpenCar,
-  onEditName,
+  onAsk,
+  asked,
 }: Props) {
   const t = useT()
+  const me = useMe()
+  const userName = me.name
   const coarse = useCoarsePointer()
   const verb = coarse ? t.you.holdDrag : t.you.drag
 
-  if (!userName) {
-    return (
-      <section className="you">
-        <h3 className="section-title">{t.you.title}</h3>
-        <button type="button" className="card you-row you-row-btn" onClick={onEditName}>
-          <span className="avatar avatar-md avatar-empty" aria-hidden="true">
-            ?
-          </span>
-          <span className="you-text">
-            <strong>{t.you.whoAreYou}</strong>
-            <span>{t.you.tapName}</span>
-          </span>
-          <PencilIcon size={18} />
-        </button>
-      </section>
-    )
-  }
-
-  const driving = dayRides.find((r) => sameName(r.driver_name, userName)) ?? null
+  const driving = dayRides.find((r) => drives(r, me)) ?? null
   const seated = currentRide !== null
-  const openSeats = dayRides.some((r) => r.free_seats > 0 && !sameName(r.driver_name, userName))
+  const openSeats = dayRides.some((r) => r.free_seats > 0 && !drives(r, me))
   const canDrag = !seated && !driving && openSeats && !isPast
 
   const cls = [
@@ -145,6 +132,13 @@ export function YouPanel({
           </>
         )}
       </div>
+
+      {!seated && !driving && !isPast && !dragActive && !asked && (
+        <button type="button" className="add-row add-row-quiet" onClick={onAsk}>
+          <HandIcon size={18} />
+          {t.requests.ask}
+        </button>
+      )}
     </section>
   )
 }

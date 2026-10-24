@@ -1,9 +1,13 @@
+import csv
+import io
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlmodel import Session, col, func, select
 
-from ..admin import AdminPasswordHeader, require_admin
+from ..admin import require_admin
+from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..events import cars_changed
 from ..models import CarType, CorporateCar, Ride
@@ -14,7 +18,6 @@ router = APIRouter(prefix="/api/cars", tags=["cars"])
 
 SessionDep = Annotated[Session, Depends(get_session)]
 WriteSessionDep = Annotated[Session, Depends(get_write_session)]
-AdminOnly = Depends(require_admin)
 
 
 def _get_car_or_404(session: Session, car_id: int) -> CorporateCar:
@@ -57,38 +60,64 @@ def _ensure_seats_fit_existing_rides(session: Session, car: CorporateCar, seats:
 
 
 @router.get("/corporate", response_model=list[CorporateCarRead])
-def list_corporate_cars(
-    session: SessionDep,
-    include_inactive: bool = Query(default=False),
-    x_admin_password: AdminPasswordHeader = None,
-):
-    """The active pool, as used by the ride form.
-
-    `include_inactive=true` returns retired cars too and is admin-only — the
-    frontend also uses it to check a password the admin just typed.
-    """
+def list_corporate_cars(session: SessionDep, creds: CredsDep, include_inactive: bool = Query(default=False)):
+    """The active pool, as used by the ride form. `include_inactive=true`
+    returns retired cars too and is admin-only."""
     if include_inactive:
-        require_admin(x_admin_password)
+        require_admin(session, creds)
+    else:
+        require_user(session, creds)
     stmt = select(CorporateCar)
     if not include_inactive:
         stmt = stmt.where(col(CorporateCar.active).is_(True))
     return session.exec(stmt.order_by(col(CorporateCar.active).desc(), CorporateCar.name)).all()
 
 
-@router.get("/corporate/usage", dependencies=[AdminOnly])
-def corporate_car_usage(session: SessionDep, days: int = Query(default=90, ge=7, le=730)):
+@router.get("/corporate/usage")
+def corporate_car_usage(session: SessionDep, creds: CredsDep, days: int = Query(default=90, ge=7, le=730)):
     """Admin-only: how the pool cars were used over the last `days` days, per
     car and in total, with the rides as history (services.corporate_usage)."""
+    require_admin(session, creds)
     return corporate_usage(session, days)
 
 
-@router.post(
-    "/corporate",
-    response_model=CorporateCarRead,
-    status_code=status.HTTP_201_CREATED,
-    dependencies=[AdminOnly],
-)
-def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep):
+USAGE_CSV_COLUMNS = [
+    ("date", "ride_date"),
+    ("departure", "departure_time"),
+    ("return", "return_time"),
+    ("car", "car_name"),
+    ("driver", "driver_name"),
+    ("from", "origin"),
+    ("to", "destination"),
+    ("passengers", "passengers"),
+    ("seats", "seats"),
+    ("km", "distance_km"),
+]
+
+
+@router.get("/corporate/usage.csv")
+def corporate_car_usage_csv(session: SessionDep, creds: CredsDep, days: int = Query(default=90, ge=7, le=730)):
+    """Admin-only: the company-car rides of the last `days` days as a
+    spreadsheet, one row per ride. Starts with a UTF-8 byte order mark,
+    which is how Excel knows to read č and ć as such."""
+    require_admin(session, creds)
+    usage = corporate_usage(session, days, history_limit=None)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow([header for header, _ in USAGE_CSV_COLUMNS])
+    for ride in usage["history"]:
+        writer.writerow(["" if ride[key] is None else str(ride[key]) for _, key in USAGE_CSV_COLUMNS])
+    filename = f"karpul-company-cars-{usage['from']}-to-{usage['to']}.csv"
+    return Response(
+        "\ufeff" + out.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/corporate", response_model=CorporateCarRead, status_code=status.HTTP_201_CREATED)
+def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep, creds: CredsDep):
+    require_admin(session, creds)
     _ensure_plate_free(session, payload.plate)
     car = CorporateCar(**payload.model_dump())
     session.add(car)
@@ -98,8 +127,9 @@ def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep):
     return car
 
 
-@router.patch("/corporate/{car_id}", response_model=CorporateCarRead, dependencies=[AdminOnly])
-def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: WriteSessionDep):
+@router.patch("/corporate/{car_id}", response_model=CorporateCarRead)
+def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: WriteSessionDep, creds: CredsDep):
+    require_admin(session, creds)
     car = _get_car_or_404(session, car_id)
     data = payload.model_dump(exclude_unset=True)
     if "plate" in data:
@@ -123,14 +153,15 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Writ
     return car
 
 
-@router.delete("/corporate/{car_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[AdminOnly])
-def delete_corporate_car(car_id: int, session: WriteSessionDep):
+@router.delete("/corporate/{car_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_corporate_car(car_id: int, session: WriteSessionDep, creds: CredsDep):
     """Hard delete, allowed only while no ride references the car.
 
     Rides keep `corporate_car_id` as a foreign key, so deleting a used car would
     orphan ride history. Retiring it (`active=false`) is the way to take a sold
     car out of circulation.
     """
+    require_admin(session, creds)
     car = _get_car_or_404(session, car_id)
     used = session.exec(
         select(func.count()).select_from(Ride).where(Ride.corporate_car_id == car.id)
