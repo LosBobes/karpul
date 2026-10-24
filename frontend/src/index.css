@@ -3078,6 +3078,10 @@ body.dragging {
   background: #fde4ec;
   color: #be185d;
 }
+.drawer-tone-slate {
+  background: #e6ebf1;
+  color: #334155;
+}
 :root[data-resolved='dark'] .drawer-tone-blue {
   background: #1e2d5c;
   color: #93c5fd;
@@ -3097,6 +3101,10 @@ body.dragging {
 :root[data-resolved='dark'] .drawer-tone-rose {
   background: #4a1830;
   color: #f9a8d4;
+}
+:root[data-resolved='dark'] .drawer-tone-slate {
+  background: #263241;
+  color: #cbd5e1;
 }
 .drawer-item-text {
   display: flex;
@@ -3793,6 +3801,11 @@ body.dragging {
 .search > input {
   padding-right: 2.6rem;
 }
+/* The box has its own clear button; Chrome and Safari would add a second. */
+.search > input::-webkit-search-cancel-button {
+  appearance: none;
+  display: none;
+}
 .input-clear {
   position: absolute;
   right: 0.35rem;
@@ -4154,6 +4167,181 @@ body.dragging {
 .usage-facts dd {
   margin: 0;
   font-weight: 600;
+}
+
+/* --- All rides (components/RideLog.tsx) ------------------------------------ */
+/* A spreadsheet in a sheet: the panel widens on a desktop, the table scrolls
+   both ways inside its own frame with the header row and the date column
+   stuck, so a long window never loses which column or which day a cell is. */
+.panel-wide {
+  max-width: min(1280px, calc(100vw - 2rem));
+  height: calc(100dvh - 2rem);
+}
+.log-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem 0.75rem;
+}
+.log-tools .subfield {
+  width: 11rem;
+}
+.log-tools .log-kind {
+  width: 13rem;
+}
+.log-period {
+  min-width: 14rem;
+  min-height: 44px;
+}
+.log-search {
+  flex: 1 1 16rem;
+}
+.log-search > input {
+  min-height: 44px;
+}
+.log-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+.log-summary .section-meta {
+  margin: 0;
+}
+.log-scroll {
+  flex: 1 0 auto;
+  max-height: 70dvh;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.log-scroll:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.log-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+}
+.log-table th,
+.log-table td {
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+.log-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  border-bottom-color: var(--border-strong);
+}
+.log-table thead th:not(:has(button)) {
+  padding: 0.55rem 0.7rem;
+}
+.log-table tbody th {
+  font-weight: 600;
+}
+/* The date stays in view while the rest scrolls sideways. */
+.log-table .log-date {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.log-table thead .log-date {
+  z-index: 3;
+  background: var(--surface-2);
+}
+.log-table tbody tr:nth-child(even) td,
+.log-table tbody tr:nth-child(even) th {
+  background: var(--surface-2);
+}
+.log-table tbody tr:last-child > * {
+  border-bottom: none;
+}
+.log-table .log-num {
+  text-align: right;
+}
+.log-table .log-wide {
+  min-width: 14rem;
+  max-width: 24rem;
+  white-space: normal;
+}
+.log-sub {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.log-sort {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+.log-num .log-sort {
+  justify-content: flex-end;
+}
+.log-sort:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: -2px;
+}
+.log-sort-mark {
+  font-size: 0.6rem;
+  opacity: 0;
+}
+.log-sort-on {
+  color: var(--text);
+}
+.log-sort-on .log-sort-mark {
+  opacity: 1;
+  color: var(--green);
+}
+@media (hover: hover) and (pointer: fine) {
+  .log-sort:hover {
+    color: var(--text);
+  }
+  .log-sort:hover .log-sort-mark {
+    opacity: 0.45;
+  }
+  .log-sort-on:hover .log-sort-mark {
+    opacity: 1;
+  }
+  .log-table tbody tr:hover > * {
+    background: var(--green-soft);
+  }
+}
+@media (max-width: 600px) {
+  .log-tools .subfield {
+    width: calc(50% - 0.375rem);
+  }
+  .log-tools .log-kind,
+  .log-period {
+    width: 100%;
+  }
+  .log-scroll {
+    max-height: none;
+  }
 }
 
 /* --- Appearance switch ------------------------------------------------------ */

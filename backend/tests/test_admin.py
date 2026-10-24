@@ -160,3 +160,40 @@ def test_a_deleted_account_is_shown_out_of_the_live_socket(client, admin_auth):
                 ws.receive_json()
         assert closed.value.code == 4401
 
+
+
+# --- the rides table ------------------------------------------------------------
+
+
+def test_the_rides_table_reaches_past_the_boards_window_for_admins_only(client, admin_auth, session_factory):
+    from app.models import Ride
+
+    soon = client.post("/api/rides", json=own_ride("Marko", seats=2)).json()
+    client.post(f"/api/rides/{soon['id']}/bookings", json={"passenger_name": "Mila Đorđević"})
+    old = client.post("/api/rides", json=own_ride("Ana", departure_time="09:00", notes="via the depot")).json()
+    long_ago = date.today() - timedelta(days=300)
+    with session_factory() as s:
+        ride = s.get(Ride, old["id"])
+        ride.ride_date = long_ago
+        s.add(ride)
+        s.commit()
+    window = {"from": (long_ago - timedelta(days=1)).isoformat(), "to": TOMORROW}
+
+    assert client.anon.get("/api/admin/rides", params=window).status_code == 401
+    assert client.get("/api/admin/rides", params=window, headers=as_("Marko")).status_code == 403
+    r = client.get("/api/admin/rides", params=window, headers=admin_auth)
+    assert r.status_code == 200
+    assert [(x["driver_name"], x["ride_date"]) for x in r.json()] == [("Ana", long_ago.isoformat()), ("Marko", TOMORROW)]
+    assert r.json()[1]["bookings"][0]["passenger_name"] == "Mila Đorđević"
+    # Without dates: the last 30 days and the coming 90, so last year's ride is not in it.
+    assert [x["driver_name"] for x in client.get("/api/admin/rides", headers=admin_auth).json()] == ["Marko"]
+
+
+
+def test_the_rides_table_window_is_checked(client, admin_auth):
+    today = date.today()
+    backwards = {"from": today.isoformat(), "to": (today - timedelta(days=1)).isoformat()}
+    assert client.get("/api/admin/rides", params=backwards, headers=admin_auth).status_code == 422
+    too_long = {"from": today.isoformat(), "to": (today + timedelta(days=1200)).isoformat()}
+    r = client.get("/api/admin/rides", params=too_long, headers=admin_auth)
+    assert r.status_code == 422 and "may not exceed" in r.json()["detail"]

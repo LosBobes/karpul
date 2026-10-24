@@ -157,8 +157,14 @@ signed out, 403 for a non-admin. `routers/admin.py`: list accounts, make or unma
 cancelled them, its coming seats and queue places go with `promote_waitlist`, its requests are
 withdrawn; the past keeps the names with the ids nulled, messages keep their text; its open sockets
 are closed through `events.disconnect`, which the hub sends only to that account's subscriptions). `UserRead.is_admin`
-is the effective value (`routers/auth.user_read`). The drawer shows *Company cars* and *People*
-(`CarAdmin`, `PeopleAdmin`) to admins only. Tests: the `admin_auth` fixture in `conftest.py`;
+is the effective value (`routers/auth.user_read`). The drawer shows *Company cars*, *People* and
+*All rides* (`CarAdmin`, `PeopleAdmin`, `RideLog`) to admins only. *All rides* is a spreadsheet-style
+table for an office manager: `GET /api/admin/rides?from&to` (any window up to `MAX_LOG_DAYS`, past
+included, unlike the board's 92), shown in a wide sheet (`.panel-wide`, sticky header row and date
+column). Filtering, sorting and the CSV download all happen in the browser (`lib/rideLog.ts`, tested in
+`rideLog.test.ts`): the file holds the rows on screen in the app language, with semicolons and a decimal
+comma because Excel in Germany and Serbia reads a comma file as one column, and a leading apostrophe on
+any cell that starts like a formula. Tests: the `admin_auth` fixture in `conftest.py`;
 the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak in.
 
 **Where the rules live:**

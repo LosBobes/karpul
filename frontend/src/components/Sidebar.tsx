@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AccountIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, XIcon } from './icons'
+import { AccountIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -17,6 +17,7 @@ interface Props {
   onAccount: () => void
   onCompanyCars: () => void
   onPeople: () => void
+  onRideLog: () => void
   onGuide: () => void
   onMyRides: () => void
   onNotifications: () => void
@@ -28,7 +29,7 @@ interface Item {
   hint?: string
   icon: ReactNode
   /** The tint of the icon's tile, one per item so the menu reads by colour too. */
-  tone: 'blue' | 'violet' | 'amber' | 'green' | 'teal' | 'rose'
+  tone: 'blue' | 'violet' | 'amber' | 'green' | 'teal' | 'rose' | 'slate'
   onSelect: () => void
   disabled?: boolean
 }
@@ -37,11 +38,11 @@ interface Item {
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
  * top bar. It holds the things that are not about one particular ride: your
  * account, your rides and figures, notifications, the company-car guide, and
- * for an admin the pool and the people; at the bottom the appearance and the
+ * for an admin the pool, the people and the table of every ride; at the bottom the appearance and the
  * language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
  * it opens is the only thing left on screen.
  */
-export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onGuide, onMyRides, onNotifications, onClose }: Props) {
+export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onGuide, onMyRides, onNotifications, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
   // The drawer slides back out before it unmounts, whichever way it is closed.
@@ -122,6 +123,13 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
             icon: <PeopleIcon size={20} />,
             tone: 'rose',
             onSelect: pick(onPeople),
+          },
+          {
+            label: t.rideLog.title,
+            hint: t.rideLog.hint,
+            icon: <TableIcon size={20} />,
+            tone: 'slate',
+            onSelect: pick(onRideLog),
           },
         ] satisfies Item[])
       : []),
