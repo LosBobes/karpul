@@ -3225,17 +3225,27 @@ body.dragging {
   flex-direction: column;
   line-height: 1.3;
 }
+/* The name and its chips ("You", "Admin") wrap onto a second line on a
+   narrow phone instead of running off the edge. */
 .admin-row-text strong {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem 0.3rem;
+}
+.admin-row-text strong .tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .admin-row-text > span {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0 0.4rem;
   font-size: 0.84rem;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .admin-editor {
   flex-basis: 100%;
