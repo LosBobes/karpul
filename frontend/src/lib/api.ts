@@ -34,6 +34,19 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * What a call fails with when no answer came back at all: offline, or a phone
+ * whose radio is still waking up after the app was asleep. The browsers word it
+ * each their own way ("Failed to fetch", "Load failed", "NetworkError when
+ * attempting to fetch resource"), so it is replaced by this one sentence with
+ * status 0, which `isNetworkError` recognises and `apiError` translates.
+ */
+export const NETWORK_ERROR = 'No connection to the server'
+
+export function isNetworkError(e: unknown): boolean {
+  return e instanceof ApiError && e.status === 0
+}
+
 export function extractDetail(body: unknown): string | null {
   if (!body || typeof body !== 'object' || !('detail' in body)) return null
   const detail = (body as { detail: unknown }).detail
@@ -65,7 +78,13 @@ async function send(path: string, init: RequestInit = {}, opts: Opts = {}): Prom
   if (init.body) headers['Content-Type'] = 'application/json'
   const token = opts.anonymous ? '' : authToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  const res = await fetch(`${BASE}${path}`, { ...init, headers })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, { ...init, headers })
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') throw e
+    throw new ApiError(0, NETWORK_ERROR)
+  }
   if (!res.ok) {
     const text = await res.text()
     let body: unknown = null

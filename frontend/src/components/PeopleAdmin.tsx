@@ -147,7 +147,7 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                   {self && <span className="tag">{t.people.you}</span>}
                   {u.is_admin && (
                     <span className="tag tag-green tag-icon" title={u.admin_by_config ? t.people.adminByConfigHint : undefined}>
-                      <ShieldIcon size={12} /> {u.admin_by_config ? t.people.adminByConfig : t.people.admin}
+                      <ShieldIcon size={12} /> {t.people.admin}
                     </span>
                   )}
                 </strong>

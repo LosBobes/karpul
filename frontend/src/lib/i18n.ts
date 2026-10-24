@@ -419,7 +419,6 @@ const en = {
     count: (n: number) => enPlural(n, 'account', 'accounts'),
     search: 'Search people',
     admin: 'Admin',
-    adminByConfig: 'Admin by server setting',
     adminByConfigHint: 'Set on the server (KARPUL_ADMINS); it can only be changed there.',
     makeAdmin: 'Make admin',
     removeAdmin: 'Remove admin',
@@ -684,6 +683,8 @@ const srPassengers = (n: number) => srPlural(n, 'putnik', 'putnika', 'putnika')
 /** The server's wordings (routers/rides.py, routers/cars.py, services.py, schemas.py), in Serbian. */
 const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Ride not found$/, () => 'Vožnja nije pronađena'],
+  // Not the server's: lib/api.ts says this when no answer came back at all.
+  [/^No connection to the server$/, () => 'Nema veze sa serverom'],
   [/^Booking not found$/, () => 'Rezervacija nije pronađena'],
   [/^Corporate car not found$/, () => 'Službeni auto nije pronađen'],
   [/^No free seats left$/, () => 'Nema više slobodnih mesta'],
@@ -1257,7 +1258,6 @@ const sr: Messages = {
     count: (n) => srPlural(n, 'nalog', 'naloga', 'naloga'),
     search: 'Traži ljude',
     admin: 'Administrator',
-    adminByConfig: 'Administrator po podešavanju servera',
     adminByConfigHint: 'Podešeno na serveru (KARPUL_ADMINS); može se promeniti samo tamo.',
     makeAdmin: 'Postavi za administratora',
     removeAdmin: 'Ukloni administratora',
