@@ -18,6 +18,7 @@ from sqlalchemy import text
 from sqlmodel import Session
 
 from .database import engine, get_session, init_db
+from .geofence import GeoFence
 from .models import Ride
 from .monitoring import init_sentry
 from .reminders import reminder_loop
@@ -69,6 +70,9 @@ app.add_middleware(
 # The 90-day board is the biggest thing on the wire and every tab reloads it on
 # reconnect; compressed it is a fraction of the size on the office Wi-Fi.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Outermost: a request from outside KARPUL_ALLOWED_COUNTRIES gets nothing at all.
+app.add_middleware(GeoFence)
 
 
 @app.middleware("http")

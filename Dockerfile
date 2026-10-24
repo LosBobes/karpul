@@ -11,6 +11,9 @@ FROM python:3.12-slim
 WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
+# The IP-to-country database behind KARPUL_ALLOWED_COUNTRIES (app/geofence.py).
+COPY backend/fetch_geoip.py ./
+RUN python fetch_geoip.py /app/geoip/country.mmdb
 COPY backend/app ./app
 COPY --from=frontend /frontend/dist ./static
 

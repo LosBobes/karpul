@@ -6,3 +6,4 @@ httpx>=0.27
 pytest>=8.0
 cryptography>=42
 sentry-sdk[fastapi]>=2.0
+maxminddb>=2.6

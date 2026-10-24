@@ -24,7 +24,7 @@ from sqlmodel import Session
 
 from ..auth import user_for_token
 from ..database import get_session
-from ..events import Subscription, hub
+from ..events import DISCONNECT, Subscription, hub
 
 router = APIRouter(tags=["live"])
 
@@ -42,46 +42,60 @@ async def _pump(ws: WebSocket, sub: Subscription) -> None:
             event = await asyncio.wait_for(sub.queue.get(), timeout=PING_INTERVAL_S)
         except TimeoutError:
             event = {"type": "ping"}
+        if event.get("type") == DISCONNECT:
+            # The account was deleted: the same close as a dead token.
+            await ws.close(code=CLOSE_UNAUTHORIZED)
+            return
         await ws.send_json(event)
 
 
-async def _authenticate(ws: WebSocket, session: Session) -> bool:
+async def _authenticate(ws: WebSocket, session: Session) -> int | None:
+    """The id of the account the socket signs in as, or None."""
     try:
         raw = await asyncio.wait_for(ws.receive_text(), timeout=AUTH_TIMEOUT_S)
         message = json.loads(raw)
         token = message.get("token") if isinstance(message, dict) and message.get("type") == "auth" else None
     except (TimeoutError, ValueError):
         token = None
-    ok = isinstance(token, str) and user_for_token(session, token) is not None
+    user = user_for_token(session, token) if isinstance(token, str) else None
+    user_id = user.id if user is not None else None
     # Done with the database for the life of the socket: an open read
     # transaction would pin a WAL snapshot for as long as the tab stays open.
     session.close()
-    return ok
+    return user_id
 
 
 @router.websocket("/api/ws")
 async def live_board(ws: WebSocket, session: Annotated[Session, Depends(get_session)]) -> None:
     await ws.accept()
     try:
-        authenticated = await _authenticate(ws, session)
+        user_id = await _authenticate(ws, session)
     except WebSocketDisconnect:
         return
-    if not authenticated:
+    if user_id is None:
         await ws.close(code=CLOSE_UNAUTHORIZED)
         return
-    with hub.subscribe() as sub:
+    with hub.subscribe(user_id) as sub:
         await ws.send_json({"type": "hello"})
         sender = asyncio.create_task(_pump(ws, sub))
+        listener = asyncio.create_task(_drain(ws))
         try:
-            while True:
-                # Only here to notice the disconnect; payloads are ignored.
-                await ws.receive_text()
-        except WebSocketDisconnect:
-            pass
+            # Either the peer goes away or the server closes the socket.
+            await asyncio.wait({sender, listener}, return_when=asyncio.FIRST_COMPLETED)
         finally:
-            sender.cancel()
-            try:
-                await sender
-            except (asyncio.CancelledError, Exception):
-                # A send that failed because the peer vanished is not an error here.
-                pass
+            for task in (sender, listener):
+                task.cancel()
+                try:
+                    await task
+                except (asyncio.CancelledError, Exception):
+                    # A send that failed because the peer vanished is not an error here.
+                    pass
+
+
+async def _drain(ws: WebSocket) -> None:
+    """Only here to notice the disconnect; payloads are ignored."""
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        pass

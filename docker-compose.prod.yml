@@ -28,6 +28,7 @@ services:
       CORPORATE_CARS: ${CORPORATE_CARS:-}
       # Usernames that are always admins (comma-separated); see .env.prod.example.
       KARPUL_ADMINS: ${KARPUL_ADMINS:-}
+      KARPUL_ALLOWED_COUNTRIES: ${KARPUL_ALLOWED_COUNTRIES:-}
       KARPUL_VAPID_PRIVATE_KEY: ${KARPUL_VAPID_PRIVATE_KEY:-}
       KARPUL_VAPID_SUBJECT: ${KARPUL_VAPID_SUBJECT:-}
       # Optional error tracking. Unset = nothing is sent anywhere.

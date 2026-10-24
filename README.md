@@ -107,8 +107,18 @@ a driver answers it by adding a ride for it, which puts the person who asked in 
 An admin manages the company-car pool and the people (making someone else an admin, reset
 links). The usernames in `KARPUL_ADMINS` are admins whatever the app says, which is how the
 first admin of a deployment comes to be: register, put your username there, restart. More
-admins are made from the app; the last one cannot be removed. *Company cars* has a *Usage*
-tab whose rides download as a spreadsheet.
+admins are made from the app; the last one cannot be removed. An admin can also delete an
+account: its coming rides are cancelled (the passengers are told), its seats go to whoever is
+waiting and its requests are withdrawn, while its past rides keep its name. *Company cars* has
+a *Usage* tab whose rides download as a spreadsheet.
+
+### Countries
+
+Set `KARPUL_ALLOWED_COUNTRIES` (e.g. `DE,RS`) and the app answers nobody else: the page, the
+API and the live socket all refuse other countries with a 403. The country comes from
+[DB-IP](https://db-ip.com)'s free IP-to-country database (CC BY 4.0), which the Docker image
+downloads when it is built. Private addresses always pass. A calendar app that fetches the feed
+from its own servers abroad (Google Calendar does) is refused like anyone else.
 
 Retiring a car (`active = false`) is preferred over deleting: it disappears from the ride
 form while past rides keep their car. Deleting is refused outright once any ride references
@@ -168,6 +178,8 @@ See [docs/deployment-hetzner.md](docs/deployment-hetzner.md).
 | `CORS_ORIGINS` | backend | `http://localhost:5173` | Comma-separated allowed origins |
 | `CORPORATE_CARS` | backend | 3 sample cars | Seed for the car pool on first start: `Name\|PLATE\|seats;Name\|PLATE\|seats` |
 | `KARPUL_ADMINS` | backend | *(unset)* | Comma-separated usernames that are always admins (the first admin comes from here) |
+| `KARPUL_ALLOWED_COUNTRIES` | backend | *(unset)* | ISO country codes (`DE,RS`) the app answers; unset answers everyone |
+| `KARPUL_GEOIP_DB` | backend | `/app/geoip/country.mmdb` | The IP-to-country database (the image has one) |
 | `KARPUL_SENTRY_DSN` | backend | *(unset)* | Sentry error tracking; unset sends nothing anywhere. `KARPUL_SENTRY_TRACES` sets a trace sample rate |
 | `FORWARDED_ALLOW_IPS` | backend | `127.0.0.1` | uvicorn's own: which proxies' `X-Forwarded-For` to believe (production: `*`, behind Caddy) |
 | `KARPUL_VAPID_PRIVATE_KEY` | backend | *(unset)* | VAPID private key for push notifications; `python -m app.vapid` prints one. Unset = push off |
@@ -198,6 +210,7 @@ its secret).
 | `GET` | `/api/admin/users` | Every account (admin) |
 | `PATCH` | `/api/admin/users/{id}` | `{ "is_admin": true }` (admin; the last admin stays) |
 | `POST` | `/api/admin/users/{id}/reset-link` | A one-time password reset link (admin) |
+| `DELETE` | `/api/admin/users/{id}` | Delete an account: its coming rides, seats, queue places and requests go, its past stays (admin; not yourself, not the last admin) |
 | `GET` | `/api/cars/corporate` | Active company cars; `?include_inactive=true` adds retired ones (admin) |
 | `POST` | `/api/cars/corporate` | Add a company car (admin) |
 | `PATCH` | `/api/cars/corporate/{id}` | Edit name/plate/seats, or retire with `{"active": false}` (admin) |
