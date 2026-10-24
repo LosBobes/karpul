@@ -2,7 +2,7 @@ import { useId, useState } from 'react'
 import { addDays, fmtShortDate, parseISODate, startOfWeek, toISODate, todayISO } from '../lib/dates'
 import { useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import { CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from './icons'
+import { CalendarIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from './icons'
 import { Popover } from './Popover'
 
 interface Props {
@@ -10,8 +10,9 @@ interface Props {
   onChange: (iso: string) => void
   label: string
   disabled?: boolean
-  /** `control` is a form field; `link` is the small "Jump to…" text button. */
-  variant?: 'control' | 'link'
+  /** `control` is a form field; `link` is the small "Jump to…" text button;
+   * `title` is a heading that opens the calendar (the week above the day pills). */
+  variant?: 'control' | 'link' | 'title'
   linkText?: string
 }
 
@@ -25,7 +26,7 @@ export function DatePicker({ value, onChange, label, disabled, variant = 'contro
     <>
       <button
         type="button"
-        className={variant === 'link' ? 'link' : 'control'}
+        className={variant === 'control' ? 'control' : variant === 'link' ? 'link' : 'date-title'}
         aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={anchor !== null}
@@ -35,6 +36,11 @@ export function DatePicker({ value, onChange, label, disabled, variant = 'contro
       >
         {variant === 'link' ? (
           (linkText ?? t.dates.jumpTo)
+        ) : variant === 'title' ? (
+          <>
+            <span className="date-title-text">{linkText}</span>
+            <ChevronDownIcon size={16} />
+          </>
         ) : (
           <>
             <span className="control-icon">

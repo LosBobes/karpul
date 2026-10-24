@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api } from './api'
+import { api, isNetworkError } from './api'
 import { useLiveBoard, type LiveEvent, type LiveStatus } from './live'
 import type { CorporateCar, Ride, RideRequest } from './types'
 
@@ -56,6 +56,27 @@ export interface Board {
   reloadCars: () => Promise<void>
 }
 
+/** How long to wait before each new try when the network did not answer. */
+const NETWORK_RETRY_MS = [1000, 2000, 4000]
+
+/**
+ * The board's rides and requests. A phone coming back from sleep reloads the
+ * board the moment it wakes, often before its radio is back, so a call that got
+ * no answer at all is tried again a few times, quietly, before it counts as a
+ * failure; a real answer from the server (a 4xx or 5xx) is never retried.
+ * `current` says whether this load is still the one that matters.
+ */
+async function loadOnce(from: string, to: string, current: () => boolean): Promise<[Ride[], RideRequest[]]> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await Promise.all([api.rides(from, to), api.requests(from, to)])
+    } catch (e) {
+      if (!isNetworkError(e) || attempt >= NETWORK_RETRY_MS.length || !current()) throw e
+      await new Promise((resolve) => setTimeout(resolve, NETWORK_RETRY_MS[attempt]))
+    }
+  }
+}
+
 /**
  * Everything the board shows, for the days in `range`, kept current.
  *
@@ -91,7 +112,7 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
     do {
       eventDuringLoad.current = false
       try {
-        next = await Promise.all([api.rides(range.from, range.to), api.requests(range.from, range.to)])
+        next = await loadOnce(range.from, range.to, () => seq === loadSeq.current)
       } catch (e) {
         if (seq === loadSeq.current) failed.current(e)
         next = null

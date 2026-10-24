@@ -343,15 +343,16 @@ no other same-day tile to drop on. Above the list sit the filter chips (*All*, *
 rides*, *I'm in*) and a search box, state local to `Upcoming`; the day headings are sticky under
 the top bar (`.upcoming-head`). `App.tsx` loads whichever range the view needs (`range`) and
 the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
-width — nothing scrolls; the arrows beside the week label and a sideways swipe on the strip step a
-week) →
+width — nothing scrolls; above them one line for the week, whose name opens a calendar
+(`DatePicker variant="title"`) with *Today* and the two arrows on the right, and a sideways swipe on
+the strip also steps a week; the days are bare text, the sliding green pill marks the picked one) →
 `CarCarousel` (one tile per ride that day with its route line, hidden when there are none; tiles are also drop targets; the seat count goes red when full and green when you are in or driving) →
 either `CarDetail` (driver card, times, route with the pickup points, distance and chip-in
 tags, passenger list with the drop zone and the *Get in this car* row, which reads *Switch to
 this car* when `switchFrom` says you are seated elsewhere that day, the keyboard's way of
 dragging; a pickup `Select` above the seats when the ride has stops; ⋮ with *Share ride*,
 *Add to calendar* and, on a series, *Remove this and following rides*) or `AddCarCard` (the
-illustrated placeholder; `intro` adds the two-view explanation when the whole board is empty) →
+dashed placeholder with a small car badge, deliberately no picture; `intro` adds the two-view explanation when the whole board is empty) →
 `YouPanel`. The design's
 "unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
 you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the

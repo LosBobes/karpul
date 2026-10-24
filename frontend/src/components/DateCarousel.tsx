@@ -17,10 +17,11 @@ interface Props {
 const SWIPE_PX = 48
 
 /**
- * The date picker at the top: the seven days of the loaded week as pills that
- * always fit the width, so nothing is hidden off-screen. The arrows sit next
- * to the week label below, because that is what they move; a sideways swipe
- * on the pills does the same. A dot under a day means at least one car is
+ * The date picker at the top. First a line for the week: its name, which opens
+ * a calendar to jump anywhere, and on the right *Today* (when you are not on
+ * it) and the two arrows that step a week; a sideways swipe on the pills does
+ * the same. Under it the seven days of the week as pills that always fit the
+ * width, so nothing is hidden off-screen. A dot under a day means at least one car is
  * going that day. The green pill is one element that slides to the tapped
  * day; a week step slides the whole strip in from the side the week came from.
  */
@@ -54,6 +55,22 @@ export function DateCarousel({ selected, rides, onSelect }: Props) {
 
   return (
     <section className="dates" aria-label={t.dates.pickDay}>
+      <div className="dates-head">
+        <DatePicker variant="title" label={t.dates.jumpToDate} value={selected} onChange={onSelect} linkText={fmtWeekRange(monday)} />
+        <div className="week-nav" role="group" aria-label={t.dates.week}>
+          {selected !== today && (
+            <button type="button" className="today-chip" onClick={() => onSelect(today)}>
+              {t.common.today}
+            </button>
+          )}
+          <button type="button" className="week-btn" aria-label={t.dates.prevWeek} onClick={() => stepWeek(-1)}>
+            <ChevronLeftIcon size={18} />
+          </button>
+          <button type="button" className="week-btn" aria-label={t.dates.nextWeek} onClick={() => stepWeek(1)}>
+            <ChevronRightIcon size={18} />
+          </button>
+        </div>
+      </div>
       <div
         key={mondayISO}
         className={['dates-strip', slideClass(weekDir)].filter(Boolean).join(' ')}
@@ -87,25 +104,6 @@ export function DateCarousel({ selected, rides, onSelect }: Props) {
             </button>
           )
         })}
-      </div>
-      <div className="dates-foot">
-        <div className="week-nav" role="group" aria-label={t.dates.week}>
-          <button type="button" className="week-btn" aria-label={t.dates.prevWeek} onClick={() => stepWeek(-1)}>
-            <ChevronLeftIcon size={18} />
-          </button>
-          <span className="dates-week">{fmtWeekRange(monday)}</span>
-          <button type="button" className="week-btn" aria-label={t.dates.nextWeek} onClick={() => stepWeek(1)}>
-            <ChevronRightIcon size={18} />
-          </button>
-        </div>
-        <span className="dates-tools">
-          {selected !== today && (
-            <button type="button" className="link" onClick={() => onSelect(today)}>
-              {t.common.today}
-            </button>
-          )}
-          <DatePicker variant="link" label={t.dates.jumpToDate} value={selected} onChange={onSelect} />
-        </span>
       </div>
     </section>
   )
