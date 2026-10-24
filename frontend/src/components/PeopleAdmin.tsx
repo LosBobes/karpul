@@ -5,7 +5,8 @@ import { intlTag } from '../lib/locale'
 import { useMe } from '../lib/me'
 import type { AdminUser } from '../lib/types'
 import { Avatar } from './Avatar'
-import { CopyIcon, KebabIcon, KeyIcon, SearchIcon, ShieldIcon, XIcon } from './icons'
+import { ConfirmDialog } from './ConfirmDialog'
+import { CopyIcon, KebabIcon, KeyIcon, SearchIcon, ShieldIcon, TrashIcon, XIcon } from './icons'
 import { Menu } from './Menu'
 import { Sheet } from './Sheet'
 
@@ -30,7 +31,8 @@ interface Props {
  * the server's KARPUL_ADMINS, which only the server can change), making
  * someone an admin or not, and a one-time password reset link for whoever
  * forgot theirs. Karpul sends no email, so the link is shown here once for the
- * admin to pass on, and copied to the clipboard.
+ * admin to pass on, and copied to the clipboard. And deleting an account, behind
+ * a confirmation.
  */
 export function PeopleAdmin({ onNotice, onClose }: Props) {
   const t = useT()
@@ -41,6 +43,7 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [link, setLink] = useState<{ userId: number; url: string; expires: string } | null>(null)
   const [copied, setCopied] = useState(false)
+  const [doomed, setDoomed] = useState<AdminUser | null>(null)
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong), [])
 
@@ -66,6 +69,22 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
       fail(e)
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function remove(u: AdminUser) {
+    setBusyId(u.id)
+    setError(null)
+    try {
+      await api.deleteUser(u.id)
+      setPeople((ps) => ps?.filter((p) => p.id !== u.id) ?? null)
+      setLink((l) => (l?.userId === u.id ? null : l))
+      onNotice(messages().toasts.deletedAccount(u.display_name))
+    } catch (e) {
+      fail(e)
+    } finally {
+      setBusyId(null)
+      setDoomed(null)
     }
   }
 
@@ -154,6 +173,14 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                     onSelect: () => void makeLink(u),
                     disabled: busyId === u.id,
                   },
+                  {
+                    label: t.people.deleteAccount,
+                    icon: <TrashIcon size={18} />,
+                    onSelect: () => setDoomed(u),
+                    danger: true,
+                    // Not yourself, and not an admin the server's setting keeps one.
+                    disabled: busyId === u.id || self || u.admin_by_config,
+                  },
                 ]}
               />
               {link?.userId === u.id && (
@@ -173,6 +200,16 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
           )
         })}
       </ul>
+      {doomed && (
+        <ConfirmDialog
+          title={t.people.deleteTitle(doomed.display_name)}
+          body={t.people.deleteBody}
+          confirmLabel={t.people.deleteAccount}
+          busy={busyId === doomed.id}
+          onConfirm={() => void remove(doomed)}
+          onCancel={() => setDoomed(null)}
+        />
+      )}
     </Sheet>
   )
 }

@@ -45,6 +45,8 @@ Event = dict[str, Any]
 @dataclass
 class Subscription:
     loop: asyncio.AbstractEventLoop
+    # The account the socket signed in as, so it can be shown the door (`disconnect`).
+    user_id: int | None = None
     queue: asyncio.Queue[Event] = field(default_factory=asyncio.Queue)
 
 
@@ -60,9 +62,9 @@ class Hub:
             return len(self._subs)
 
     @contextmanager
-    def subscribe(self) -> Iterator[Subscription]:
+    def subscribe(self, user_id: int | None = None) -> Iterator[Subscription]:
         """Register the calling task; must be entered from inside the event loop."""
-        sub = Subscription(loop=asyncio.get_running_loop())
+        sub = Subscription(loop=asyncio.get_running_loop(), user_id=user_id)
         with self._lock:
             key = next(self._ids)
             self._subs[key] = sub
@@ -72,10 +74,11 @@ class Hub:
             with self._lock:
                 self._subs.pop(key, None)
 
-    def publish(self, event: Event) -> None:
-        """Queue `event` for every connection. Safe to call from any thread."""
+    def publish(self, event: Event, *, user_id: int | None = None) -> None:
+        """Queue `event` for every connection, or only for `user_id`'s. Safe to
+        call from any thread."""
         with self._lock:
-            subs = list(self._subs.values())
+            subs = [s for s in self._subs.values() if user_id is None or s.user_id == user_id]
         for sub in subs:
             try:
                 sub.loop.call_soon_threadsafe(sub.queue.put_nowait, event)
@@ -85,6 +88,14 @@ class Hub:
 
 
 hub = Hub()
+
+# Not sent to the browser: tells the socket task to close (see routers/live.py).
+DISCONNECT = "_disconnect"
+
+
+def disconnect(user_id: int) -> None:
+    """Close every live socket of an account that no longer exists."""
+    hub.publish({"type": DISCONNECT}, user_id=user_id)
 
 
 def ride_payload(ride: Ride) -> dict[str, Any]:

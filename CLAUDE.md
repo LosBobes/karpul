@@ -121,6 +121,12 @@ On screen: requests under each Upcoming day and under `YouPanel` in Week (`Reque
 turns on Sentry (`app/monitoring.py`, no PII, traces only with `KARPUL_SENTRY_TRACES`); unset sends
 nothing. A middleware in `main.py` logs 5xx answers, crashes (then re-raises, for Sentry) and
 requests slower than 1 s under `karpul.http`; uvicorn's access log has the rest.
+`KARPUL_ALLOWED_COUNTRIES` (`DE,RS`) is a country filter in front of everything, socket included
+(`app/geofence.py`, pure ASGI, the outermost middleware): another country is a 403 or a 4403 close,
+private addresses always pass, an address the database does not know is refused, and a missing
+database logs an error and lets everyone in. The database is DB-IP Lite, downloaded at image build
+by `backend/fetch_geoip.py` (it sends its own User-Agent: DB-IP refuses Python's); tests replace
+`geofence.country_of`, and `clean_env` clears the variable.
 
 **Many people at once.** Twenty colleagues tap "get in" at the same minute, so the DB layer
 (`database.py`) is built for it: SQLite runs in WAL mode with a busy timeout (readers never wait
@@ -146,7 +152,11 @@ to an existing table, so a new column also goes into `ADDED_COLUMNS` in `databas
 or a username listed in `KARPUL_ADMINS` (comma-separated, read per request, cannot be undone
 from the app; it is how the first admin exists). `require_admin` (`app/admin.py`) is 401
 signed out, 403 for a non-admin. `routers/admin.py`: list accounts, make or unmake an admin
-(the last one cannot be removed; a configured one is 409), issue a reset link. `UserRead.is_admin`
+(the last one cannot be removed; a configured one is 409), issue a reset link, delete an account
+(not yourself, not a configured or the last admin: its rides from today are deleted as if it had
+cancelled them, its coming seats and queue places go with `promote_waitlist`, its requests are
+withdrawn; the past keeps the names with the ids nulled, messages keep their text; its open sockets
+are closed through `events.disconnect`, which the hub sends only to that account's subscriptions). `UserRead.is_admin`
 is the effective value (`routers/auth.user_read`). The drawer shows *Company cars* and *People*
 (`CarAdmin`, `PeopleAdmin`) to admins only. Tests: the `admin_auth` fixture in `conftest.py`;
 the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak in.

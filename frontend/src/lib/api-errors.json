@@ -52,6 +52,7 @@
   "You already have 3 open requests",
   "You are already in this car",
   "You are already waiting for this car",
+  "You cannot delete your own account",
   "You drive this ride",
   "Your session has expired; sign in again",
   "`to` must not be before `from`",

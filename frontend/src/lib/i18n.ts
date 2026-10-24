@@ -428,6 +428,10 @@ const en = {
     resetLinkHint: (date: string) => `One use, until ${date}. Send it to them yourself; it is shown only now, and any older link stops working.`,
     optionsFor: (name: string) => `Options for ${name}`,
     you: 'You',
+    deleteAccount: 'Delete account',
+    deleteTitle: (name: string) => `Delete ${name}'s account?`,
+    deleteBody:
+      'Their coming rides are cancelled (the passengers are told), their seats go to whoever is waiting, and their requests are withdrawn. Past rides keep their name. This cannot be undone.',
   },
 
   upcoming: {
@@ -504,6 +508,7 @@ const en = {
     requestAnswered: (name: string) => `Ride added, and ${name} is in.`,
     madeAdmin: (name: string) => `${name} is an admin now.`,
     removedAdmin: (name: string) => `${name} is no longer an admin.`,
+    deletedAccount: (name: string) => `${name}'s account is deleted.`,
     updateReady: 'A new version is ready',
     updateHint: 'Trace the bolt to take it.',
     updateAction: 'Update',
@@ -677,6 +682,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Account not found$/, () => 'Nalog nije pronađen'],
   [/^(.+) is an admin by the server's configuration \(KARPUL_ADMINS\)$/, (m) => `${m[1]} je administrator po podešavanju servera (KARPUL_ADMINS)`],
   [/^There has to be at least one admin$/, () => 'Mora postojati bar jedan administrator'],
+  [/^You cannot delete your own account$/, () => 'Ne možeš obrisati sopstveni nalog'],
   // The waiting list, the thread and the requests (routers/rides.py, routers/requests.py).
   [/^You drive this ride$/, () => 'Ti voziš ovu vožnju'],
   [/^You are already in this car$/, () => 'Već si u ovom autu'],
@@ -1173,6 +1179,10 @@ const sr: Messages = {
     resetLinkHint: (date) => `Za jednu upotrebu, do ${date}. Pošalji ga sam/a; prikazuje se samo sada, a svaki stariji link prestaje da važi.`,
     optionsFor: (name) => `Opcije za ${name}`,
     you: 'Ti',
+    deleteAccount: 'Obriši nalog',
+    deleteTitle: (name) => `Obrisati nalog (${name})?`,
+    deleteBody:
+      'Predstojeće vožnje se otkazuju (putnici dobijaju obaveštenje), mesta prelaze na one koji čekaju, a zahtevi se povlače. Prošle vožnje zadržavaju ime. Ovo se ne može poništiti.',
   },
 
   upcoming: {
@@ -1249,6 +1259,7 @@ const sr: Messages = {
     requestAnswered: (name) => `Vožnja je dodata, ${name} ima mesto.`,
     madeAdmin: (name) => `${name} je sada administrator.`,
     removedAdmin: (name) => `${name} više nije administrator.`,
+    deletedAccount: (name) => `Nalog je obrisan (${name}).`,
     updateReady: 'Nova verzija je spremna',
     updateHint: 'Prevuci munju da je preuzmeš.',
     updateAction: 'Ažuriraj',

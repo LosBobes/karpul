@@ -23,6 +23,7 @@ def clean_env(monkeypatch):
     with fresh rate-limit counters."""
     monkeypatch.delenv("KARPUL_ADMINS", raising=False)
     monkeypatch.delenv("KARPUL_SENTRY_DSN", raising=False)
+    monkeypatch.delenv("KARPUL_ALLOWED_COUNTRIES", raising=False)
     ratelimit.reset_all()
 
 
