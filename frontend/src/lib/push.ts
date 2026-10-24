@@ -6,9 +6,9 @@ import { getLocale } from './locale'
  * Push notifications, the browser side (backend: app/push.py). The service
  * worker that shows them is `public/push-sw.js`, pulled into the generated
  * worker by `importScripts` (vite.config.ts). Subscribing needs the server's
- * VAPID key (`/api/push/config`), the user's permission and a name to file
- * the subscription under; `usePush` folds all of that into one state and two
- * actions for the Notifications sheet.
+ * VAPID key (`/api/push/config`) and the user's permission; the server files
+ * the subscription under the signed-in account. `usePush` folds all of that
+ * into one state and two actions for the Notifications sheet.
  */
 export type PushState =
   | 'unsupported' // no service worker / Push API here (or not installed, on iOS)
@@ -55,7 +55,7 @@ function sameKey(sub: PushSubscription, key: Uint8Array): boolean {
   return bytes.length === key.length && bytes.every((b, i) => b === key[i])
 }
 
-export function usePush(userName: string) {
+export function usePush() {
   const [state, setState] = useState<PushState>('loading')
   const [publicKey, setPublicKey] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -83,7 +83,7 @@ export function usePush(userName: string) {
   }, [refresh])
 
   const enable = useCallback(async () => {
-    if (!publicKey || !userName) return
+    if (!publicKey) return
     setError(null)
     setState('loading')
     try {
@@ -99,13 +99,13 @@ export function usePush(userName: string) {
         sub = null
       }
       sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource })
-      await api.subscribePush(sub.toJSON(), getLocale(), userName)
+      await api.subscribePush(sub.toJSON(), getLocale())
       setState('on')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setState('off')
     }
-  }, [publicKey, userName])
+  }, [publicKey])
 
   const disable = useCallback(async () => {
     setError(null)
@@ -126,17 +126,15 @@ export function usePush(userName: string) {
 }
 
 /**
- * A subscription is filed under a name; when the name changes the server has
- * to learn the new one, or the pushes keep going to the old name. Called from
- * App on every name change and whenever an account signs in, since the browser
- * may still be subscribed under whoever used it last. A no-op while nothing is
- * subscribed.
+ * A subscription is filed under an account. Called from App whenever an
+ * account signs in, since the browser may still be subscribed under whoever
+ * used it last: sending it again moves it to whoever is signed in now. A
+ * no-op while nothing is subscribed.
  */
-export async function resubscribePush(userName: string): Promise<void> {
-  if (!userName) return
+export async function resubscribePush(): Promise<void> {
   const sub = await currentSubscription()
   if (!sub) return
-  await api.subscribePush(sub.toJSON(), getLocale(), userName).catch(() => undefined)
+  await api.subscribePush(sub.toJSON(), getLocale()).catch(() => undefined)
 }
 
 /**

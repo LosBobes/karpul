@@ -1,5 +1,18 @@
 import { authToken, clearSession, type AuthUser, type Session } from './auth'
-import type { CarUsage, CorporateCar, CorporateCarInput, PersonStats, ProfilePatch, PushConfig, Ride, RideInput } from './types'
+import type {
+  AdminUser,
+  CarUsage,
+  CorporateCar,
+  CorporateCarInput,
+  PersonStats,
+  ProfilePatch,
+  PushConfig,
+  Ride,
+  RideInput,
+  RideMessage,
+  RideRequest,
+  RideRequestInput,
+} from './types'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
 
@@ -21,7 +34,7 @@ export class ApiError extends Error {
   }
 }
 
-function extractDetail(body: unknown): string | null {
+export function extractDetail(body: unknown): string | null {
   if (!body || typeof body !== 'object' || !('detail' in body)) return null
   const detail = (body as { detail: unknown }).detail
   if (typeof detail === 'string') return detail
@@ -39,150 +52,187 @@ function extractDetail(body: unknown): string | null {
 }
 
 /**
- * Who the request is from. The signed-in browser's token is attached to
- * everything by default (lib/auth.ts); `userName` is the older honour-based
- * header, still sent so a server running without `KARPUL_REQUIRE_LOGIN` knows
- * the actor, and the shared car-pool password rides on the admin calls.
+ * Every call carries the signed-in browser's token (lib/auth.ts); the server
+ * shows nothing to a request without one. `anonymous` is for the door itself
+ * (register, sign in, a reset link), which brings its own credentials.
  */
-interface Auth {
-  userName?: string
-  adminPassword?: string
-  /** Register / login / logout: they carry their own credentials. */
+interface Opts {
   anonymous?: boolean
 }
 
-async function request<T>(path: string, init: RequestInit = {}, auth: Auth = {}): Promise<T> {
+async function send(path: string, init: RequestInit = {}, opts: Opts = {}): Promise<Response> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) }
   if (init.body) headers['Content-Type'] = 'application/json'
-  const token = auth.anonymous ? '' : authToken()
+  const token = opts.anonymous ? '' : authToken()
   if (token) headers.Authorization = `Bearer ${token}`
-  // A header value cannot carry a ć or a š (fetch refuses anything past
-  // Latin-1), so the name travels percent-encoded; the server decodes it.
-  if (auth.userName) headers['X-User-Name'] = encodeURIComponent(auth.userName)
-  if (auth.adminPassword) headers['X-Admin-Password'] = auth.adminPassword
   const res = await fetch(`${BASE}${path}`, { ...init, headers })
-  if (res.status === 204) return undefined as T
-  const text = await res.text()
-  let body: unknown = null
-  try {
-    body = text ? JSON.parse(text) : null
-  } catch {
-    body = null
-  }
   if (!res.ok) {
+    const text = await res.text()
+    let body: unknown = null
+    try {
+      body = text ? JSON.parse(text) : null
+    } catch {
+      body = null
+    }
     // The token we sent is dead (expired, or signed out elsewhere). Drop it so
     // the app falls back to the sign-in screen instead of failing every call.
     if (res.status === 401 && token) clearSession()
     throw new ApiError(res.status, extractDetail(body) ?? `${res.status} ${res.statusText}`)
   }
-  return body as T
+  return res
 }
 
-export const api = {
-  // --- accounts (backend: app/auth.py) ---
+async function request<T>(path: string, init: RequestInit = {}, opts: Opts = {}): Promise<T> {
+  const res = await send(path, init, opts)
+  if (res.status === 204) return undefined as T
+  const text = await res.text()
+  return (text ? JSON.parse(text) : null) as T
+}
 
-  register: (input: RegisterInput) =>
-    request<Session>('/api/auth/register', { method: 'POST', body: JSON.stringify(input) }, { anonymous: true }),
+/**
+ * Fetch a file the API serves as an attachment (a ride's .ics, the usage
+ * spreadsheet) and hand it to the browser as a download. A plain link cannot
+ * do it any more: the request has to carry the token.
+ */
+async function download(path: string, fallbackName: string): Promise<void> {
+  const res = await send(path)
+  const blob = await res.blob()
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const name = disposition.match(/filename="([^"]+)"/)?.[1] ?? fallbackName
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  // Give the browser a moment to start the download before the URL goes.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
+
+export const api = {
+  // --- accounts (backend: app/auth.py, routers/auth.py) ---
+
+  register: (input: RegisterInput) => request<Session>('/api/auth/register', json('POST', input), { anonymous: true }),
 
   login: (login: string, password: string) =>
-    request<Session>('/api/auth/login', { method: 'POST', body: JSON.stringify({ login, password }) }, { anonymous: true }),
+    request<Session>('/api/auth/login', json('POST', { login, password }), { anonymous: true }),
 
   /** Tell the server to forget this browser's token. The caller clears it locally. */
   logout: () => request<void>('/api/auth/logout', { method: 'POST' }),
 
+  /** Sign every other browser of this account out; says how many. */
+  logoutOthers: () => request<{ ended: number }>('/api/auth/logout-others', { method: 'POST' }),
+
   me: () => request<AuthUser>('/api/auth/me'),
 
   /** Change your own name, email, phone or password; a new name follows you onto the board. */
-  updateMe: (patch: ProfilePatch) =>
-    request<AuthUser>('/api/auth/me', { method: 'PATCH', body: JSON.stringify(patch) }),
+  updateMe: (patch: ProfilePatch) => request<AuthUser>('/api/auth/me', json('PATCH', patch)),
+
+  /** A new secret for your calendar feed; the old address stops working. */
+  rotateCalendarToken: () => request<AuthUser>('/api/auth/me/calendar-token', { method: 'POST' }),
+
+  /** Whose reset link this is (404 when it has expired or was used). */
+  resetInfo: (token: string) =>
+    request<{ username: string; display_name: string }>(`/api/auth/reset/${encodeURIComponent(token)}`, {}, { anonymous: true }),
+
+  /** Set a new password with a reset link; signs this browser in. */
+  resetPassword: (token: string, newPassword: string) =>
+    request<Session>('/api/auth/reset', json('POST', { token, new_password: newPassword }), { anonymous: true }),
+
+  // --- the board ---
 
   corporateCars: () => request<CorporateCar[]>('/api/cars/corporate'),
 
-  rides: (from: string, to: string) =>
-    request<Ride[]>(`/api/rides?from=${from}&to=${to}`),
-
-  createRide: (input: RideInput) =>
-    request<Ride>('/api/rides', { method: 'POST', body: JSON.stringify(input) }),
-
-  updateRide: (id: number, patch: Partial<RideInput>, userName: string) =>
-    request<Ride>(`/api/rides/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }, { userName }),
-
-  /** `following` also removes the later rides of the same weekly series. */
-  deleteRide: (id: number, userName: string, scope: 'one' | 'following' = 'one') =>
-    request<void>(`/api/rides/${id}?scope=${scope}`, { method: 'DELETE' }, { userName }),
+  rides: (from: string, to: string) => request<Ride[]>(`/api/rides?from=${from}&to=${to}`),
 
   ride: (id: number) => request<Ride>(`/api/rides/${id}`),
 
-  /**
-   * Put `passengerName` in the car. `userName` is who is doing it: yourself
-   * (a plain join), or the driver / a fellow passenger adding someone else,
-   * which the server allows only when the ride's `passengers_manage` is on
-   * (the driver may always).
-   */
-  join: (rideId: number, passengerName: string, userName: string, pickup = '') =>
-    request<Ride>(
-      `/api/rides/${rideId}/bookings`,
-      { method: 'POST', body: JSON.stringify({ passenger_name: passengerName, pickup }) },
-      { userName },
-    ),
+  createRide: (input: RideInput) => request<Ride>('/api/rides', json('POST', input)),
 
-  leave: (rideId: number, bookingId: number, userName: string) =>
-    request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }, { userName }),
+  updateRide: (id: number, patch: Partial<RideInput>) => request<Ride>(`/api/rides/${id}`, json('PATCH', patch)),
+
+  /** `following` also removes the later rides of the same weekly series. */
+  deleteRide: (id: number, scope: 'one' | 'following' = 'one') =>
+    request<void>(`/api/rides/${id}?scope=${scope}`, { method: 'DELETE' }),
+
+  /**
+   * Put `passengerName` in the car: yourself (a plain join), or someone else,
+   * which the server allows the driver, and the passengers while the ride's
+   * `passengers_manage` is on.
+   */
+  join: (rideId: number, passengerName: string, pickup = '') =>
+    request<Ride>(`/api/rides/${rideId}/bookings`, json('POST', { passenger_name: passengerName, pickup })),
+
+  leave: (rideId: number, bookingId: number) => request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }),
 
   /** Move a passenger to another of the ride's pickup points ("" = the origin). */
-  movePickup: (rideId: number, bookingId: number, pickup: string, userName: string) =>
-    request<Ride>(
-      `/api/rides/${rideId}/bookings/${bookingId}`,
-      { method: 'PATCH', body: JSON.stringify({ pickup }) },
-      { userName },
-    ),
+  movePickup: (rideId: number, bookingId: number, pickup: string) =>
+    request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, json('PATCH', { pickup })),
 
-  /** Where the ride's .ics lives; a plain link, the browser downloads it. */
-  rideCalendarUrl: (rideId: number) => `${BASE}/api/rides/${rideId}/calendar.ics`,
+  /** Queue for a seat in a full car; the first seat that frees up is yours. */
+  joinWaitlist: (rideId: number, pickup = '') => request<Ride>(`/api/rides/${rideId}/waitlist`, json('POST', { pickup })),
 
-  /** The subscribable calendar of everything `name` drives or rides in. */
-  calendarFeedUrl: (name: string) => `${BASE}/api/calendar/${encodeURIComponent(name)}.ics`,
+  leaveWaitlist: (rideId: number, entryId: number) =>
+    request<Ride>(`/api/rides/${rideId}/waitlist/${entryId}`, { method: 'DELETE' }),
 
-  myStats: (name: string) => request<PersonStats>(`/api/stats/me?name=${encodeURIComponent(name)}`),
+  messages: (rideId: number) => request<RideMessage[]>(`/api/rides/${rideId}/messages`),
+
+  postMessage: (rideId: number, body: string) => request<RideMessage>(`/api/rides/${rideId}/messages`, json('POST', { body })),
+
+  deleteMessage: (rideId: number, messageId: number) =>
+    request<void>(`/api/rides/${rideId}/messages/${messageId}`, { method: 'DELETE' }),
+
+  /** The ride as an .ics file: downloaded, which on a phone opens the calendar. */
+  downloadRideCalendar: (rideId: number) => download(`/api/rides/${rideId}/calendar.ics`, `karpul-ride-${rideId}.ics`),
+
+  /** The subscribable calendar of everything you drive or ride in; the secret is the credential. */
+  calendarFeedUrl: (token: string) => `${BASE}/api/calendar/${encodeURIComponent(token)}.ics`,
+
+  myStats: () => request<PersonStats>('/api/stats/me'),
+
+  // --- ride requests (backend: routers/requests.py) ---
+
+  requests: (from: string, to: string) => request<RideRequest[]>(`/api/requests?from=${from}&to=${to}`),
+
+  createRequest: (input: RideRequestInput) => request<RideRequest>('/api/requests', json('POST', input)),
+
+  deleteRequest: (id: number) => request<void>(`/api/requests/${id}`, { method: 'DELETE' }),
 
   // --- push notifications (see backend/app/push.py) ---
 
   pushConfig: () => request<PushConfig>('/api/push/config'),
 
-  subscribePush: (subscription: PushSubscriptionJSON, locale: string, userName: string) =>
-    request<{ ok: boolean }>(
-      '/api/push/subscriptions',
-      { method: 'POST', body: JSON.stringify({ ...subscription, locale }) },
-      { userName },
-    ),
+  subscribePush: (subscription: PushSubscriptionJSON, locale: string) =>
+    request<{ ok: boolean }>('/api/push/subscriptions', json('POST', { ...subscription, locale })),
 
-  unsubscribePush: (endpoint: string) =>
-    request<void>('/api/push/subscriptions', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
+  unsubscribePush: (endpoint: string) => request<void>('/api/push/subscriptions', json('DELETE', { endpoint })),
 
-  // --- car pool admin (shared password, see backend/app/admin.py) ---
+  // --- admin: the car pool and the people (backend: app/admin.py) ---
 
-  /** Every car including retired ones. Doubles as the password check: 401 = wrong. */
-  allCorporateCars: (adminPassword: string) =>
-    request<CorporateCar[]>('/api/cars/corporate?include_inactive=true', {}, { adminPassword }),
+  /** Every car including retired ones. */
+  allCorporateCars: () => request<CorporateCar[]>('/api/cars/corporate?include_inactive=true'),
 
-  createCar: (input: CorporateCarInput, adminPassword: string) =>
-    request<CorporateCar>(
-      '/api/cars/corporate',
-      { method: 'POST', body: JSON.stringify(input) },
-      { adminPassword },
-    ),
+  createCar: (input: CorporateCarInput) => request<CorporateCar>('/api/cars/corporate', json('POST', input)),
 
-  updateCar: (id: number, patch: Partial<CorporateCarInput & { active: boolean }>, adminPassword: string) =>
-    request<CorporateCar>(
-      `/api/cars/corporate/${id}`,
-      { method: 'PATCH', body: JSON.stringify(patch) },
-      { adminPassword },
-    ),
+  updateCar: (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
+    request<CorporateCar>(`/api/cars/corporate/${id}`, json('PATCH', patch)),
 
-  deleteCar: (id: number, adminPassword: string) =>
-    request<void>(`/api/cars/corporate/${id}`, { method: 'DELETE' }, { adminPassword }),
+  deleteCar: (id: number) => request<void>(`/api/cars/corporate/${id}`, { method: 'DELETE' }),
 
   /** How the pool cars were used over the last `days` days, with the rides as history. */
-  carUsage: (days: number, adminPassword: string) =>
-    request<CarUsage>(`/api/cars/corporate/usage?days=${days}`, {}, { adminPassword }),
+  carUsage: (days: number) => request<CarUsage>(`/api/cars/corporate/usage?days=${days}`),
+
+  /** The same window's company-car rides as a spreadsheet. */
+  downloadCarUsage: (days: number) => download(`/api/cars/corporate/usage.csv?days=${days}`, 'karpul-company-cars.csv'),
+
+  users: () => request<AdminUser[]>('/api/admin/users'),
+
+  setAdmin: (userId: number, isAdmin: boolean) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', { is_admin: isAdmin })),
+
+  /** A one-time link for someone who forgot their password; any older one stops working. */
+  resetLink: (userId: number) =>
+    request<{ path: string; expires_at: string }>(`/api/admin/users/${userId}/reset-link`, { method: 'POST' }),
 }

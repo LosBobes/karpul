@@ -1944,6 +1944,301 @@ main,
   background: var(--green-soft);
 }
 
+/* --- Waiting list (components/CarDetail.tsx) ------------------------------
+   Under a full car's passengers: your place in line as a banner, and the
+   queue itself as a quiet list in the same rows as the passengers, smaller,
+   because nobody in it is in the car yet. */
+.waitline-me {
+  align-items: center;
+}
+.waitline-me > span {
+  flex: 1;
+}
+.waitline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.waitline-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.waitline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.waitline-list > li + li {
+  border-top: 1px dashed var(--border);
+}
+.waitline-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem 0.35rem 0.7rem;
+}
+.waitline-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.waitline-name small {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* --- A ride's thread (components/RideThread.tsx) ---------------------------
+   One quiet line under the passengers ("Messages (3)") that unfolds into the
+   thread: oldest at the top, yours tinted green like your seat, and a box at
+   the foot that grows with what you type. */
+.thread {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.thread-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.92rem;
+  text-align: left;
+  transition: background var(--hover);
+}
+.thread-toggle > svg:first-child {
+  color: var(--green);
+}
+.thread-toggle > span {
+  flex: 1;
+}
+.thread-chevron {
+  color: var(--muted);
+  transition: transform 0.2s var(--ease-out);
+}
+.thread-open .thread-chevron {
+  transform: rotate(180deg);
+}
+.thread-open .thread-toggle {
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.thread-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: unfold 0.28s var(--ease-out);
+}
+.thread-body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem 0.85rem;
+}
+.thread-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.thread-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+.thread-msg-main {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.65rem 0.5rem;
+  border-radius: 4px 12px 12px 12px;
+  background: var(--surface-2);
+}
+.thread-msg-me .thread-msg-main {
+  background: color-mix(in srgb, var(--green-soft) 75%, var(--surface));
+}
+.thread-msg-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+.thread-msg-head time {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.thread-msg-body {
+  margin: 0.1rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.thread-msg-remove {
+  margin-top: 0.1rem;
+}
+.thread-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+.thread-form textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 140px;
+  resize: none;
+  field-sizing: content;
+  line-height: 1.4;
+}
+.thread-send {
+  flex: none;
+  width: 44px;
+  padding: 0;
+}
+
+/* --- Looking for a ride (components/RequestList.tsx) -----------------------
+   The passengers' side of a day, under its rides: one row per person asking,
+   with a hand on the heading so it never reads as one more car. */
+.requests {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.requests-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.requests-title svg {
+  color: var(--blue);
+}
+.requests-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.requests-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.request-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 56px;
+  padding: 0.55rem 0.75rem 0.55rem 0.9rem;
+}
+.request-row-me {
+  background: color-mix(in srgb, var(--blue-soft) 55%, var(--surface));
+}
+.request-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.request-text strong {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.request-text strong small {
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.request-text > span {
+  font-size: 0.84rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.request-text .request-note {
+  font-style: italic;
+  white-space: normal;
+}
+.btn-sm {
+  min-height: 36px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.86rem;
+}
+.upcoming-ask {
+  margin-bottom: 0.25rem;
+}
+.form-answering {
+  margin-bottom: 0.25rem;
+}
+
+/* --- People (components/PeopleAdmin.tsx) ---------------------------------- */
+.people-count {
+  margin: 0;
+}
+.reset-link {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.reset-link .feed-row {
+  margin-top: 0;
+  min-width: 0;
+}
+.reset-link .feed-url {
+  flex: 1;
+  min-width: 0;
+}
+.feed-new {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+}
+.auth-forgot {
+  text-align: center;
+}
+
 /* --- You ------------------------------------------------------------------ */
 .you {
   display: flex;
@@ -2779,6 +3074,10 @@ body.dragging {
   background: #d7f6f0;
   color: #0f766e;
 }
+.drawer-tone-rose {
+  background: #fde4ec;
+  color: #be185d;
+}
 :root[data-resolved='dark'] .drawer-tone-blue {
   background: #1e2d5c;
   color: #93c5fd;
@@ -2794,6 +3093,10 @@ body.dragging {
 :root[data-resolved='dark'] .drawer-tone-teal {
   background: #113b36;
   color: #5eead4;
+}
+:root[data-resolved='dark'] .drawer-tone-rose {
+  background: #4a1830;
+  color: #f9a8d4;
 }
 .drawer-item-text {
   display: flex;
@@ -4226,6 +4529,16 @@ body.dragging {
   }
   .split-pane .driver-card {
     padding: 1.4rem 1.5rem 1.5rem;
+    grid-row: span 2;
+  }
+  /* The passengers take the height they need and the thread sits right under
+     them; whatever the tall driver card leaves over goes below the thread. */
+  .split-pane .detail {
+    grid-template-rows: auto 1fr;
+  }
+  .split-pane .thread {
+    grid-column: 2;
+    align-self: start;
   }
 }
 

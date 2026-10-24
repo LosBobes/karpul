@@ -6,13 +6,10 @@ from datetime import date, timedelta
 import pytest
 
 TOMORROW = date.today() + timedelta(days=1)
-PASSWORD = "let-me-in"
-AUTH = {"X-Admin-Password": PASSWORD}
 
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
-    monkeypatch.delenv("KARPUL_ADMIN_PASSWORD", raising=False)
     monkeypatch.delenv("KARPUL_VAPID_PRIVATE_KEY", raising=False)
 
 
@@ -177,13 +174,13 @@ def test_my_stats_count_rides_driven_and_ridden(client):
     # Tomorrow's ride is not history yet.
     client.post("/api/rides", json=own_ride(distance_km=99))
 
-    r = client.get("/api/stats/me", params={"name": "Ana"})
+    # Always the signed-in account's own figures.
+    r = client.get("/api/stats/me", headers={"X-User-Name": "Ana"})
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["all"] == {"rides_driven": 1, "rides_ridden": 1, "people_carried": 1, "km_shared": 50.0}
     assert [h["role"] for h in body["history"]] == ["passenger", "driver"] or [h["role"] for h in body["history"]] == ["driver", "passenger"]
     assert {h["id"] for h in body["history"]} == {driven["id"], ridden["id"]}
-    assert client.get("/api/stats/me", params={"name": " "}).status_code == 422
 
 
 def test_ride_and_person_calendars(client):
@@ -201,10 +198,12 @@ def test_ride_and_person_calendars(client):
     assert "Passengers: Bojan" in text.replace("\r\n ", "")
     assert client.get("/api/rides/9999/calendar.ics").status_code == 404
 
-    feed = client.get("/api/calendar/bojan.ics")
+    secret = client.get("/api/auth/me", headers={"X-User-Name": "Bojan"}).json()["calendar_token"]
+    feed = client.anon.get(f"/api/calendar/{secret}.ics")
     assert feed.status_code == 200 and "BEGIN:VEVENT" in feed.text
-    assert "X-WR-CALNAME:Karpul: bojan" in feed.text
-    nobody = client.get("/api/calendar/Zed.ics")
+    assert "X-WR-CALNAME:Karpul: Bojan" in feed.text
+    zed = client.get("/api/auth/me", headers={"X-User-Name": "Zed"}).json()["calendar_token"]
+    nobody = client.anon.get(f"/api/calendar/{zed}.ics")
     assert nobody.status_code == 200 and "BEGIN:VEVENT" not in nobody.text
 
 
@@ -217,15 +216,34 @@ def test_one_way_ride_gets_an_hour_long_event(client):
 # --- Admin usage report --------------------------------------------------------
 
 
-def test_usage_report_is_admin_only(client, monkeypatch):
-    assert client.get("/api/cars/corporate/usage").status_code == 503
-    monkeypatch.setenv("KARPUL_ADMIN_PASSWORD", PASSWORD)
-    assert client.get("/api/cars/corporate/usage").status_code == 401
-    assert client.get("/api/cars/corporate/usage", headers=AUTH).status_code == 200
+def test_usage_report_is_admin_only(client, admin_auth):
+    assert client.anon.get("/api/cars/corporate/usage").status_code == 401
+    assert client.get("/api/cars/corporate/usage").status_code == 403
+    assert client.get("/api/cars/corporate/usage", headers=admin_auth).status_code == 200
+    assert client.get("/api/cars/corporate/usage.csv").status_code == 403
 
 
-def test_usage_report_counts_per_car(client, monkeypatch):
-    monkeypatch.setenv("KARPUL_ADMIN_PASSWORD", PASSWORD)
+def test_usage_exports_as_a_spreadsheet(client, admin_auth):
+    car = client.get("/api/cars/corporate").json()[0]
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    ride = client.post(
+        "/api/rides",
+        json=own_ride(ride_date=yesterday, car_type="corporate", corporate_car_id=car["id"], car_name="", driver_name="Đorđe Ćirić", distance_km=30),
+    ).json()
+    client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Bojan"})
+
+    r = client.get("/api/cars/corporate/usage.csv", params={"days": 30}, headers=admin_auth)
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+    assert r.content.startswith("\ufeff".encode())
+    lines = r.content.decode("utf-8-sig").splitlines()
+    assert lines[0] == "date,departure,return,car,driver,from,to,passengers,seats,km"
+    assert lines[1].startswith(f"{yesterday},07:30:00,16:30:00,")
+    assert "Đorđe Ćirić" in lines[1] and lines[1].endswith(",1,2,30.0")
+
+
+def test_usage_report_counts_per_car(client, admin_auth):
     cars = client.get("/api/cars/corporate").json()
     a, b = cars[0], cars[1]
     yesterday = (date.today() - timedelta(days=1)).isoformat()
@@ -240,7 +258,7 @@ def test_usage_report_counts_per_car(client, monkeypatch):
     # An own car never counts.
     client.post("/api/rides", json=own_ride(ride_date=yesterday, driver_name="Vuk"))
 
-    body = client.get("/api/cars/corporate/usage", params={"days": 90}, headers=AUTH).json()
+    body = client.get("/api/cars/corporate/usage", params={"days": 90}, headers=admin_auth).json()
     rows = {row["car"]["id"]: row for row in body["cars"]}
     assert rows[a["id"]]["rides"] == 2
     assert rows[a["id"]]["days_used"] == 1
@@ -254,21 +272,6 @@ def test_usage_report_counts_per_car(client, monkeypatch):
     assert [h["car_id"] for h in body["history"]] == [a["id"], a["id"]]
     assert 0 < rows[a["id"]]["use_rate"] <= 1
 
-    wide = client.get("/api/cars/corporate/usage", params={"days": 365}, headers=AUTH).json()
+    wide = client.get("/api/cars/corporate/usage", params={"days": 365}, headers=admin_auth).json()
     assert {row["car"]["id"]: row["rides"] for row in wide["cars"]}[b["id"]] == 1
-    assert client.get("/api/cars/corporate/usage", params={"days": 1}, headers=AUTH).status_code == 422
-
-
-# --- Names with Serbian letters in the header -------------------------------------
-
-
-def test_user_name_header_may_be_percent_encoded(client):
-    from urllib.parse import quote
-
-    ride = client.post("/api/rides", json=own_ride(driver_name="Ana Petrović")).json()
-    encoded = quote("ana petrović")
-    r = client.patch(f"/api/rides/{ride['id']}", json={"notes": "ok"}, headers={"X-User-Name": encoded})
-    assert r.status_code == 200, r.text
-    # A plain ASCII name still works as it always did.
-    assert client.patch(f"/api/rides/{ride['id']}", json={"notes": "no"}, headers={"X-User-Name": "Ana P"}).status_code == 403
-    assert client.delete(f"/api/rides/{ride['id']}", headers={"X-User-Name": encoded}).status_code == 204
+    assert client.get("/api/cars/corporate/usage", params={"days": 1}, headers=admin_auth).status_code == 422

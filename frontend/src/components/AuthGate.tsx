@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { api, ApiError } from '../lib/api'
 import { setSession } from '../lib/auth'
 import { messages, useT } from '../lib/i18n'
@@ -19,8 +19,16 @@ const MODES: Mode[] = ['in', 'up']
  * The two tabs slide the way the other switched views do (lib/motion.ts), and
  * the language switch sits at the foot because a newcomer meets this screen
  * before the menu, exactly as they used to meet the name sheet.
+ *
+ * With `resetToken` (the app was opened on an admin's `/reset/<token>` link)
+ * it is the "set a new password" card instead (`ResetCard`).
  */
-export function AuthGate() {
+export function AuthGate({ resetToken = null, onResetDone }: { resetToken?: string | null; onResetDone?: () => void }) {
+  if (resetToken) return <ResetCard token={resetToken} onDone={onResetDone ?? (() => undefined)} />
+  return <SignIn />
+}
+
+function SignIn() {
   const t = useT()
   const [mode, setMode] = useState<Mode>('in')
   const [login, setLogin] = useState('')
@@ -199,7 +207,89 @@ export function AuthGate() {
           <button type="button" className="link auth-switch" onClick={() => pick(mode === 'in' ? 'up' : 'in')}>
             {mode === 'in' ? t.auth.switchToSignUp : t.auth.switchToSignIn}
           </button>
+          {mode === 'in' && <p className="hint auth-forgot">{t.auth.forgot}</p>}
         </form>
+      </div>
+
+      <LanguageSwitch compact />
+    </div>
+  )
+}
+
+/**
+ * A password reset link from an admin: says whose it is, takes a new
+ * password, and signs this browser in with it (every other browser of the
+ * account is signed out by the server). A link that is spent or too old says
+ * so, with the way back to the ordinary sign-in.
+ */
+function ResetCard({ token, onDone }: { token: string; onDone: () => void }) {
+  const t = useT()
+  const [who, setWho] = useState<{ display_name: string } | null | 'dead'>(null)
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    api
+      .resetInfo(token)
+      .then((info) => live && setWho(info))
+      .catch(() => live && setWho('dead'))
+    return () => {
+      live = false
+    }
+  }, [token])
+
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (busy || password.length === 0) return
+    setBusy(true)
+    setError(null)
+    try {
+      const session = await api.resetPassword(token, password)
+      onDone()
+      setSession(session)
+    } catch (err) {
+      const m = messages()
+      setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="auth">
+      <div className="auth-card card">
+        <h1 className="auth-title">
+          <Logo /> Karpul
+        </h1>
+        <p className="auth-tagline">{t.reset.title}</p>
+
+        {who === null && <p className="hint">{t.common.loading}</p>}
+        {who === 'dead' && <p className="error">{t.reset.expired}</p>}
+        {who && who !== 'dead' && (
+          <form className="auth-form" onSubmit={submit}>
+            <p className="hint">{t.reset.greeting(who.display_name)}</p>
+            <label className="field">
+              <span className="field-label">{t.reset.newPassword}</span>
+              <input
+                type="password"
+                autoFocus
+                autoComplete="new-password"
+                maxLength={200}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+            <p className="hint">{t.auth.passwordHint}</p>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy || password.length === 0}>
+              {busy ? t.auth.working : t.reset.submit}
+            </button>
+          </form>
+        )}
+        <button type="button" className="link auth-switch" onClick={onDone}>
+          {t.reset.backToSignIn}
+        </button>
       </div>
 
       <LanguageSwitch compact />

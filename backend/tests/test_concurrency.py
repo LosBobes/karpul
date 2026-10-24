@@ -21,6 +21,8 @@ from app.database import get_session, make_engine
 from app.main import app
 from app.seed import seed_corporate_cars
 
+from .conftest import BoardClient
+
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 CLIENTS = 20
 
@@ -58,12 +60,12 @@ def ride_json(**overrides):
     return base
 
 
-def hammer(n: int, fn: Callable[[TestClient, int], int]) -> list[int]:
+def hammer(engine, n: int, fn: Callable[[TestClient, int], int]) -> list[int]:
     """Run `fn(client, i)` on `n` threads released at the same instant; return the status codes."""
     barrier = threading.Barrier(n)
 
     def run(i: int) -> int:
-        client = TestClient(app)
+        client = BoardClient(app, engine)
         barrier.wait()
         return fn(client, i)
 
@@ -78,34 +80,37 @@ def test_file_database_runs_in_wal_mode(file_engine):
 
 
 def test_last_seats_are_never_overbooked(file_engine):
-    ride = TestClient(app).post("/api/rides", json=ride_json(seats=3)).json()
+    ride = BoardClient(app, file_engine).post("/api/rides", json=ride_json(seats=3)).json()
 
     codes = hammer(
+        file_engine,
         CLIENTS,
         lambda c, i: c.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": f"P{i}"}).status_code,
     )
 
     assert sorted(codes) == [201] * 3 + [409] * (CLIENTS - 3)
-    final = TestClient(app).get(f"/api/rides/{ride['id']}").json()
+    final = BoardClient(app, file_engine).get(f"/api/rides/{ride['id']}").json()
     assert len(final["bookings"]) == 3 and final["free_seats"] == 0
 
 
 def test_same_person_joins_once(file_engine):
-    ride = TestClient(app).post("/api/rides", json=ride_json(seats=8)).json()
+    ride = BoardClient(app, file_engine).post("/api/rides", json=ride_json(seats=8)).json()
 
     codes = hammer(
+        file_engine,
         CLIENTS,
         lambda c, _: c.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Marko"}).status_code,
     )
 
     assert codes.count(201) == 1 and codes.count(409) == CLIENTS - 1
-    assert len(TestClient(app).get(f"/api/rides/{ride['id']}").json()["bookings"]) == 1
+    assert len(BoardClient(app, file_engine).get(f"/api/rides/{ride['id']}").json()["bookings"]) == 1
 
 
 def test_company_car_is_handed_to_one_driver(file_engine):
-    car = TestClient(app).get("/api/cars/corporate").json()[0]
+    car = BoardClient(app, file_engine).get("/api/cars/corporate").json()[0]
 
     codes = hammer(
+        file_engine,
         CLIENTS,
         lambda c, i: c.post(
             "/api/rides",
@@ -114,35 +119,35 @@ def test_company_car_is_handed_to_one_driver(file_engine):
     )
 
     assert codes.count(201) == 1 and codes.count(409) == CLIENTS - 1
-    rides = TestClient(app).get("/api/rides", params={"date": TOMORROW}).json()
+    rides = BoardClient(app, file_engine).get("/api/rides", params={"date": TOMORROW}).json()
     assert len(rides) == 1
 
 
 def test_seats_cannot_drop_below_a_concurrent_join(file_engine):
     """The driver lowering seats and a passenger joining race for the same seat."""
-    ride = TestClient(app).post("/api/rides", json=ride_json(seats=2)).json()
-    TestClient(app).post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Marko"})
+    ride = BoardClient(app, file_engine).post("/api/rides", json=ride_json(seats=2)).json()
+    BoardClient(app, file_engine).post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Marko"})
 
     def act(client: TestClient, i: int) -> int:
         if i % 2:
             return client.patch(f"/api/rides/{ride['id']}", json={"seats": 1}, headers={"X-User-Name": "Ana"}).status_code
         return client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": f"P{i}"}).status_code
 
-    codes = hammer(CLIENTS, act)
+    codes = hammer(file_engine, CLIENTS, act)
 
     assert set(codes) <= {200, 201, 409}
-    final = TestClient(app).get(f"/api/rides/{ride['id']}").json()
+    final = BoardClient(app, file_engine).get(f"/api/rides/{ride['id']}").json()
     assert len(final["bookings"]) <= final["seats"]
 
 
 def test_readers_are_not_blocked_by_writers(file_engine):
     """A burst of reads and writes together must produce no 5xx and no lock errors."""
-    ride = TestClient(app).post("/api/rides", json=ride_json(seats=8)).json()
+    ride = BoardClient(app, file_engine).post("/api/rides", json=ride_json(seats=8)).json()
 
     def act(client: TestClient, i: int) -> int:
         if i % 3:
             return client.get("/api/rides", params={"date": TOMORROW}).status_code
         return client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": f"P{i}"}).status_code
 
-    codes = hammer(CLIENTS, act)
+    codes = hammer(file_engine, CLIENTS, act)
     assert set(codes) <= {200, 201, 409}, codes

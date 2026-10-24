@@ -1,9 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import type { CarUsage, CorporateCar, CorporateCarInput } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CarIcon, ChartIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
+import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
 import { Menu } from './Menu'
 import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
@@ -11,18 +11,17 @@ import { Sheet } from './Sheet'
 type CarPatch = Partial<CorporateCarInput & { active: boolean }>
 
 interface Props {
-  unlocked: boolean
   cars: CorporateCar[]
   loading: boolean
   error: string | null
   busyId: number | null
-  onUnlock: (password: string) => void
-  onLock: () => void
   onCreate: (input: CorporateCarInput) => void
   onUpdate: (id: number, patch: CarPatch) => void
   onDelete: (car: CorporateCar) => void
   /** The usage report for the last `days` days (admin, see backend services.corporate_usage). */
   onLoadUsage: (days: number) => Promise<CarUsage>
+  /** The same window as a spreadsheet download. */
+  onDownloadUsage: (days: number) => Promise<void>
   onClose: () => void
 }
 
@@ -31,15 +30,11 @@ export const NEW_CAR_BUSY_ID = -1
 
 type Tab = 'cars' | 'usage'
 
-/** The company-car pool, behind the shared admin password, with a usage tab. */
-export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onLock, onCreate, onUpdate, onDelete, onLoadUsage, onClose }: Props) {
+/** The company-car pool, for admins (the drawer only offers it to them), with a usage tab. */
+export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onDelete, onLoadUsage, onDownloadUsage, onClose }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const [tab, setTab] = useState<Tab>('cars')
-
-  if (!unlocked) {
-    return <Unlock error={error} loading={loading} onUnlock={onUnlock} onClose={onClose} />
-  }
 
   return (
     <Sheet
@@ -47,14 +42,9 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
       title={t.admin.title}
       onClose={onClose}
       footer={
-        <>
-          <button type="button" className="btn btn-primary btn-block" onClick={onClose}>
-            {t.common.done}
-          </button>
-          <button type="button" className="link" onClick={onLock}>
-            {t.admin.forget}
-          </button>
-        </>
+        <button type="button" className="btn btn-primary btn-block" onClick={onClose}>
+          {t.common.done}
+        </button>
       }
     >
       <div className="segmented admin-tabs" role="radiogroup" aria-label={t.admin.title}>
@@ -67,7 +57,7 @@ export function CarAdmin({ unlocked, cars, loading, error, busyId, onUnlock, onL
         </button>
       </div>
 
-      {tab === 'usage' && <Usage load={onLoadUsage} />}
+      {tab === 'usage' && <Usage load={onLoadUsage} download={onDownloadUsage} />}
 
       {tab === 'cars' && (
         <>
@@ -152,11 +142,23 @@ const WINDOWS = [30, 90, 365] as const
  * of the working days in the window), drivers, passengers and kilometres,
  * when it last went out and what is booked ahead; then the rides themselves.
  */
-function Usage({ load }: { load: (days: number) => Promise<CarUsage> }) {
+function Usage({ load, download }: { load: (days: number) => Promise<CarUsage>; download: (days: number) => Promise<void> }) {
   const t = useT()
   const [days, setDays] = useState<(typeof WINDOWS)[number]>(90)
   const [report, setReport] = useState<CarUsage | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
+
+  async function exportSheet() {
+    setDownloading(true)
+    try {
+      await download(days)
+    } catch (e) {
+      setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong)
+    } finally {
+      setDownloading(false)
+    }
+  }
 
   useEffect(() => {
     let live = true
@@ -261,6 +263,11 @@ function Usage({ load }: { load: (days: number) => Promise<CarUsage> }) {
           </ul>
 
           <h3 className="section-title">{t.usage.history}</h3>
+          {report.history.length > 0 && (
+            <button type="button" className="btn btn-soft btn-block" disabled={downloading} onClick={() => void exportSheet()}>
+              <DownloadIcon size={18} /> {t.usage.download}
+            </button>
+          )}
           {report.history.length === 0 ? (
             <p className="hint">{t.usage.noUsage}</p>
           ) : (
@@ -290,55 +297,6 @@ function Usage({ load }: { load: (days: number) => Promise<CarUsage> }) {
         </>
       )}
     </div>
-  )
-}
-
-function Unlock({
-  error,
-  loading,
-  onUnlock,
-  onClose,
-}: {
-  error: string | null
-  loading: boolean
-  onUnlock: (password: string) => void
-  onClose: () => void
-}) {
-  const t = useT()
-  const [draft, setDraft] = useState('')
-
-  function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (draft.trim()) onUnlock(draft)
-  }
-
-  return (
-    <Sheet
-      id="car-admin-title"
-      title={t.admin.title}
-      as="form"
-      onSubmit={submit}
-      onClose={onClose}
-      footer={
-        <button type="submit" className="btn btn-primary btn-block" disabled={loading || !draft.trim()}>
-          {loading ? t.common.checking : t.admin.unlock}
-        </button>
-      }
-    >
-      <label className="field">
-        <span className="field-label">{t.admin.password}</span>
-        <input
-          type="password"
-          autoFocus
-          autoComplete="current-password"
-          placeholder={t.admin.passwordPlaceholder}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-      </label>
-      {error && <p className="error">{error}</p>}
-      <p className="hint">{t.admin.passwordHint}</p>
-    </Sheet>
   )
 }
 

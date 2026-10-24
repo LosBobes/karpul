@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { addDays, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
-import type { CarType, CorporateCar, Ride, RideInput } from '../lib/types'
+import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
 import { Avatar } from './Avatar'
 import { DatePicker } from './DatePicker'
-import { CarIcon, ChevronRightIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { CarIcon, ChevronRightIcon, HandIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
 import { Select } from './Select'
 import { Sheet } from './Sheet'
@@ -18,6 +18,8 @@ interface Props {
   existing?: Ride | null
   /** Pre-fill a new ride from this one ("Duplicate ride"). */
   template?: Ride | null
+  /** A new ride in answer to this request: its day, time and way, and a seat for whoever asked. */
+  request?: RideRequest | null
   submitting: boolean
   error: string | null
   onSubmit: (input: RideInput) => void
@@ -94,18 +96,18 @@ function weeklyCount(from: string, until: string): number {
 }
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
-export function RideForm({ date, userName, cars, existing, template, submitting, error, onSubmit, onDelete, onClose }: Props) {
+export function RideForm({ date, userName, cars, existing, template, request = null, submitting, error, onSubmit, onDelete, onClose }: Props) {
   const t = useT()
   const seed = existing ?? template ?? null
   const [last] = useState(loadLastRoute)
   const [mode, setModeState] = useState<Mode>(() => (isAdvancedRide(seed) ? 'advanced' : loadMode()))
-  const [rideDate, setRideDate] = useState(existing?.ride_date ?? date)
+  const [rideDate, setRideDate] = useState(existing?.ride_date ?? request?.request_date ?? date)
   const [carType, setCarType] = useState<CarType>(seed?.car_type ?? (cars.length ? 'corporate' : 'own'))
   const [carId, setCarId] = useState<number | ''>(seed?.corporate_car_id ?? cars[0]?.id ?? '')
   const [carName, setCarName] = useState(seed?.car_type === 'own' ? seed.car_name : last.car_name)
-  const [origin, setOrigin] = useState(seed?.origin ?? last.origin)
-  const [destination, setDestination] = useState(seed?.destination ?? last.destination)
-  const [departure, setDeparture] = useState(seed?.departure_time.slice(0, 5) ?? '08:00')
+  const [origin, setOrigin] = useState(seed?.origin ?? request?.origin ?? last.origin)
+  const [destination, setDestination] = useState(seed?.destination ?? request?.destination ?? last.destination)
+  const [departure, setDeparture] = useState(seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
   const [ret, setRet] = useState(seed?.return_time?.slice(0, 5) ?? '17:00')
   const [oneWay, setOneWay] = useState(seed ? seed.return_time === null : false)
   const [rawSeats, setSeats] = useState(seed?.seats ?? last.seats ?? 3)
@@ -139,8 +141,23 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
 
   const distanceNum = distance.trim() === '' ? null : Number(distance.replace(',', '.'))
   const distanceBad = distanceNum !== null && (!Number.isFinite(distanceNum) || distanceNum < 0 || distanceNum > 2000)
+  // An answer to a request has to be on the day that was asked for, with a
+  // seat for whoever asked (the server says the same, in the same words).
+  const requestError = request
+    ? rideDate !== request.request_date
+      ? t.apiError('The ride has to be on the requested day')
+      : seats < 1
+        ? t.apiError('Offer at least one seat to take the person who asked')
+        : null
+    : null
   const localError =
-    !oneWay && ret <= departure ? t.form.returnAfter : repeatTooFar ? t.form.repeatMax : repeatTooEarly ? t.form.repeatUntil : null
+    !oneWay && ret <= departure
+      ? t.form.returnAfter
+      : repeatTooFar
+        ? t.form.repeatMax
+        : repeatTooEarly
+          ? t.form.repeatUntil
+          : requestError
 
   // What the simple form is carrying out of sight, named so it is never a surprise.
   const stopCount = stops.filter((s) => s.trim() !== '').length
@@ -183,6 +200,7 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
       distance_km: distanceNum,
       chip_in: chipIn.trim(),
       repeat_until: !existing && repeat && repeatCount > 1 ? repeatUntil : null,
+      request_id: request?.id ?? null,
     })
   }
 
@@ -219,6 +237,15 @@ export function RideForm({ date, userName, cars, existing, template, submitting,
           </button>
         </div>
       </div>
+
+      {request && (
+        <div className="banner banner-ok form-answering">
+          <HandIcon size={22} />
+          <span>
+            <strong>{t.requests.answering(request.name)}</strong> {t.requests.answeringHint}
+          </span>
+        </div>
+      )}
 
       {/* The driver never changes, so it is a line that says so, not a field. */}
       <div className="form-driver">

@@ -3,12 +3,12 @@ import { useSyncExternalStore } from 'react'
 /**
  * Who is signed in, in this browser.
  *
- * Karpul used to keep a typed-in name in `localStorage` and send it as a
- * header; now a person registers once and the browser keeps the token the
- * server handed back (`karpul.auth`). The token goes out as
- * `Authorization: Bearer` on every request (lib/api.ts) and the account's
- * display name is the name colleagues see on the board, so nothing downstream
- * had to learn about accounts: it still receives a `userName` string.
+ * A person registers once and the browser keeps the token the server handed
+ * back (`karpul.auth`). The token goes out as `Authorization: Bearer` on every
+ * request (lib/api.ts) and as the first message on the live socket
+ * (lib/live.ts); without it the API shows nothing at all. The account's
+ * display name is the name colleagues see on the board, its id is how the
+ * board knows which rides and seats are yours (lib/me.ts).
  *
  * Like the theme and the locale this is an external store rather than React
  * state, because non-component code (lib/api.ts) needs to read the token too.
@@ -21,6 +21,10 @@ export interface AuthUser {
   first_name: string
   last_name: string
   display_name: string
+  /** May manage the company cars and the accounts (backend: app/admin.py). */
+  is_admin: boolean
+  /** The secret in this person's calendar feed address. */
+  calendar_token: string | null
   created_at: string
 }
 
@@ -47,7 +51,11 @@ function load(): Session | null {
     // A session the server would refuse anyway: drop it before the app starts
     // rather than letting the first request fail.
     if (parsed.expires_at && Date.parse(parsed.expires_at) <= Date.now()) return null
-    return { token: parsed.token, expires_at: parsed.expires_at ?? '', user: parsed.user }
+    // A session saved by an older build lacks the newer fields; they come in
+    // with the next /api/auth/me (App refreshes the account on start).
+    const stored: Partial<AuthUser> = parsed.user
+    const user = { ...stored, is_admin: stored.is_admin ?? false, calendar_token: stored.calendar_token ?? null } as AuthUser
+    return { token: parsed.token, expires_at: parsed.expires_at ?? '', user }
   } catch {
     return null
   }

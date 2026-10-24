@@ -106,7 +106,7 @@ class Vapid:
     subject: str
 
     @classmethod
-    def from_raw(cls, private_b64: str, subject: str) -> "Vapid":
+    def from_raw(cls, private_b64: str, subject: str) -> Vapid:
         return cls(private_key_from_raw(b64url_decode(private_b64)), subject)
 
     @property

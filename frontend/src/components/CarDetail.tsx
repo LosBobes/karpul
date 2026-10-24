@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { api } from '../lib/api'
 import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carModels'
-import { firstName, fmtTime, sameName } from '../lib/dates'
+import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
+import { drives, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, useMe } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
@@ -15,6 +15,7 @@ import {
   CoinsIcon,
   CopyIcon,
   GripIcon,
+  HourglassIcon,
   KebabIcon,
   PencilIcon,
   PhoneIcon,
@@ -30,6 +31,7 @@ import {
   XIcon,
 } from './icons'
 import { Menu } from './Menu'
+import { RideThread } from './RideThread'
 import { Select } from './Select'
 
 /** `tel:` takes the digits and a leading +, not the spaces and dashes people type. */
@@ -39,7 +41,6 @@ function telHref(phone: string): string {
 
 interface Props {
   ride: Ride
-  userName: string
   busy: boolean
   isPast: boolean
   /** Get in, at the origin ("") or one of the ride's stops. */
@@ -51,6 +52,8 @@ interface Props {
   /** Move a passenger (yourself, or anyone if you may manage seats) to another pickup point. */
   onMovePickup: (ride: Ride, bookingId: number, pickup: string) => void
   onShare: (ride: Ride) => void
+  /** "Add to calendar": the ride's .ics, as a download. */
+  onDownloadCalendar: (ride: Ride) => void
   /** Remove this ride and the later ones of its weekly series. */
   onCancelFollowing: (ride: Ride) => void
   /** Put somebody else in the car (driver, or a passenger when the driver allows it). */
@@ -62,6 +65,12 @@ interface Props {
   onTogglePassengersManage: (ride: Ride) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
   onGuide?: () => void
+  /** Queue for a seat in this full car, getting in at `pickup` once one frees up. */
+  onWait: (ride: Ride, pickup: string) => void
+  /** Leave the queue (yourself), or take someone off it (the driver). */
+  onLeaveLine: (ride: Ride, entryId: number) => void
+  /** Something in the thread failed; the board says so in its toast. */
+  onError: (text: string) => void
   dragActive: boolean
   /** The chip in flight was picked up from this car. */
   lifted: boolean
@@ -78,7 +87,6 @@ interface Props {
  */
 export function CarDetail({
   ride,
-  userName,
   busy,
   isPast,
   onJoin,
@@ -87,6 +95,7 @@ export function CarDetail({
   onSwitch,
   onMovePickup,
   onShare,
+  onDownloadCalendar,
   onCancelFollowing,
   onAddPassenger,
   onCancel,
@@ -94,6 +103,9 @@ export function CarDetail({
   onDuplicate,
   onTogglePassengersManage,
   onGuide,
+  onWait,
+  onLeaveLine,
+  onError,
   dragActive,
   lifted,
   over,
@@ -101,19 +113,24 @@ export function CarDetail({
   draggable = true,
 }: Props) {
   const t = useT()
+  const me = useMe()
   const coarse = useCoarsePointer()
-  const isDriver = sameName(userName, ride.driver_name)
+  const isDriver = drives(ride, me)
   const model = carModel(ride.car_name)
   const brand = model ? null : carBrand(ride.car_name)
   const powertrain = carPowertrain(ride.car_name)
-  const myBooking = ride.bookings.find((b) => sameName(b.passenger_name, userName))
+  const myBooking = findMyBooking(ride, me)
   const full = ride.free_seats <= 0
-  const canJoin = !!userName && !isDriver && !myBooking && !full && !busy && !isPast
+  const canJoin = !isDriver && !myBooking && !full && !busy && !isPast
   const receives = dragActive && canJoin
   // Who may put other people in and take them out: the driver always, the
   // passengers while the driver has switched it on (backend: _may_manage_seats).
-  const canManage = !isPast && !!userName && (isDriver || (ride.passengers_manage && !!myBooking))
+  const canManage = !isPast && (isDriver || (ride.passengers_manage && !!myBooking))
   const canAddOther = canManage && !full && !busy
+  // A full car has a queue: the first seat that frees up goes to the first in line.
+  const myEntry = myWaitlistEntry(ride, me)
+  const line = placeInLine(ride, me)
+  const canWait = full && !isDriver && !myBooking && !myEntry && !isPast && ride.seats > 0
 
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
@@ -125,7 +142,6 @@ export function CarDetail({
   const switching = !!switchFrom && !!onSwitch
   const getIn = () => (switching ? onSwitch!(ride, switchFrom!, pickup) : onJoin(ride, pickup))
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
-  const calendarUrl = api.rideCalendarUrl(ride.id)
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -141,8 +157,9 @@ export function CarDetail({
     {
       label: t.detail.addToCalendar,
       icon: <CalendarIcon size={18} />,
-      // The .ics is served as an attachment: the browser downloads it, a phone opens its calendar.
-      onSelect: () => window.location.assign(calendarUrl),
+      // The .ics is an attachment that needs the token: fetched, then handed
+      // to the browser as a download, which a phone opens in its calendar.
+      onSelect: () => onDownloadCalendar(ride),
     },
   ]
   const menuItems = isDriver
@@ -162,7 +179,7 @@ export function CarDetail({
           : []),
       ]
     : [
-        { label: t.detail.duplicateMine, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: !userName },
+        { label: t.detail.duplicateMine, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride) },
         ...shareItems,
       ]
 
@@ -306,7 +323,7 @@ export function CarDetail({
           )}
         </h3>
 
-        {canJoin && hasStops && (
+        {(canJoin || canWait) && hasStops && (
           <div className="pickup-pick">
             <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={pickupOptions} onChange={setPickup} />
           </div>
@@ -338,7 +355,7 @@ export function CarDetail({
         {ride.bookings.length > 0 && (
           <ul className="pax-list">
             {ride.bookings.map((b) => {
-              const mine = sameName(b.passenger_name, userName)
+              const mine = isMyBooking(b, me)
               const grabbable = draggable && mine && !busy && !isPast
               return (
                 <li
@@ -348,7 +365,7 @@ export function CarDetail({
                     .join(' ')}
                   title={grabbable ? t.detail.dragSwitch : undefined}
                   onPointerDown={(e) => {
-                    if (grabbable) onGrab(e, { name: userName, fromRideId: ride.id, bookingId: b.id })
+                    if (grabbable) onGrab(e, { name: me.name, fromRideId: ride.id, bookingId: b.id })
                   }}
                   onDragStart={(e) => e.preventDefault()}
                 >
@@ -455,12 +472,63 @@ export function CarDetail({
           </form>
         )}
 
-        {!userName && !isPast && !full && <p className="hint">{t.detail.setNameHint}</p>}
-        {full && !myBooking && !isDriver && ride.bookings.length > 0 && <p className="hint">{t.detail.full}</p>}
+        {full && !myBooking && !isDriver && ride.bookings.length > 0 && !myEntry && <p className="hint">{t.detail.full}</p>}
         {ride.passengers_manage && !isPast && !!myBooking && !isDriver && (
           <p className="hint">{t.detail.openListHint}</p>
         )}
+
+        {canWait && (
+          <>
+            <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => onWait(ride, pickup)}>
+              <HourglassIcon size={18} />
+              {t.detail.waitFor}
+            </button>
+            <p className="hint hint-tight">{t.detail.waitHint}</p>
+          </>
+        )}
+        {myEntry && !isPast && (
+          <div className="banner waitline-me">
+            <HourglassIcon size={22} />
+            <span>{t.detail.inLine(line)}</span>
+            <button type="button" className="link" disabled={busy} onClick={() => onLeaveLine(ride, myEntry.id)}>
+              {t.detail.stopWaiting}
+            </button>
+          </div>
+        )}
+        {ride.waitlist.length > 0 && (
+          <div className="waitline">
+            <h4 className="waitline-title">
+              {t.detail.waitingTitle} <span className="section-count">{ride.waitlist.length}</span>
+            </h4>
+            <ol className="waitline-list">
+              {ride.waitlist.map((w) => (
+                <li key={w.id} className="waitline-row">
+                  <Avatar name={w.name} size="sm" />
+                  <span className="waitline-name">
+                    {w.name}
+                    {w.user_id === me.id && <span className="tag">{t.detail.you}</span>}
+                    {hasStops && w.pickup && <small>{t.detail.getsInAt(w.pickup)}</small>}
+                  </span>
+                  {isDriver && !isPast && (
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn-sm"
+                      title={t.detail.removeFromLine(w.name)}
+                      aria-label={t.detail.removeFromLine(w.name)}
+                      disabled={busy}
+                      onClick={() => onLeaveLine(ride, w.id)}
+                    >
+                      <XIcon size={16} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </section>
+
+      <RideThread ride={ride} isDriver={isDriver} onError={onError} />
     </div>
   )
 }

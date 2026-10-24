@@ -1,36 +1,40 @@
-"""Shared-password gate for the car-pool admin endpoints.
+"""Who may manage the company-car pool and the accounts.
 
-Karpul has no accounts by design (see the README): ride actions are honour-based
-and checked against `X-User-Name`. Editing the company-car pool is the one thing
-that is not, because a bad edit affects everybody's rides — so it sits behind a
-single shared password from `KARPUL_ADMIN_PASSWORD`, sent as `X-Admin-Password`.
+An admin is an account: either one whose `is_admin` flag another admin
+switched on (`PATCH /api/admin/users/{id}`), or one whose username is listed
+in `KARPUL_ADMINS` (comma-separated). The variable is how the first admin of a
+fresh deployment comes to exist, and it cannot be undone from the app: an
+admin by configuration stays one until the server's environment says
+otherwise. It is read per request, not at import, so tests monkeypatch it.
 
-Leaving the variable unset switches the admin endpoints off entirely (503), which
-is the default for a plain `uvicorn app.main:app` checkout.
+Like `require_user`, the check runs in the handler body, after a mutating
+route has taken the write lock (see `auth.Credentials`).
 """
 
 import os
-import secrets
-from typing import Annotated
 
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, status
+from sqlmodel import Session
 
-AdminPasswordHeader = Annotated[str | None, Header(alias="X-Admin-Password")]
-
-
-def configured_password() -> str:
-    # Read per request, not at import: tests (and a restarted container) set it late.
-    return os.getenv("KARPUL_ADMIN_PASSWORD", "").strip()
+from .auth import Credentials, require_user
+from .models import User
 
 
-def require_admin(x_admin_password: AdminPasswordHeader = None) -> None:
-    """FastAPI dependency: 503 when admin is switched off, 401 on a bad password."""
-    configured = configured_password()
-    if not configured:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Car-pool admin is not configured on this server (KARPUL_ADMIN_PASSWORD is unset)",
-        )
-    supplied = (x_admin_password or "").strip()
-    if not supplied or not secrets.compare_digest(supplied, configured):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong or missing admin password")
+def configured_admins() -> set[str]:
+    return {u.strip().lower() for u in os.getenv("KARPUL_ADMINS", "").split(",") if u.strip()}
+
+
+def admin_by_config(user: User) -> bool:
+    return user.username in configured_admins()
+
+
+def is_admin(user: User) -> bool:
+    return user.is_admin or admin_by_config(user)
+
+
+def require_admin(session: Session, creds: Credentials) -> User:
+    """The signed-in account if it is an admin: 401 without a session, 403 without the role."""
+    user = require_user(session, creds)
+    if not is_admin(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only an admin can do that")
+    return user

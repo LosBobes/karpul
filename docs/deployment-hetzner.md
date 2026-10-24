@@ -77,25 +77,29 @@ cp .env.prod.example .env
 nano .env
 ```
 
-Karpul has two secrets: the shared password for the company-car admin screen
-and the VAPID key that signs push notifications. Set the public origin, both,
-the account rule, and optionally the car pool that is seeded on first start:
+Karpul has one secret, the VAPID key that signs push notifications, plus the
+list of admins. Set the public origin, both, optionally Sentry, and optionally
+the car pool that is seeded on first start:
 
 ```env
 CORS_ORIGINS=https://www.karpul.dev
-KARPUL_REQUIRE_LOGIN=1
-KARPUL_ADMIN_PASSWORD=<long random string>
+KARPUL_ADMINS=<your username>
 KARPUL_VAPID_PRIVATE_KEY=<what `python -m app.vapid` printed>
 KARPUL_VAPID_SUBJECT=mailto:someone@example.com
+KARPUL_SENTRY_DSN=
 CORPORATE_CARS=Skoda Octavia|BG-123-XY|4;VW Transporter|BG-456-ZZ|8
 ```
 
-`KARPUL_REQUIRE_LOGIN=1` makes the API refuse anything but a signed-in request.
-The app has always asked for a sign-in on screen; without this the API would
-still honour the pre-accounts `X-User-Name` header, which on a public host means
-anyone can act as anyone with a plain `curl`. Set it. The first person to open
-the site registers themselves, as does everyone after them; there is no invite
-step and no admin account.
+The API refuses everything but a signed-in request, reading the board
+included; there is no setting for it any more (the old `KARPUL_REQUIRE_LOGIN`
+and `KARPUL_ADMIN_PASSWORD` are gone and can be deleted from `.env`).
+Everybody registers themselves on the site.
+
+`KARPUL_ADMINS` (comma-separated usernames) is how the first admin exists: an
+admin manages the company cars and the people, including password reset links,
+since Karpul sends no email. Register in the app, put your username here, and
+`docker compose -f docker-compose.prod.yml up -d` to pick it up; further admins
+are made from the app's *People* screen.
 
 `KARPUL_VAPID_PRIVATE_KEY` is generated once (`docker compose -f docker-compose.prod.yml
 run --rm app python -m app.vapid`, or any Python with the `cryptography` package) and
@@ -103,11 +107,15 @@ then kept: browsers subscribe against the public half of it, so a new key silent
 orphans every existing subscription. Leaving it empty switches notifications off; the
 app hides the switch.
 
-`KARPUL_ADMIN_PASSWORD` is what the *Cars* button asks for; anyone with it can
-add, edit, retire and delete company cars, so make it long. Leaving it empty
-switches the admin endpoints off (503) — the rest of the app is unaffected.
-Changing it later takes a `docker compose -f docker-compose.prod.yml up -d`
-to pick up the new value.
+`KARPUL_SENTRY_DSN` turns on error reports to Sentry (no request bodies, headers
+or personal data). Empty sends nothing anywhere. `/api/health` checks the
+database, so an uptime monitor pointed at `https://www.karpul.dev/api/health`
+notices a broken one.
+
+`docker-compose.prod.yml` also sets `FORWARDED_ALLOW_IPS=*` so uvicorn takes the
+visitor's address from Caddy's `X-Forwarded-For`; the sign-in rate limit counts
+per address. That is safe only because the container's port is bound to
+loopback, reachable from Caddy alone.
 
 The `.env` file is gitignored and stays only on the server. The seed applies
 only while the car table is empty; after that the pool is managed from the

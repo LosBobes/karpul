@@ -6,11 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
-from ..auth import CredsDep, require_actor
+from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..models import PushSubscription
 from ..push import vapid
-from ..services import norm_name
 
 router = APIRouter(prefix="/api/push", tags=["push"])
 
@@ -46,20 +45,20 @@ def push_config():
 
 @router.post("/subscriptions", status_code=status.HTTP_201_CREATED)
 def subscribe(payload: SubscriptionIn, session: WriteSessionDep, creds: CredsDep):
-    """Register this browser for the name it is signed in as (or, without an
-    account, the name it is using); the same endpoint sent again is updated in
-    place."""
+    """Register this browser for the signed-in account; the same endpoint
+    sent again is updated in place (and moves to whoever is signed in now)."""
     if vapid() is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Push notifications are not configured on this server")
-    user = require_actor(session, creds)
+    user = require_user(session, creds)
     if not payload.endpoint.startswith("https://"):
         raise HTTPException(422, "endpoint must be an https URL")
     locale = payload.locale if payload.locale in ("en", "sr") else "en"
     sub = session.exec(select(PushSubscription).where(PushSubscription.endpoint == payload.endpoint)).first()
     if sub is None:
-        sub = PushSubscription(endpoint=payload.endpoint, p256dh=payload.keys.p256dh, auth=payload.keys.auth, user_name=norm_name(user), locale=locale)
+        sub = PushSubscription(endpoint=payload.endpoint, p256dh=payload.keys.p256dh, auth=payload.keys.auth, user_id=user.id, user_name=user.name_key, locale=locale)
     else:
-        sub.p256dh, sub.auth, sub.user_name, sub.locale = payload.keys.p256dh, payload.keys.auth, norm_name(user), locale
+        sub.p256dh, sub.auth, sub.locale = payload.keys.p256dh, payload.keys.auth, locale
+        sub.user_id, sub.user_name = user.id, user.name_key
     session.add(sub)
     session.commit()
     return {"ok": True}

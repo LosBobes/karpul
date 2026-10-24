@@ -44,6 +44,16 @@ class User(SQLModel, table=True):
     name_key: str = Field(unique=True, index=True)
     # "pbkdf2_sha256$<rounds>$<salt hex>$<hash hex>" (app/auth.py). Never the password.
     password_hash: str
+    # May manage the company-car pool and the accounts (app/admin.py). The
+    # usernames in KARPUL_ADMINS are admins whatever this says.
+    # A server default too, so rebuilding an old table (database.relax_not_null)
+    # can copy rows that predate the column.
+    is_admin: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    # The secret in this person's calendar feed address (/api/calendar/<token>.ics):
+    # a calendar app cannot send a bearer token, so the URL is the credential.
+    # Kept in the clear because the owner has to be shown it again; rotating it
+    # (POST /api/auth/me/calendar-token) cuts off every old subscription.
+    calendar_token: str | None = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=utcnow)
 
     sessions: list["AuthSession"] = Relationship(
@@ -86,6 +96,10 @@ class Ride(SQLModel, table=True):
     car_type: CarType
     car_name: str
     corporate_car_id: int | None = Field(default=None, foreign_key="corporatecar.id")
+    # Who drives: the account, and the name it went by, which is what the board
+    # shows and what a rename rewrites. `driver_id` is None only for a ride from
+    # before accounts whose driver never registered (database.link_people).
+    driver_id: int | None = Field(default=None, foreign_key="appuser.id", index=True)
     driver_name: str = Field(index=True)
     origin: str
     destination: str
@@ -118,11 +132,23 @@ class Ride(SQLModel, table=True):
         # Oldest first, whichever way they were loaded (lazily or in bulk).
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "Booking.id"},
     )
+    # Queued for a seat while the car is full, first come first served.
+    waitlist: list["WaitlistEntry"] = Relationship(
+        back_populates="ride",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "WaitlistEntry.id"},
+    )
+    messages: list["RideMessage"] = Relationship(
+        back_populates="ride",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "RideMessage.id"},
+    )
 
 
 class Booking(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     ride_id: int = Field(foreign_key="ride.id", index=True)
+    # The passenger's account; None for a colleague the driver put in by name
+    # who has no account yet (registering under that name claims the seat).
+    passenger_id: int | None = Field(default=None, foreign_key="appuser.id", index=True)
     passenger_name: str
     # Where this passenger gets in: the ride's origin ("") or one of its stops.
     pickup: str = ""
@@ -139,8 +165,72 @@ class PushSubscription(SQLModel, table=True):
     endpoint: str = Field(unique=True)
     p256dh: str
     auth: str
-    # Normalised (services.norm_name), so a match is the same rule as everywhere.
+    # Whose browser this is; pushes are addressed by account.
+    user_id: int | None = Field(default=None, foreign_key="appuser.id", index=True)
+    # The account's normalised name when it subscribed. Only read to link
+    # subscriptions from before `user_id` existed (database.link_people).
     user_name: str = Field(index=True)
     # The app language the browser had when it subscribed: "en" or "sr".
     locale: str = "en"
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class PasswordReset(SQLModel, table=True):
+    """A one-time link an admin hands someone who forgot their password
+    (POST /api/admin/users/{id}/reset-link). Stored as the SHA-256 of the
+    token, like a session; using it sets a new password and signs every
+    browser of that account out."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    token_hash: str = Field(unique=True, index=True)
+    user_id: int = Field(foreign_key="appuser.id", index=True)
+    created_at: datetime = Field(default_factory=utcnow)
+    expires_at: datetime
+    used_at: datetime | None = None
+
+
+class WaitlistEntry(SQLModel, table=True):
+    """Someone waiting for a seat in a full car. When a seat frees up the first
+    in line is put in the car and told (services.promote_waitlist)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    ride_id: int = Field(foreign_key="ride.id", index=True)
+    user_id: int = Field(foreign_key="appuser.id", index=True)
+    name: str
+    # Where they want to get in, as for a booking: "" is the origin.
+    pickup: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+    ride: Ride = Relationship(back_populates="waitlist")
+
+
+class RideMessage(SQLModel, table=True):
+    """One line in a ride's thread ("running five minutes late")."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    ride_id: int = Field(foreign_key="ride.id", index=True)
+    author_id: int | None = Field(default=None, foreign_key="appuser.id")
+    author_name: str
+    body: str
+    created_at: datetime = Field(default_factory=utcnow)
+
+    ride: Ride = Relationship(back_populates="messages")
+
+
+class RideRequest(SQLModel, table=True):
+    """A passenger asking for a ride that nobody offers yet: "Tuesday around
+    8, Novi Sad to HQ". A driver answers it by adding a ride for it, which
+    puts the requester in the car; getting into any car that day answers it too."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    request_date: date = Field(index=True)
+    user_id: int = Field(foreign_key="appuser.id", index=True)
+    name: str
+    origin: str
+    destination: str
+    # Roughly when they would like to leave.
+    departure_time: time
+    note: str = ""
+    # The ride that answered it; None while it is open.
+    ride_id: int | None = Field(default=None, foreign_key="ride.id")
     created_at: datetime = Field(default_factory=utcnow)

@@ -26,12 +26,17 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://www.karpul.dev}
       # Optional company-car seed, applied only when the car table is empty.
       CORPORATE_CARS: ${CORPORATE_CARS:-}
-      # 1 = the API accepts only signed-in requests (see .env.prod.example).
-      KARPUL_REQUIRE_LOGIN: ${KARPUL_REQUIRE_LOGIN:-}
-      # Shared password for the company-car admin screen. Unset = admin off (503).
-      KARPUL_ADMIN_PASSWORD: ${KARPUL_ADMIN_PASSWORD:-}
+      # Usernames that are always admins (comma-separated); see .env.prod.example.
+      KARPUL_ADMINS: ${KARPUL_ADMINS:-}
       KARPUL_VAPID_PRIVATE_KEY: ${KARPUL_VAPID_PRIVATE_KEY:-}
       KARPUL_VAPID_SUBJECT: ${KARPUL_VAPID_SUBJECT:-}
+      # Optional error tracking. Unset = nothing is sent anywhere.
+      KARPUL_SENTRY_DSN: ${KARPUL_SENTRY_DSN:-}
+      # Caddy is the only thing that can reach the container (the port below is
+      # loopback-only), so uvicorn may believe its X-Forwarded-For. That is what
+      # gives the sign-in rate limit (app/ratelimit.py) the visitor's address
+      # rather than the Docker gateway's.
+      FORWARDED_ALLOW_IPS: "*"
     volumes:
       # SQLite persists here across every rebuild/recreate. Only
       # `docker compose down -v` would delete it.

@@ -16,6 +16,8 @@ Event shapes (JSON):
     {"type": "ride.created" | "ride.updated", "ride": <RideRead>}
     {"type": "ride.deleted", "ride_id": 12, "ride_date": "2026-09-10"}
     {"type": "cars.changed"}      # pool edited; rides may have been relabelled
+    {"type": "request.saved", "request": <RideRequestRead>}
+    {"type": "request.deleted", "request_id": 4}
     {"type": "ping"}              # keepalive, sent when nothing else happened
 
 If the app is ever run with several workers this hub has to be replaced by a
@@ -33,8 +35,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
-from .models import Ride
-from .schemas import RideRead
+from .models import Ride, RideRequest
+from .schemas import RideRead, RideRequestRead
 from .services import to_ride_read_dict
 
 Event = dict[str, Any]
@@ -100,3 +102,11 @@ def ride_deleted(ride_id: int, ride_date: Any) -> None:
 
 def cars_changed() -> None:
     hub.publish({"type": "cars.changed"})
+
+
+def request_saved(request: RideRequest) -> None:
+    hub.publish({"type": "request.saved", "request": RideRequestRead.model_validate(request).model_dump(mode="json")})
+
+
+def request_deleted(request_id: int) -> None:
+    hub.publish({"type": "request.deleted", "request_id": request_id})

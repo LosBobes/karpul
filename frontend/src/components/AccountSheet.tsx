@@ -19,6 +19,8 @@ interface Props {
   /** The name changed: the board has to be reloaded under the new one. */
   onRenamed: () => void
   onSaved: () => void
+  /** A line for the board's toast ("2 browsers signed out."). */
+  onNotice: (text: string) => void
   onClose: () => void
 }
 
@@ -28,7 +30,7 @@ interface Props {
  * server (`services.rename_person`), so this is also how a misspelt surname
  * gets fixed without losing your history.
  */
-export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
+export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Props) {
   const t = useT()
   const [firstName, setFirstName] = useState(user.first_name)
   const [lastName, setLastName] = useState(user.last_name)
@@ -71,6 +73,20 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
     } catch (err) {
       const m = messages()
       setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+      setBusy(false)
+    }
+  }
+
+  async function signOutOthers() {
+    setBusy(true)
+    setError(null)
+    try {
+      const { ended } = await api.logoutOthers()
+      onNotice(messages().account.othersSignedOut(ended))
+    } catch (err) {
+      const m = messages()
+      setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+    } finally {
       setBusy(false)
     }
   }
@@ -178,6 +194,12 @@ export function AccountSheet({ user, onRenamed, onSaved, onClose }: Props) {
       <p className="hint">{t.account.passwordHint}</p>
 
       {error && <p className="error">{error}</p>}
+
+      <h3 className="account-section">{t.account.otherBrowsers}</h3>
+      <p className="hint">{t.account.otherBrowsersHint}</p>
+      <button type="button" className="btn btn-soft btn-block" disabled={busy} onClick={() => void signOutOthers()}>
+        {t.account.signOutOthers}
+      </button>
 
       <button type="button" className="btn btn-outline-danger btn-block" disabled={busy} onClick={() => void signOut()}>
         {t.account.signOut}

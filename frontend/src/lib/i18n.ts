@@ -88,7 +88,9 @@ const en = {
     account: 'Your account',
     accountHint: 'Name, phone, email, password',
     cars: 'Company cars',
-    carsHint: 'Manage the pool (password)',
+    carsHint: 'The pool and how it is used',
+    people: 'People',
+    peopleHint: 'Accounts, admins, password resets',
     guide: 'Company car guide',
     guideHint: 'Charging with the card, the Mazda 6e',
     closeMenu: 'Close menu',
@@ -108,26 +110,27 @@ const en = {
     history: 'Past rides',
     noHistory: 'No past rides yet.',
     feed: 'Calendar feed',
-    feedHint: 'Subscribe to this address in your calendar app and every ride you drive or ride in shows up there, and stays current.',
+    feedHint: 'Subscribe to this address in your calendar app and every ride you drive or ride in shows up there, and stays current. The address is yours alone: anyone who has it sees your rides.',
+    feedNew: 'New address',
+    feedNewHint: 'Shared it by mistake? A new address stops every calendar subscribed to the old one.',
+    feedChanged: 'The calendar address changed. Subscribe to the new one.',
     asDriver: 'Driver',
     asPassenger: 'Passenger',
     pax: (n: number) => enPlural(n, 'passenger', 'passengers'),
     route: (origin: string, destination: string) => `${origin} to ${destination}`,
-    nameFirst: 'Set your name to see your rides.',
   },
 
   notif: {
     title: 'Notifications',
     hint: 'Who got in, reminders before leaving',
-    body: 'A push when someone gets into your car or out of it, when a driver moves or removes a ride you are in, and 30 minutes before you leave.',
+    body: 'A push when someone gets into your car or out of it, when a driver moves or removes a ride you are in, when a seat you waited for is yours, when someone writes in a ride you are in or answers your request, and 30 minutes before you leave.',
     enable: 'Turn on',
     disable: 'Turn off',
-    on: 'On, for this browser and this name.',
+    on: 'On, for this browser.',
     off: 'Off.',
     unsupported: 'This browser cannot show push notifications. On an iPhone, install Karpul to the home screen first, then try again.',
     unavailable: 'Push is not set up on this server.',
     denied: 'The browser has blocked notifications for this site. Allow them in the site settings, then try again.',
-    nameFirst: 'Set your name first; notifications are sent to a name.',
   },
 
   auth: {
@@ -155,6 +158,17 @@ const en = {
     switchToSignUp: 'No account yet? Register',
     switchToSignIn: 'Already registered? Sign in',
     fillIn: 'Fill in every field to continue.',
+    forgot: 'Forgot your password? Ask an admin for a reset link.',
+  },
+
+  /** A password reset link from an admin: components/AuthGate.tsx, `reset` mode. */
+  reset: {
+    title: 'Set a new password',
+    greeting: (name: string) => `Hi ${name}. Pick a new password; every browser signed in to your account is signed out.`,
+    newPassword: 'New password',
+    submit: 'Set password',
+    expired: 'This link has expired or was already used. Ask an admin for a new one.',
+    backToSignIn: 'Back to sign in',
   },
 
   account: {
@@ -173,12 +187,14 @@ const en = {
     signOut: 'Sign out',
     signingOut: 'Signing out…',
     memberSince: (date: string) => `With Karpul since ${date}`,
+    otherBrowsers: 'Other browsers',
+    otherBrowsersHint: 'Signed in on a phone you lost, or a computer you shared? Sign every other browser out; this one stays signed in.',
+    signOutOthers: 'Sign out everywhere else',
+    othersSignedOut: (n: number) => (n === 0 ? 'No other browser was signed in.' : `${enPlural(n, 'browser', 'browsers')} signed out.`),
   },
 
   you: {
     title: 'You',
-    whoAreYou: 'Who are you?',
-    tapName: 'Tap to enter your name. No account needed.',
     allSet: "You're all set!",
     ridingWith: (first: string, time: string) => `Riding with ${first}, leaving at ${time}.`,
     drivingToday: (taken: number, seats: number) => `You're driving today. ${taken} of ${seats} seats taken.`,
@@ -245,9 +261,47 @@ const en = {
     addByName: 'Add a passenger by name',
     passengerName: "Passenger's name",
     colleagueName: "Colleague's name",
-    setNameHint: 'Set your name from the menu to get in.',
     full: 'This car is full.',
     openListHint: 'The driver lets passengers add and remove each other in this car.',
+    waitFor: 'Wait for a seat',
+    waitHint: 'The first seat that frees up is yours, with a notification.',
+    inLine: (n: number) => (n === 1 ? "You're first in line for a seat." : `You're number ${n} in line for a seat.`),
+    stopWaiting: 'Stop waiting',
+    waitingTitle: 'Waiting for a seat',
+    removeFromLine: (name: string) => `Take ${name} off the waiting list`,
+  },
+
+  /** A ride's thread: components/RideThread.tsx. */
+  thread: {
+    title: 'Messages',
+    show: (n: number) => (n === 0 ? 'Write to the car' : `Messages (${n})`),
+    hide: 'Hide messages',
+    empty: 'A late start, a detour, a question before getting in: write it here.',
+    placeholder: 'Write a message',
+    send: 'Send',
+    remove: 'Remove message',
+    hint: 'The driver and the passengers get a notification.',
+  },
+
+  /** Asking for a ride nobody offers yet: components/RequestForm.tsx and RequestList.tsx. */
+  requests: {
+    title: 'Looking for a ride',
+    ask: 'Ask for a ride',
+    askHint: 'Nothing that suits you? Ask, and the drivers see it on the board.',
+    formTitle: 'Ask for a ride',
+    day: 'Day',
+    around: 'Around',
+    from: 'From',
+    to: 'To',
+    note: 'Note',
+    notePlaceholder: 'e.g. any time before 9',
+    submit: 'Ask',
+    offer: 'Offer a ride',
+    withdraw: 'Withdraw',
+    aroundTime: (time: string) => `around ${time}`,
+    yours: 'Your request',
+    answering: (name: string) => `Offering a ride to ${name}`,
+    answeringHint: 'They get a seat in this ride and a notification.',
   },
 
   form: {
@@ -323,7 +377,6 @@ const en = {
 
   admin: {
     title: 'Company cars',
-    forget: 'Forget the admin password on this device',
     hint: 'Changes here affect everyone. Retiring a car keeps it on past rides but takes it out of the "Add ride" form.',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
     retired: 'Retired',
@@ -332,10 +385,6 @@ const en = {
     restore: 'Restore',
     addCar: 'Add car',
     addCompanyCar: 'Add company car',
-    unlock: 'Unlock',
-    password: 'Admin password',
-    passwordPlaceholder: 'Shared car-pool password',
-    passwordHint: 'Only needed to change the car pool. Adding and joining cars never asks for it.',
     name: 'Name',
     namePlaceholder: 'e.g. Skoda Octavia',
     plate: 'Plate',
@@ -360,6 +409,25 @@ const en = {
     noUsage: 'No company-car rides in this window.',
     retired: 'Retired',
     pax: (n: number, seats: number) => `${n} of ${seats}`,
+    download: 'Download as a spreadsheet',
+  },
+
+  /** The admin's list of accounts: components/PeopleAdmin.tsx. */
+  people: {
+    title: 'People',
+    hint: 'Everyone with an account. An admin manages the company cars and the people here.',
+    count: (n: number) => enPlural(n, 'account', 'accounts'),
+    search: 'Search people',
+    admin: 'Admin',
+    adminByConfig: 'Admin by server setting',
+    adminByConfigHint: 'Set on the server (KARPUL_ADMINS); it can only be changed there.',
+    makeAdmin: 'Make admin',
+    removeAdmin: 'Remove admin',
+    resetLink: 'Password reset link',
+    resetLinkFor: (name: string) => `Reset link for ${name}`,
+    resetLinkHint: (date: string) => `One use, until ${date}. Send it to them yourself; it is shown only now, and any older link stops working.`,
+    optionsFor: (name: string) => `Options for ${name}`,
+    you: 'You',
   },
 
   upcoming: {
@@ -429,6 +497,13 @@ const en = {
     rideNotFound: 'That ride is gone.',
     carAdded: (name: string) => `${name} added to the pool.`,
     carDeleted: (name: string) => `${name} deleted.`,
+    waiting: (n: number) => (n === 1 ? "You're first in line for a seat." : `You're number ${n} in line for a seat.`),
+    stoppedWaiting: 'You left the waiting list.',
+    requestAdded: 'Asked. Drivers see it on the board.',
+    requestWithdrawn: 'Request withdrawn.',
+    requestAnswered: (name: string) => `Ride added, and ${name} is in.`,
+    madeAdmin: (name: string) => `${name} is an admin now.`,
+    removedAdmin: (name: string) => `${name} is no longer an admin.`,
     updateReady: 'A new version is ready',
     updateHint: 'Trace the bolt to take it.',
     updateAction: 'Update',
@@ -448,8 +523,6 @@ const en = {
     noUpcoming: 'No upcoming sessions yet',
     noRidesWent: 'No rides went on this day',
     pastReadOnly: 'Past days are read-only.',
-    whoAreYou: 'Who are you?',
-    enterToAdd: 'Enter your name to add a ride or get into a car.',
     usePlus: 'Add one with the + button at the bottom right.',
     viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles.',
     firstRide: 'The form remembers your route and car, and the destination starts as "Office".',
@@ -568,9 +641,9 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Only the driver can cancel this ride$/, () => 'Samo vozač može da ukloni ovu vožnju'],
   [/^Only the driver can edit this ride$/, () => 'Samo vozač može da izmeni ovu vožnju'],
   [/^Only the passenger, the driver or another passenger/, () => 'Ovu rezervaciju može da ukloni samo taj putnik, vozač ili drugi putnik iz ovog auta'],
-  [/^Set your name first/, () => 'Prvo upiši svoje ime'],
-  [/^Wrong or missing admin password$/, () => 'Pogrešna lozinka ili lozinka nije uneta'],
-  [/^Car-pool admin is not configured/, () => 'Upravljanje voznim parkom nije podešeno na ovom serveru'],
+  [/^Only the passenger or the driver can remove this booking$/, () => 'Ovu rezervaciju može da ukloni samo taj putnik ili vozač'],
+  [/^Only the driver or a passenger in this car can add someone$/, () => 'Nekoga može da doda samo vozač ili putnik iz ovog auta'],
+  [/^Only the driver can add other passengers to this car$/, () => 'Druge putnike u ovaj auto može da doda samo vozač'],
   [/^Range may not exceed 92 days$/, () => 'Opseg ne može biti duži od 92 dana'],
   [/^`to` must not be before `from`$/, () => 'Krajnji datum ne može biti pre početnog'],
   [/^(.+) already joined this ride$/, (m) => `${m[1]} već ima mesto u ovoj vožnji`],
@@ -596,8 +669,34 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^That email already has an account$/, () => 'Taj mejl već ima nalog'],
   [/^Another account already goes by (.+)$/, (m) => `Drugi nalog se već zove ${m[1]}`],
   [/^Your session has expired; sign in again$/, () => 'Prijava je istekla, prijavi se ponovo'],
-  [/^Sign in to do that$/, () => 'Prijavi se da to uradiš'],
-  [/^Sign in first(?: \(or send the X-User-Name header\))?$/, () => 'Prvo se prijavi'],
+  [/^Sign in first$/, () => 'Prvo se prijavi'],
+  [/^Too many attempts; try again in (\d+) min$/, (m) => `Previše pokušaja; pokušaj ponovo za ${m[1]} min`],
+  [/^This reset link has expired or was already used$/, () => 'Ovaj link je istekao ili je već iskorišćen'],
+  // Admins (app/admin.py, routers/admin.py).
+  [/^Only an admin can do that$/, () => 'To može samo administrator'],
+  [/^Account not found$/, () => 'Nalog nije pronađen'],
+  [/^(.+) is an admin by the server's configuration \(KARPUL_ADMINS\)$/, (m) => `${m[1]} je administrator po podešavanju servera (KARPUL_ADMINS)`],
+  [/^There has to be at least one admin$/, () => 'Mora postojati bar jedan administrator'],
+  // The waiting list, the thread and the requests (routers/rides.py, routers/requests.py).
+  [/^You drive this ride$/, () => 'Ti voziš ovu vožnju'],
+  [/^You are already in this car$/, () => 'Već si u ovom autu'],
+  [/^You are already waiting for this car$/, () => 'Već čekaš mesto u ovom autu'],
+  [/^There are free seats; get in instead$/, () => 'Ima slobodnih mesta; uđi umesto da čekaš'],
+  [/^Not on the waiting list$/, () => 'Nije na listi čekanja'],
+  [/^Only the person waiting or the driver can do that$/, () => 'To može samo onaj ko čeka ili vozač'],
+  [/^Message not found$/, () => 'Poruka nije pronađena'],
+  [/^Only the author or the driver can remove this message$/, () => 'Poruku može da ukloni samo onaj ko ju je napisao ili vozač'],
+  [/^Ride request not found$/, () => 'Zahtev za prevoz nije pronađen'],
+  [/^Someone already answered that request$/, () => 'Neko je već odgovorio na taj zahtev'],
+  [/^That is your own request$/, () => 'To je tvoj zahtev'],
+  [/^The ride has to be on the requested day$/, () => 'Vožnja mora biti na traženi dan'],
+  [/^Offer at least one seat to take the person who asked$/, () => 'Ponudi bar jedno mesto da povezeš onog ko je tražio'],
+  [/^That day is already over$/, () => 'Taj dan je već prošao'],
+  [/^Ask for a ride at most three months ahead$/, () => 'Prevoz možeš tražiti najviše tri meseca unapred'],
+  [/^You already have (\d+) open requests$/, (m) => `Već imaš ${srPlural(Number(m[1]), 'otvoren zahtev', 'otvorena zahteva', 'otvorenih zahteva')}`],
+  [/^Only the person who asked can withdraw a request$/, () => 'Zahtev može da povuče samo onaj ko ga je postavio'],
+  [/^Calendar not found$/, () => 'Kalendar nije pronađen'],
+  [/^endpoint must be an https URL$/, () => 'Adresa za obaveštenja mora biti https'],
   [/^Wrong current password$/, () => 'Trenutna lozinka nije tačna'],
   [/^must be at least (\d+) characters$/, (m) => `mora imati najmanje ${m[1]} znakova`],
   [/^must be an email address$/, () => 'mora biti mejl adresa'],
@@ -645,6 +744,10 @@ const SR_FIELDS: Record<string, string> = {
   new_password: 'Nova lozinka',
   current_password: 'Trenutna lozinka',
   login: 'Korisničko ime ili mejl',
+  request_date: 'Dan',
+  body: 'Poruka',
+  note: 'Napomena',
+  token: 'Link',
 }
 
 const SR_FIELD_MSGS: [RegExp, string][] = [
@@ -656,15 +759,28 @@ const SR_FIELD_MSGS: [RegExp, string][] = [
   [/^String should have at least (\d+) characters$/, 'mora imati najmanje $1 znakova'],
 ]
 
+function srWhole(message: string): string | null {
+  for (const [re, fn] of SR_API_ERRORS) {
+    const m = message.match(re)
+    if (m) return fn(m)
+  }
+  for (const [re, sr] of SR_FIELD_MSGS) {
+    if (re.test(message)) return message.replace(re, sr)
+  }
+  return null
+}
+
 function srApiError(message: string): string {
+  // Several server texts have a "; " of their own ("Your session has expired;
+  // sign in again"), so the message is tried whole before it is split.
+  const whole = srWhole(message)
+  if (whole !== null) return whole
   // api.ts joins several validation errors with "; ", each "field: text".
   return message
     .split('; ')
     .map((part) => {
-      for (const [re, fn] of SR_API_ERRORS) {
-        const m = part.match(re)
-        if (m) return fn(m)
-      }
+      const known = srWhole(part)
+      if (known !== null) return known
       const field = part.match(/^([a-z_]+): (.+)$/)
       if (field) {
         const label = SR_FIELDS[field[1]] ?? field[1]
@@ -724,7 +840,9 @@ const sr: Messages = {
     account: 'Tvoj nalog',
     accountHint: 'Ime, telefon, mejl, lozinka',
     cars: 'Službeni automobili',
-    carsHint: 'Upravljanje voznim parkom (lozinka)',
+    carsHint: 'Vozni park i kako se koristi',
+    people: 'Ljudi',
+    peopleHint: 'Nalozi, administratori, nove lozinke',
     guide: 'Vodič za službeni auto',
     guideHint: 'Punjenje karticom, Mazda 6e',
     closeMenu: 'Zatvori meni',
@@ -744,26 +862,27 @@ const sr: Messages = {
     history: 'Prošle vožnje',
     noHistory: 'Još nema prošlih vožnji.',
     feed: 'Kalendar',
-    feedHint: 'Pretplati se na ovu adresu u aplikaciji za kalendar i svaka vožnja u kojoj voziš ili se voziš pojaviće se tamo, uvek ažurna.',
+    feedHint: 'Pretplati se na ovu adresu u aplikaciji za kalendar i svaka vožnja u kojoj voziš ili se voziš pojaviće se tamo, uvek ažurna. Adresa je samo tvoja: ko je ima, vidi tvoje vožnje.',
+    feedNew: 'Nova adresa',
+    feedNewHint: 'Greškom si je podelio/la? Nova adresa gasi svaki kalendar pretplaćen na staru.',
+    feedChanged: 'Adresa kalendara je promenjena. Pretplati se na novu.',
     asDriver: 'Vozač',
     asPassenger: 'Putnik',
     pax: srPassengers,
     route: (origin, destination) => `${origin} do ${destination}`,
-    nameFirst: 'Upiši svoje ime da vidiš svoje vožnje.',
   },
 
   notif: {
     title: 'Obaveštenja',
     hint: 'Ko je ušao, podsetnik pred polazak',
-    body: 'Obaveštenje kad neko uđe u tvoj auto ili izađe iz njega, kad vozač pomeri ili ukloni vožnju u kojoj si, i 30 minuta pre polaska.',
+    body: 'Obaveštenje kad neko uđe u tvoj auto ili izađe iz njega, kad vozač pomeri ili ukloni vožnju u kojoj si, kad mesto na koje si čekao/la postane tvoje, kad neko napiše poruku u vožnji u kojoj si ili odgovori na tvoj zahtev, i 30 minuta pre polaska.',
     enable: 'Uključi',
     disable: 'Isključi',
-    on: 'Uključeno, za ovaj pregledač i ovo ime.',
+    on: 'Uključeno, za ovaj pregledač.',
     off: 'Isključeno.',
     unsupported: 'Ovaj pregledač ne može da prikazuje obaveštenja. Na iPhone-u prvo dodaj Karpul na početni ekran, pa pokušaj ponovo.',
     unavailable: 'Obaveštenja nisu podešena na ovom serveru.',
     denied: 'Pregledač je blokirao obaveštenja za ovaj sajt. Dozvoli ih u podešavanjima sajta, pa pokušaj ponovo.',
-    nameFirst: 'Prvo upiši svoje ime; obaveštenja se šalju na ime.',
   },
 
   auth: {
@@ -791,6 +910,16 @@ const sr: Messages = {
     switchToSignUp: 'Nemaš nalog? Registruj se',
     switchToSignIn: 'Već imaš nalog? Prijavi se',
     fillIn: 'Popuni sva polja da nastaviš.',
+    forgot: 'Zaboravio/la si lozinku? Zatraži od administratora link za novu.',
+  },
+
+  reset: {
+    title: 'Nova lozinka',
+    greeting: (name) => `Zdravo, ${name}. Izaberi novu lozinku; svi pregledači prijavljeni na tvoj nalog biće odjavljeni.`,
+    newPassword: 'Nova lozinka',
+    submit: 'Postavi lozinku',
+    expired: 'Ovaj link je istekao ili je već iskorišćen. Zatraži novi od administratora.',
+    backToSignIn: 'Nazad na prijavu',
   },
 
   account: {
@@ -809,12 +938,15 @@ const sr: Messages = {
     signOut: 'Odjavi se',
     signingOut: 'Odjava…',
     memberSince: (date: string) => `Na Karpulu od ${date}`,
+    otherBrowsers: 'Ostali pregledači',
+    otherBrowsersHint: 'Prijavljen/a si na telefonu koji si izgubio/la ili na tuđem računaru? Odjavi sve ostale pregledače; ovaj ostaje prijavljen.',
+    signOutOthers: 'Odjavi me svuda drugde',
+    othersSignedOut: (n) =>
+      n === 0 ? 'Nijedan drugi pregledač nije bio prijavljen.' : `Odjavljeno: ${srPlural(n, 'pregledač', 'pregledača', 'pregledača')}.`,
   },
 
   you: {
     title: 'Ti',
-    whoAreYou: 'Ko si ti?',
-    tapName: 'Dodirni i upiši svoje ime. Nalog nije potreban.',
     allSet: 'Sve je spremno!',
     ridingWith: (first, time) => `Vozi te ${first}, polazak u ${time}.`,
     drivingToday: (taken, seats) => `Danas voziš. Zauzeto ${taken} od ${seats} mesta.`,
@@ -880,9 +1012,45 @@ const sr: Messages = {
     addByName: 'Dodaj putnika po imenu',
     passengerName: 'Ime putnika',
     colleagueName: 'Ime kolege',
-    setNameHint: 'Za ulazak u auto prvo upiši svoje ime u meniju.',
     full: 'Ovaj auto je pun.',
     openListHint: 'Vozač dozvoljava da putnici u ovom autu dodaju i uklanjaju jedni druge.',
+    waitFor: 'Čekaj mesto',
+    waitHint: 'Prvo mesto koje se oslobodi je tvoje, uz obaveštenje.',
+    inLine: (n) => (n === 1 ? 'Prvi/a si na redu za mesto.' : `Na redu za mesto si ${n}.`),
+    stopWaiting: 'Prestani da čekaš',
+    waitingTitle: 'Čekaju mesto',
+    removeFromLine: (name) => `Skloni sa liste čekanja (${name})`,
+  },
+
+  thread: {
+    title: 'Poruke',
+    show: (n) => (n === 0 ? 'Piši autu' : `Poruke (${n})`),
+    hide: 'Sakrij poruke',
+    empty: 'Kasniš, praviš krug, imaš pitanje pre ulaska: napiši ovde.',
+    placeholder: 'Napiši poruku',
+    send: 'Pošalji',
+    remove: 'Ukloni poruku',
+    hint: 'Vozač i putnici dobijaju obaveštenje.',
+  },
+
+  requests: {
+    title: 'Traže prevoz',
+    ask: 'Zatraži prevoz',
+    askHint: 'Nema ništa što ti odgovara? Zatraži, i vozači će to videti na tabli.',
+    formTitle: 'Zatraži prevoz',
+    day: 'Dan',
+    around: 'Oko',
+    from: 'Od',
+    to: 'Do',
+    note: 'Napomena',
+    notePlaceholder: 'npr. bilo kad pre 9',
+    submit: 'Zatraži',
+    offer: 'Ponudi prevoz',
+    withdraw: 'Povuci',
+    aroundTime: (time) => `oko ${time}`,
+    yours: 'Tvoj zahtev',
+    answering: (name) => `Nudiš prevoz (${name})`,
+    answeringHint: 'Dobija mesto u ovoj vožnji i obaveštenje.',
   },
 
   form: {
@@ -955,7 +1123,6 @@ const sr: Messages = {
 
   admin: {
     title: 'Službeni automobili',
-    forget: 'Zaboravi administratorsku lozinku na ovom uređaju',
     hint: 'Izmene ovde važe za sve. Povučen auto ostaje na prošlim vožnjama, ali nestaje iz obrasca „Dodaj vožnju“.',
     seats: srSeats,
     retired: 'Povučen',
@@ -964,10 +1131,6 @@ const sr: Messages = {
     restore: 'Vrati',
     addCar: 'Dodaj auto',
     addCompanyCar: 'Dodaj službeni auto',
-    unlock: 'Otključaj',
-    password: 'Administratorska lozinka',
-    passwordPlaceholder: 'Zajednička lozinka voznog parka',
-    passwordHint: 'Potrebna je samo za izmene voznog parka. Dodavanje vožnji i ulazak u auto je nikad ne traže.',
     name: 'Naziv',
     namePlaceholder: 'npr. Škoda Octavia',
     plate: 'Tablice',
@@ -992,6 +1155,24 @@ const sr: Messages = {
     noUsage: 'U ovom periodu nije bilo vožnji službenim autom.',
     retired: 'Povučen',
     pax: (n, seats) => `${n} od ${seats}`,
+    download: 'Preuzmi kao tabelu',
+  },
+
+  people: {
+    title: 'Ljudi',
+    hint: 'Svi koji imaju nalog. Administrator upravlja službenim automobilima i ljudima ovde.',
+    count: (n) => srPlural(n, 'nalog', 'naloga', 'naloga'),
+    search: 'Traži ljude',
+    admin: 'Administrator',
+    adminByConfig: 'Administrator po podešavanju servera',
+    adminByConfigHint: 'Podešeno na serveru (KARPUL_ADMINS); može se promeniti samo tamo.',
+    makeAdmin: 'Postavi za administratora',
+    removeAdmin: 'Ukloni administratora',
+    resetLink: 'Link za novu lozinku',
+    resetLinkFor: (name) => `Link za novu lozinku (${name})`,
+    resetLinkHint: (date) => `Za jednu upotrebu, do ${date}. Pošalji ga sam/a; prikazuje se samo sada, a svaki stariji link prestaje da važi.`,
+    optionsFor: (name) => `Opcije za ${name}`,
+    you: 'Ti',
   },
 
   upcoming: {
@@ -1061,6 +1242,13 @@ const sr: Messages = {
     rideNotFound: 'Te vožnje više nema.',
     carAdded: (name) => `${name} je dodat u vozni park.`,
     carDeleted: (name) => `${name} je obrisan.`,
+    waiting: (n) => (n === 1 ? 'Prvi/a si na redu za mesto.' : `Na redu za mesto si ${n}.`),
+    stoppedWaiting: 'Više ne čekaš mesto.',
+    requestAdded: 'Zatraženo. Vozači to vide na tabli.',
+    requestWithdrawn: 'Zahtev je povučen.',
+    requestAnswered: (name) => `Vožnja je dodata, ${name} ima mesto.`,
+    madeAdmin: (name) => `${name} je sada administrator.`,
+    removedAdmin: (name) => `${name} više nije administrator.`,
     updateReady: 'Nova verzija je spremna',
     updateHint: 'Prevuci munju da je preuzmeš.',
     updateAction: 'Ažuriraj',
@@ -1079,8 +1267,6 @@ const sr: Messages = {
     noUpcoming: 'Još nema predstojećih vožnji',
     noRidesWent: 'Tog dana nije bilo vožnji',
     pastReadOnly: 'Prošli dani se ne mogu menjati.',
-    whoAreYou: 'Ko si ti?',
-    enterToAdd: 'Upiši svoje ime da dodaš vožnju ili uđeš u auto.',
     usePlus: 'Dodaj je dugmetom + u donjem desnom uglu.',
     viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama.',
     firstRide: 'Obrazac pamti tvoju rutu i auto, a odredište na početku glasi „Kancelarija“.',

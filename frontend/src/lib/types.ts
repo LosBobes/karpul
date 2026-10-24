@@ -17,6 +17,8 @@ export interface CorporateCarInput {
 
 export interface Booking {
   id: number
+  /** The passenger's account; null for a colleague put in by name who has no account yet. */
+  passenger_id: number | null
   passenger_name: string
   /** Where they get in: "" is the ride's origin, otherwise one of its stops. */
   pickup: string
@@ -47,10 +49,72 @@ export interface Ride {
   /** Shared by the rides of one "repeat weekly" series. */
   series_id: string | null
   created_at: string
+  /** The driver's account; null only for a ride from before accounts nobody claimed. */
+  driver_id: number | null
   /** The driver's mobile number, when their account has one. */
   driver_phone: string | null
   bookings: Booking[]
+  /** Waiting for a seat while the car is full, first in line first. */
+  waitlist: WaitlistEntry[]
+  /** How many messages the ride's thread has; a change means "fetch it again". */
+  message_count: number
   free_seats: number
+}
+
+export interface WaitlistEntry {
+  id: number
+  user_id: number
+  name: string
+  /** Where they want to get in once a seat frees up: "" is the origin. */
+  pickup: string
+  created_at: string
+}
+
+/** One line in a ride's thread (GET /api/rides/{id}/messages). */
+export interface RideMessage {
+  id: number
+  ride_id: number
+  author_id: number | null
+  author_name: string
+  body: string
+  created_at: string
+}
+
+/** "I need a ride Tuesday around 8" (backend: routers/requests.py). */
+export interface RideRequest {
+  id: number
+  request_date: string
+  user_id: number
+  name: string
+  origin: string
+  destination: string
+  /** Roughly when they would like to leave, "HH:MM[:SS]". */
+  departure_time: string
+  note: string
+  /** The ride that answered it; null while it is open. */
+  ride_id: number | null
+  created_at: string
+}
+
+export interface RideRequestInput {
+  request_date: string
+  origin: string
+  destination: string
+  departure_time: string
+  note: string
+}
+
+/** An account in the admin's People list (GET /api/admin/users). */
+export interface AdminUser {
+  id: number
+  username: string
+  display_name: string
+  email: string | null
+  phone: string | null
+  is_admin: boolean
+  /** An admin through KARPUL_ADMINS on the server, which the app cannot change. */
+  admin_by_config: boolean
+  created_at: string
 }
 
 export interface RideInput {
@@ -71,6 +135,8 @@ export interface RideInput {
   chip_in: string
   /** Create only: one ride per week up to this date (inclusive). */
   repeat_until?: string | null
+  /** Create only: the ride answers this request, and its requester gets a seat. */
+  request_id?: number | null
 }
 
 /** GET /api/stats/me */

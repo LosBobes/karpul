@@ -1,0 +1,15 @@
+# Python lint for the backend (CI runs `ruff check`). Pyflakes and pycodestyle
+# errors, import order, and the bug-prone patterns from bugbear; formatting is
+# left alone, the code keeps its own long lines.
+target-version = "py311"
+line-length = 140
+extend-exclude = [".venv"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "E501",   # long lines: the code wraps where it reads best, not at a column
+    "B008",   # FastAPI's Depends()/Query() in defaults is the framework's idiom
+    "UP017",  # timezone.utc reads fine
+    "UP042",  # CarType(str, Enum) stays: StrEnum would change how it formats
+]

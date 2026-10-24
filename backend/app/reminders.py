@@ -42,8 +42,8 @@ def send_due_reminders(session: Session, now: datetime | None = None) -> int:
         if ride.departure_time > latest or ride.departure_time < now.time():
             continue
         minutes = max(int((datetime.combine(today, ride.departure_time) - now).total_seconds() // 60), 1)
-        names = [ride.driver_name] + [b.passenger_name for b in ride.bookings]
-        notify(session, names, "leaving_soon", ride, minutes=minutes)
+        people = [ride.driver_id] + [b.passenger_id for b in ride.bookings]
+        notify(session, people, "leaving_soon", ride, minutes=minutes)
         ride.reminder_sent = True
         session.add(ride)
         sent += 1
