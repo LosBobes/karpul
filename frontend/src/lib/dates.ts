@@ -63,11 +63,14 @@ export function fmtMonthDay(d: Date): string {
 /**
  * The Mon to Sun week starting at `monday`, the way the locale writes a range:
  * "7–13 Sept 2026" / "Sep 7 – 13, 2026", or "31 Aug – 6 Sept 2026" when it
- * straddles a month.
+ * straddles a month. The year is left out for a week of this year.
  */
 export function fmtWeekRange(monday: Date): string {
   const sunday = addDays(monday, 6)
-  const fmt = new Intl.DateTimeFormat(intlTag(), { day: 'numeric', month: 'short', year: 'numeric' })
+  // This year's weeks go without the year: on a phone the label has a line to itself and no more.
+  const thisYear = new Date().getFullYear()
+  const year = monday.getFullYear() === thisYear && sunday.getFullYear() === thisYear ? undefined : 'numeric'
+  const fmt = new Intl.DateTimeFormat(intlTag(), { day: 'numeric', month: 'short', year })
   if (typeof fmt.formatRange === 'function') return fmt.formatRange(monday, sunday)
   return `${fmtMonthDay(monday)} – ${fmt.format(sunday)}`
 }

@@ -1028,13 +1028,65 @@ main,
 }
 
 /* --- Date carousel ------------------------------------------------------- */
-/* All seven days always fit the column, so nothing scrolls off-screen and
-   there is nothing to hunt for. The week is changed by the arrows next to the
-   week label underneath, or by swiping the strip sideways. */
+/* One line for the week (its name opens the calendar; Today and the arrows
+   on the right), then all seven days, which always fit the column, so nothing
+   scrolls off-screen and there is nothing to hunt for. The days are bare text
+   on the ground rather than seven boxed buttons: the green pill alone says
+   which one is picked. Swiping the strip sideways also steps the week. */
 .dates {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.35rem;
+}
+.dates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 40px;
+}
+.date-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  min-height: 40px;
+  margin-left: -0.45rem;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background var(--hover);
+}
+.date-title > svg {
+  flex: none;
+  color: var(--muted);
+}
+.date-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.date-title:hover,
+.date-title[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+.today-chip {
+  min-height: 32px;
+  margin-right: 0.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--green-line);
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
 }
 .dates-strip {
   position: relative;
@@ -1068,18 +1120,17 @@ main,
   flex-direction: column;
   align-items: center;
   gap: 0.1rem;
-  min-height: 62px;
-  padding: 0.5rem 0.1rem 0.35rem;
-  border: 1px solid var(--border);
+  min-height: 58px;
+  padding: 0.45rem 0.1rem 0.35rem;
+  border: none;
   border-radius: 12px;
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
-  box-shadow: var(--shadow);
   transition: background var(--hover), border-color var(--hover), color var(--hover), box-shadow var(--hover),
     transform var(--hover);
 }
-.date:hover {
-  border-color: var(--border-strong);
+.date:hover:not(.date-selected) {
+  background: var(--surface-2);
 }
 .date-wd {
   font-size: 0.74rem;
@@ -1110,9 +1161,6 @@ main,
 }
 .date-past {
   color: var(--muted);
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
 }
 .date-past .date-dot {
   background: var(--border-strong);
@@ -1120,8 +1168,6 @@ main,
 .date-selected,
 .date-selected:hover {
   background: transparent;
-  border-color: var(--green);
-  box-shadow: none;
   color: #fff;
 }
 .date-selected .date-wd,
@@ -1135,20 +1181,11 @@ main,
 .date-selected .date-dot {
   background: #fff;
 }
-.dates-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0 0.1rem;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
 .week-nav {
   display: inline-flex;
   align-items: center;
-  gap: 0.1rem;
-  min-width: 0;
+  gap: 0.3rem;
+  flex: none;
 }
 .week-btn {
   display: inline-grid;
@@ -1169,21 +1206,6 @@ main,
 .week-btn:hover {
   border-color: var(--border-strong);
   background: var(--surface-2);
-}
-.dates-week {
-  padding: 0 0.4rem;
-  font-weight: 500;
-  color: var(--text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
-}
-.dates-tools {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex: none;
 }
 /* --- Car carousel -------------------------------------------------------- */
 .cars {
@@ -2334,72 +2356,46 @@ main,
 }
 
 /* --- Empty card ---------------------------------------------------------- */
+/* No picture: a small car on a tinted disc, the line, the hint. The card is
+   dashed and sits on the ground, a space for a ride rather than a ride. */
 .empty-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
-  padding: 1.5rem 1rem 1.4rem;
+  padding: 1.4rem 1.1rem 1.3rem;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: transparent;
+  box-shadow: none;
   text-align: center;
   color: var(--text);
 }
 .empty-card strong {
-  margin-top: 0.75rem;
+  margin-top: 0.6rem;
   font-weight: 600;
 }
-.empty-card > span:last-child {
+.empty-card > span:last-child,
+.empty-hint {
   font-size: 0.86rem;
+  color: var(--muted);
+}
+.empty-badge {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+}
+.empty-badge-muted {
+  background: var(--surface-2);
   color: var(--muted);
 }
 .empty-card-btn:hover {
   border-color: var(--green-line);
 }
-.illus {
-  position: relative;
-  width: 200px;
-  height: 96px;
-  overflow: hidden;
-  border-radius: var(--radius);
-  background: linear-gradient(180deg, #f4f8f6 0%, var(--green-soft) 100%);
-}
-.illus-hill {
-  position: absolute;
-  left: -10%;
-  right: -10%;
-  bottom: -40px;
-  height: 70px;
-  border-radius: 50%;
-  background: #cfe6d9;
-}
-.illus-tree {
-  position: absolute;
-  bottom: 30px;
-  width: 22px;
-  height: 34px;
-  border-radius: 50% 50% 40% 40%;
-  background: #9fcdb5;
-}
-.illus-tree-a {
-  left: 28px;
-}
-.illus-tree-b {
-  right: 24px;
-  height: 26px;
-  width: 18px;
-  bottom: 32px;
-}
-.illus-car {
-  position: absolute;
-  left: 50%;
-  bottom: 22px;
-  transform: translateX(-50%);
-  color: var(--green);
-}
-.illus-muted {
-  filter: grayscale(1);
-  opacity: 0.7;
-}
-
 /* --- Drag ghost ---------------------------------------------------------- */
 /* The chip that follows the pointer. A plain DOM node created by lib/dnd.ts,
    drawn over everything and transparent to hit-testing so elementFromPoint
@@ -4459,15 +4455,8 @@ body.dragging {
   background: #4a1b38;
   color: #f9a8d4;
 }
-:root[data-resolved='dark'] .driver-car-art,
-:root[data-resolved='dark'] .illus {
+:root[data-resolved='dark'] .driver-car-art {
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--green-soft) 100%);
-}
-:root[data-resolved='dark'] .illus-hill {
-  background: #245c46;
-}
-:root[data-resolved='dark'] .illus-tree {
-  background: #2f8f63;
 }
 :root[data-resolved='dark'] .backdrop {
   background: rgba(0, 0, 0, 0.6);
@@ -4736,14 +4725,12 @@ body.dragging {
    phone's hover sticks after the tap. */
 @media (hover: hover) and (pointer: fine) {
   .session:hover:not(.session-open),
-  .car-tile:hover:not(.car-tile-selected):not(.car-tile-nodrop),
-  .date:hover:not(.date-selected):not(.date-past) {
+  .car-tile:hover:not(.car-tile-selected):not(.car-tile-nodrop) {
     transform: translateY(-2px);
     box-shadow: var(--shadow-hover);
   }
   .session:active,
-  .car-tile:active,
-  .date:active {
+  .car-tile:active {
     transform: translateY(0) scale(0.99);
     transition-duration: 0.08s;
   }
