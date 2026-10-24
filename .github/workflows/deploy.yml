@@ -124,6 +124,23 @@ jobs:
             # serving, so downtime is only the brief recreate window below.
             ${COMPOSE} build
 
+            # Push notifications need a VAPID key in .env. Generate one the
+            # first time only and never replace it: browsers subscribe against
+            # its public half, so a new key would orphan every subscription.
+            # The key is written straight into .env and never echoed.
+            if ! grep -qE '^KARPUL_VAPID_PRIVATE_KEY=[^[:space:]]' .env 2>/dev/null; then
+              echo "No VAPID key in .env; generating one..."
+              vapid_key="$(${COMPOSE} run --rm --no-deps -T app python -m app.vapid | sed -n 's/^KARPUL_VAPID_PRIVATE_KEY=//p')"
+              if [ -z "${vapid_key}" ]; then
+                echo "::error::Could not generate a VAPID key."
+                exit 1
+              fi
+              touch .env
+              sed -i '/^KARPUL_VAPID_PRIVATE_KEY=/d' .env
+              printf 'KARPUL_VAPID_PRIVATE_KEY=%s\n' "${vapid_key}" >> .env
+              unset vapid_key
+            fi
+
             echo "Recreating container..."
             # `up -d` recreates only what changed and starts the replacement
             # immediately; Caddy retries across the gap (see Caddyfile). The
