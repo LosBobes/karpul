@@ -42,6 +42,19 @@ async function currentSubscription(): Promise<PushSubscription | null> {
   return reg ? reg.pushManager.getSubscription() : null
 }
 
+/**
+ * Whether `sub` was made against the server's current VAPID key. One made
+ * against an older key is refused by the push service, so it has to be
+ * replaced rather than reused. A browser that does not expose the key is
+ * given the benefit of the doubt.
+ */
+function sameKey(sub: PushSubscription, key: Uint8Array): boolean {
+  const own = sub.options?.applicationServerKey
+  if (!own) return true
+  const bytes = new Uint8Array(own)
+  return bytes.length === key.length && bytes.every((b, i) => b === key[i])
+}
+
 export function usePush(userName: string) {
   const [state, setState] = useState<PushState>('loading')
   const [publicKey, setPublicKey] = useState<string | null>(null)
@@ -60,7 +73,7 @@ export function usePush(userName: string) {
     if (!key) return setState('unavailable')
     if (Notification.permission === 'denied') return setState('denied')
     const sub = await currentSubscription()
-    setState(sub ? 'on' : 'off')
+    setState(sub && sameKey(sub, toKey(key)) ? 'on' : 'off')
   }, [])
 
   useEffect(() => {
@@ -78,9 +91,14 @@ export function usePush(userName: string) {
       if (permission !== 'granted') return setState('denied')
       const reg = await registration()
       if (!reg) return setState('unsupported')
-      const sub =
-        (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: toKey(publicKey) as BufferSource }))
+      const key = toKey(publicKey)
+      let sub = await reg.pushManager.getSubscription()
+      if (sub && !sameKey(sub, key)) {
+        await api.unsubscribePush(sub.endpoint).catch(() => undefined)
+        await sub.unsubscribe()
+        sub = null
+      }
+      sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource })
       await api.subscribePush(sub.toJSON(), getLocale(), userName)
       setState('on')
     } catch (e) {
