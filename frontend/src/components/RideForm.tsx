@@ -20,6 +20,8 @@ interface Props {
   template?: Ride | null
   /** A new ride in answer to this request: its day, time and way, and a seat for whoever asked. */
   request?: RideRequest | null
+  /** A new ride in a company car's free stretch, picked on the day plan (components/DayPlan.tsx). */
+  slot?: { carId: number; departure: string; ret: string } | null
   submitting: boolean
   error: string | null
   onSubmit: (input: RideInput) => void
@@ -96,20 +98,20 @@ function weeklyCount(from: string, until: string): number {
 }
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
-export function RideForm({ date, userName, cars, existing, template, request = null, submitting, error, onSubmit, onDelete, onClose }: Props) {
+export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, submitting, error, onSubmit, onDelete, onClose }: Props) {
   const t = useT()
   const seed = existing ?? template ?? null
   const [last] = useState(loadLastRoute)
   const [mode, setModeState] = useState<Mode>(() => (isAdvancedRide(seed) ? 'advanced' : loadMode()))
   const [rideDate, setRideDate] = useState(existing?.ride_date ?? request?.request_date ?? date)
-  const [carType, setCarType] = useState<CarType>(seed?.car_type ?? (cars.length ? 'corporate' : 'own'))
-  const [carId, setCarId] = useState<number | ''>(seed?.corporate_car_id ?? cars[0]?.id ?? '')
+  const [carType, setCarType] = useState<CarType>(slot ? 'corporate' : (seed?.car_type ?? (cars.length ? 'corporate' : 'own')))
+  const [carId, setCarId] = useState<number | ''>(slot?.carId ?? seed?.corporate_car_id ?? cars[0]?.id ?? '')
   const [carName, setCarName] = useState(seed?.car_type === 'own' ? seed.car_name : last.car_name)
   const [origin, setOrigin] = useState(seed?.origin ?? request?.origin ?? last.origin)
   const [destination, setDestination] = useState(seed?.destination ?? request?.destination ?? last.destination)
-  const [departure, setDeparture] = useState(seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
-  const [ret, setRet] = useState(seed?.return_time?.slice(0, 5) ?? '17:00')
-  const [oneWay, setOneWay] = useState(seed ? seed.return_time === null : false)
+  const [departure, setDeparture] = useState(slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
+  const [ret, setRet] = useState(slot?.ret ?? seed?.return_time?.slice(0, 5) ?? '17:00')
+  const [oneWay, setOneWay] = useState(seed && !slot ? seed.return_time === null : false)
   const [rawSeats, setSeats] = useState(seed?.seats ?? last.seats ?? 3)
   const [notes, setNotes] = useState(seed?.notes ?? '')
   const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)

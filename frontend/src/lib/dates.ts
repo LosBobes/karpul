@@ -42,6 +42,11 @@ export function fmtTime(t: string | null): string {
   return new Date(2000, 0, 1, h, m).toLocaleTimeString(intlTag(), { hour: 'numeric', minute: '2-digit' })
 }
 
+/** An hour on a timeline axis, the way the app's locale writes one ("8 AM", "08"). */
+export function fmtHour(h: number): string {
+  return new Date(2000, 0, 1, h).toLocaleTimeString(intlTag(), { hour: 'numeric' })
+}
+
 export function fmtLongDate(iso: string): string {
   return parseISODate(iso).toLocaleDateString(intlTag(), {
     weekday: 'long',

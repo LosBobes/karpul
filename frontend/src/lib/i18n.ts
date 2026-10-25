@@ -80,7 +80,22 @@ const en = {
     } as Record<LiveStatus, string>,
   },
 
-  view: { label: 'View', upcoming: 'Upcoming', week: 'Week' },
+  view: { label: 'View', upcoming: 'Upcoming', week: 'Week', day: 'Day' },
+
+  plan: {
+    label: 'Day plan',
+    prevDay: 'Previous day',
+    nextDay: 'Next day',
+    companyCars: 'Company cars',
+    ownCars: 'Own cars',
+    freeCars: (free: number, all: number) => `${free} of ${all} free all day`,
+    from: (time: string) => `from ${time}`,
+    barLabel: (driver: string, when: string, origin: string, destination: string, pax: number) =>
+      `${driver}, ${when}, ${origin} to ${destination}, ${enPlural(pax, 'passenger', 'passengers')}`,
+    book: (car: string, from: string, to: string) => `Book ${car}, free ${from} to ${to}`,
+    hint: 'Tap a free stretch of a company car to book it from that time.',
+    pick: 'Tap a bar to see that ride.',
+  },
 
   fab: { addRide: 'Add ride' },
 
@@ -572,7 +587,7 @@ const en = {
     noRidesWent: 'No rides went on this day',
     pastReadOnly: 'Past days are read-only.',
     usePlus: 'Add one with the + button at the bottom right.',
-    viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles.',
+    viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles. Day lays the cars out on a timeline.',
     firstRide: 'The form remembers your route and car, and the destination starts as "Office".',
   },
 
@@ -883,7 +898,21 @@ const sr: Messages = {
     },
   },
 
-  view: { label: 'Prikaz', upcoming: 'Predstojeće', week: 'Sedmica' },
+  view: { label: 'Prikaz', upcoming: 'Predstojeće', week: 'Sedmica', day: 'Dan' },
+
+  plan: {
+    label: 'Plan dana',
+    prevDay: 'Prethodni dan',
+    nextDay: 'Sledeći dan',
+    companyCars: 'Službeni automobili',
+    ownCars: 'Sopstveni automobili',
+    freeCars: (free, all) => `${free} od ${all} slobodno ceo dan`,
+    from: (time) => `od ${time}`,
+    barLabel: (driver, when, origin, destination, pax) => `${driver}, ${when}, ${origin} do ${destination}, ${srPassengers(pax)}`,
+    book: (car, from, to) => `Rezerviši ${car}, slobodno od ${from} do ${to}`,
+    hint: 'Dodirni slobodan deo službenog auta da ga rezervišeš od tog vremena.',
+    pick: 'Dodirni traku da vidiš tu vožnju.',
+  },
 
   fab: { addRide: 'Dodaj vožnju' },
 
@@ -1366,7 +1395,7 @@ const sr: Messages = {
     noRidesWent: 'Tog dana nije bilo vožnji',
     pastReadOnly: 'Prošli dani se ne mogu menjati.',
     usePlus: 'Dodaj je dugmetom + u donjem desnom uglu.',
-    viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama.',
+    viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama. Dan raspoređuje aute na vremenskoj liniji.',
     firstRide: 'Obrazac pamti tvoju rutu i auto, a odredište na početku glasi „Kancelarija“.',
   },
 

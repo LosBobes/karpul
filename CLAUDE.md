@@ -335,7 +335,15 @@ line-icon style with the green accent on the one thing the step is about; also r
 the driver card of any company-car ride). Picking an
 item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. Below the bar, two views are switched by the
 segmented control at the top of `main` and
-remembered in `localStorage` (`karpul.view`): *Upcoming* (the default) and *Week*. Upcoming is
+remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.
+Day (`components/DayPlan.tsx`, the arithmetic in `lib/dayPlan.ts`, tested in `dayPlan.test.ts`) is
+one day as a timeline for scheduling the company cars: a row per active pool car (free ones too)
+and then per own car, hours across (07:00 to 19:00, stretched to fit), a bar per ride from departure
+to return (no return runs off the right edge, as the server holds the car to end of day), green when
+you are in it, a red line for now. Switching to it jumps to today; `range` is that one day. A tapped bar
+opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
+(`.plan-free`, never in the past) opens `RideForm` with `slot`: that car, departure at the tapped
+half hour, back by the next booking or 17:00. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
 unfolds `CarDetail` beneath it with `draggable={false}`, because there is no `YouPanel` tray and
