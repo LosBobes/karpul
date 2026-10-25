@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { addDays, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
-import { useMe } from '../lib/me'
+import { drives, useMe } from '../lib/me'
 import { Avatar } from './Avatar'
 import { DriverPicker, type Driver } from './DriverPicker'
 import { DatePicker } from './DatePicker'
@@ -134,6 +134,12 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const repeatTooEarly = repeat && repeatUntil < rideDate
 
   const advanced = mode === 'advanced'
+  // Whose passenger list the switch is about: the admin's own, or the driver's.
+  const ownRide = existing ? drives(existing, me) : driver.id === me.id
+  const listDriver = existing?.driver_name ?? driver.name
+  const manageHint = passengersManage
+    ? ownRide ? t.form.manageOn : t.form.manageOnFor(listDriver)
+    : ownRide ? t.form.manageOff : t.form.manageOffFor(listDriver)
   function setMode(next: Mode) {
     setModeState(next)
     try {
@@ -339,7 +345,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           <label className="switch-row">
             <span className="switch-row-text">
               <span className="switch-row-title">{t.form.canManage}</span>
-              <span className="switch-row-desc">{passengersManage ? t.form.manageOn : t.form.manageOff}</span>
+              <span className="switch-row-desc">{manageHint}</span>
             </span>
             <input type="checkbox" checked={passengersManage} onChange={(e) => setPassengersManage(e.target.checked)} />
           </label>

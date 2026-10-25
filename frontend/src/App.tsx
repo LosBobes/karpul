@@ -31,7 +31,7 @@ import { messages, useT } from './lib/i18n'
 import { addDays, fmtShortDate, fmtTime, parseISODate, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
-import { inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
+import { drives, inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
@@ -313,7 +313,7 @@ function Board({ session }: { session: Session }) {
     withBusy(ride.id, async () => {
       const on = !ride.passengers_manage
       upsertRide(await api.updateRide(ride.id, { passengers_manage: on }))
-      setToast({ kind: 'ok', text: on ? t.toasts.manageOn : t.toasts.manageOff })
+      setToast({ kind: 'ok', text: on ? t.toasts.manageOn : drives(ride, me) ? t.toasts.manageOff : t.toasts.manageOffFor(ride.driver_name) })
     })
 
   const onCancel = (ride: Ride) => {
