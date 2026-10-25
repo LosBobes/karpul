@@ -5,23 +5,20 @@ interface Props {
   isPast: boolean
   /** Title when there is nothing yet; the default speaks of a day. */
   emptyTitle?: string
-  /** The board is empty altogether: say what the two views are for. */
-  intro?: boolean
 }
 
 /**
  * The placeholder shown where a ride would be: "nothing yet" or
  * "nothing went". It does not add a ride itself; that is the floating plus
- * (components/AddRideButton.tsx), which the hint points at.
+ * (components/AddRideButton.tsx), which needs no pointing at.
  */
-export function AddCarCard({ isPast, emptyTitle, intro = false }: Props) {
+export function AddCarCard({ isPast, emptyTitle }: Props) {
   const t = useT()
   if (isPast) {
     return (
       <div className="card empty-card">
         <Badge muted />
         <strong>{t.empty.noRidesWent}</strong>
-        <span className="empty-hint">{t.empty.pastReadOnly}</span>
       </div>
     )
   }
@@ -29,12 +26,6 @@ export function AddCarCard({ isPast, emptyTitle, intro = false }: Props) {
     <div className="card empty-card">
       <Badge />
       <strong>{emptyTitle ?? t.empty.noRidesDay}</strong>
-      <span className="empty-hint">{t.empty.usePlus}</span>
-      {intro && (
-        <p className="empty-intro">
-          {t.empty.viewsIntro} {t.empty.firstRide}
-        </p>
-      )}
     </div>
   )
 }

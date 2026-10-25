@@ -260,15 +260,6 @@ export const MoonIcon = icon(<path d="M19.5 14.6A7.75 7.75 0 0 1 9.4 4.5 7.75 7.
 /* The drawer's own marks: one drawing per place it leads to, so the menu
    reads by shape before it reads by word. */
 
-/** A badge with a face and two lines: your account. */
-export const AccountIcon = icon(
-  <>
-    <rect x="3" y="5" width="18" height="14" rx="3" />
-    <circle cx="8.75" cy="10.75" r="2" />
-    <path d="M5.75 16c.5-1.5 1.6-2.25 3-2.25s2.5.75 3 2.25" />
-    <path d="M14.5 10h3.5M14.5 13.5h2.5" />
-  </>,
-)
 /** A winding road between where you start and where you end: your rides. */
 export const RouteIcon = icon(
   <>

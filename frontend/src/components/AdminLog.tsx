@@ -75,7 +75,6 @@ export function AdminLog({ onOpenRide, onClose }: Props) {
 
   return (
     <Sheet id="admin-log-title" title={t.adminLog.title} className="admin-log" onClose={onClose}>
-      <p className="hint">{t.adminLog.intro}</p>
       {error && <p className="error">{error}</p>}
       {lines === null && !error && <p className="hint">{t.common.loading}</p>}
       {lines?.length === 0 && <div className="card empty-card empty-card-short">{t.adminLog.empty}</div>}

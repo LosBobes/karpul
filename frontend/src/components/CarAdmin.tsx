@@ -61,7 +61,6 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
 
       {tab === 'cars' && (
         <>
-      <p className="hint">{t.admin.hint}</p>
 
       {error && <p className="error">{error}</p>}
 

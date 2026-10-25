@@ -114,7 +114,6 @@ export function RideLog({ onClose }: Props) {
 
   return (
     <Sheet id="ride-log-title" title={t.rideLog.title} onClose={onClose} className="panel-wide">
-      <p className="hint">{t.rideLog.intro}</p>
 
       <div className="log-tools">
         <div className="segmented log-period" role="radiogroup" aria-label={t.rideLog.title}>

@@ -135,7 +135,6 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
           <input autoComplete="family-name" maxLength={40} value={lastName} onChange={(e) => setLastName(e.target.value)} />
         </label>
       </div>
-      <p className="hint">{t.account.nameHint}</p>
 
       <label className="field">
         <span className="field-label">
@@ -196,7 +195,6 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
       {error && <p className="error">{error}</p>}
 
       <h3 className="account-section">{t.account.otherBrowsers}</h3>
-      <p className="hint">{t.account.otherBrowsersHint}</p>
       <button type="button" className="btn btn-soft btn-block" disabled={busy} onClick={() => void signOutOthers()}>
         {t.account.signOutOthers}
       </button>

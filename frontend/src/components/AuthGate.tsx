@@ -141,7 +141,6 @@ function SignIn() {
                     />
                   </label>
                 </div>
-                <p className="hint">{t.auth.nameHint}</p>
                 <label className="field">
                   <span className="field-label">{t.auth.username}</span>
                   <input

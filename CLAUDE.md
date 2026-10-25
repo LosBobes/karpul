@@ -297,13 +297,13 @@ inline with the tile in `currentColor`. Change the mark in all three places. Ico
 `components/icons.tsx` itself (no icon package): one 24px grid, one round stroke (`light` /
 `regular` / `bold`, a touch heavier below 16px so small glyphs stay crisp), no fills except the
 dots. The named exports are the contract the components render against (`size` in px, optional
-`weight`). The drawer has its own marks (`AccountIcon`, `RouteIcon`, `BellDotIcon`,
+`weight`). The drawer has its own marks (`RouteIcon`, `BellDotIcon`,
 `GarageIcon`, `PlugIcon`), each on its own tinted tile (`.drawer-tone-*`), so the menu reads by
 shape and colour before it reads by word. Adding a ride has exactly one control: `AddRideFab`
 (`components/AddRideButton.tsx`), a white plus in a green circle floating at the bottom right of
 the column on both views whenever a ride can be added (`.fab`, under every sheet's backdrop).
 There is deliberately no *Add ride* tile in the carousel, no plus in the empty card and no drawer
-item; the empty card's hint points at the floating button instead. Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
+item; the empty card says only that there is nothing yet. Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
 Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
 `components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
@@ -364,12 +364,17 @@ than the browser. Backend error texts stay English on the wire and are rendered 
 `apiError` in the same file, which matches the server's wordings (keep it in step when a
 `detail` string changes). The switch is `LanguageSwitch`, at the foot of the drawer and on the
 sign-in screen, the two places a newcomer looks first. `main.tsx` also bundles Inter's Latin Extended subset for č ć š ž đ.
-Wording rule for both languages: no em dashes.
+Wording rule for both languages: no em dashes. Don't explain what the screen already shows: no
+intro paragraphs restating a sheet's title, no hints under menu items, no "tap here to..." lines, and
+never "only admins / only you can see this" (whoever reads it can see it). A hint stays only when it
+says something the control cannot (a consequence, a privacy risk, a format).
 
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
-about one particular ride: your account (the identity block and *Your account* both open
-`AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
+about one particular ride, in collapsible groups (*You*, *Admin* for admins, *Settings* with the
+theme and language, folded by default; remembered as `karpul.drawerGroups`; a folded *Admin* carries
+the approvals count on its heading). The items are one label each, no hint line. Your account is the
+identity block on top (it opens `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
 *Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`

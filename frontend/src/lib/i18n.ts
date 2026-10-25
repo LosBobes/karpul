@@ -98,28 +98,23 @@ const en = {
     barLabel: (driver: string, when: string, origin: string, destination: string, pax: number) =>
       `${driver}, ${when}, ${origin} to ${destination}, ${enPlural(pax, 'passenger', 'passengers')}`,
     book: (car: string, from: string, to: string) => `Book ${car}, free ${from} to ${to}`,
-    hint: "Tap an empty part of a shared car's road to book it from that time. Pick a ride you run and its pencil edits it.",
     pick: 'Tap a ride on the plan to open it here.',
   },
 
   fab: { addRide: 'Add ride' },
 
   sidebar: {
-    account: 'Your account',
-    accountHint: 'Name, phone, email, password',
     cars: 'Shared cars',
-    carsHint: 'The pool and how it is used',
     people: 'People',
-    peopleHint: 'Accounts, admins, password resets',
     guide: 'Shared car guide',
-    guideHint: 'Charging with the card, the Mazda 6e',
     closeMenu: 'Close menu',
-    signedInAs: (handle: string) => `Signed in as ${handle}`,
+    mine: 'You',
+    admin: 'Admin',
+    settings: 'Settings',
   },
 
   myRides: {
     title: 'Your rides',
-    hint: 'History, figures, calendar feed',
     thisMonth: 'This month',
     allTime: 'All time',
     driven: 'Driven',
@@ -130,9 +125,9 @@ const en = {
     history: 'Past rides',
     noHistory: 'No past rides yet.',
     feed: 'Calendar feed',
-    feedHint: 'Subscribe to this address in your calendar app and every ride you drive or ride in shows up there, and stays current. The address is yours alone: anyone who has it sees your rides.',
+    feedHint: 'Subscribe in your calendar app. Anyone with this address sees your rides.',
     feedNew: 'New address',
-    feedNewHint: 'Shared it by mistake? A new address stops every calendar subscribed to the old one.',
+    feedNewHint: 'The old address stops working.',
     feedChanged: 'The calendar address changed. Subscribe to the new one.',
     asDriver: 'Driver',
     asPassenger: 'Passenger',
@@ -142,8 +137,7 @@ const en = {
 
   notif: {
     title: 'Notifications',
-    hint: 'Who got in, reminders before leaving',
-    body: 'A push when someone gets into your car or out of it, when a driver moves or removes a ride you are in, when a seat you waited for is yours, when someone writes in a ride you are in or answers your request, and 30 minutes before you leave.',
+    body: 'Seats, changes to your rides, messages, and a reminder 30 minutes before you leave.',
     enable: 'Turn on',
     disable: 'Turn off',
     on: 'On, for this browser.',
@@ -169,7 +163,6 @@ const en = {
     optional: 'optional',
     firstName: 'First name',
     lastName: 'Surname',
-    nameHint: 'Your first name and surname are how colleagues see you in a car.',
     password: 'Password',
     passwordHint: 'At least 8 characters.',
     submitSignIn: 'Sign in',
@@ -195,7 +188,6 @@ const en = {
     title: 'Your account',
     handle: (handle: string) => `@${handle}`,
     nameSection: 'Your name',
-    nameHint: 'Change it and your rides, past and booked, come with you.',
     emailSection: 'Email',
     phoneSection: 'Mobile phone',
     passwordSection: 'Password',
@@ -208,7 +200,6 @@ const en = {
     signingOut: 'Signing out…',
     memberSince: (date: string) => `With Karpul since ${date}`,
     otherBrowsers: 'Other browsers',
-    otherBrowsersHint: 'Signed in on a phone you lost, or a computer you shared? Sign every other browser out; this one stays signed in.',
     signOutOthers: 'Sign out everywhere else',
     othersSignedOut: (n: number) => (n === 0 ? 'No other browser was signed in.' : `${enPlural(n, 'browser', 'browsers')} signed out.`),
   },
@@ -288,7 +279,6 @@ const en = {
     passengerName: "Passenger's name",
     colleagueName: "Colleague's name",
     full: 'This car is full.',
-    openListHint: 'The driver lets passengers add and remove each other in this car.',
     waitFor: 'Wait for a seat',
     waitHint: 'The first seat that frees up is yours, with a notification.',
     inLine: (n: number) => (n === 1 ? "You're first in line for a seat." : `You're number ${n} in line for a seat.`),
@@ -306,14 +296,12 @@ const en = {
     placeholder: 'Write a message',
     send: 'Send',
     remove: 'Remove message',
-    hint: 'The driver and the passengers get a notification.',
   },
 
   /** Asking for a ride nobody offers yet: components/RequestForm.tsx and RequestList.tsx. */
   requests: {
     title: 'Looking for a ride',
     ask: 'Ask for a ride',
-    askHint: 'Nothing that suits you? Ask, and the drivers see it on the board.',
     formTitle: 'Ask for a ride',
     day: 'Day',
     around: 'Around',
@@ -414,7 +402,6 @@ const en = {
 
   admin: {
     title: 'Shared cars',
-    hint: 'Changes here affect everyone. Retiring a car keeps it on past rides but takes it out of the "Add ride" form.',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
     retired: 'Retired',
     optionsFor: (name: string) => `Options for ${name}`,
@@ -452,7 +439,6 @@ const en = {
   /** The admin's list of accounts: components/PeopleAdmin.tsx. */
   people: {
     title: 'People',
-    hint: 'Everyone with an account. An admin manages the shared cars and the people here.',
     count: (n: number) => enPlural(n, 'account', 'accounts'),
     search: 'Search people',
     admin: 'Admin',
@@ -473,9 +459,7 @@ const en = {
   /** The shared-car rides waiting for an admin: components/Approvals.tsx. */
   approvals: {
     title: 'Approvals',
-    hint: 'Shared cars past someone\'s one a week',
-    intro: 'Each ride here is someone\'s extra shared car, past their one a week. It holds no slot while it waits: approving checks the car is still free.',
-    empty: 'Nothing waiting. New asks show up here, and you get a notification.',
+    empty: 'Nothing waiting.',
     count: (n: number) => `${n} waiting`,
     open: 'Open the ride',
   },
@@ -483,9 +467,7 @@ const en = {
   /** The admin's log: components/AdminLog.tsx, backend app/audit.py. */
   adminLog: {
     title: 'Admin log',
-    hint: 'What the admins changed, newest first',
-    intro: "Every change an admin made to someone else's ride, to the shared cars and to the people. Only admins can see this.",
-    empty: 'Nothing yet. Changes an admin makes show up here.',
+    empty: 'Nothing yet.',
     older: 'Show older',
     openRide: 'Open the ride',
     yes: 'yes',
@@ -547,8 +529,6 @@ const en = {
   /** The admin's table of every ride: components/RideLog.tsx. */
   rideLog: {
     title: 'All rides',
-    hint: 'Every ride, coming and past, as a table',
-    intro: 'Every ride between the two dates, one row each. Click a column heading to sort by it; the spreadsheet holds the rows on screen.',
     upcoming: 'Upcoming',
     past: 'Past',
     from: 'From',
@@ -689,10 +669,6 @@ const en = {
     noRidesDay: 'No rides on this day yet',
     noUpcoming: 'No upcoming sessions yet',
     noRidesWent: 'No rides went on this day',
-    pastReadOnly: 'Past days are read-only.',
-    usePlus: 'Add one with the + button at the bottom right.',
-    viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles. Day lays the cars out on a timeline.',
-    firstRide: 'The form remembers your route and car, and the destination starts as "Office".',
   },
 
   carousel: { label: 'Rides', scrollLeft: 'Scroll rides left', scrollRight: 'Scroll rides right' },
@@ -1023,28 +999,23 @@ const sr: Messages = {
     edit: (driver) => `Izmeni vožnju (vozi ${driver})`,
     barLabel: (driver, when, origin, destination, pax) => `${driver}, ${when}, ${origin} do ${destination}, ${srPassengers(pax)}`,
     book: (car, from, to) => `Rezerviši ${car}, slobodno od ${from} do ${to}`,
-    hint: 'Dodirni prazan deo puta zajedničkog auta da ga rezervišeš od tog vremena. Izaberi vožnju koju vodiš i olovka je menja.',
     pick: 'Dodirni vožnju na planu da je otvoriš ovde.',
   },
 
   fab: { addRide: 'Dodaj vožnju' },
 
   sidebar: {
-    account: 'Tvoj nalog',
-    accountHint: 'Ime, telefon, mejl, lozinka',
     cars: 'Zajednički automobili',
-    carsHint: 'Vozni park i kako se koristi',
     people: 'Ljudi',
-    peopleHint: 'Nalozi, administratori, nove lozinke',
     guide: 'Vodič za zajednički auto',
-    guideHint: 'Punjenje karticom, Mazda 6e',
     closeMenu: 'Zatvori meni',
-    signedInAs: (handle: string) => `Prijavljen/a kao ${handle}`,
+    mine: 'Ti',
+    admin: 'Administracija',
+    settings: 'Podešavanja',
   },
 
   myRides: {
     title: 'Tvoje vožnje',
-    hint: 'Istorija, brojke, kalendar',
     thisMonth: 'Ovog meseca',
     allTime: 'Ukupno',
     driven: 'Vozio/la',
@@ -1055,9 +1026,9 @@ const sr: Messages = {
     history: 'Prošle vožnje',
     noHistory: 'Još nema prošlih vožnji.',
     feed: 'Kalendar',
-    feedHint: 'Pretplati se na ovu adresu u aplikaciji za kalendar i svaka vožnja u kojoj voziš ili se voziš pojaviće se tamo, uvek ažurna. Adresa je samo tvoja: ko je ima, vidi tvoje vožnje.',
+    feedHint: 'Pretplati se u aplikaciji za kalendar. Ko ima ovu adresu, vidi tvoje vožnje.',
     feedNew: 'Nova adresa',
-    feedNewHint: 'Greškom si je podelio/la? Nova adresa gasi svaki kalendar pretplaćen na staru.',
+    feedNewHint: 'Stara adresa prestaje da radi.',
     feedChanged: 'Adresa kalendara je promenjena. Pretplati se na novu.',
     asDriver: 'Vozač',
     asPassenger: 'Putnik',
@@ -1067,8 +1038,7 @@ const sr: Messages = {
 
   notif: {
     title: 'Obaveštenja',
-    hint: 'Ko je ušao, podsetnik pred polazak',
-    body: 'Obaveštenje kad neko uđe u tvoj auto ili izađe iz njega, kad vozač pomeri ili ukloni vožnju u kojoj si, kad mesto na koje si čekao/la postane tvoje, kad neko napiše poruku u vožnji u kojoj si ili odgovori na tvoj zahtev, i 30 minuta pre polaska.',
+    body: 'Mesta, izmene tvojih vožnji, poruke i podsetnik 30 minuta pre polaska.',
     enable: 'Uključi',
     disable: 'Isključi',
     on: 'Uključeno, za ovaj pregledač.',
@@ -1094,7 +1064,6 @@ const sr: Messages = {
     optional: 'nije obavezno',
     firstName: 'Ime',
     lastName: 'Prezime',
-    nameHint: 'Ime i prezime su ono što kolege vide u autu.',
     password: 'Lozinka',
     passwordHint: 'Najmanje 8 znakova.',
     submitSignIn: 'Prijavi me',
@@ -1119,7 +1088,6 @@ const sr: Messages = {
     title: 'Tvoj nalog',
     handle: (handle: string) => `@${handle}`,
     nameSection: 'Tvoje ime',
-    nameHint: 'Kad ga promeniš, tvoje vožnje, prošle i rezervisane, idu s tobom.',
     emailSection: 'Mejl',
     phoneSection: 'Mobilni telefon',
     passwordSection: 'Lozinka',
@@ -1132,7 +1100,6 @@ const sr: Messages = {
     signingOut: 'Odjava…',
     memberSince: (date: string) => `Na Karpulu od ${date}`,
     otherBrowsers: 'Ostali pregledači',
-    otherBrowsersHint: 'Prijavljen/a si na telefonu koji si izgubio/la ili na tuđem računaru? Odjavi sve ostale pregledače; ovaj ostaje prijavljen.',
     signOutOthers: 'Odjavi me svuda drugde',
     othersSignedOut: (n) =>
       n === 0 ? 'Nijedan drugi pregledač nije bio prijavljen.' : `Odjavljeno: ${srPlural(n, 'pregledač', 'pregledača', 'pregledača')}.`,
@@ -1211,7 +1178,6 @@ const sr: Messages = {
     passengerName: 'Ime putnika',
     colleagueName: 'Ime kolege',
     full: 'Ovaj auto je pun.',
-    openListHint: 'Vozač dozvoljava da putnici u ovom autu dodaju i uklanjaju jedni druge.',
     waitFor: 'Čekaj mesto',
     waitHint: 'Prvo mesto koje se oslobodi je tvoje, uz obaveštenje.',
     inLine: (n) => (n === 1 ? 'Prvi/a si na redu za mesto.' : `Na redu za mesto si ${n}.`),
@@ -1228,13 +1194,11 @@ const sr: Messages = {
     placeholder: 'Napiši poruku',
     send: 'Pošalji',
     remove: 'Ukloni poruku',
-    hint: 'Vozač i putnici dobijaju obaveštenje.',
   },
 
   requests: {
     title: 'Traže prevoz',
     ask: 'Zatraži prevoz',
-    askHint: 'Nema ništa što ti odgovara? Zatraži, i vozači će to videti na tabli.',
     formTitle: 'Zatraži prevoz',
     day: 'Dan',
     around: 'Oko',
@@ -1330,7 +1294,6 @@ const sr: Messages = {
 
   admin: {
     title: 'Zajednički automobili',
-    hint: 'Izmene ovde važe za sve. Povučen auto ostaje na prošlim vožnjama, ali nestaje iz obrasca „Dodaj vožnju“.',
     seats: srSeats,
     retired: 'Povučen',
     optionsFor: (name) => `Opcije za ${name}`,
@@ -1367,18 +1330,14 @@ const sr: Messages = {
 
   approvals: {
     title: 'Odobrenja',
-    hint: 'Zajednički auti preko nečijeg jednog nedeljno',
-    intro: 'Svaka vožnja ovde je nečiji dodatni zajednički auto, preko jednog nedeljno. Dok čeka, ne zauzima termin: odobrenje proverava da li je auto još slobodan.',
-    empty: 'Ništa ne čeka. Novi zahtevi stižu ovde, uz obaveštenje.',
+    empty: 'Ništa ne čeka.',
     count: (n) => `${n} na čekanju`,
     open: 'Otvori vožnju',
   },
 
   adminLog: {
     title: 'Dnevnik administratora',
-    hint: 'Šta su administratori menjali, najnovije prvo',
-    intro: 'Svaka izmena koju je administrator napravio na tuđoj vožnji, zajedničkim automobilima i nalozima. Ovo vide samo administratori.',
-    empty: 'Još ništa. Izmene administratora pojavljuju se ovde.',
+    empty: 'Još ništa.',
     older: 'Prikaži starije',
     openRide: 'Otvori vožnju',
     yes: 'da',
@@ -1439,8 +1398,6 @@ const sr: Messages = {
 
   rideLog: {
     title: 'Sve vožnje',
-    hint: 'Svaka vožnja, buduća i prošla, u tabeli',
-    intro: 'Svaka vožnja između dva datuma, po jedan red. Klikni naslov kolone da sortiraš po njoj; tabela za preuzimanje sadrži redove sa ekrana.',
     upcoming: 'Predstojeće',
     past: 'Prošle',
     from: 'Od',
@@ -1482,7 +1439,6 @@ const sr: Messages = {
 
   people: {
     title: 'Ljudi',
-    hint: 'Svi koji imaju nalog. Administrator upravlja zajedničkim automobilima i ljudima ovde.',
     count: (n) => srPlural(n, 'nalog', 'naloga', 'naloga'),
     search: 'Traži ljude',
     admin: 'Administrator',
@@ -1600,10 +1556,6 @@ const sr: Messages = {
     noRidesDay: 'Za ovaj dan još nema vožnji',
     noUpcoming: 'Još nema predstojećih vožnji',
     noRidesWent: 'Tog dana nije bilo vožnji',
-    pastReadOnly: 'Prošli dani se ne mogu menjati.',
-    usePlus: 'Dodaj je dugmetom + u donjem desnom uglu.',
-    viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama. Dan raspoređuje aute na vremenskoj liniji.',
-    firstRide: 'Obrazac pamti tvoju rutu i auto, a odredište na početku glasi „Kancelarija“.',
   },
 
   carousel: { label: 'Vožnje', scrollLeft: 'Pomeri vožnje ulevo', scrollRight: 'Pomeri vožnje udesno' },

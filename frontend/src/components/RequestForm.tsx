@@ -72,8 +72,6 @@ export function RequestForm({ date, submitting, error, onSubmit, onClose }: Prop
         </button>
       }
     >
-      <p className="hint">{t.requests.askHint}</p>
-
       <div className="field">
         <span className="field-label">{t.form.when}</span>
         <div className="when-grid when-grid-one">

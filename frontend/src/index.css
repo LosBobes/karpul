@@ -2089,11 +2089,6 @@ main,
   border-color: var(--green);
   color: var(--green);
 }
-.plan-hint {
-  margin: 0;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
 .plan-pick {
   color: var(--muted);
 }
@@ -2988,8 +2983,7 @@ main,
   margin-top: 0.6rem;
   font-weight: 600;
 }
-.empty-card > span:last-child,
-.empty-hint {
+.empty-card > span:last-child {
   font-size: 0.86rem;
   color: var(--muted);
 }
@@ -3603,8 +3597,8 @@ body.dragging {
 }
 
 /* --- App menu drawer (components/Sidebar.tsx) ---------------------------- */
-/* Slides in from the left edge under the ☰; a column of tall rows rather
-   than a popover, so it has room for who you are and a hint per entry. */
+/* Slides in from the left edge under the ☰: who you are, then the items in
+   collapsible groups (one heading each), the settings folded at the foot. */
 .backdrop-drawer {
   padding: 0;
   place-items: stretch start;
@@ -3657,26 +3651,85 @@ body.dragging {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.drawer-me-hint,
-.drawer-item-hint {
+.drawer-me-chevron {
+  margin-left: auto;
+  color: var(--muted);
+  flex: none;
+}
+.drawer-me-hint {
   font-size: 0.8rem;
   color: var(--muted);
 }
 .drawer-nav {
   display: flex;
   flex-direction: column;
-  padding: 0.5rem 0.6rem;
+  gap: 0.25rem;
+  padding: 0.35rem 0.6rem 0.5rem;
 }
 .drawer-foot {
   margin-top: auto;
-  padding: 0.75rem 1.15rem 0.9rem;
+  padding: 0.35rem 0.6rem 0.6rem;
   border-top: 1px solid var(--border);
+}
+/* A group: a quiet heading that folds the rows under it (a grid row from
+   1fr to 0fr, so it slides rather than jumps; inert while folded). */
+.drawer-group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.35rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.drawer-group-head:hover {
+  color: var(--text);
+}
+.drawer-group-head .drawer-count {
+  margin-left: 0;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.drawer-group-chevron {
+  margin-left: auto;
+  transition: transform 0.22s var(--ease-out);
+}
+.drawer-group-head[aria-expanded='false'] .drawer-group-chevron {
+  transform: rotate(-90deg);
+}
+.drawer-group-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.24s var(--ease-out);
+}
+.drawer-group-shut {
+  grid-template-rows: 0fr;
+}
+.drawer-group-clip {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.drawer-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem 0.55rem 0.35rem;
 }
 .drawer-item {
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  min-height: 56px;
+  min-height: 48px;
   padding: 0.55rem 0.7rem;
   border: none;
   border-radius: var(--radius-sm);
@@ -3724,9 +3777,6 @@ body.dragging {
   .drawer-item:hover:not(:disabled) .drawer-item-icon {
     transform: scale(1.08) rotate(-4deg);
   }
-}
-.drawer-item:disabled {
-  opacity: 0.45;
 }
 .drawer-item-icon {
   display: inline-grid;
@@ -3794,11 +3844,6 @@ body.dragging {
 :root[data-resolved='dark'] .drawer-tone-slate {
   background: #263241;
   color: #cbd5e1;
-}
-.drawer-item-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
 }
 .drawer-item-label {
   font-weight: 500;
@@ -4682,14 +4727,6 @@ body.dragging {
   padding: 1rem;
   gap: 0.35rem;
 }
-.empty-intro {
-  margin: 0.4rem 0 0;
-  max-width: 34ch;
-  font-size: 0.84rem;
-  line-height: 1.45;
-  color: var(--muted);
-}
-
 /* --- Figures: your rides, admin usage -------------------------------------- */
 .stats + .stats {
   margin-top: 0.9rem;

@@ -160,7 +160,6 @@ export function RideThread({ ride, isDriver, onError }: Props) {
               <SendIcon size={18} />
             </button>
           </form>
-          <p className="hint hint-tight">{t.thread.hint}</p>
         </div>
         </div>
       )}
