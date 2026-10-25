@@ -124,6 +124,11 @@ class Ride(SQLModel, table=True):
     series_id: str | None = None
     # Set once the departure reminder has been pushed (app/reminders.py).
     reminder_sent: bool = Field(default=False)
+    # A shared car is rationed (services.SHARED_CAR_PER_WEEK / _PER_DAY): a
+    # ride past the driver's share is "" when within it, "pending" while it
+    # waits for an admin, "approved" once an admin let it through (or made
+    # it). Own cars are always "".
+    approval: str = Field(default="")
     created_at: datetime = Field(default_factory=utcnow)
 
     corporate_car: CorporateCar | None = Relationship(back_populates="rides")

@@ -300,6 +300,41 @@ def resolve_corporate_car(session: Session, car_id: int) -> CorporateCar:
     return car
 
 
+# A shared car is rationed per driver: this many rides a week (Mon to Sun) and
+# a day, pending and approved ones counted. Past that an admin has to approve.
+SHARED_CAR_PER_WEEK = 1
+SHARED_CAR_PER_DAY = 1
+LIMIT_WEEK = "You already have a shared car this week. An admin can approve another"
+LIMIT_DAY = "You already have a shared car that day. An admin can approve another"
+
+
+def shared_car_use(session: Session, driver_id: int, day: date, exclude_ride_id: int | None = None) -> tuple[int, int]:
+    """How many shared-car rides the driver already has in `day`'s week and on
+    `day` itself, whatever their approval."""
+    monday = day - timedelta(days=day.weekday())
+    stmt = select(Ride.ride_date).where(
+        Ride.driver_id == driver_id,
+        Ride.car_type == CarType.corporate,
+        Ride.ride_date >= monday,
+        Ride.ride_date <= monday + timedelta(days=6),
+    )
+    if exclude_ride_id is not None:
+        stmt = stmt.where(Ride.id != exclude_ride_id)
+    dates = list(session.exec(stmt))
+    return len(dates), sum(1 for d in dates if d == day)
+
+
+def over_shared_car_share(session: Session, driver_id: int, day: date, exclude_ride_id: int | None = None) -> str | None:
+    """The reason a shared-car ride on `day` is past the driver's share, or
+    None while it is within it. The day's text wins, being the nearer one."""
+    week, same_day = shared_car_use(session, driver_id, day, exclude_ride_id)
+    if same_day >= SHARED_CAR_PER_DAY:
+        return LIMIT_DAY
+    if week >= SHARED_CAR_PER_WEEK:
+        return LIMIT_WEEK
+    return None
+
+
 def ensure_car_available(
     session: Session,
     car_id: int,
@@ -314,7 +349,9 @@ def ensure_car_available(
         Ride.car_type == CarType.corporate,
     )
     for other in session.exec(stmt):
-        if other.id == exclude_ride_id:
+        # A ride waiting for an admin holds nothing yet: the slot is free until
+        # it is approved, and approving checks it again (routers/rides.approve_ride).
+        if other.id == exclude_ride_id or other.approval == "pending":
             continue
         if _overlaps(departure, return_time, other.departure_time, other.return_time):
             raise HTTPException(

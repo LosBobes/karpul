@@ -3,6 +3,7 @@ import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab } from './components/AddRideButton'
 import { AdminLog } from './components/AdminLog'
+import { Approvals } from './components/Approvals'
 import { AuthGate } from './components/AuthGate'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
@@ -31,7 +32,7 @@ import { messages, useT } from './lib/i18n'
 import { addDays, fmtShortDate, fmtTime, parseISODate, startOfWeek, toISODate, todayISO } from './lib/dates'
 import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
-import { inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
+import { drives, inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
@@ -95,6 +96,8 @@ function Board({ session }: { session: Session }) {
   const [toast, setToast] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
   const [form, setForm] = useState<FormState>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  // The error is the shared-car share: the form offers to ask an admin instead.
+  const [formAsk, setFormAsk] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // "Ask for a ride" (components/RequestForm.tsx): the day it opens on, or closed.
   const [askDate, setAskDate] = useState<string | null>(null)
@@ -125,6 +128,12 @@ function Board({ session }: { session: Session }) {
   const [rideLogOpen, setRideLogOpen] = useState(false)
   // What the admins did (components/AdminLog.tsx, backend app/audit.py).
   const [adminLogOpen, setAdminLogOpen] = useState(false)
+  // The shared-car rides waiting for an admin (components/Approvals.tsx): the
+  // sheet, how many wait (a count in the drawer and a dot on the ☰), and a
+  // tick that tells the open sheet to reload after a decision.
+  const [approvalsOpen, setApprovalsOpen] = useState(false)
+  const [waiting, setWaiting] = useState(0)
+  const [approvalsTick, setApprovalsTick] = useState(0)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -167,6 +176,7 @@ function Board({ session }: { session: Session }) {
   /** A line of the admin's log opens its ride on the day plan, where it sits among that day's cars. */
   const openLoggedRide = (rideId: number) => {
     setAdminLogOpen(false)
+    setApprovalsOpen(false)
     api
       .ride(rideId)
       .then((ride) => {
@@ -313,7 +323,7 @@ function Board({ session }: { session: Session }) {
     withBusy(ride.id, async () => {
       const on = !ride.passengers_manage
       upsertRide(await api.updateRide(ride.id, { passengers_manage: on }))
-      setToast({ kind: 'ok', text: on ? t.toasts.manageOn : t.toasts.manageOff })
+      setToast({ kind: 'ok', text: on ? t.toasts.manageOn : drives(ride, me) ? t.toasts.manageOff : t.toasts.manageOffFor(ride.driver_name) })
     })
 
   const onCancel = (ride: Ride) => {
@@ -397,11 +407,13 @@ function Board({ session }: { session: Session }) {
   const closeForm = useCallback(() => {
     setForm(null)
     setFormError(null)
+    setFormAsk(false)
   }, [])
 
   async function onSubmitForm(input: RideInput) {
     setSubmitting(true)
     setFormError(null)
+    setFormAsk(false)
     try {
       if (form?.mode === 'edit') {
         // The driver of a ride never changes, and the API has no field for it.
@@ -424,11 +436,14 @@ function Board({ session }: { session: Session }) {
         } else {
           setToast({
             kind: 'ok',
-            text: answered
-              ? t.toasts.requestAnswered(answered.name)
-              : input.driver_id
-                ? t.toasts.rideAddedFor(input.driver_name)
-                : t.toasts.rideAdded,
+            text:
+              created.approval === 'pending'
+                ? t.toasts.rideAwaiting
+                : answered
+                  ? t.toasts.requestAnswered(answered.name)
+                  : input.driver_id
+                    ? t.toasts.rideAddedFor(input.driver_name)
+                    : t.toasts.rideAdded,
           })
         }
         // The request is answered now; the socket brings that too, this is just sooner.
@@ -441,10 +456,53 @@ function Board({ session }: { session: Session }) {
       setSelectedDate(input.ride_date)
     } catch (e) {
       setFormError(errMsg(e))
+      // The share's refusal (backend: services.LIMIT_WEEK / LIMIT_DAY) names its own way out.
+      setFormAsk(e instanceof ApiError && /An admin can approve another$/.test(e.message))
     } finally {
       setSubmitting(false)
     }
   }
+
+  // --- a shared car past the driver's share: the admin's call ---
+
+  const onApprove = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      try {
+        upsertRide(await api.approveRide(ride.id))
+        setToast({ kind: 'ok', text: t.toasts.rideApproved(ride.driver_name) })
+      } finally {
+        setApprovalsTick((n) => n + 1)
+      }
+    })
+
+  const onDecline = (ride: Ride) =>
+    setConfirm({
+      title: t.confirm.declineTitle,
+      body: t.confirm.declineBody(ride.driver_name),
+      label: t.detail.decline,
+      onConfirm: () => {
+        setConfirm(null)
+        void withBusy(ride.id, async () => {
+          try {
+            await api.declineRide(ride.id)
+            removeRides((r) => r.id === ride.id)
+            setToast({ kind: 'ok', text: t.toasts.rideDeclined })
+          } finally {
+            setApprovalsTick((n) => n + 1)
+          }
+        })
+      },
+    })
+
+  // How many wait, for the drawer's count: asked again whenever the board
+  // changes (a new ask arrives as a live ride event) or a decision is made.
+  useEffect(() => {
+    if (!isAdmin) return
+    api
+      .approvals()
+      .then((list) => setWaiting(list.length))
+      .catch(() => undefined)
+  }, [isAdmin, rides, approvalsTick])
 
   // --- asking for a ride ---
 
@@ -599,6 +657,8 @@ function Board({ session }: { session: Session }) {
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
       onDuplicate={(r) => setForm({ mode: 'create', template: r })}
       onTogglePassengersManage={onTogglePassengersManage}
+      onApprove={onApprove}
+      onDecline={onDecline}
       onGuide={() => setGuideOpen(true)}
       onWait={onWait}
       onLeaveLine={onLeaveLine}
@@ -700,6 +760,7 @@ function Board({ session }: { session: Session }) {
             onClick={() => setSidebarOpen(true)}
           >
             <MenuIcon size={22} />
+            {isAdmin && waiting > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting)} />}
           </button>
           <h1 className="topbar-title">
             <Logo /> Karpul
@@ -817,6 +878,8 @@ function Board({ session }: { session: Session }) {
             onPeople={() => setPeopleOpen(true)}
             onRideLog={() => setRideLogOpen(true)}
             onAdminLog={() => setAdminLogOpen(true)}
+            onApprovals={() => setApprovalsOpen(true)}
+            approvals={waiting}
             onGuide={() => setGuideOpen(true)}
             onMyRides={() => setMyRidesOpen(true)}
             onNotifications={() => setNotifOpen(true)}
@@ -859,6 +922,7 @@ function Board({ session }: { session: Session }) {
             slot={form.mode === 'create' ? form.slot : null}
             submitting={submitting}
             error={formError}
+            canAskApproval={formAsk}
             onSubmit={onSubmitForm}
             onDelete={
               form.mode === 'edit'
@@ -895,6 +959,17 @@ function Board({ session }: { session: Session }) {
         {rideLogOpen && isAdmin && <RideLog onClose={() => setRideLogOpen(false)} />}
 
         {adminLogOpen && isAdmin && <AdminLog onOpenRide={openLoggedRide} onClose={() => setAdminLogOpen(false)} />}
+
+        {approvalsOpen && isAdmin && (
+          <Approvals
+            version={approvalsTick + waiting}
+            busyId={busyId}
+            onApprove={(r) => void onApprove(r)}
+            onDecline={onDecline}
+            onOpen={(r) => openLoggedRide(r.id)}
+            onClose={() => setApprovalsOpen(false)}
+          />
+        )}
 
         {confirmState && (
           <ConfirmDialog

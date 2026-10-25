@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AccountIcon, AdminLogIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { AccountIcon, AdminLogIcon, ApprovalIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -19,6 +19,9 @@ interface Props {
   onPeople: () => void
   onRideLog: () => void
   onAdminLog: () => void
+  onApprovals: () => void
+  /** Admins: how many shared-car rides wait for approval (a count on the item). */
+  approvals: number
   onGuide: () => void
   onMyRides: () => void
   onNotifications: () => void
@@ -30,9 +33,11 @@ interface Item {
   hint?: string
   icon: ReactNode
   /** The tint of the icon's tile, one per item so the menu reads by colour too. */
-  tone: 'blue' | 'violet' | 'amber' | 'green' | 'teal' | 'rose' | 'slate'
+  tone: 'blue' | 'violet' | 'amber' | 'orange' | 'green' | 'teal' | 'rose' | 'slate'
   onSelect: () => void
   disabled?: boolean
+  /** Something waiting on you there: an amber count after the label. */
+  count?: number
 }
 
 /**
@@ -43,7 +48,7 @@ interface Item {
  * language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
  * it opens is the only thing left on screen.
  */
-export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onGuide, onMyRides, onNotifications, onClose }: Props) {
+export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onMyRides, onNotifications, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
   // The drawer slides back out before it unmounts, whichever way it is closed.
@@ -111,6 +116,14 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
     },
     ...(isAdmin
       ? ([
+          {
+            label: t.approvals.title,
+            hint: t.approvals.hint,
+            icon: <ApprovalIcon size={20} />,
+            tone: 'orange',
+            onSelect: pick(onApprovals),
+            count: approvals,
+          },
           {
             label: t.sidebar.cars,
             hint: t.sidebar.carsHint,
@@ -180,7 +193,10 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
             <button key={it.label} type="button" className="drawer-item" disabled={it.disabled} onClick={it.onSelect}>
               <span className={`drawer-item-icon drawer-tone-${it.tone}`}>{it.icon}</span>
               <span className="drawer-item-text">
-                <span className="drawer-item-label">{it.label}</span>
+                <span className="drawer-item-label">
+                  {it.label}
+                  {!!it.count && <span className="drawer-count" aria-label={t.approvals.count(it.count)}>{it.count}</span>}
+                </span>
                 {it.hint && <span className="drawer-item-hint">{it.hint}</span>}
               </span>
             </button>

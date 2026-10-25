@@ -141,7 +141,7 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
     const room = captionRoom(row.bars, i, axis) / Math.max(end - b.start, 1)
     const editable = !isPast && runs(r, me)
     const picked = r.id === selectedId
-    const cls = ['plan-ride', `tone-${mine ? 'green' : avatarTone(r.driver_name)}`, mine && 'plan-ride-mine', b.open && 'plan-ride-open', r.id === selectedId && 'plan-ride-on']
+    const cls = ['plan-ride', `tone-${mine ? 'green' : avatarTone(r.driver_name)}`, mine && 'plan-ride-mine', r.approval === 'pending' && 'plan-ride-pending', b.open && 'plan-ride-open', r.id === selectedId && 'plan-ride-on']
       .filter(Boolean)
       .join(' ')
     return [

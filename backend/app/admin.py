@@ -32,6 +32,14 @@ def is_admin(user: User) -> bool:
     return user.is_admin or admin_by_config(user)
 
 
+def admin_ids(session: Session) -> list[int | None]:
+    """Every admin's account id: the ones flagged in the database and the
+    ones configured, for a push that goes to the admins."""
+    from sqlmodel import select
+
+    return [u.id for u in session.exec(select(User)) if is_admin(u)]
+
+
 def require_admin(session: Session, creds: Credentials) -> User:
     """The signed-in account if it is an admin: 401 without a session, 403 without the role."""
     user = require_user(session, creds)

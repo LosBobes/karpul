@@ -51,6 +51,9 @@ export interface Ride {
   created_at: string
   /** The driver's account; null only for a ride from before accounts nobody claimed. */
   driver_id: number | null
+  /** A shared car is one ride a week per driver: "" within that, "pending" while
+   * an admin has to approve one past it, "approved" once one did. */
+  approval: '' | 'pending' | 'approved'
   /** The driver's mobile number, when their account has one. */
   driver_phone: string | null
   bookings: Booking[]
@@ -156,6 +159,8 @@ export interface RideInput {
   request_id?: number | null
   /** Create only, admins only: the account that drives it, when not the caller. */
   driver_id?: number | null
+  /** Create only: a shared car past your share, added as pending for an admin to approve. */
+  request_approval?: boolean
 }
 
 /** GET /api/stats/me */

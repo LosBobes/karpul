@@ -18,6 +18,8 @@ ACTIONS = (
     "ride_added",  # a ride in someone else's name
     "ride_edited",
     "ride_removed",
+    "ride_approved",  # a shared car past the driver's share, let through
+    "ride_declined",
     "seat_added",  # someone put in someone else's car
     "seat_removed",
     "car_added",

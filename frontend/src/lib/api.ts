@@ -173,6 +173,9 @@ export const api = {
   createRide: (input: RideInput) => request<Ride>('/api/rides', json('POST', input)),
 
   updateRide: (id: number, patch: Partial<RideInput>) => request<Ride>(`/api/rides/${id}`, json('PATCH', patch)),
+  /** Admin: a shared-car ride past the driver's share, let through or refused (refused: the ride goes). */
+  approveRide: (id: number) => request<Ride>(`/api/rides/${id}/approve`, { method: 'POST' }),
+  declineRide: (id: number) => request<void>(`/api/rides/${id}/decline`, { method: 'POST' }),
 
   /** `following` also removes the later rides of the same weekly series. */
   deleteRide: (id: number, scope: 'one' | 'following' = 'one') =>
@@ -249,6 +252,7 @@ export const api = {
   downloadCarUsage: (days: number) => download(`/api/cars/corporate/usage.csv?days=${days}`, 'karpul-company-cars.csv'),
 
   users: () => request<AdminUser[]>('/api/admin/users'),
+  approvals: () => request<Ride[]>('/api/admin/approvals'),
   adminLog: (before?: number) => request<AdminAction[]>(`/api/admin/log${before ? `?before=${before}` : ''}`),
 
   setAdmin: (userId: number, isAdmin: boolean) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', { is_admin: isAdmin })),

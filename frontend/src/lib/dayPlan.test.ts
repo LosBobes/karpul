@@ -31,6 +31,7 @@ function ride(over: Partial<Ride>): Ride {
     waitlist: [],
     message_count: 0,
     free_seats: 3,
+    approval: '',
     ...over,
   }
 }
@@ -103,5 +104,21 @@ describe('day plan row status', () => {
     expect(rowStatus(pool[2], axis)).toEqual({ kind: 'freeAllDay' })
     expect(captionRoom(pool[0].bars, 0, axis)).toBe(300)
     expect(captionRoom(pool[0].bars, 1, axis)).toBe(360)
+  })
+})
+
+describe('day plan and approvals', () => {
+  it('leaves the stretch under a pending ride free to book', () => {
+    const axis = { from: 420, to: 1140 }
+    const rides = [
+      ride({ corporate_car_id: 1, departure_time: '08:00', return_time: '12:00' }),
+      ride({ corporate_car_id: 1, departure_time: '13:00', return_time: '15:00', approval: 'pending' }),
+    ]
+    const { pool } = planRows(rides, [car(1, 'Mazda 6e')], axis)
+    expect(pool[0].bars).toHaveLength(2)
+    expect(pool[0].gaps).toEqual([
+      { start: 420, end: 480 },
+      { start: 720, end: 1140 },
+    ])
   })
 })

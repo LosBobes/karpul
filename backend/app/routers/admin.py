@@ -258,3 +258,19 @@ def admin_log(
     if before is not None:
         stmt = stmt.where(col(AdminAction.id) < before)
     return [AdminActionRead.from_row(a) for a in session.exec(stmt)]
+
+
+@router.get("/approvals", response_model=list[RideRead])
+def approvals(session: SessionDep, creds: CredsDep):
+    """Admin-only: the shared-car rides waiting for approval, from today on,
+    soonest first (routers/rides.approve_ride / decline_ride decide them)."""
+    require_admin(session, creds)
+    stmt = (
+        select(Ride)
+        .where(Ride.approval == "pending", Ride.ride_date >= date.today())
+        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist))  # type: ignore[arg-type]
+        .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
+    )
+    rides = list(session.exec(stmt).all())
+    extras = board_extras(session, rides)
+    return [to_ride_read_dict(r, extras) for r in rides]

@@ -463,6 +463,9 @@ class RideCreate(RideBase):
     # the caller's own id) the caller drives. Not stored as given: the ride's
     # driver_id/driver_name are set from the account.
     driver_id: int | None = None
+    # A shared car past the driver's share for the week or the day: instead of
+    # a 409, add the ride as "pending" and ask the admins to approve it.
+    request_approval: bool = False
 
     @model_validator(mode="after")
     def check_repeat(self) -> "RideCreate":
@@ -515,6 +518,9 @@ class RideRead(BaseModel):
     series_id: str | None
     created_at: datetime
     driver_id: int | None
+    # "" within the driver's share of the shared cars, "pending" while an admin
+    # has to approve it, "approved" once one did (services.shared_car_use).
+    approval: str = ""
     # The driver's mobile number when their account has one, for "Call the driver".
     driver_phone: str | None = None
     bookings: list[BookingRead]

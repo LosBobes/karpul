@@ -31,7 +31,7 @@ describe('server errors in Serbian', () => {
   it('says which week a repeat clashed on', () => {
     const t = sr()
     expect(t.apiError('That corporate car is already booked by Ana from 08:00 to 12:00 that day (2026-09-17)')).toBe(
-      'Taj službeni auto je 2026-09-17 već zauzet: Ana, od 08:00 do 12:00',
+      'Taj zajednički auto je 2026-09-17 već zauzet: Ana, od 08:00 do 12:00',
     )
   })
 

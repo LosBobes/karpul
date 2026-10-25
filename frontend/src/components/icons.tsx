@@ -360,6 +360,14 @@ export const DownloadIcon = icon(
   </>,
 )
 /** A shield with a tick: an admin. */
+/** A clipboard with a tick: the rides waiting for an admin's yes. */
+export const ApprovalIcon = icon(
+  <>
+    <path d="M9 4.5H7.25A2.25 2.25 0 0 0 5 6.75v11.5a2.25 2.25 0 0 0 2.25 2.25h9.5A2.25 2.25 0 0 0 19 18.25V6.75a2.25 2.25 0 0 0-2.25-2.25H15" />
+    <rect x="9" y="3" width="6" height="3" rx="1.25" />
+    <path d="m9 13.25 2.25 2.25 4-4.5" />
+  </>,
+)
 /** A shield with clock hands: what the admins did, and when (the admin's log). */
 export const AdminLogIcon = icon(
   <>

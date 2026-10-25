@@ -30,6 +30,7 @@ function ride(overrides: Partial<Ride> = {}): Ride {
     waitlist: [],
     message_count: 0,
     free_seats: 2,
+    approval: '',
     ...overrides,
   }
 }

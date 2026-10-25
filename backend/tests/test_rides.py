@@ -70,8 +70,9 @@ def test_corporate_ride_uses_pool_car_and_blocks_overlap(client):
     assert r.status_code == 409
     assert "already booked" in r.json()["detail"]
 
-    # Same car, after the first ride returns -> fine
-    later = dict(clash, departure_time="17:00", return_time="20:00")
+    # Same car, after the first ride returns -> fine (another driver: a shared
+    # car is one ride a week per person, see test_shared_car_share.py)
+    later = dict(clash, departure_time="17:00", return_time="20:00", driver_name="Lazar")
     assert client.post("/api/rides", json=later).status_code == 201
 
     # Same car, picked up exactly when the first ride returns -> a handover, fine
