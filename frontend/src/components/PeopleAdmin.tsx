@@ -119,7 +119,6 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
 
   return (
     <Sheet id="people-title" title={t.people.title} onClose={onClose}>
-      <p className="hint">{t.people.hint}</p>
       {people && people.length > 6 && (
         <label className="input-icon search">
           <SearchIcon size={16} />

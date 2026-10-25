@@ -497,9 +497,6 @@ export function CarDetail({
         )}
 
         {full && !myBooking && !isDriver && ride.bookings.length > 0 && !myEntry && <p className="hint">{t.detail.full}</p>}
-        {ride.passengers_manage && !isPast && !!myBooking && !isDriver && (
-          <p className="hint">{t.detail.openListHint}</p>
-        )}
 
         {canWait && (
           <>

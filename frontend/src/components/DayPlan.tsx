@@ -252,7 +252,6 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
       ) : pool.length === 0 && own.length === 0 ? (
         <div className="card empty-card empty-card-short">
           <strong>{isPast ? t.empty.noRidesWent : t.empty.noRidesDay}</strong>
-          {!isPast && <span>{t.empty.usePlus}</span>}
         </div>
       ) : (
         <div className="card plan-board" style={style}>
@@ -284,7 +283,6 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
           )}
         </div>
       )}
-      {!loading && !isPast && pool.length > 0 && <p className="plan-hint">{t.plan.hint}</p>}
     </section>
   )
 }

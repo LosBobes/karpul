@@ -43,7 +43,6 @@ export function Approvals({ version, busyId, onApprove, onDecline, onOpen, onClo
 
   return (
     <Sheet id="approvals-title" title={t.approvals.title} className="approvals" onClose={onClose}>
-      <p className="hint">{t.approvals.intro}</p>
       {error && <p className="error">{error}</p>}
       {rides === null && !error && <p className="hint">{t.common.loading}</p>}
       {rides?.length === 0 && <div className="card empty-card empty-card-short">{t.approvals.empty}</div>}

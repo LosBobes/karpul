@@ -687,7 +687,7 @@ function Board({ session }: { session: Session }) {
       {detailFor(openRide, false)}
     </div>
   ) : (
-    <AddCarCard isPast={isPast} intro={rides.length === 0 && !isPast} />
+    <AddCarCard isPast={isPast} />
   )
   const dayYou = loading ? null : (
     <>
@@ -787,7 +787,7 @@ function Board({ session }: { session: Session }) {
                 </div>
               ) : rides.length === 0 && openRequests.length === 0 ? (
                 <>
-                  <AddCarCard isPast={false} emptyTitle={t.empty.noUpcoming} intro />
+                  <AddCarCard isPast={false} emptyTitle={t.empty.noUpcoming} />
                   <button type="button" className="add-row add-row-quiet" onClick={() => openAsk(todayISO())}>
                     {t.requests.ask}
                   </button>

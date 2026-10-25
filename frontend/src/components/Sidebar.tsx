@@ -1,9 +1,9 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AccountIcon, AdminLogIcon, ApprovalIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { AdminLogIcon, ApprovalIcon, BellDotIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -30,23 +30,38 @@ interface Props {
 
 interface Item {
   label: string
-  hint?: string
   icon: ReactNode
   /** The tint of the icon's tile, one per item so the menu reads by colour too. */
   tone: 'blue' | 'violet' | 'amber' | 'orange' | 'green' | 'teal' | 'rose' | 'slate'
   onSelect: () => void
-  disabled?: boolean
   /** Something waiting on you there: an amber count after the label. */
   count?: number
 }
 
+type GroupKey = 'me' | 'admin' | 'settings'
+
+/** Which groups are folded, remembered per browser; settings start folded. */
+const GROUPS_KEY = 'karpul.drawerGroups'
+const DEFAULT_OPEN: Record<GroupKey, boolean> = { me: true, admin: true, settings: false }
+
+function loadOpen(): Record<GroupKey, boolean> {
+  try {
+    const raw = localStorage.getItem(GROUPS_KEY)
+    if (raw) return { ...DEFAULT_OPEN, ...(JSON.parse(raw) as Partial<Record<GroupKey, boolean>>) }
+  } catch {
+    // Private mode or a broken value: the defaults will do.
+  }
+  return DEFAULT_OPEN
+}
+
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the things that are not about one particular ride: your
- * account, your rides and figures, notifications, the company-car guide, and
- * for an admin the pool, the people and the table of every ride; at the bottom the appearance and the
- * language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
- * it opens is the only thing left on screen.
+ * top bar. It holds the things that are not about one particular ride, in
+ * collapsible groups: yours (rides, notifications, the shared-car guide), the
+ * admin's (approvals, the pool, the people, every ride, the log) and the
+ * settings (appearance, language). Your account is the identity block on top.
+ * Adding a ride is not here; that is the floating plus. Picking an item closes
+ * the drawer first, so the sheet it opens is the only thing left on screen.
  */
 export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onMyRides, onNotifications, onClose }: Props) {
   const t = useT()
@@ -85,40 +100,42 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
     fn()
   }
 
-  const items: Item[] = [
-    {
-      label: t.sidebar.account,
-      hint: t.sidebar.accountHint,
-      icon: <AccountIcon size={20} />,
-      tone: 'blue',
-      onSelect: pick(onAccount),
-    },
+  const [open, setOpen] = useState(loadOpen)
+  const toggle = (key: GroupKey) =>
+    setOpen((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      try {
+        localStorage.setItem(GROUPS_KEY, JSON.stringify(next))
+      } catch {
+        // Not remembered, still toggled.
+      }
+      return next
+    })
+
+  const mine: Item[] = [
     {
       label: t.myRides.title,
-      hint: t.myRides.hint,
       icon: <RouteIcon size={20} />,
       tone: 'violet',
       onSelect: pick(onMyRides),
     },
     {
       label: t.notif.title,
-      hint: t.notif.hint,
       icon: <BellDotIcon size={20} />,
       tone: 'amber',
       onSelect: pick(onNotifications),
     },
     {
       label: t.sidebar.guide,
-      hint: t.sidebar.guideHint,
       icon: <PlugIcon size={20} />,
       tone: 'teal',
       onSelect: pick(onGuide),
     },
-    ...(isAdmin
-      ? ([
+  ]
+  const admin: Item[] = isAdmin
+    ? [
           {
             label: t.approvals.title,
-            hint: t.approvals.hint,
             icon: <ApprovalIcon size={20} />,
             tone: 'orange',
             onSelect: pick(onApprovals),
@@ -126,35 +143,59 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
           },
           {
             label: t.sidebar.cars,
-            hint: t.sidebar.carsHint,
             icon: <GarageIcon size={20} />,
             tone: 'green',
             onSelect: pick(onCompanyCars),
           },
           {
             label: t.sidebar.people,
-            hint: t.sidebar.peopleHint,
             icon: <PeopleIcon size={20} />,
             tone: 'rose',
             onSelect: pick(onPeople),
           },
           {
             label: t.rideLog.title,
-            hint: t.rideLog.hint,
             icon: <TableIcon size={20} />,
             tone: 'slate',
             onSelect: pick(onRideLog),
           },
           {
             label: t.adminLog.title,
-            hint: t.adminLog.hint,
             icon: <AdminLogIcon size={20} />,
             tone: 'violet',
             onSelect: pick(onAdminLog),
           },
-        ] satisfies Item[])
-      : []),
-  ]
+      ]
+    : []
+
+  const renderItem = (it: Item) => (
+    <button key={it.label} type="button" className="drawer-item" onClick={it.onSelect}>
+      <span className={`drawer-item-icon drawer-tone-${it.tone}`}>{it.icon}</span>
+      <span className="drawer-item-label">
+        {it.label}
+        {!!it.count && <span className="drawer-count" aria-label={t.approvals.count(it.count)}>{it.count}</span>}
+      </span>
+    </button>
+  )
+
+  const group = (key: GroupKey, title: string, body: ReactNode, count = 0, className = '') => (
+    <section className={`drawer-group ${className}`} aria-label={title}>
+      <button
+        type="button"
+        className="drawer-group-head"
+        aria-expanded={open[key]}
+        aria-controls={`drawer-group-${key}`}
+        onClick={() => toggle(key)}
+      >
+        <span>{title}</span>
+        {!open[key] && count > 0 && <span className="drawer-count" aria-label={t.approvals.count(count)}>{count}</span>}
+        <ChevronDownIcon size={16} className="drawer-group-chevron" />
+      </button>
+      <div id={`drawer-group-${key}`} className={open[key] ? 'drawer-group-body' : 'drawer-group-body drawer-group-shut'} inert={!open[key]}>
+        <div className="drawer-group-clip">{body}</div>
+      </div>
+    </section>
+  )
 
   return (
     <div
@@ -184,29 +225,26 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
           <Avatar name={userName || '?'} size="lg" />
           <span className="drawer-me-text">
             <span className="drawer-me-name">{userName}</span>
-            <span className="drawer-me-hint">{t.sidebar.signedInAs(`@${handle}`)}</span>
+            <span className="drawer-me-hint">@{handle}</span>
           </span>
+          <ChevronRightIcon size={18} className="drawer-me-chevron" />
         </button>
 
         <nav className="drawer-nav" aria-label={t.common.menu}>
-          {items.map((it) => (
-            <button key={it.label} type="button" className="drawer-item" disabled={it.disabled} onClick={it.onSelect}>
-              <span className={`drawer-item-icon drawer-tone-${it.tone}`}>{it.icon}</span>
-              <span className="drawer-item-text">
-                <span className="drawer-item-label">
-                  {it.label}
-                  {!!it.count && <span className="drawer-count" aria-label={t.approvals.count(it.count)}>{it.count}</span>}
-                </span>
-                {it.hint && <span className="drawer-item-hint">{it.hint}</span>}
-              </span>
-            </button>
-          ))}
+          {group('me', t.sidebar.mine, mine.map(renderItem))}
+          {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
         </nav>
 
-        <div className="drawer-foot">
-          <ThemeSwitch />
-          <LanguageSwitch />
-        </div>
+        {group(
+          'settings',
+          t.sidebar.settings,
+          <div className="drawer-settings">
+            <ThemeSwitch />
+            <LanguageSwitch />
+          </div>,
+          0,
+          'drawer-foot',
+        )}
       </div>
     </div>
   )
