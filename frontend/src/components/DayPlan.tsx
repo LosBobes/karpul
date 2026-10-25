@@ -1,12 +1,13 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
 import { addDays, firstName, fmtDayDate, fmtDayLabel, fmtHour, fmtTime, parseISODate, shortCarName, toISODate, todayISO } from '../lib/dates'
 import {
   captionRoom,
-  dayAxis,
+  DAY_AXIS,
   fromMinutes,
   planRows,
   rowStatus,
   slotTimes,
+  toMinutes,
   type Axis,
   type Bar,
   type Gap,
@@ -91,17 +92,33 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   const isToday = date === today
   const now = useNowMinutes(isToday)
   const [ghost, setGhost] = useState<{ row: string; min: number } | null>(null)
-  const axis = dayAxis(rides)
+  const axis = DAY_AXIS
   // Today the time already gone is not offered: booking starts at the next half hour.
   const { pool, own } = planRows(rides, cars, axis, isToday ? Math.ceil(now / 30) * 30 : 0)
   const hours: number[] = []
   for (let h = axis.from; h <= axis.to; h += 60) hours.push(h)
-  // A long day names every other hour so the numbers fit a phone.
-  const labelEvery = hours.length > 14 ? 2 : 1
   const step = (n: number) => onDate(toISODate(addDays(parseISODate(date), n)))
   const showNow = isToday && now >= axis.from && now <= axis.to
-  const nearNow = (h: number) => showNow && Math.abs(h - now) < (axis.to - axis.from) / 20
+  const nearNow = (h: number) => showNow && Math.abs(h - now) < 25
   const style = { '--plan-hours': (axis.to - axis.from) / 60 } as CSSProperties
+  const empty = pool.length === 0 && own.length === 0
+
+  // The whole day does not fit a phone, so the board scrolls sideways. A day
+  // opens on the hour that matters: now today, else the first ride, else 07:00.
+  const scroller = useRef<HTMLDivElement>(null)
+  const placed = useRef('')
+  const firstDeparture = rides.length ? Math.min(...rides.map((r) => toMinutes(r.departure_time))) : 7 * 60
+  const focus = isToday ? now : firstDeparture
+  useLayoutEffect(() => {
+    const el = scroller.current
+    const scale = el?.querySelector<HTMLElement>('.plan-hours')
+    // Only when the day or the board itself changes, never under the reader's finger.
+    const key = `${date}|${loading}|${empty}`
+    if (!el || !scale || placed.current === key) return
+    placed.current = key
+    // The hour before the focus lands at the left edge, just inside the board's padding.
+    el.scrollLeft = ((Math.max(focus - 60, DAY_AXIS.from) - DAY_AXIS.from) / (DAY_AXIS.to - DAY_AXIS.from)) * scale.offsetWidth
+  }, [date, loading, empty, focus])
 
   const book = (row: PlanRow, gap: Gap, e: MouseEvent<HTMLButtonElement>) => {
     if (!row.car) return
@@ -249,38 +266,42 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
 
       {loading ? (
         <div className="card plan-board skeleton plan-skeleton" aria-busy="true" />
-      ) : pool.length === 0 && own.length === 0 ? (
+      ) : empty ? (
         <div className="card empty-card empty-card-short">
           <strong>{isPast ? t.empty.noRidesWent : t.empty.noRidesDay}</strong>
         </div>
       ) : (
         <div className="card plan-board" style={style}>
-          {/* The clock face: the hours across the top, and now as an ink rule
-              down through every road. Both sit on the same inset as the roads. */}
-          <div className="plan-scale" aria-hidden="true">
-            <div className="plan-hours">
-              {hours.map((h, i) =>
-                i % labelEvery === 0 && !nearNow(h) ? (
-                  <span key={h} style={{ left: at(h, axis) }}>
-                    {fmtHour(h / 60)}
-                  </span>
-                ) : null,
-              )}
-              {showNow && (
-                <span className="plan-now-time" style={{ left: at(now, axis) }}>
-                  {fmtTime(fromMinutes(now))}
-                </span>
+          <div className="plan-scroll" ref={scroller}>
+            <div className="plan-track">
+              {/* The clock face: the hours across the top, and now as an ink rule
+                  down through every road. Both sit on the same inset as the roads. */}
+              <div className="plan-scale" aria-hidden="true">
+                <div className="plan-hours">
+                  {hours.map((h) =>
+                    h < axis.to && !nearNow(h) ? (
+                      <span key={h} style={{ left: at(h, axis) }}>
+                        {fmtHour(h / 60)}
+                      </span>
+                    ) : null,
+                  )}
+                  {showNow && (
+                    <span className="plan-now-time" style={{ left: at(now, axis) }}>
+                      {fmtTime(fromMinutes(now))}
+                    </span>
+                  )}
+                </div>
+                {showNow && <span className="plan-now" style={{ left: at(now, axis) }} />}
+              </div>
+              {pool.length > 0 && <div className="plan-group">{pool.map(road)}</div>}
+              {own.length > 0 && (
+                <div className="plan-group">
+                  <h3 className="plan-group-title">{t.plan.ownCars}</h3>
+                  {own.map(road)}
+                </div>
               )}
             </div>
-            {showNow && <span className="plan-now" style={{ left: at(now, axis) }} />}
           </div>
-          {pool.length > 0 && <div className="plan-group">{pool.map(road)}</div>}
-          {own.length > 0 && (
-            <div className="plan-group">
-              <h3 className="plan-group-title">{t.plan.ownCars}</h3>
-              {own.map(road)}
-            </div>
-          )}
         </div>
       )}
     </section>

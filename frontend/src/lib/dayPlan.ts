@@ -13,9 +13,6 @@ export function fromMinutes(min: number): string {
 }
 
 export const DAY_END = 24 * 60
-/** The working day the axis always shows, so an empty day still reads as one. */
-const AXIS_FROM = 7 * 60
-const AXIS_TO = 19 * 60
 
 export interface Axis {
   /** Minutes since midnight at the left edge and the right edge, on the hour. */
@@ -24,22 +21,11 @@ export interface Axis {
 }
 
 /**
- * The hours the timeline spans: 07:00 to 19:00, stretched to the hour before
- * the earliest departure and the hour after the latest return. A ride with no
- * return holds its car until the end of the day (backend: services.py), so it
- * never stretches the axis on its own.
+ * The hours the timeline spans: the whole day, midnight to midnight, so a car
+ * can be booked for any time. The board scrolls sideways to the part of the
+ * day that matters (DayPlan) rather than squeezing the hours to fit.
  */
-export function dayAxis(rides: Ride[]): Axis {
-  let from = AXIS_FROM
-  let to = AXIS_TO
-  for (const r of rides) {
-    const dep = toMinutes(r.departure_time)
-    from = Math.min(from, Math.floor(dep / 60) * 60)
-    const end = r.return_time ? toMinutes(r.return_time) : dep + 60
-    to = Math.max(to, Math.ceil(end / 60) * 60)
-  }
-  return { from: Math.max(0, from), to: Math.min(DAY_END, to) }
-}
+export const DAY_AXIS: Axis = { from: 0, to: DAY_END }
 
 /** Where a ride sits on a row: from departure to return, or to the end of the day. */
 export interface Bar {
@@ -149,8 +135,9 @@ export type RowStatus =
   | { kind: 'freeBetween'; from: number; to: number }
 
 export function rowStatus(row: PlanRow, axis: Axis): RowStatus {
-  if (row.bars.length === 0) return { kind: 'freeAllDay' }
   const gap = row.gaps[0]
+  // Today the hours already gone are not free any more, so an empty car is free "from" now.
+  if (row.bars.length === 0 && (!row.car || gap?.start === axis.from)) return { kind: 'freeAllDay' }
   if (!gap) return { kind: 'booked' }
   return gap.end >= axis.to ? { kind: 'freeFrom', at: gap.start } : { kind: 'freeBetween', from: gap.start, to: gap.end }
 }

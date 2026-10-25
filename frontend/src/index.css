@@ -1716,8 +1716,26 @@ main,
 .plan-board {
   --plan-in-l: 15px;
   --plan-in-r: 8px;
+  --plan-pad: 1rem;
+  /* The whole day is 24 of these, so the board scrolls sideways on any screen. */
+  --plan-hour: 3.25rem;
+  padding: 0;
+  overflow: hidden;
+}
+/* The day slides under the finger; the car's name stays put (sticky, one
+   viewport wide, measured with container units) while its hours go by. */
+.plan-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  container-type: inline-size;
+  scrollbar-width: thin;
+}
+.plan-track {
   position: relative;
-  padding: 2rem 1rem 0.85rem;
+  box-sizing: content-box;
+  width: calc(var(--plan-hours, 24) * var(--plan-hour) + var(--plan-in-l) + var(--plan-in-r));
+  min-width: calc(100% - 2 * var(--plan-pad));
+  padding: 2rem var(--plan-pad) 0.85rem;
 }
 .plan-skeleton {
   height: 280px;
@@ -1725,7 +1743,7 @@ main,
 /* The roads and the clock share one inset, so 07:00 is the same x on both. */
 .plan-scale {
   position: absolute;
-  inset: 0.7rem calc(1rem + var(--plan-in-r)) 0.6rem calc(1rem + var(--plan-in-l));
+  inset: 0.7rem calc(var(--plan-pad) + var(--plan-in-r)) 0.6rem calc(var(--plan-pad) + var(--plan-in-l));
   pointer-events: none;
 }
 .plan-hours {
@@ -1783,6 +1801,8 @@ main,
   border-top: 1px solid var(--border);
 }
 .plan-group-title {
+  position: sticky;
+  left: var(--plan-pad);
   width: fit-content;
   margin: 0 0 0.15rem;
   font-size: 0.8rem;
@@ -1794,6 +1814,9 @@ main,
   margin-top: 0.3rem;
 }
 .plan-car-head {
+  position: sticky;
+  left: var(--plan-pad);
+  width: calc(100cqi - 2 * var(--plan-pad));
   display: flex;
   align-items: baseline;
   gap: 0.45rem;
@@ -5365,11 +5388,8 @@ body.dragging {
     grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
   }
   .split-day .plan-board {
-    padding-inline: 1.25rem;
-  }
-  .split-day .plan-scale {
-    left: calc(1.25rem + var(--plan-in-l));
-    right: calc(1.25rem + var(--plan-in-r));
+    --plan-pad: 1.25rem;
+    --plan-hour: 3.5rem;
   }
   .split-day .plan-car + .plan-car {
     margin-top: 0.55rem;

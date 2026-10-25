@@ -386,7 +386,9 @@ segmented control at the top of `main` and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.
 Day (`components/DayPlan.tsx`, the arithmetic in `lib/dayPlan.ts`, tested in `dayPlan.test.ts`) is
 one day for scheduling the company cars, drawn as one *road* per car: every active pool car (free
-ones too) and then each own car going, hours across (07:00 to 19:00, stretched to fit). A ride is a
+ones too) and then each own car going, hours across: the whole day, 00:00 to 24:00 (`DAY_AXIS`), at a
+fixed width per hour (`--plan-hour`), so the board scrolls sideways (`.plan-scroll`, the car's name
+sticky on the left) and opens on now today, else an hour before the first ride, else 07:00. A ride is a
 stretch of its road in the driver's colour (`avatarTone` in `lib/tone.ts`, the avatar's pastel and ink
 as `.tone-*`; solid green when it is yours), from the driver's avatar at departure to a dot at the
 return, the way `CarDetail` draws a route; no return runs off the right edge, as the server holds the
