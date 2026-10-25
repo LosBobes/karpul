@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayAxis, freeGaps, fromMinutes, planRows, slotTimes, toMinutes } from './dayPlan'
+import { captionRoom, dayAxis, freeGaps, fromMinutes, planRows, rowStatus, slotTimes, toMinutes } from './dayPlan'
 import type { CorporateCar, Ride } from './types'
 
 const car = (id: number, name: string, active = true): CorporateCar => ({ id, name, plate: `P-${id}`, passenger_seats: 4, active })
@@ -85,5 +85,23 @@ describe('day plan', () => {
     expect(slotTimes({ start: 540, end: 840 }, 610, axis)).toEqual({ departure: 600, ret: 840 })
     expect(slotTimes({ start: 900, end: 1140 }, null, axis)).toEqual({ departure: 900, ret: 1020 })
     expect(slotTimes({ start: 900, end: 1140 }, 1110, axis)).toEqual({ departure: 1110, ret: 1170 })
+  })
+})
+
+describe('day plan row status', () => {
+  const axis = { from: 420, to: 1140 }
+  it('says when a car is free', () => {
+    const cars = [car(1, 'Mazda 6e'), car(2, 'Octavia'), car(3, 'Caddy')]
+    const rides = [
+      ride({ corporate_car_id: 1, departure_time: '08:00', return_time: '12:00' }),
+      ride({ corporate_car_id: 2, departure_time: '07:00', return_time: null }),
+      ride({ corporate_car_id: 1, departure_time: '13:00', return_time: '19:00' }),
+    ]
+    const { pool } = planRows(rides, cars, axis)
+    expect(rowStatus(pool[0], axis)).toEqual({ kind: 'freeBetween', from: 420, to: 480 })
+    expect(rowStatus(pool[1], axis)).toEqual({ kind: 'booked' })
+    expect(rowStatus(pool[2], axis)).toEqual({ kind: 'freeAllDay' })
+    expect(captionRoom(pool[0].bars, 0, axis)).toBe(300)
+    expect(captionRoom(pool[0].bars, 1, axis)).toBe(360)
   })
 })

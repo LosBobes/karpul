@@ -137,3 +137,23 @@ export function slotTimes(gap: Gap, at: number | null, axis: Axis): { departure:
   const ret = gap.end < axis.to ? gap.end : Math.min(Math.max(17 * 60, departure + 60), 23 * 60 + 30)
   return { departure, ret: Math.max(ret, departure + MIN_GAP) }
 }
+
+/** What a company car's row says about it at a glance, next to its name. */
+export type RowStatus =
+  | { kind: 'freeAllDay' }
+  | { kind: 'booked' }
+  | { kind: 'freeFrom'; at: number }
+  | { kind: 'freeBetween'; from: number; to: number }
+
+export function rowStatus(row: PlanRow, axis: Axis): RowStatus {
+  if (row.bars.length === 0) return { kind: 'freeAllDay' }
+  const gap = row.gaps[0]
+  if (!gap) return { kind: 'booked' }
+  return gap.end >= axis.to ? { kind: 'freeFrom', at: gap.start } : { kind: 'freeBetween', from: gap.start, to: gap.end }
+}
+
+/** How much room a bar's caption may take: up to where the next bar on the row starts. */
+export function captionRoom(bars: Bar[], i: number, axis: Axis): number {
+  const next = bars[i + 1]
+  return (next ? next.start : axis.to) - bars[i].start
+}

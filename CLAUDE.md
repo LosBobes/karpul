@@ -337,12 +337,15 @@ item closes the drawer before the sheet opens, so the two body-scroll locks neve
 segmented control at the top of `main` and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.
 Day (`components/DayPlan.tsx`, the arithmetic in `lib/dayPlan.ts`, tested in `dayPlan.test.ts`) is
-one day as a timeline for scheduling the company cars: a row per active pool car (free ones too)
-and then per own car, hours across (07:00 to 19:00, stretched to fit), a bar per ride from departure
-to return (no return runs off the right edge, as the server holds the car to end of day), green when
-you are in it, a red line for now. Switching to it jumps to today; `range` is that one day. A tapped bar
+one day for scheduling the company cars, drawn as one *road* per car: every active pool car (free
+ones too) and then each own car going, hours across (07:00 to 19:00, stretched to fit). A ride is a
+stretch of its road in the driver's colour (`avatarTone` in `lib/tone.ts`, the avatar's pastel and ink
+as `.tone-*`; solid green when it is yours), from the driver's avatar at departure to a dot at the
+return, the way `CarDetail` draws a route; no return runs off the right edge, as the server holds the
+car to end of day. Now is an ink rule behind the roads (not red, which is for removal); each pool car
+says when it is next free (`rowStatus`). Switching to it jumps to today; `range` is that one day. A tapped bar
 opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
-(`.plan-free`, never in the past) opens `RideForm` with `slot`: that car, departure at the tapped
+(`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour) opens `RideForm` with `slot`: that car, departure at the tapped
 half hour, back by the next booking or 17:00. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
