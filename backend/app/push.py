@@ -83,6 +83,7 @@ TEXTS: dict[str, dict[str, Any]] = {
         "seat_freed": lambda driver: f"A seat freed up: you're in {driver}'s car",
         "message": lambda name, text: f"{name}: {text}",
         "request_answered": lambda driver: f"{driver} offers you a ride",
+        "ride_assigned": lambda name: f"{name} put you down to drive",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} to {destination}",
     },
     "sr": {
@@ -95,6 +96,7 @@ TEXTS: dict[str, dict[str, Any]] = {
         "seat_freed": lambda driver: f"Oslobodilo se mesto: u autu si, vozi {driver}",
         "message": lambda name, text: f"{name}: {text}",
         "request_answered": lambda driver: f"{driver} ti nudi prevoz",
+        "ride_assigned": lambda name: f"{name} te je upisao/la kao vozača",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} do {destination}",
     },
 }

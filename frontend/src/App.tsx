@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab } from './components/AddRideButton'
+import { AdminLog } from './components/AdminLog'
 import { AuthGate } from './components/AuthGate'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
@@ -9,7 +10,8 @@ import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
-import { ArrowRightIcon, CalendarIcon, ListIcon, MenuIcon } from './components/icons'
+import { DayPlan, type Slot } from './components/DayPlan'
+import { ArrowRightIcon, CalendarIcon, ClockIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
@@ -36,20 +38,23 @@ import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput 
 import { useBoard } from './lib/useBoard'
 import { useWide } from './lib/useWide'
 
-type FormState = { mode: 'create'; template?: Ride; request?: RideRequest } | { mode: 'edit'; ride: Ride } | null
+type FormState = { mode: 'create'; template?: Ride; request?: RideRequest; slot?: Slot } | { mode: 'edit'; ride: Ride } | null
 
 /**
  * "Upcoming" lists every session from today on; "Week" is the day board with
- * the date strip. The choice is remembered per browser.
+ * the date strip; "Day" is one day as a timeline of who has which car when
+ * (components/DayPlan.tsx). The choice is remembered per browser.
  */
-type View = 'upcoming' | 'week'
+type View = 'upcoming' | 'week' | 'day'
+const VIEWS: View[] = ['upcoming', 'week', 'day']
 const VIEW_KEY = 'karpul.view'
 /** How far ahead the upcoming list looks. The API caps a range at 92 days. */
 const UPCOMING_DAYS = 90
 
 function loadView(): View {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'week' ? 'week' : 'upcoming'
+    const v = localStorage.getItem(VIEW_KEY)
+    return v === 'week' || v === 'day' ? v : 'upcoming'
   } catch {
     return 'upcoming'
   }
@@ -80,7 +85,10 @@ function Board({ session }: { session: Session }) {
   const t = useT()
   const user = session.user
   const userName = user.display_name
-  const me = useMemo<Me>(() => ({ id: user.id, name: user.display_name }), [user.id, user.display_name])
+  const me = useMemo<Me>(
+    () => ({ id: user.id, name: user.display_name, admin: user.is_admin }),
+    [user.id, user.display_name, user.is_admin],
+  )
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -115,6 +123,8 @@ function Board({ session }: { session: Session }) {
   const [adminOpen, setAdminOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
   const [rideLogOpen, setRideLogOpen] = useState(false)
+  // What the admins did (components/AdminLog.tsx, backend app/audit.py).
+  const [adminLogOpen, setAdminLogOpen] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -154,6 +164,19 @@ function Board({ session }: { session: Session }) {
       .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
   }, [])
 
+  /** A line of the admin's log opens its ride on the day plan, where it sits among that day's cars. */
+  const openLoggedRide = (rideId: number) => {
+    setAdminLogOpen(false)
+    api
+      .ride(rideId)
+      .then((ride) => {
+        setViewState('day')
+        setSelectedDate(ride.ride_date)
+        setCarSel(ride.id)
+      })
+      .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
+  }
+
   const setSelected = useCallback((iso: string) => {
     setSelectedDate(iso)
     setCarSel(null)
@@ -162,6 +185,8 @@ function Board({ session }: { session: Session }) {
   const setView = useCallback((v: View) => {
     setViewState(v)
     setCarSel(null)
+    // The day plan is about today first; its arrows and calendar go elsewhere.
+    if (v === 'day') setSelectedDate(todayISO())
     try {
       localStorage.setItem(VIEW_KEY, v)
     } catch {
@@ -169,13 +194,14 @@ function Board({ session }: { session: Session }) {
     }
   }, [])
 
-  // What is loaded: the next UPCOMING_DAYS from today, or the Mon-Sun week
-  // around the selected day.
+  // What is loaded: the next UPCOMING_DAYS from today, the selected day for
+  // the day plan, or the Mon-Sun week around the selected day.
   const range = useMemo(() => {
     if (view === 'upcoming') {
       const today = parseISODate(todayISO())
       return { from: toISODate(today), to: toISODate(addDays(today, UPCOMING_DAYS)) }
     }
+    if (view === 'day') return { from: selected, to: selected }
     const monday = startOfWeek(parseISODate(selected))
     return { from: toISODate(monday), to: toISODate(addDays(monday, 6)) }
   }, [view, selected])
@@ -379,8 +405,9 @@ function Board({ session }: { session: Session }) {
     try {
       if (form?.mode === 'edit') {
         // The driver of a ride never changes, and the API has no field for it.
-        const { driver_name: _driver, request_id: _request, ...patch } = input
+        const { driver_name: _driver, driver_id: _driverId, request_id: _request, ...patch } = input
         void _driver
+        void _driverId
         void _request
         upsertRide(await api.updateRide(form.ride.id, patch))
         setToast({ kind: 'ok', text: t.toasts.rideUpdated })
@@ -395,7 +422,14 @@ function Board({ session }: { session: Session }) {
           const weeks = Math.floor((parseISODate(input.repeat_until).getTime() - parseISODate(input.ride_date).getTime()) / (7 * 86_400_000)) + 1
           setToast({ kind: 'ok', text: t.toasts.ridesAdded(weeks) })
         } else {
-          setToast({ kind: 'ok', text: answered ? t.toasts.requestAnswered(answered.name) : t.toasts.rideAdded })
+          setToast({
+            kind: 'ok',
+            text: answered
+              ? t.toasts.requestAnswered(answered.name)
+              : input.driver_id
+                ? t.toasts.rideAddedFor(input.driver_name)
+                : t.toasts.rideAdded,
+          })
         }
         // The request is answered now; the socket brings that too, this is just sooner.
         if (answered) upsertRequest({ ...answered, ride_id: created.id })
@@ -525,8 +559,8 @@ function Board({ session }: { session: Session }) {
   // upcoming list does not replay when you switch); the driver card slides
   // from the tile you tapped. Each is a keyed wrapper, so the slide plays
   // once, on mount.
-  const viewDir = useSlideDir(view, (v) => (v === 'week' ? 1 : 0))
-  const dayDir = useSlideDir(upcoming ? '' : selected, (iso) => (iso ? parseISODate(iso).getTime() : NaN))
+  const viewDir = useSlideDir(view, (v) => VIEWS.indexOf(v as View))
+  const dayDir = useSlideDir(view === 'week' ? selected : '', (iso) => (iso ? parseISODate(iso).getTime() : NaN))
   const tileDir = useSlideDir(selection === null ? '' : String(selection), (id) => {
     const i = dayRides.findIndex((r) => String(r.id) === id)
     return i < 0 ? NaN : i
@@ -613,15 +647,42 @@ function Board({ session }: { session: Session }) {
     </>
   )
 
+  const viewIcons: Record<View, ReactNode> = {
+    upcoming: <ListIcon size={16} />,
+    week: <CalendarIcon size={16} />,
+    day: <ClockIcon size={16} />,
+  }
   const viewSwitch = (
     <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
-      <SegThumb count={2} index={upcoming ? 0 : 1} />
-      <button type="button" role="radio" aria-checked={upcoming} className={upcoming ? 'seg seg-on' : 'seg'} onClick={() => setView('upcoming')}>
-        <ListIcon size={16} /> {t.view.upcoming}
-      </button>
-      <button type="button" role="radio" aria-checked={!upcoming} className={upcoming ? 'seg' : 'seg seg-on'} onClick={() => setView('week')}>
-        <CalendarIcon size={16} /> {t.view.week}
-      </button>
+      <SegThumb count={VIEWS.length} index={VIEWS.indexOf(view)} />
+      {VIEWS.map((v) => (
+        <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'seg seg-on' : 'seg'} onClick={() => setView(v)}>
+          {viewIcons[v]} {t.view[v]}
+        </button>
+      ))}
+    </div>
+  )
+
+  // The day plan: the timeline, and the ride a bar was tapped for under it
+  // (beside it on a wide screen).
+  const dayPlan = (
+    <DayPlan
+      date={selected}
+      rides={dayRides}
+      cars={cars}
+      loading={loading}
+      isPast={isPast}
+      selectedId={carSel !== null && dayRides.some((r) => r.id === carSel) ? carSel : null}
+      onSelect={setCarSel}
+      onDate={setSelected}
+      onBook={(slot) => setForm({ mode: 'create', slot })}
+      onEdit={(ride) => setForm({ mode: 'edit', ride })}
+    />
+  )
+  const planPicked = carSel !== null ? (dayRides.find((r) => r.id === carSel) ?? null) : null
+  const planDetail = planPicked && (
+    <div key={planPicked.id} className="stack swap-right">
+      {detailFor(planPicked, true)}
     </div>
   )
 
@@ -695,7 +756,25 @@ function Board({ session }: { session: Session }) {
             </div>
           )}
 
-          {!upcoming && (
+          {view === 'day' && (
+            <div key="day" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
+              {wide ? (
+                <div className="split split-day">
+                  <div className="split-side">{dayPlan}</div>
+                  <aside className="split-pane" aria-label={planPicked?.car_name ?? t.plan.label}>
+                    {planDetail ?? <div className="card empty-card empty-card-short plan-pick">{t.plan.pick}</div>}
+                  </aside>
+                </div>
+              ) : (
+                <>
+                  {dayPlan}
+                  {planDetail}
+                </>
+              )}
+            </div>
+          )}
+
+          {view === 'week' && (
             <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
               {wide ? (
                 <div className="split split-week">
@@ -737,6 +816,7 @@ function Board({ session }: { session: Session }) {
             onCompanyCars={openAdmin}
             onPeople={() => setPeopleOpen(true)}
             onRideLog={() => setRideLogOpen(true)}
+            onAdminLog={() => setAdminLogOpen(true)}
             onGuide={() => setGuideOpen(true)}
             onMyRides={() => setMyRidesOpen(true)}
             onNotifications={() => setNotifOpen(true)}
@@ -770,12 +850,13 @@ function Board({ session }: { session: Session }) {
         {form && (
           <RideForm
             key={form.mode === 'edit' ? form.ride.id : form.request ? `request-${form.request.id}` : 'new'}
-            date={selected}
+            date={form.mode === 'create' && form.slot ? form.slot.date : selected}
             userName={userName}
             cars={cars}
             existing={form.mode === 'edit' ? form.ride : null}
             template={form.mode === 'create' ? form.template : null}
             request={form.mode === 'create' ? form.request : null}
+            slot={form.mode === 'create' ? form.slot : null}
             submitting={submitting}
             error={formError}
             onSubmit={onSubmitForm}
@@ -812,6 +893,8 @@ function Board({ session }: { session: Session }) {
         {peopleOpen && isAdmin && <PeopleAdmin onNotice={notice} onClose={closePeople} />}
 
         {rideLogOpen && isAdmin && <RideLog onClose={() => setRideLogOpen(false)} />}
+
+        {adminLogOpen && isAdmin && <AdminLog onOpenRide={openLoggedRide} onClose={() => setAdminLogOpen(false)} />}
 
         {confirmState && (
           <ConfirmDialog

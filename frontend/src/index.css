@@ -1609,6 +1609,467 @@ main,
   gap: 0.35rem;
 }
 
+/* --- Day plan --------------------------------------------------------------
+   One day, one road per car (components/DayPlan.tsx). The road is a hairline
+   across the hours with a tick on each one; a ride is a stretch of it in the
+   driver's colour (their avatar's, green when it is you), with the driver's
+   avatar where it leaves and a dot where it is back, the way CarDetail draws a
+   route. The caption hangs under the stretch and may run on to where the next
+   one starts (--room). Now is an ink rule through every road, not red: red is
+   for removing things. A free stretch of a company car is a button; under a
+   mouse a ring rides the road to the half hour you would book. */
+.plan {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.plan-board {
+  --plan-in-l: 15px;
+  --plan-in-r: 8px;
+  position: relative;
+  padding: 2rem 1rem 0.85rem;
+}
+.plan-skeleton {
+  height: 280px;
+}
+/* The roads and the clock share one inset, so 07:00 is the same x on both. */
+.plan-scale {
+  position: absolute;
+  inset: 0.7rem calc(1rem + var(--plan-in-r)) 0.6rem calc(1rem + var(--plan-in-l));
+  pointer-events: none;
+}
+.plan-hours {
+  position: relative;
+  height: 1rem;
+}
+.plan-hours > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.plan-hours > .plan-now-time {
+  color: var(--text);
+  font-weight: 700;
+}
+.plan-now {
+  position: absolute;
+  top: 1.15rem;
+  bottom: 0;
+  border-left: 1.5px solid var(--text);
+  opacity: 0.5;
+}
+/* Now runs behind the roads and the words: the rides cover it, and every
+   line of text sits on a patch of card so the rule never strikes through it. */
+.plan-car-head,
+.plan-group-title,
+.plan-road {
+  position: relative;
+  z-index: 1;
+}
+.plan-car-name,
+.plan-plate,
+.plan-status,
+.plan-group-title,
+.plan-ride-caption {
+  background: var(--surface);
+}
+.plan-now::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -4.25px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text);
+}
+.plan-group + .plan-group {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+.plan-group-title {
+  width: fit-content;
+  margin: 0 0 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+.plan-car + .plan-car {
+  margin-top: 0.3rem;
+}
+.plan-car-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+}
+.plan-car-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.plan-car-name > span:first-child,
+.plan-plate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.plan-plate {
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.plan-status {
+  margin-left: auto;
+  flex: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.plan-status-free {
+  color: var(--green);
+  font-weight: 600;
+}
+.plan-road {
+  position: relative;
+  height: 52px;
+  margin: 0 var(--plan-in-r) 0 var(--plan-in-l);
+}
+/* The road itself, and a tick per hour standing on it. */
+.plan-road::before,
+.plan-road::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+.plan-road::before {
+  top: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border);
+}
+.plan-road::after {
+  top: 12px;
+  height: 10px;
+  background-image: linear-gradient(to right, var(--border-strong) 1.5px, transparent 1.5px);
+  background-size: calc(100% / var(--plan-hours, 12)) 100%;
+}
+.plan-free {
+  position: absolute;
+  top: 0;
+  height: 34px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+.plan-free::before {
+  content: '';
+  position: absolute;
+  inset: 16px 0 auto;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--green);
+  opacity: 0;
+  transition: opacity var(--hover);
+}
+.plan-free:hover::before,
+.plan-free:focus-visible::before {
+  opacity: 1;
+}
+.plan-pin {
+  position: absolute;
+  top: 9px;
+  z-index: 2;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border: 2.5px solid var(--green);
+  border-radius: 50%;
+  background: var(--surface);
+  pointer-events: none;
+}
+.plan-pin-label {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+/* Each person's colour is their avatar's: ink for the line, pastel to fill. */
+.tone-violet { --tone: #6d28d9; --tone-soft: #ede9fe; }
+.tone-rose { --tone: #be123c; --tone-soft: #ffe4e6; }
+.tone-amber { --tone: #b45309; --tone-soft: #fef3c7; }
+.tone-orange { --tone: #c2410c; --tone-soft: #ffedd5; }
+.tone-blue { --tone: #1d4ed8; --tone-soft: #dbeafe; }
+.tone-teal { --tone: #0f766e; --tone-soft: #ccfbf1; }
+.tone-green { --tone: var(--green); --tone-soft: var(--green-soft); }
+.tone-pink { --tone: #be185d; --tone-soft: #fce7f3; }
+.plan-ride {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  min-width: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.plan-ride-line {
+  position: absolute;
+  top: 11px;
+  left: 0;
+  right: 0;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--tone-soft);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tone) 45%, transparent);
+  transition: box-shadow var(--hover);
+}
+/* Back: the dot at the end of the stretch. */
+.plan-ride-line::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.plan-ride .avatar {
+  position: absolute;
+  top: 3px;
+  left: -14px;
+  box-shadow: 0 0 0 2.5px var(--surface);
+  transition: transform 0.15s var(--ease-smooth);
+}
+.plan-ride-caption {
+  position: absolute;
+  top: 31px;
+  left: 2px;
+  width: var(--room, 100%);
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.plan-ride-caption strong {
+  font-weight: 600;
+  color: var(--text);
+}
+.plan-road-empty {
+  height: 34px;
+}
+/* Yours is the one stretch drawn solid, so it reads before anyone else's. */
+.plan-ride-mine .plan-ride-line {
+  background: var(--green);
+  box-shadow: none;
+}
+.plan-ride-mine .plan-ride-line::after {
+  background: var(--surface);
+}
+.plan-ride-open .plan-ride-line {
+  border-radius: 6px 0 0 6px;
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
+}
+.plan-ride-open .plan-ride-line::after {
+  display: none;
+}
+.plan-ride-on .plan-ride-line,
+.plan-ride-mine.plan-ride-on .plan-ride-line {
+  box-shadow: inset 0 0 0 2px var(--tone), 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent);
+}
+.plan-ride-on .avatar {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--tone);
+}
+.plan-ride-on .plan-ride-caption strong {
+  color: var(--tone);
+}
+.plan-ride:active .avatar {
+  transform: scale(0.9);
+}
+.plan-ride:focus-visible {
+  outline: none;
+}
+.plan-ride:focus-visible .plan-ride-line {
+  box-shadow: inset 0 0 0 2px var(--tone), 0 0 0 3px var(--surface), 0 0 0 5px var(--green);
+}
+/* Picked, a ride you run grows a pencil at its end: edit it from the plan. */
+.plan-edit {
+  position: absolute;
+  top: 3px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -6px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-pop);
+  animation: pop-in 0.22s var(--ease-spring);
+}
+.plan-edit-edge {
+  margin-left: -28px;
+}
+.plan-edit:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+.plan-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.plan-pick {
+  color: var(--muted);
+}
+@media (hover: hover) and (pointer: fine) {
+  .plan-ride:hover .avatar {
+    transform: translateY(-1px) scale(1.06);
+  }
+  .plan-ride:hover .plan-ride-line {
+    box-shadow: inset 0 0 0 1.5px var(--tone);
+  }
+}
+/* No hover under a finger: the bookable stretches show faintly, dashed. */
+@media (pointer: coarse) {
+  .plan-free::before {
+    height: 0;
+    border-top: 2px dashed var(--green-line);
+    background: none;
+    opacity: 1;
+  }
+}
+
+/* --- Admin log -------------------------------------------------------------
+   What the admins did (components/AdminLog.tsx): a heading per day, then one
+   line each, the admin's avatar on the left like a message, the sentence, the
+   ride it was about, and the changes as before → after with the old value
+   struck through. A line about a ride that still exists opens it. */
+.log-day + .log-day {
+  margin-top: 1rem;
+}
+.log-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.55rem 0;
+}
+.log-item + .log-item {
+  border-top: 1px solid var(--border);
+}
+.log-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'what when';
+  column-gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.log-body-link {
+  margin: -0.3rem -0.4rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--hover);
+}
+.log-body-link:hover {
+  background: var(--surface-2);
+}
+.log-when {
+  grid-area: when;
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.log-what {
+  grid-area: what;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.log-line {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.log-ride {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.log-body-link .log-ride {
+  color: var(--green);
+}
+.log-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+.log-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.log-change > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-change svg {
+  flex: none;
+  color: var(--muted);
+}
+.log-field {
+  color: var(--muted);
+}
+.log-change s {
+  color: var(--muted);
+}
+
 /* --- Upcoming sessions ---------------------------------------------------- */
 /* One heading per day, one row per ride: the time on the left, the way as
    the headline, who drives what underneath, and one word on the right for
@@ -2576,6 +3037,48 @@ body.dragging {
   margin-left: auto;
   flex: none;
   font-size: 0.8rem;
+  color: var(--muted);
+}
+/* An admin's driver line is the same line, made pressable: it lists the
+   people (components/DriverPicker.tsx) to book a ride in someone's name. */
+.form-driver-pick {
+  width: 100%;
+  color: var(--text);
+  text-align: left;
+  transition: border-color var(--hover), background var(--hover);
+}
+.form-driver-pick .form-driver-role {
+  margin-left: auto;
+}
+.form-driver-pick .control-chevron {
+  flex: none;
+  color: var(--muted);
+}
+.form-driver-pick:hover,
+.form-driver-pick[aria-expanded='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+.people-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem;
+}
+.people-pick-list {
+  padding: 0;
+}
+.people-pick-option {
+  justify-content: flex-start;
+}
+.people-pick-option .option-text {
+  flex: 1;
+  min-width: 0;
+}
+.people-pick-note {
+  margin: 0;
+  padding: 0.7rem;
+  font-size: 0.86rem;
   color: var(--muted);
 }
 /* Labels wrap differently in different languages, so the pairs in this form
@@ -4465,6 +4968,13 @@ body.dragging {
   background: #4a1b38;
   color: #f9a8d4;
 }
+:root[data-resolved='dark'] .tone-violet { --tone: #c4b5fd; --tone-soft: #2e2352; }
+:root[data-resolved='dark'] .tone-rose { --tone: #fda4af; --tone-soft: #4a1d27; }
+:root[data-resolved='dark'] .tone-amber { --tone: #fcd34d; --tone-soft: #45300b; }
+:root[data-resolved='dark'] .tone-orange { --tone: #fdba74; --tone-soft: #47270f; }
+:root[data-resolved='dark'] .tone-blue { --tone: #93c5fd; --tone-soft: #1e2d5c; }
+:root[data-resolved='dark'] .tone-teal { --tone: #5eead4; --tone-soft: #113b36; }
+:root[data-resolved='dark'] .tone-pink { --tone: #f9a8d4; --tone-soft: #4a1b38; }
 :root[data-resolved='dark'] .driver-car-art {
   background: linear-gradient(180deg, var(--surface-2) 0%, var(--green-soft) 100%);
 }
@@ -4602,7 +5112,7 @@ body.dragging {
     position: absolute;
     left: 50%;
     top: calc(50% + env(safe-area-inset-top) / 2);
-    width: 300px;
+    width: 400px;
     transform: translate(-50%, -50%);
   }
   .topbar-center .seg {
@@ -4614,6 +5124,20 @@ body.dragging {
     grid-template-columns: minmax(400px, 480px) minmax(0, 1fr);
     gap: 2rem;
     align-items: start;
+  }
+  /* The day plan wants the width: the timeline on the left, the ride beside. */
+  .split-day {
+    grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+  }
+  .split-day .plan-board {
+    padding-inline: 1.25rem;
+  }
+  .split-day .plan-scale {
+    left: calc(1.25rem + var(--plan-in-l));
+    right: calc(1.25rem + var(--plan-in-r));
+  }
+  .split-day .plan-car + .plan-car {
+    margin-top: 0.55rem;
   }
   .split-side {
     display: flex;

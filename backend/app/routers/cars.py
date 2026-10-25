@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlmodel import Session, col, func, select
 
+from .. import audit
 from ..admin import require_admin
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..events import cars_changed
 from ..models import CarType, CorporateCar, Ride
 from ..schemas import CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
-from ..services import corporate_usage, relabel_rides_for_car
+from ..services import corporate_car_label, corporate_usage, relabel_rides_for_car
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
 
@@ -117,10 +118,11 @@ def corporate_car_usage_csv(session: SessionDep, creds: CredsDep, days: int = Qu
 
 @router.post("/corporate", response_model=CorporateCarRead, status_code=status.HTTP_201_CREATED)
 def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep, creds: CredsDep):
-    require_admin(session, creds)
+    admin = require_admin(session, creds)
     _ensure_plate_free(session, payload.plate)
     car = CorporateCar(**payload.model_dump())
     session.add(car)
+    audit.record(session, admin, "car_added", corporate_car_label(car))
     session.commit()
     session.refresh(car)
     cars_changed()
@@ -129,9 +131,11 @@ def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep, 
 
 @router.patch("/corporate/{car_id}", response_model=CorporateCarRead)
 def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: WriteSessionDep, creds: CredsDep):
-    require_admin(session, creds)
+    admin = require_admin(session, creds)
     car = _get_car_or_404(session, car_id)
     data = payload.model_dump(exclude_unset=True)
+    label = corporate_car_label(car)
+    changes = audit.diff(car, data)
     if "plate" in data:
         _ensure_plate_free(session, data["plate"], exclude_id=car.id)
     if "passenger_seats" in data:
@@ -145,6 +149,8 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Writ
     # car never disagree.
     if "name" in data or "plate" in data:
         relabel_rides_for_car(session, car)
+    if changes:
+        audit.record(session, admin, "car_edited", label, changes=changes)
     session.commit()
     session.refresh(car)
     # One coarse event rather than one per relabelled ride: the client reloads
@@ -161,7 +167,7 @@ def delete_corporate_car(car_id: int, session: WriteSessionDep, creds: CredsDep)
     orphan ride history. Retiring it (`active=false`) is the way to take a sold
     car out of circulation.
     """
-    require_admin(session, creds)
+    admin = require_admin(session, creds)
     car = _get_car_or_404(session, car_id)
     used = session.exec(
         select(func.count()).select_from(Ride).where(Ride.corporate_car_id == car.id)
@@ -171,6 +177,7 @@ def delete_corporate_car(car_id: int, session: WriteSessionDep, creds: CredsDep)
             status.HTTP_409_CONFLICT,
             f"{car.name} is used by {used} ride(s); retire it instead of deleting it",
         )
+    audit.record(session, admin, "car_removed", corporate_car_label(car))
     session.delete(car)
     session.commit()
     cars_changed()

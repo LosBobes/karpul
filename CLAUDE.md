@@ -100,7 +100,26 @@ the whole board in `GET /api/rides`, next to the thread's message counts), and `
 for everyone but the driver. Email is optional too; the production `appuser.email` started out
 NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
 
-**Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
+**Admins run every ride.** `_may_run` in `routers/rides.py` lets the driver *or an admin* edit and
+remove a ride (and its following weeks) and manage its seats; the frontend twin is `runs()` in
+`lib/me.ts` (`Me.admin`), which `CarDetail` uses for the ⋮ menu and the seat controls. An admin can
+also add a ride in someone else's name: `RideCreate.driver_id` (create only; anyone else naming
+another account is a 403, an unknown one a 404), chosen in `RideForm` through `DriverPicker`
+(the form's driver line made pressable, listing `/api/admin/users`); that account then drives and
+owns the ride and is pushed `ride_assigned`. An admin's edit or removal of someone's ride is pushed to
+its driver too, and the passengers' `ride_changed` / `ride_removed` name whoever did it.
+**The admin's log** (`app/audit.py`, table `AdminAction`, `GET /api/admin/log?before&limit`, admins
+only): `audit.record` is called before the commit of every admin action, so the line and the change
+land together: a ride added in someone's name, someone's ride edited (`audit.diff`, each field before
+and after in words) or removed, a seat added or taken out in someone's car (`_on_behalf`: an admin
+acting on a ride they do not drive; their own rides are never logged), and every pool-car and account
+change in `routers/cars.py` / `routers/admin.py`. Lines are snapshots in words, no foreign keys, so they
+outlive the ride, car or person. On screen: *Admin log* in the drawer (`AdminLog`), a heading per day,
+the changes as chips with the old value struck through; a line about a ride that still exists opens it
+on the day plan. A new action needs its sentence in `adminLog.line` (both languages) and a new field
+its label in `adminLog.fields`. Tests: `tests/test_admin_rides.py`.
+
+**Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
 **Waiting list, thread, requests.** A full car has a queue (`WaitlistEntry`, `POST/DELETE
 /api/rides/{id}/waitlist`): only for yourself, refused while seats are free. When a seat frees
@@ -175,7 +194,8 @@ the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak
     drop below the number of existing bookings (409).
   - For corporate rides the server overwrites `car_name` with `"<Name> (<PLATE>)"`; a client-supplied
     value is ignored.
-  - `driver_name` is absent from `RideUpdate` — the driver of a ride can never change. `App.tsx`
+  - `driver_name` is absent from `RideUpdate` — the driver of a ride can never change (an admin
+    picks it once, at creation, with `driver_id`). `App.tsx`
     strips it from the edit payload for that reason.
   - `GET /api/rides` takes `date` or `from`/`to`; with no params it returns the current Mon–Sun week,
     and a range longer than 92 days is rejected.
@@ -327,7 +347,7 @@ Wording rule for both languages: no em dashes.
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: your account (the identity block and *Your account* both open
 `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
-*Notifications* (`NotificationsSheet`, the push switch), *Company cars* (`CarAdmin`, with a
+*Notifications* (`NotificationsSheet`, the push switch), *Admin log* (admins only, `AdminLog`), *Company cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Company car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
@@ -335,7 +355,19 @@ line-icon style with the green accent on the one thing the step is about; also r
 the driver card of any company-car ride). Picking an
 item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. Below the bar, two views are switched by the
 segmented control at the top of `main` and
-remembered in `localStorage` (`karpul.view`): *Upcoming* (the default) and *Week*. Upcoming is
+remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.
+Day (`components/DayPlan.tsx`, the arithmetic in `lib/dayPlan.ts`, tested in `dayPlan.test.ts`) is
+one day for scheduling the company cars, drawn as one *road* per car: every active pool car (free
+ones too) and then each own car going, hours across (07:00 to 19:00, stretched to fit). A ride is a
+stretch of its road in the driver's colour (`avatarTone` in `lib/tone.ts`, the avatar's pastel and ink
+as `.tone-*`; solid green when it is yours), from the driver's avatar at departure to a dot at the
+return, the way `CarDetail` draws a route; no return runs off the right edge, as the server holds the
+car to end of day. Now is an ink rule behind the roads (not red, which is for removal); each pool car
+says when it is next free (`rowStatus`). Switching to it jumps to today; `range` is that one day. A tapped bar
+opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
+(`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour) opens `RideForm` with `slot`: that car, departure at the tapped
+half hour, back by the next booking or 17:00. A picked ride that you run (`runs()`, so any ride for an
+admin) grows a pencil at its end (`.plan-edit`), and a double click on it opens the edit form too. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
 unfolds `CarDetail` beneath it with `draggable={false}`, because there is no `YouPanel` tray and

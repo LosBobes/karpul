@@ -80,7 +80,27 @@ const en = {
     } as Record<LiveStatus, string>,
   },
 
-  view: { label: 'View', upcoming: 'Upcoming', week: 'Week' },
+  view: { label: 'View', upcoming: 'Upcoming', week: 'Week', day: 'Day' },
+
+  plan: {
+    label: 'Day plan',
+    prevDay: 'Previous day',
+    nextDay: 'Next day',
+    ownCars: 'Own cars on the road',
+    freeAllDay: 'Free all day',
+    booked: 'Taken all day',
+    freeFrom: (time: string) => `Free from ${time}`,
+    freeBetween: (from: string, to: string) => `Free ${from}–${to}`,
+    from: (time: string) => `from ${time}`,
+    you: 'You',
+    pin: (time: string) => `Take it at ${time}`,
+    edit: (driver: string) => `Edit the ride of ${driver}`,
+    barLabel: (driver: string, when: string, origin: string, destination: string, pax: number) =>
+      `${driver}, ${when}, ${origin} to ${destination}, ${enPlural(pax, 'passenger', 'passengers')}`,
+    book: (car: string, from: string, to: string) => `Book ${car}, free ${from} to ${to}`,
+    hint: "Tap an empty part of a company car's road to book it from that time. Pick a ride you run and its pencil edits it.",
+    pick: 'Tap a ride on the plan to open it here.',
+  },
 
   fab: { addRide: 'Add ride' },
 
@@ -311,6 +331,11 @@ const en = {
     saveChanges: 'Save changes',
     deleteRide: 'Delete ride',
     driver: 'Driver',
+    drivenBy: 'Drives it',
+    pickDriver: (name: string) => `Driver: ${name}. Choose someone else`,
+    pickDriverTitle: 'Who drives',
+    searchPeople: 'Search people',
+    noPeople: 'Nobody by that name.',
     /** The two depths of the form: the short one and the one with everything. */
     detailLevel: 'Level of detail',
     simple: 'Simple',
@@ -433,6 +458,70 @@ const en = {
       'Their coming rides are cancelled (the passengers are told), their seats go to whoever is waiting, and their requests are withdrawn. Past rides keep their name. This cannot be undone.',
   },
 
+  /** The admin's log: components/AdminLog.tsx, backend app/audit.py. */
+  adminLog: {
+    title: 'Admin log',
+    hint: 'What the admins changed, newest first',
+    intro: "Every change an admin made to someone else's ride, to the company cars and to the people. Only admins can see this.",
+    empty: 'Nothing yet. Changes an admin makes show up here.',
+    older: 'Show older',
+    openRide: 'Open the ride',
+    yes: 'yes',
+    no: 'no',
+    none: 'nothing',
+    line: (action: string, admin: string, subject: string): string => {
+      switch (action) {
+        case 'ride_added':
+          return `${admin} added a ride for ${subject}`
+        case 'ride_edited':
+          return `${admin} edited a ride of ${subject}`
+        case 'ride_removed':
+          return `${admin} removed a ride of ${subject}`
+        case 'seat_added':
+          return `${admin} put someone in the car of ${subject}`
+        case 'seat_removed':
+          return `${admin} took someone out of the car of ${subject}`
+        case 'car_added':
+          return `${admin} added the company car ${subject}`
+        case 'car_edited':
+          return `${admin} changed the company car ${subject}`
+        case 'car_removed':
+          return `${admin} deleted the company car ${subject}`
+        case 'admin_granted':
+          return `${admin} made ${subject} an admin`
+        case 'admin_revoked':
+          return `${admin} took the admin role from ${subject}`
+        case 'reset_link':
+          return `${admin} made a password reset link for ${subject}`
+        case 'account_deleted':
+          return `${admin} deleted the account of ${subject}`
+        default:
+          return `${admin}: ${action} ${subject}`
+      }
+    },
+    fields: {
+      ride_date: 'Day',
+      departure_time: 'Leaves',
+      return_time: 'Back',
+      origin: 'From',
+      destination: 'To',
+      stops: 'Stops',
+      seats: 'Seats',
+      car_type: 'Car',
+      car_name: 'Car',
+      notes: 'Note',
+      passengers_manage: 'Passengers manage seats',
+      distance_km: 'Distance (km)',
+      chip_in: 'Chip in',
+      passenger: 'Passenger',
+      weeks: 'Weeks',
+      name: 'Name',
+      plate: 'Plate',
+      passenger_seats: 'Passenger seats',
+      active: 'In the pool',
+    } as Record<string, string>,
+  },
+
   /** The admin's table of every ride: components/RideLog.tsx. */
   rideLog: {
     title: 'All rides',
@@ -535,6 +624,7 @@ const en = {
     rideRemoved: 'Ride removed.',
     rideUpdated: 'Ride updated.',
     rideAdded: 'Ride added.',
+    rideAddedFor: (name: string) => `Ride added for ${name}.`,
     ridesAdded: (n: number) => `${n} rides added, one a week.`,
     ridesRemoved: 'Rides removed.',
     linkCopied: 'Link copied.',
@@ -572,7 +662,7 @@ const en = {
     noRidesWent: 'No rides went on this day',
     pastReadOnly: 'Past days are read-only.',
     usePlus: 'Add one with the + button at the bottom right.',
-    viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles.',
+    viewsIntro: 'Upcoming lists every ride for the next 90 days. Week shows one day at a time, with the cars as tiles. Day lays the cars out on a timeline.',
     firstRide: 'The form remembers your route and car, and the destination starts as "Office".',
   },
 
@@ -688,8 +778,9 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Booking not found$/, () => 'Rezervacija nije pronađena'],
   [/^Corporate car not found$/, () => 'Službeni auto nije pronađen'],
   [/^No free seats left$/, () => 'Nema više slobodnih mesta'],
-  [/^Only the driver can cancel this ride$/, () => 'Samo vozač može da ukloni ovu vožnju'],
-  [/^Only the driver can edit this ride$/, () => 'Samo vozač može da izmeni ovu vožnju'],
+  [/^Only the driver or an admin can cancel this ride$/, () => 'Samo vozač ili administrator može da ukloni ovu vožnju'],
+  [/^Only the driver or an admin can edit this ride$/, () => 'Samo vozač ili administrator može da izmeni ovu vožnju'],
+  [/^Only an admin can add a ride for someone else$/, () => 'Samo administrator može da doda vožnju za nekog drugog'],
   [/^Only the passenger, the driver or another passenger/, () => 'Ovu rezervaciju može da ukloni samo taj putnik, vozač ili drugi putnik iz ovog auta'],
   [/^Only the passenger or the driver can remove this booking$/, () => 'Ovu rezervaciju može da ukloni samo taj putnik ili vozač'],
   [/^Only the driver or a passenger in this car can add someone$/, () => 'Nekoga može da doda samo vozač ili putnik iz ovog auta'],
@@ -883,7 +974,26 @@ const sr: Messages = {
     },
   },
 
-  view: { label: 'Prikaz', upcoming: 'Predstojeće', week: 'Sedmica' },
+  view: { label: 'Prikaz', upcoming: 'Predstojeće', week: 'Sedmica', day: 'Dan' },
+
+  plan: {
+    label: 'Plan dana',
+    prevDay: 'Prethodni dan',
+    nextDay: 'Sledeći dan',
+    ownCars: 'Sopstveni automobili na putu',
+    freeAllDay: 'Slobodan ceo dan',
+    booked: 'Zauzet ceo dan',
+    freeFrom: (time) => `Slobodan od ${time}`,
+    freeBetween: (from, to) => `Slobodan ${from}–${to}`,
+    from: (time) => `od ${time}`,
+    you: 'Ti',
+    pin: (time) => `Uzmi ga u ${time}`,
+    edit: (driver) => `Izmeni vožnju (vozi ${driver})`,
+    barLabel: (driver, when, origin, destination, pax) => `${driver}, ${when}, ${origin} do ${destination}, ${srPassengers(pax)}`,
+    book: (car, from, to) => `Rezerviši ${car}, slobodno od ${from} do ${to}`,
+    hint: 'Dodirni prazan deo puta službenog auta da ga rezervišeš od tog vremena. Izaberi vožnju koju vodiš i olovka je menja.',
+    pick: 'Dodirni vožnju na planu da je otvoriš ovde.',
+  },
 
   fab: { addRide: 'Dodaj vožnju' },
 
@@ -1111,6 +1221,11 @@ const sr: Messages = {
     saveChanges: 'Sačuvaj izmene',
     deleteRide: 'Obriši vožnju',
     driver: 'Vozač',
+    drivenBy: 'Vozi',
+    pickDriver: (name) => `Vozač: ${name}. Izaberi nekog drugog`,
+    pickDriverTitle: 'Ko vozi',
+    searchPeople: 'Pretraži ljude',
+    noPeople: 'Niko se tako ne zove.',
     detailLevel: 'Nivo detalja',
     simple: 'Osnovno',
     advanced: 'Napredno',
@@ -1207,6 +1322,69 @@ const sr: Messages = {
     retired: 'Povučen',
     pax: (n, seats) => `${n} od ${seats}`,
     download: 'Preuzmi kao tabelu',
+  },
+
+  adminLog: {
+    title: 'Dnevnik administratora',
+    hint: 'Šta su administratori menjali, najnovije prvo',
+    intro: 'Svaka izmena koju je administrator napravio na tuđoj vožnji, službenim automobilima i nalozima. Ovo vide samo administratori.',
+    empty: 'Još ništa. Izmene administratora pojavljuju se ovde.',
+    older: 'Prikaži starije',
+    openRide: 'Otvori vožnju',
+    yes: 'da',
+    no: 'ne',
+    none: 'ništa',
+    line: (action, admin, subject) => {
+      switch (action) {
+        case 'ride_added':
+          return `${admin} je dodao/la vožnju, vozi ${subject}`
+        case 'ride_edited':
+          return `${admin} je izmenio/la vožnju, vozi ${subject}`
+        case 'ride_removed':
+          return `${admin} je uklonio/la vožnju, vozio/la je ${subject}`
+        case 'seat_added':
+          return `${admin} je dodao/la putnika, vozi ${subject}`
+        case 'seat_removed':
+          return `${admin} je uklonio/la putnika, vozi ${subject}`
+        case 'car_added':
+          return `${admin} je dodao/la službeni auto ${subject}`
+        case 'car_edited':
+          return `${admin} je izmenio/la službeni auto ${subject}`
+        case 'car_removed':
+          return `${admin} je obrisao/la službeni auto ${subject}`
+        case 'admin_granted':
+          return `${admin} je dodelio/la administratorska prava: ${subject}`
+        case 'admin_revoked':
+          return `${admin} je oduzeo/la administratorska prava: ${subject}`
+        case 'reset_link':
+          return `${admin} je napravio/la link za novu lozinku: ${subject}`
+        case 'account_deleted':
+          return `${admin} je obrisao/la nalog: ${subject}`
+        default:
+          return `${admin}: ${action} ${subject}`
+      }
+    },
+    fields: {
+      ride_date: 'Dan',
+      departure_time: 'Polazak',
+      return_time: 'Povratak',
+      origin: 'Od',
+      destination: 'Do',
+      stops: 'Usputne stanice',
+      seats: 'Mesta',
+      car_type: 'Auto',
+      car_name: 'Auto',
+      notes: 'Napomena',
+      passengers_manage: 'Putnici uređuju mesta',
+      distance_km: 'Udaljenost (km)',
+      chip_in: 'Doprinos',
+      passenger: 'Putnik',
+      weeks: 'Sedmica',
+      name: 'Naziv',
+      plate: 'Tablice',
+      passenger_seats: 'Mesta za putnike',
+      active: 'U voznom parku',
+    },
   },
 
   rideLog: {
@@ -1330,6 +1508,7 @@ const sr: Messages = {
     rideRemoved: 'Vožnja je uklonjena.',
     rideUpdated: 'Vožnja je izmenjena.',
     rideAdded: 'Vožnja je dodata.',
+    rideAddedFor: (name) => `Vožnja je dodata, vozi ${name}.`,
     ridesAdded: (n) => `Dodato: ${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično.`,
     ridesRemoved: 'Vožnje su uklonjene.',
     linkCopied: 'Link je kopiran.',
@@ -1366,7 +1545,7 @@ const sr: Messages = {
     noRidesWent: 'Tog dana nije bilo vožnji',
     pastReadOnly: 'Prošli dani se ne mogu menjati.',
     usePlus: 'Dodaj je dugmetom + u donjem desnom uglu.',
-    viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama.',
+    viewsIntro: 'Predstojeće prikazuje sve vožnje u narednih 90 dana. Sedmica prikazuje jedan po jedan dan, sa autima kao pločicama. Dan raspoređuje aute na vremenskoj liniji.',
     firstRide: 'Obrazac pamti tvoju rutu i auto, a odredište na početku glasi „Kancelarija“.',
   },
 

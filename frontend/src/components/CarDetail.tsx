@@ -3,7 +3,7 @@ import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carMo
 import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
-import { drives, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, useMe } from '../lib/me'
+import { drives, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
@@ -116,6 +116,8 @@ export function CarDetail({
   const me = useMe()
   const coarse = useCoarsePointer()
   const isDriver = drives(ride, me)
+  // The driver runs the ride; so may an admin, who schedules the cars (backend: _may_run).
+  const runsIt = runs(ride, me)
   const model = carModel(ride.car_name)
   const brand = model ? null : carBrand(ride.car_name)
   const powertrain = carPowertrain(ride.car_name)
@@ -123,9 +125,9 @@ export function CarDetail({
   const full = ride.free_seats <= 0
   const canJoin = !isDriver && !myBooking && !full && !busy && !isPast
   const receives = dragActive && canJoin
-  // Who may put other people in and take them out: the driver always, the
-  // passengers while the driver has switched it on (backend: _may_manage_seats).
-  const canManage = !isPast && (isDriver || (ride.passengers_manage && !!myBooking))
+  // Who may put other people in and take them out: the driver (or an admin)
+  // always, the passengers while the driver has switched it on (backend: _may_manage_seats).
+  const canManage = !isPast && (runsIt || (ride.passengers_manage && !!myBooking))
   const canAddOther = canManage && !full && !busy
   // A full car has a queue: the first seat that frees up goes to the first in line.
   const myEntry = myWaitlistEntry(ride, me)
@@ -162,7 +164,7 @@ export function CarDetail({
       onSelect: () => onDownloadCalendar(ride),
     },
   ]
-  const menuItems = isDriver
+  const menuItems = runsIt
     ? [
         { label: t.detail.editRide, icon: <PencilIcon size={18} />, onSelect: () => onEdit(ride), disabled: busy },
         {

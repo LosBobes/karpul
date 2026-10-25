@@ -1,7 +1,8 @@
 """Request / response schemas."""
 
+import json
 import re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -238,6 +239,31 @@ class AdminUserRead(BaseModel):
     created_at: datetime
 
 
+class AdminActionRead(BaseModel):
+    """A line of the admin's log (app/audit.py)."""
+
+    id: int
+    at: datetime
+    admin_id: int | None
+    admin_name: str
+    action: str
+    subject: str
+    ride_id: int | None
+    ride_date: date | None
+    ride_label: str
+    # [[field, before, after], ...], each value already in words.
+    changes: list[list[str]]
+
+    @classmethod
+    def from_row(cls, row) -> "AdminActionRead":
+        data = row.model_dump()
+        data["changes"] = json.loads(row.changes or "[]")
+        # SQLite hands the time back without its zone; it was written in UTC.
+        if data["at"].tzinfo is None:
+            data["at"] = data["at"].replace(tzinfo=timezone.utc)
+        return cls(**data)
+
+
 class AdminUserUpdate(BaseModel):
     is_admin: bool
 
@@ -433,6 +459,10 @@ class RideCreate(RideBase):
     # A ride offered in answer to someone's request (RideRequest): the
     # requester is put in the car. Not stored on the ride.
     request_id: int | None = None
+    # Who drives, when an admin adds a ride for someone else. Left out (or
+    # the caller's own id) the caller drives. Not stored as given: the ride's
+    # driver_id/driver_name are set from the account.
+    driver_id: int | None = None
 
     @model_validator(mode="after")
     def check_repeat(self) -> "RideCreate":

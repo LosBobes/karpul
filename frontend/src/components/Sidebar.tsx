@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AccountIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { AccountIcon, AdminLogIcon, BellDotIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -18,6 +18,7 @@ interface Props {
   onCompanyCars: () => void
   onPeople: () => void
   onRideLog: () => void
+  onAdminLog: () => void
   onGuide: () => void
   onMyRides: () => void
   onNotifications: () => void
@@ -42,7 +43,7 @@ interface Item {
  * language. Adding a ride is not here; that is the floating plus. Picking an item closes the drawer first, so the sheet
  * it opens is the only thing left on screen.
  */
-export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onGuide, onMyRides, onNotifications, onClose }: Props) {
+export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onGuide, onMyRides, onNotifications, onClose }: Props) {
   const t = useT()
   const panel = useRef<HTMLDivElement>(null)
   // The drawer slides back out before it unmounts, whichever way it is closed.
@@ -130,6 +131,13 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
             icon: <TableIcon size={20} />,
             tone: 'slate',
             onSelect: pick(onRideLog),
+          },
+          {
+            label: t.adminLog.title,
+            hint: t.adminLog.hint,
+            icon: <AdminLogIcon size={20} />,
+            tone: 'violet',
+            onSelect: pick(onAdminLog),
           },
         ] satisfies Item[])
       : []),

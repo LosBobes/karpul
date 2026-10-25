@@ -1,0 +1,277 @@
+import { useEffect, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
+import { addDays, firstName, fmtDayDate, fmtDayLabel, fmtHour, fmtTime, parseISODate, shortCarName, toISODate, todayISO } from '../lib/dates'
+import {
+  captionRoom,
+  dayAxis,
+  fromMinutes,
+  planRows,
+  rowStatus,
+  slotTimes,
+  type Axis,
+  type Bar,
+  type Gap,
+  type PlanRow,
+} from '../lib/dayPlan'
+import { useT } from '../lib/i18n'
+import { drives, runs, seatedIn, useMe } from '../lib/me'
+import type { CorporateCar, Ride } from '../lib/types'
+import { avatarTone } from '../lib/tone'
+import { Avatar } from './Avatar'
+import { PowertrainMark } from './CarArt'
+import { DatePicker } from './DatePicker'
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon } from './icons'
+
+/** A free stretch of a company car, tapped: the ride form opens on it. */
+export interface Slot {
+  date: string
+  carId: number
+  departure: string
+  ret: string
+}
+
+interface Props {
+  date: string
+  /** The rides that day, in the API's order. */
+  rides: Ride[]
+  /** The active pool; every car gets a road, booked or not. */
+  cars: CorporateCar[]
+  loading: boolean
+  isPast: boolean
+  /** The ride whose card shows beside or under the plan. */
+  selectedId: number | null
+  onSelect: (rideId: number) => void
+  onDate: (iso: string) => void
+  onBook: (slot: Slot) => void
+  /** Open the ride form on a ride you run (yours, or anyone's for an admin). */
+  onEdit: (ride: Ride) => void
+}
+
+/** The minute on the clock, re-read every half minute so the "now" mark moves. */
+function useNowMinutes(on: boolean): number {
+  const read = () => {
+    const d = new Date()
+    return d.getHours() * 60 + d.getMinutes()
+  }
+  const [now, setNow] = useState(read)
+  useEffect(() => {
+    if (!on) return
+    const id = setInterval(() => setNow(read()), 30_000)
+    return () => clearInterval(id)
+  }, [on])
+  return now
+}
+
+const at = (min: number, axis: Axis) => `${((min - axis.from) / (axis.to - axis.from)) * 100}%`
+const len = (minutes: number, axis: Axis) => `${(minutes / (axis.to - axis.from)) * 100}%`
+
+/** The minute under the pointer within a free stretch's button. */
+function minuteAt(gap: Gap, e: { clientX: number; currentTarget: Element }): number {
+  const box = e.currentTarget.getBoundingClientRect()
+  return gap.start + ((e.clientX - box.left) / box.width) * (gap.end - gap.start)
+}
+
+/**
+ * One day, one road per car. Each company car in the pool is a thin road
+ * across the hours, free ones included (a free car is what someone scheduling
+ * is looking for), and then each own car going that day. A ride is a stretch
+ * of its car's road in the driver's own colour (the colour of their avatar,
+ * green when it is you), starting at the driver's avatar where they leave and
+ * ending in a dot where they are back, the way a ride's route is drawn on its
+ * card. A ride with no return holds the car to the end of the day, so its
+ * stretch runs off the edge. A free stretch of a company car books it: under
+ * a mouse a pin follows the pointer to say from when, a tap opens the ride
+ * form there with the car and the times filled in. A ride you run (yours, or
+ * any ride for an admin) is edited from the plan too: picked, it grows a
+ * pencil at its end, and a double click goes straight to the form.
+ */
+export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSelect, onDate, onBook, onEdit }: Props) {
+  const t = useT()
+  const me = useMe()
+  const today = todayISO()
+  const isToday = date === today
+  const now = useNowMinutes(isToday)
+  const [ghost, setGhost] = useState<{ row: string; min: number } | null>(null)
+  const axis = dayAxis(rides)
+  // Today the time already gone is not offered: booking starts at the next half hour.
+  const { pool, own } = planRows(rides, cars, axis, isToday ? Math.ceil(now / 30) * 30 : 0)
+  const hours: number[] = []
+  for (let h = axis.from; h <= axis.to; h += 60) hours.push(h)
+  // A long day names every other hour so the numbers fit a phone.
+  const labelEvery = hours.length > 14 ? 2 : 1
+  const step = (n: number) => onDate(toISODate(addDays(parseISODate(date), n)))
+  const showNow = isToday && now >= axis.from && now <= axis.to
+  const nearNow = (h: number) => showNow && Math.abs(h - now) < (axis.to - axis.from) / 20
+  const style = { '--plan-hours': (axis.to - axis.from) / 60 } as CSSProperties
+
+  const book = (row: PlanRow, gap: Gap, e: MouseEvent<HTMLButtonElement>) => {
+    if (!row.car) return
+    // A keyboard press has no point on the road: it books from the start of the stretch.
+    const { departure, ret } = slotTimes(gap, e.detail > 0 ? minuteAt(gap, e) : null, axis)
+    setGhost(null)
+    onBook({ date, carId: row.car.id, departure: fromMinutes(departure), ret: fromMinutes(ret) })
+  }
+  const hover = (row: PlanRow, gap: Gap, e: PointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType !== 'mouse') return
+    setGhost({ row: row.key, min: slotTimes(gap, minuteAt(gap, e), axis).departure })
+  }
+
+  const status = (row: PlanRow): string | null => {
+    if (!row.car) return row.bars[0] ? firstName(row.bars[0].ride.driver_name) : null
+    if (isPast) return null
+    const s = rowStatus(row, axis)
+    switch (s.kind) {
+      case 'freeAllDay':
+        return t.plan.freeAllDay
+      case 'booked':
+        return t.plan.booked
+      case 'freeFrom':
+        return t.plan.freeFrom(fmtTime(fromMinutes(s.at)))
+      case 'freeBetween':
+        return t.plan.freeBetween(fmtTime(fromMinutes(s.from)), fmtTime(fromMinutes(s.to)))
+    }
+  }
+
+  const stretch = (row: PlanRow, b: Bar, i: number) => {
+    const r = b.ride
+    const driving = drives(r, me)
+    const mine = driving || seatedIn(r, me)
+    const end = Math.min(b.end, axis.to)
+    const when = b.open ? t.plan.from(fmtTime(r.departure_time)) : `${fmtTime(r.departure_time)}–${fmtTime(r.return_time)}`
+    // The caption may run past a short stretch, up to where the next one starts.
+    const room = captionRoom(row.bars, i, axis) / Math.max(end - b.start, 1)
+    const editable = !isPast && runs(r, me)
+    const picked = r.id === selectedId
+    const cls = ['plan-ride', `tone-${mine ? 'green' : avatarTone(r.driver_name)}`, mine && 'plan-ride-mine', b.open && 'plan-ride-open', r.id === selectedId && 'plan-ride-on']
+      .filter(Boolean)
+      .join(' ')
+    return [
+      <button
+        key={r.id}
+        type="button"
+        className={cls}
+        style={{ left: at(b.start, axis), width: len(end - b.start, axis), '--room': `${room * 100}%` } as CSSProperties}
+        aria-label={t.plan.barLabel(r.driver_name, when, r.origin, r.destination, r.bookings.length)}
+        aria-pressed={r.id === selectedId}
+        onClick={() => onSelect(r.id)}
+        onDoubleClick={editable ? () => onEdit(r) : undefined}
+      >
+        <span className="plan-ride-line" />
+        <Avatar name={r.driver_name} size="sm" />
+        <span className="plan-ride-caption">
+          <strong>{driving ? t.plan.you : firstName(r.driver_name)}</strong> {when}
+        </span>
+      </button>,
+      editable && picked && (
+        <button
+          key={`edit-${r.id}`}
+          type="button"
+          className={b.open || end >= axis.to ? 'plan-edit plan-edit-edge' : 'plan-edit'}
+          style={{ left: at(end, axis) }}
+          aria-label={t.plan.edit(r.driver_name)}
+          title={t.plan.edit(r.driver_name)}
+          onClick={() => onEdit(r)}
+        >
+          <PencilIcon size={14} />
+        </button>
+      ),
+    ]
+  }
+
+  const road = (row: PlanRow) => {
+    const pin = ghost?.row === row.key ? ghost.min : null
+    const free = row.car !== null && row.bars.length === 0 && !isPast
+    return (
+      <div key={row.key} className="plan-car">
+        <div className="plan-car-head">
+          <span className="plan-car-name">
+            <span>{shortCarName(row.label)}</span>
+            <PowertrainMark carName={row.label} />
+          </span>
+          {row.car && <span className="plan-plate">{row.car.plate}</span>}
+          <span className={free ? 'plan-status plan-status-free' : 'plan-status'}>{status(row)}</span>
+        </div>
+        <div className={row.bars.length ? 'plan-road' : 'plan-road plan-road-empty'}>
+          {!isPast &&
+            row.gaps.map((g) => (
+              <button
+                key={`gap-${g.start}`}
+                type="button"
+                className="plan-free"
+                style={{ left: at(g.start, axis), width: len(g.end - g.start, axis) }}
+                aria-label={t.plan.book(shortCarName(row.label), fmtTime(fromMinutes(g.start)), fmtTime(fromMinutes(g.end)))}
+                onClick={(e) => book(row, g, e)}
+                onPointerMove={(e) => hover(row, g, e)}
+                onPointerLeave={() => setGhost(null)}
+              />
+            ))}
+          {row.bars.map((b, i) => stretch(row, b, i))}
+          {pin !== null && (
+            <span className="plan-pin" style={{ left: at(pin, axis) }} aria-hidden="true">
+              <span className="plan-pin-label">{t.plan.pin(fmtTime(fromMinutes(pin)))}</span>
+            </span>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <section className="plan" aria-label={t.plan.label}>
+      <div className="dates-head">
+        <DatePicker variant="title" label={t.dates.jumpToDate} value={date} onChange={onDate} linkText={`${fmtDayLabel(date)}, ${fmtDayDate(date)}`} />
+        <div className="week-nav" role="group" aria-label={t.plan.label}>
+          {!isToday && (
+            <button type="button" className="today-chip" onClick={() => onDate(today)}>
+              {t.common.today}
+            </button>
+          )}
+          <button type="button" className="week-btn" aria-label={t.plan.prevDay} onClick={() => step(-1)}>
+            <ChevronLeftIcon size={18} />
+          </button>
+          <button type="button" className="week-btn" aria-label={t.plan.nextDay} onClick={() => step(1)}>
+            <ChevronRightIcon size={18} />
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="card plan-board skeleton plan-skeleton" aria-busy="true" />
+      ) : pool.length === 0 && own.length === 0 ? (
+        <div className="card empty-card empty-card-short">
+          <strong>{isPast ? t.empty.noRidesWent : t.empty.noRidesDay}</strong>
+          {!isPast && <span>{t.empty.usePlus}</span>}
+        </div>
+      ) : (
+        <div className="card plan-board" style={style}>
+          {/* The clock face: the hours across the top, and now as an ink rule
+              down through every road. Both sit on the same inset as the roads. */}
+          <div className="plan-scale" aria-hidden="true">
+            <div className="plan-hours">
+              {hours.map((h, i) =>
+                i % labelEvery === 0 && !nearNow(h) ? (
+                  <span key={h} style={{ left: at(h, axis) }}>
+                    {fmtHour(h / 60)}
+                  </span>
+                ) : null,
+              )}
+              {showNow && (
+                <span className="plan-now-time" style={{ left: at(now, axis) }}>
+                  {fmtTime(fromMinutes(now))}
+                </span>
+              )}
+            </div>
+            {showNow && <span className="plan-now" style={{ left: at(now, axis) }} />}
+          </div>
+          {pool.length > 0 && <div className="plan-group">{pool.map(road)}</div>}
+          {own.length > 0 && (
+            <div className="plan-group">
+              <h3 className="plan-group-title">{t.plan.ownCars}</h3>
+              {own.map(road)}
+            </div>
+          )}
+        </div>
+      )}
+      {!loading && !isPast && pool.length > 0 && <p className="plan-hint">{t.plan.hint}</p>}
+    </section>
+  )
+}
