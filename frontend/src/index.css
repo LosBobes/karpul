@@ -970,6 +970,57 @@ main,
   flex: 1;
   min-height: 40px;
 }
+/* The admin's queue (components/Approvals.tsx): one card per ask, the ride
+   on top (a tap opens it on the day plan), the two answers under it. */
+.approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.approval-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.8rem 0.9rem;
+}
+.approval-ride {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: -0.3rem;
+  padding: 0.3rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--hover);
+}
+.approval-ride:hover {
+  background: var(--surface-2);
+}
+.approval-what {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.approval-when {
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.approval-car,
+.approval-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
 /* Under the share's refusal in the ride form: the way to ask instead. */
 .form-ask {
   display: flex;
@@ -1969,7 +2020,18 @@ main,
 .plan-ride-mine .plan-ride-line::after {
   background: var(--surface);
 }
-/* Waiting for an admin: the stretch is hollow, the road showing through. */
+/* Waiting for an admin: the stretch is hollow, the road showing through, and
+   it sits under the free stretch's button: it holds no slot, so a tap there
+   books the car (the caption below still opens the ride). */
+.plan-ride-pending {
+  z-index: 0;
+}
+.plan-road .plan-free {
+  z-index: 1;
+}
+.plan-road .plan-ride:not(.plan-ride-pending) {
+  z-index: 2;
+}
 .plan-ride-pending .plan-ride-line {
   background: var(--surface);
   box-shadow: inset 0 0 0 1.5px var(--tone);
@@ -3622,6 +3684,36 @@ body.dragging {
   text-align: left;
   transition: background var(--hover);
 }
+/* Something waiting on you behind an item (the approvals): an amber count. */
+.drawer-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 0.45rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 1px;
+}
+/* The same, folded into a dot on the ☰ while the drawer is shut. */
+.topbar-menu {
+  position: relative;
+}
+.topbar-dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 2px var(--bg);
+}
 .drawer-item:hover:not(:disabled) {
   background: var(--surface-2);
 }
@@ -3667,6 +3759,10 @@ body.dragging {
   background: #fde4ec;
   color: #be185d;
 }
+.drawer-tone-orange {
+  background: #ffedd5;
+  color: #c2410c;
+}
 .drawer-tone-slate {
   background: #e6ebf1;
   color: #334155;
@@ -3690,6 +3786,10 @@ body.dragging {
 :root[data-resolved='dark'] .drawer-tone-rose {
   background: #4a1830;
   color: #f9a8d4;
+}
+:root[data-resolved='dark'] .drawer-tone-orange {
+  background: #47270f;
+  color: #fdba74;
 }
 :root[data-resolved='dark'] .drawer-tone-slate {
   background: #263241;

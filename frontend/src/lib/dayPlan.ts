@@ -77,11 +77,14 @@ export interface PlanRow {
 /** A free stretch shorter than this is not offered for booking. */
 export const MIN_GAP = 30
 
-/** The free stretches of `axis` between `bars` (sorted by start), none before `notBefore`. */
+/** The free stretches of `axis` between `bars` (sorted by start), none before `notBefore`.
+ * A ride waiting for an admin's approval holds no slot (backend: ensure_car_available), so
+ * it does not cut a stretch: the car can still be booked over it. */
 export function freeGaps(bars: Bar[], axis: Axis, notBefore = 0): Gap[] {
   const gaps: Gap[] = []
   let at = Math.max(axis.from, notBefore)
   for (const b of bars) {
+    if (b.ride.approval === 'pending') continue
     if (Math.min(b.start, axis.to) - at >= MIN_GAP) gaps.push({ start: at, end: Math.min(b.start, axis.to) })
     at = Math.max(at, b.end)
   }

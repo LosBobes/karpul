@@ -416,11 +416,17 @@ def _remove_rides(session: Session, user: User, doomed: list[Ride], action: str 
 
 @router.post("/{ride_id}/approve", response_model=RideRead)
 def approve_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
-    """Admin-only: let a shared-car ride past the driver's share through."""
+    """Admin-only: let a shared-car ride past the driver's share through.
+    A pending ride holds no slot, so someone may have taken the car since it
+    was asked for: the car must still be free then, or it is the usual 409."""
     admin = require_admin(session, creds)
     ride = _get_ride_or_404(session, ride_id)
     if ride.approval != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, "This ride is not waiting for approval")
+    if ride.corporate_car_id is not None:
+        ensure_car_available(
+            session, ride.corporate_car_id, ride.ride_date, ride.departure_time, ride.return_time, exclude_ride_id=ride.id
+        )
     ride.approval = "approved"
     session.add(ride)
     audit.record(session, admin, "ride_approved", ride.driver_name, ride=ride)

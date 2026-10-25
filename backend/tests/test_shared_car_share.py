@@ -142,3 +142,37 @@ def test_moving_a_ride_is_held_to_the_share_too(client, cars):
     own = client.patch(f"/api/rides/{first['id']}", json={"car_type": "own", "car_name": "Blue Golf", "corporate_car_id": None}, headers=ana)
     assert own.status_code == 200, own.text
     assert own.json()["approval"] == ""
+
+
+def test_a_pending_ride_holds_no_slot_until_approved(client, cars, admin_auth):
+    car = cars[0]["id"]
+    # Ana's first shared car this week, then a second one asked for: pending.
+    client.post("/api/rides", json=shared(cars[1]["id"]))
+    pending = client.post("/api/rides", json=shared(car, MONDAY + timedelta(days=2), request_approval=True)).json()
+    assert pending["approval"] == "pending"
+
+    # The car is still free in that window for anyone within their share.
+    taken = client.post("/api/rides", json=shared(car, MONDAY + timedelta(days=2), driver_name="Mila Ilić"))
+    assert taken.status_code == 201, taken.text
+
+    # So approving now would double-book it: refused, and it stays pending.
+    res = client.post(f"/api/rides/{pending['id']}/approve", headers=admin_auth)
+    assert res.status_code == 409
+    assert "already booked by Mila Ilić" in res.json()["detail"]
+    assert client.get(f"/api/rides/{pending['id']}").json()["approval"] == "pending"
+
+    # Once Mila's ride goes, the approval goes through.
+    client.delete(f"/api/rides/{taken.json()['id']}", headers={"X-User-Name": "Mila Ilić"})
+    assert client.post(f"/api/rides/{pending['id']}/approve", headers=admin_auth).status_code == 200
+
+
+def test_the_admins_list_of_rides_waiting_for_approval(client, cars, admin_auth):
+    client.post("/api/rides", json=shared(cars[0]["id"]))
+    later = client.post("/api/rides", json=shared(cars[1]["id"], MONDAY + timedelta(days=4), request_approval=True)).json()
+    sooner = client.post("/api/rides", json=shared(cars[2]["id"], MONDAY + timedelta(days=1), request_approval=True)).json()
+    listed = client.get("/api/admin/approvals", headers=admin_auth)
+    assert listed.status_code == 200
+    assert [r["id"] for r in listed.json()] == [sooner["id"], later["id"]]
+    client.post(f"/api/rides/{sooner['id']}/approve", headers=admin_auth)
+    assert [r["id"] for r in client.get("/api/admin/approvals", headers=admin_auth).json()] == [later["id"]]
+    assert client.get("/api/admin/approvals", headers={"X-User-Name": "Ana Petrović"}).status_code == 403

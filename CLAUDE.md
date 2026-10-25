@@ -126,15 +126,21 @@ text wins). `_approval_for` in `routers/rides.py` applies it on create (per occu
 and when an edit moves an unapproved ride to another day or car type: within the share the ride's
 `approval` is `""`; past it a plain user gets the 409, or with `RideCreate.request_approval` the ride
 is added as `"pending"` and every admin (`admin.admin_ids`) is pushed `approval_requested`; an admin
-adding it (for anyone) gets `"approved"` outright, and own cars are never rationed. `POST
-/api/rides/{id}/approve` (admin, 409 unless pending) sets `"approved"` and pushes `ride_approved`;
+adding it (for anyone) gets `"approved"` outright, and own cars are never rationed. **A pending ride
+holds no slot**: `ensure_car_available` skips it, so the car stays bookable over it (and two asks may
+overlap), and `POST /api/rides/{id}/approve` (admin, 409 unless pending) re-runs that check before it
+sets `"approved"` and pushes `ride_approved`, so an approval that would double-book is the usual 409;
 `/decline` removes the ride through `_remove_rides` with `ride_declined` to the driver and
 `ride_removed` to the passengers; both are in the admin's log. On screen: the share's refusal in
 `RideForm` grows an *Ask an admin to approve it* button (`canAskApproval`, matched on the text's
 tail in `App.tsx`), a pending ride wears an amber *Awaiting approval* tag on the card, the Upcoming
-row and as a hollow stretch on the day plan (`.plan-ride-pending`), admins get an *Approve* /
-*Decline* row on the card (`.approval-row`) and an *Awaiting approval* chip among the Upcoming
-filters. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
+row and as a hollow stretch on the day plan (`.plan-ride-pending`, drawn *under* `.plan-free`, and
+`freeGaps` ignores it, so the stretch beneath stays bookable). The admins' own place is *Approvals*
+in the drawer (`components/Approvals.tsx`, `GET /api/admin/approvals`: pending rides from today on,
+soonest first), with an amber count on the item and a dot on the ☰ (`waiting` in `App.tsx`, asked
+again whenever the board's rides change or a decision is made); each ask is decided there, and a tap
+on it opens the ride on the day plan. The card keeps its *Approve* / *Decline* row (`.approval-row`)
+too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
 
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
@@ -364,7 +370,7 @@ Wording rule for both languages: no em dashes.
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: your account (the identity block and *Your account* both open
 `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
-*Notifications* (`NotificationsSheet`, the push switch), *Admin log* (admins only, `AdminLog`), *Shared cars* (`CarAdmin`, with a
+*Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the

@@ -470,6 +470,16 @@ const en = {
       'Their coming rides are cancelled (the passengers are told), their seats go to whoever is waiting, and their requests are withdrawn. Past rides keep their name. This cannot be undone.',
   },
 
+  /** The shared-car rides waiting for an admin: components/Approvals.tsx. */
+  approvals: {
+    title: 'Approvals',
+    hint: 'Shared cars past someone\'s one a week',
+    intro: 'Each ride here is someone\'s extra shared car, past their one a week. It holds no slot while it waits: approving checks the car is still free.',
+    empty: 'Nothing waiting. New asks show up here, and you get a notification.',
+    count: (n: number) => `${n} waiting`,
+    open: 'Open the ride',
+  },
+
   /** The admin's log: components/AdminLog.tsx, backend app/audit.py. */
   adminLog: {
     title: 'Admin log',
@@ -598,7 +608,6 @@ const en = {
     free: 'Free seats',
     mine: 'My rides',
     joined: "I'm in",
-    pending: 'Awaiting approval',
     search: 'Search by place or driver',
     noMatch: 'No rides match.',
     clear: 'Clear filters',
@@ -1356,6 +1365,15 @@ const sr: Messages = {
     download: 'Preuzmi kao tabelu',
   },
 
+  approvals: {
+    title: 'Odobrenja',
+    hint: 'Zajednički auti preko nečijeg jednog nedeljno',
+    intro: 'Svaka vožnja ovde je nečiji dodatni zajednički auto, preko jednog nedeljno. Dok čeka, ne zauzima termin: odobrenje proverava da li je auto još slobodan.',
+    empty: 'Ništa ne čeka. Novi zahtevi stižu ovde, uz obaveštenje.',
+    count: (n) => `${n} na čekanju`,
+    open: 'Otvori vožnju',
+  },
+
   adminLog: {
     title: 'Dnevnik administratora',
     hint: 'Šta su administratori menjali, najnovije prvo',
@@ -1503,7 +1521,6 @@ const sr: Messages = {
     free: 'Slobodna mesta',
     mine: 'Moje vožnje',
     joined: 'Imam mesto',
-    pending: 'Čeka odobrenje',
     search: 'Traži po mestu ili vozaču',
     noMatch: 'Nijedna vožnja ne odgovara.',
     clear: 'Poništi filtere',

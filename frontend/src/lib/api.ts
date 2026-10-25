@@ -252,6 +252,7 @@ export const api = {
   downloadCarUsage: (days: number) => download(`/api/cars/corporate/usage.csv?days=${days}`, 'karpul-company-cars.csv'),
 
   users: () => request<AdminUser[]>('/api/admin/users'),
+  approvals: () => request<Ride[]>('/api/admin/approvals'),
   adminLog: (before?: number) => request<AdminAction[]>(`/api/admin/log${before ? `?before=${before}` : ''}`),
 
   setAdmin: (userId: number, isAdmin: boolean) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', { is_admin: isAdmin })),

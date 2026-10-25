@@ -349,7 +349,9 @@ def ensure_car_available(
         Ride.car_type == CarType.corporate,
     )
     for other in session.exec(stmt):
-        if other.id == exclude_ride_id:
+        # A ride waiting for an admin holds nothing yet: the slot is free until
+        # it is approved, and approving checks it again (routers/rides.approve_ride).
+        if other.id == exclude_ride_id or other.approval == "pending":
             continue
         if _overlaps(departure, return_time, other.departure_time, other.return_time):
             raise HTTPException(
