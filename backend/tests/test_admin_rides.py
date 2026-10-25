@@ -109,3 +109,75 @@ def test_a_driver_editing_their_own_ride_is_not_told_about_it(client, sent):
     made = client.post("/api/rides", json=ride(driver_name="Ana Petrović")).json()
     client.patch(f"/api/rides/{made['id']}", json={"departure_time": "08:00"}, headers={"X-User-Name": "Ana Petrović"})
     assert sent == []
+
+
+# --- the admin's log -----------------------------------------------------------
+
+
+def log(client, admin_auth):
+    res = client.get("/api/admin/log", headers=admin_auth)
+    assert res.status_code == 200, res.text
+    return res.json()
+
+
+def test_the_log_records_what_an_admin_did_to_someone_elses_ride(client, admin_auth):
+    marko = user_id(client, "Marko Jovanović")
+    made = client.post("/api/rides", json=ride(driver_id=marko), headers=admin_auth).json()
+    url = f"/api/rides/{made['id']}"
+    client.patch(url, json={"departure_time": "08:15", "notes": "Card is in the glovebox"}, headers=admin_auth)
+    seat = client.post(f"{url}/bookings", json={"passenger_name": "Mila Ilić"}, headers=admin_auth).json()["bookings"][0]
+    client.delete(f"{url}/bookings/{seat['id']}", headers=admin_auth)
+    client.delete(url, headers=admin_auth)
+
+    lines = log(client, admin_auth)
+    assert [line["action"] for line in lines] == ["ride_removed", "seat_removed", "seat_added", "ride_edited", "ride_added"]
+    assert all(line["admin_name"] == "Ada Admin" and line["subject"] == "Marko Jovanović" for line in lines)
+    edited = lines[3]
+    assert edited["ride_id"] == made["id"]
+    assert edited["ride_date"] == TOMORROW
+    assert edited["ride_label"] == "08:15 Novi Sad → HQ"
+    assert edited["changes"] == [["departure_time", "07:30", "08:15"], ["notes", "", "Card is in the glovebox"]]
+    assert lines[2]["changes"] == [["passenger", "", "Mila Ilić"]]
+    assert lines[1]["changes"] == [["passenger", "Mila Ilić", ""]]
+    assert lines[0]["at"].endswith(("Z", "+00:00"))
+
+
+def test_an_admins_own_rides_and_plain_users_leave_no_line(client, admin_auth):
+    mine = client.post("/api/rides", json=ride(), headers=admin_auth).json()
+    client.patch(f"/api/rides/{mine['id']}", json={"notes": "mine"}, headers=admin_auth)
+    other = client.post("/api/rides", json=ride(driver_name="Ana Petrović")).json()
+    client.patch(f"/api/rides/{other['id']}", json={"notes": "hers"}, headers={"X-User-Name": "Ana Petrović"})
+    # Nothing changed, nothing to say either.
+    client.patch(f"/api/rides/{other['id']}", json={"notes": "hers"}, headers=admin_auth)
+    assert log(client, admin_auth) == []
+
+
+def test_the_pool_and_the_people_are_logged_too(client, admin_auth):
+    car = client.post("/api/cars/corporate", json={"name": "Octavia", "plate": "NS-002", "passenger_seats": 4}, headers=admin_auth).json()
+    client.patch(f"/api/cars/corporate/{car['id']}", json={"passenger_seats": 3}, headers=admin_auth)
+    client.delete(f"/api/cars/corporate/{car['id']}", headers=admin_auth)
+    marko = user_id(client, "Marko Jovanović")
+    client.patch(f"/api/admin/users/{marko}", json={"is_admin": True}, headers=admin_auth)
+    client.patch(f"/api/admin/users/{marko}", json={"is_admin": False}, headers=admin_auth)
+    client.post(f"/api/admin/users/{marko}/reset-link", headers=admin_auth)
+    client.delete(f"/api/admin/users/{marko}", headers=admin_auth)
+
+    lines = log(client, admin_auth)
+    assert [(line["action"], line["subject"]) for line in lines] == [
+        ("account_deleted", "Marko Jovanović"),
+        ("reset_link", "Marko Jovanović"),
+        ("admin_revoked", "Marko Jovanović"),
+        ("admin_granted", "Marko Jovanović"),
+        ("car_removed", "Octavia (NS-002)"),
+        ("car_edited", "Octavia (NS-002)"),
+        ("car_added", "Octavia (NS-002)"),
+    ]
+    assert lines[5]["changes"] == [["passenger_seats", "4", "3"]]
+
+
+def test_only_admins_read_the_log(client, admin_auth):
+    client.post("/api/rides", json=ride(driver_id=user_id(client, "Marko Jovanović")), headers=admin_auth)
+    assert client.get("/api/admin/log", headers={"X-User-Name": "Marko Jovanović"}).status_code == 403
+    assert client.anon.get("/api/admin/log").status_code == 401
+    first = log(client, admin_auth)
+    assert client.get(f"/api/admin/log?before={first[0]['id']}", headers=admin_auth).json() == []

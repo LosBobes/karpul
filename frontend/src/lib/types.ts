@@ -104,6 +104,23 @@ export interface RideRequestInput {
   note: string
 }
 
+/** A line of the admin's log (GET /api/admin/log, backend: app/audit.py). */
+export interface AdminAction {
+  id: number
+  at: string
+  admin_id: number | null
+  admin_name: string
+  action: string
+  /** Whose ride, which car or which account it was about. */
+  subject: string
+  ride_id: number | null
+  ride_date: string | null
+  /** "07:30 Novi Sad → HQ" */
+  ride_label: string
+  /** [field, before, after], each value in words ("" for nothing). */
+  changes: [string, string, string][]
+}
+
 /** An account in the admin's People list (GET /api/admin/users). */
 export interface AdminUser {
   id: number

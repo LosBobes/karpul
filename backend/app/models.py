@@ -234,3 +234,29 @@ class RideRequest(SQLModel, table=True):
     # The ride that answered it; None while it is open.
     ride_id: int | None = Field(default=None, foreign_key="ride.id")
     created_at: datetime = Field(default_factory=utcnow)
+
+
+class AdminAction(SQLModel, table=True):
+    """One thing an admin did that was not theirs to do as a plain user: a
+    ride added in someone's name, someone's ride edited or removed, a seat
+    managed in someone's car, a pool car or an account changed. The admin's
+    log (GET /api/admin/log, admins only) reads it, newest first.
+
+    Everything is a snapshot in words, not a foreign key, so the line still
+    reads right after the ride, the car or either person is gone.
+    """
+
+    id: int | None = Field(default=None, primary_key=True)
+    at: datetime = Field(default_factory=utcnow, index=True)
+    admin_id: int | None = None
+    admin_name: str
+    # What happened, one of audit.ACTIONS.
+    action: str
+    # Whose ride, which car or which account it was about.
+    subject: str = ""
+    ride_id: int | None = None
+    ride_date: date | None = None
+    # "07:30 Novi Sad → HQ": which of that day's rides it was.
+    ride_label: str = ""
+    # JSON: [[field, before, after], ...], each value already in words.
+    changes: str = "[]"

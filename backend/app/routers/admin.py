@@ -14,11 +14,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, delete, select
 
+from .. import audit
 from ..admin import admin_by_config, configured_admins, is_admin, require_admin
 from ..auth import CredsDep, issue_reset
 from ..database import get_session, get_write_session
 from ..events import disconnect, request_deleted, request_saved, ride_deleted, ride_saved
 from ..models import (
+    AdminAction,
     Booking,
     PasswordReset,
     PushSubscription,
@@ -29,7 +31,7 @@ from ..models import (
     WaitlistEntry,
 )
 from ..push import notify
-from ..schemas import AdminUserRead, AdminUserUpdate, ResetLinkOut, RideRead
+from ..schemas import AdminActionRead, AdminUserRead, AdminUserUpdate, ResetLinkOut, RideRead
 from ..services import board_extras, promote_waitlist, to_ride_read_dict
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -77,7 +79,7 @@ def update_user(user_id: int, payload: AdminUserUpdate, session: WriteSessionDep
     """Make an account an admin, or stop it being one. An admin through
     KARPUL_ADMINS stays one whatever this says, and the last admin cannot be
     removed, or nobody could manage the pool any more."""
-    require_admin(session, creds)
+    admin = require_admin(session, creds)
     user = _get_user_or_404(session, user_id)
     if not payload.is_admin and admin_by_config(user):
         raise HTTPException(
@@ -86,6 +88,8 @@ def update_user(user_id: int, payload: AdminUserUpdate, session: WriteSessionDep
         )
     if not payload.is_admin and user.is_admin:
         _keep_an_admin(session, user)
+    if user.is_admin != payload.is_admin:
+        audit.record(session, admin, "admin_granted" if payload.is_admin else "admin_revoked", user.display_name)
     user.is_admin = payload.is_admin
     session.add(user)
     session.commit()
@@ -97,9 +101,10 @@ def update_user(user_id: int, payload: AdminUserUpdate, session: WriteSessionDep
 def reset_link(user_id: int, session: WriteSessionDep, creds: CredsDep):
     """A one-time link (`/reset/<token>`) that lets this person set a new
     password; any link issued for them before stops working."""
-    require_admin(session, creds)
+    admin = require_admin(session, creds)
     user = _get_user_or_404(session, user_id)
     token, row = issue_reset(session, user)
+    audit.record(session, admin, "reset_link", user.display_name)
     session.commit()
     session.refresh(row)
     return ResetLinkOut(path=f"/reset/{token}", expires_at=row.expires_at)
@@ -181,6 +186,7 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
         session.add(message)
     session.exec(delete(PushSubscription).where(col(PushSubscription.user_id) == user.id))
     session.exec(delete(PasswordReset).where(col(PasswordReset.user_id) == user.id))
+    audit.record(session, admin, "account_deleted", user.display_name)
     session.delete(user)  # its sessions go with it
     session.commit()
 
@@ -237,3 +243,18 @@ def ride_log(
     extras = board_extras(session, rides)
     return [to_ride_read_dict(r, extras) for r in rides]
 
+
+
+@router.get("/log", response_model=list[AdminActionRead])
+def admin_log(
+    session: SessionDep,
+    creds: CredsDep,
+    before: int | None = Query(default=None, description="Only lines older than this id: the next page"),
+    limit: int = Query(default=100, ge=1, le=500),
+):
+    """Admin-only: what the admins did (app/audit.py), newest first."""
+    require_admin(session, creds)
+    stmt = select(AdminAction).order_by(col(AdminAction.id).desc()).limit(limit)
+    if before is not None:
+        stmt = stmt.where(col(AdminAction.id) < before)
+    return [AdminActionRead.from_row(a) for a in session.exec(stmt)]

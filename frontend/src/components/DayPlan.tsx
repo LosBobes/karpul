@@ -13,13 +13,13 @@ import {
   type PlanRow,
 } from '../lib/dayPlan'
 import { useT } from '../lib/i18n'
-import { drives, seatedIn, useMe } from '../lib/me'
+import { drives, runs, seatedIn, useMe } from '../lib/me'
 import type { CorporateCar, Ride } from '../lib/types'
 import { avatarTone } from '../lib/tone'
 import { Avatar } from './Avatar'
 import { PowertrainMark } from './CarArt'
 import { DatePicker } from './DatePicker'
-import { ChevronLeftIcon, ChevronRightIcon } from './icons'
+import { ChevronLeftIcon, ChevronRightIcon, PencilIcon } from './icons'
 
 /** A free stretch of a company car, tapped: the ride form opens on it. */
 export interface Slot {
@@ -42,6 +42,8 @@ interface Props {
   onSelect: (rideId: number) => void
   onDate: (iso: string) => void
   onBook: (slot: Slot) => void
+  /** Open the ride form on a ride you run (yours, or anyone's for an admin). */
+  onEdit: (ride: Ride) => void
 }
 
 /** The minute on the clock, re-read every half minute so the "now" mark moves. */
@@ -78,9 +80,11 @@ function minuteAt(gap: Gap, e: { clientX: number; currentTarget: Element }): num
  * card. A ride with no return holds the car to the end of the day, so its
  * stretch runs off the edge. A free stretch of a company car books it: under
  * a mouse a pin follows the pointer to say from when, a tap opens the ride
- * form there with the car and the times filled in.
+ * form there with the car and the times filled in. A ride you run (yours, or
+ * any ride for an admin) is edited from the plan too: picked, it grows a
+ * pencil at its end, and a double click goes straight to the form.
  */
-export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSelect, onDate, onBook }: Props) {
+export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSelect, onDate, onBook, onEdit }: Props) {
   const t = useT()
   const me = useMe()
   const today = todayISO()
@@ -135,10 +139,12 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
     const when = b.open ? t.plan.from(fmtTime(r.departure_time)) : `${fmtTime(r.departure_time)}–${fmtTime(r.return_time)}`
     // The caption may run past a short stretch, up to where the next one starts.
     const room = captionRoom(row.bars, i, axis) / Math.max(end - b.start, 1)
+    const editable = !isPast && runs(r, me)
+    const picked = r.id === selectedId
     const cls = ['plan-ride', `tone-${mine ? 'green' : avatarTone(r.driver_name)}`, mine && 'plan-ride-mine', b.open && 'plan-ride-open', r.id === selectedId && 'plan-ride-on']
       .filter(Boolean)
       .join(' ')
-    return (
+    return [
       <button
         key={r.id}
         type="button"
@@ -147,14 +153,28 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
         aria-label={t.plan.barLabel(r.driver_name, when, r.origin, r.destination, r.bookings.length)}
         aria-pressed={r.id === selectedId}
         onClick={() => onSelect(r.id)}
+        onDoubleClick={editable ? () => onEdit(r) : undefined}
       >
         <span className="plan-ride-line" />
         <Avatar name={r.driver_name} size="sm" />
         <span className="plan-ride-caption">
           <strong>{driving ? t.plan.you : firstName(r.driver_name)}</strong> {when}
         </span>
-      </button>
-    )
+      </button>,
+      editable && picked && (
+        <button
+          key={`edit-${r.id}`}
+          type="button"
+          className={b.open || end >= axis.to ? 'plan-edit plan-edit-edge' : 'plan-edit'}
+          style={{ left: at(end, axis) }}
+          aria-label={t.plan.edit(r.driver_name)}
+          title={t.plan.edit(r.driver_name)}
+          onClick={() => onEdit(r)}
+        >
+          <PencilIcon size={14} />
+        </button>
+      ),
+    ]
   }
 
   const road = (row: PlanRow) => {

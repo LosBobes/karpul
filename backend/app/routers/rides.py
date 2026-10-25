@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, select
 
+from .. import audit
 from ..admin import is_admin
 from ..auth import CredsDep, require_user
 from ..calendar import ride_ics
@@ -71,6 +72,11 @@ def _may_run(user: User, ride: Ride) -> bool:
     """Who may edit or remove a ride: its driver, or an admin (who schedules
     the company cars for people and fixes what they got wrong)."""
     return _is_driver(user, ride) or is_admin(user)
+
+
+def _on_behalf(user: User, ride: Ride) -> bool:
+    """An admin acting on a ride that is not theirs: what the admin's log records."""
+    return not _is_driver(user, ride) and is_admin(user)
 
 
 def _driver_unless_actor(user: User, ride: Ride) -> list[int | None]:
@@ -242,6 +248,9 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
         # Flush so the next occurrence's availability check sees this one.
         session.flush()
         rides.append(ride)
+    if driver is not user:
+        weeks = [("weeks", None, len(rides))] if len(rides) > 1 else []
+        audit.record(session, user, "ride_added", driver.display_name, ride=rides[0], changes=weeks)
     queues: list[Ride] = []
     if request is not None:
         first = rides[0]
@@ -303,8 +312,11 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
     moved = any(
         getattr(ride, key) != data[key] for key in ("ride_date", "departure_time", "return_time", "origin", "destination")
     )
+    changes = audit.diff(ride, data, skip=("corporate_car_id", "driver_name")) if _on_behalf(user, ride) else []
     for key, value in data.items():
         setattr(ride, key, value)
+    if changes:
+        audit.record(session, user, "ride_edited", ride.driver_name, ride=ride, changes=changes)
     drop_orphaned_pickups(ride)
     # More seats than before: the queue moves up into them.
     promoted = promote_waitlist(session, ride)
@@ -352,6 +364,8 @@ def delete_ride(
             request.ride_id = None
             session.add(request)
             reopened.append(request)
+        if _on_behalf(user, r):
+            audit.record(session, user, "ride_removed", r.driver_name, ride=r)
         gone.append((r.id, r.ride_date))
         session.delete(r)
     session.commit()
@@ -404,6 +418,8 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     ride.bookings.append(Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup))  # type: ignore[arg-type]
     queues = _seated(session, ride, passenger_id)
     answered = _answer_requests(session, passenger_id, ride)
+    if passenger is not user and _on_behalf(user, ride):
+        audit.record(session, user, "seat_added", ride.driver_name, ride=ride, changes=[("passenger", None, name)])
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
@@ -463,6 +479,8 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         )
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail)
     passenger, passenger_id = booking.passenger_name, booking.passenger_id
+    if not themself and _on_behalf(user, ride):
+        audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
     promoted = promote_waitlist(session, ride)

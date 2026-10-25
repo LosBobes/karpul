@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab } from './components/AddRideButton'
+import { AdminLog } from './components/AdminLog'
 import { AuthGate } from './components/AuthGate'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
@@ -122,6 +123,8 @@ function Board({ session }: { session: Session }) {
   const [adminOpen, setAdminOpen] = useState(false)
   const [peopleOpen, setPeopleOpen] = useState(false)
   const [rideLogOpen, setRideLogOpen] = useState(false)
+  // What the admins did (components/AdminLog.tsx, backend app/audit.py).
+  const [adminLogOpen, setAdminLogOpen] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -160,6 +163,19 @@ function Board({ session }: { session: Session }) {
       })
       .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
   }, [])
+
+  /** A line of the admin's log opens its ride on the day plan, where it sits among that day's cars. */
+  const openLoggedRide = (rideId: number) => {
+    setAdminLogOpen(false)
+    api
+      .ride(rideId)
+      .then((ride) => {
+        setViewState('day')
+        setSelectedDate(ride.ride_date)
+        setCarSel(ride.id)
+      })
+      .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
+  }
 
   const setSelected = useCallback((iso: string) => {
     setSelectedDate(iso)
@@ -660,6 +676,7 @@ function Board({ session }: { session: Session }) {
       onSelect={setCarSel}
       onDate={setSelected}
       onBook={(slot) => setForm({ mode: 'create', slot })}
+      onEdit={(ride) => setForm({ mode: 'edit', ride })}
     />
   )
   const planPicked = carSel !== null ? (dayRides.find((r) => r.id === carSel) ?? null) : null
@@ -799,6 +816,7 @@ function Board({ session }: { session: Session }) {
             onCompanyCars={openAdmin}
             onPeople={() => setPeopleOpen(true)}
             onRideLog={() => setRideLogOpen(true)}
+            onAdminLog={() => setAdminLogOpen(true)}
             onGuide={() => setGuideOpen(true)}
             onMyRides={() => setMyRidesOpen(true)}
             onNotifications={() => setNotifOpen(true)}
@@ -875,6 +893,8 @@ function Board({ session }: { session: Session }) {
         {peopleOpen && isAdmin && <PeopleAdmin onNotice={notice} onClose={closePeople} />}
 
         {rideLogOpen && isAdmin && <RideLog onClose={() => setRideLogOpen(false)} />}
+
+        {adminLogOpen && isAdmin && <AdminLog onOpenRide={openLoggedRide} onClose={() => setAdminLogOpen(false)} />}
 
         {confirmState && (
           <ConfirmDialog

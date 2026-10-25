@@ -360,6 +360,13 @@ export const DownloadIcon = icon(
   </>,
 )
 /** A shield with a tick: an admin. */
+/** A shield with clock hands: what the admins did, and when (the admin's log). */
+export const AdminLogIcon = icon(
+  <>
+    <path d="M12 3.5 5 6v5.5c0 4.25 2.9 7.6 7 9 4.1-1.4 7-4.75 7-9V6l-7-2.5Z" />
+    <path d="M12 8.5v3.75l2.5 1.5" />
+  </>,
+)
 export const ShieldIcon = icon(
   <>
     <path d="M12 3.5 5 6v5.5c0 4.25 2.9 7.6 7 9 4.1-1.4 7-4.75 7-9V6l-7-2.5Z" />
