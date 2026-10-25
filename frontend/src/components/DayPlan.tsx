@@ -180,6 +180,16 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   const road = (row: PlanRow) => {
     const pin = ghost?.row === row.key ? ghost.min : null
     const free = row.car !== null && row.bars.length === 0 && !isPast
+    // A company car's hour ticks are real marks: the ones on a free stretch
+    // belong to its button and light up under the pointer, the rest just stand.
+    const bookable = row.car !== null && !isPast
+    const inGap = (h: number) => row.gaps.find((g) => h >= g.start && h <= g.end)
+    const tick = (h: number, left: string, gap: boolean) => {
+      // How far (in hours) from the pointer: the wave reaches the near ticks first.
+      const d = pin === null ? 0 : Math.abs(h - pin) / 60
+      const cls = gap && pin !== null && d <= 0.5 ? 'plan-tick plan-tick-near' : 'plan-tick'
+      return <span key={h} className={cls} style={{ left, '--d': d } as CSSProperties} aria-hidden="true" />
+    }
     return (
       <div key={row.key} className="plan-car">
         <div className="plan-car-head">
@@ -190,7 +200,8 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
           {row.car && <span className="plan-plate">{row.car.plate}</span>}
           <span className={free ? 'plan-status plan-status-free' : 'plan-status'}>{status(row)}</span>
         </div>
-        <div className={row.bars.length ? 'plan-road' : 'plan-road plan-road-empty'}>
+        <div className={['plan-road', !row.bars.length && 'plan-road-empty', bookable && 'plan-road-ticks'].filter(Boolean).join(' ')}>
+          {bookable && hours.filter((h) => !inGap(h)).map((h) => tick(h, at(h, axis), false))}
           {!isPast &&
             row.gaps.map((g) => (
               <button
@@ -202,7 +213,9 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
                 onClick={(e) => book(row, g, e)}
                 onPointerMove={(e) => hover(row, g, e)}
                 onPointerLeave={() => setGhost(null)}
-              />
+              >
+                {hours.filter((h) => inGap(h) === g).map((h) => tick(h, `${((h - g.start) / (g.end - g.start)) * 100}%`, true))}
+              </button>
             ))}
           {row.bars.map((b, i) => stretch(row, b, i))}
           {pin !== null && (

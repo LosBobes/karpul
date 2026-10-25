@@ -1811,6 +1811,48 @@ main,
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+/* A company car's hour ticks are elements of their own (DayPlan's `tick`):
+   on a free stretch they are part of its button, so they read as something to
+   press. Under the pointer they stand up and turn green in a small wave that
+   starts at the pointer (--d is the distance in hours, which delays each one),
+   the nearest standing tallest; they settle back the same way. */
+.plan-road-ticks::after {
+  display: none;
+}
+.plan-tick {
+  position: absolute;
+  top: 12px;
+  width: 2px;
+  height: 10px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--border-strong);
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  transition:
+    transform 0.32s var(--ease-spring) calc(var(--d, 0) * 30ms),
+    background 0.2s var(--ease-smooth) calc(var(--d, 0) * 30ms);
+}
+.plan-free .plan-tick {
+  top: 11px;
+  width: 3px;
+  height: 12px;
+  margin-left: -1.5px;
+  border-radius: 1.5px;
+  background: color-mix(in srgb, var(--green) 40%, var(--border-strong));
+}
+.plan-free:hover .plan-tick,
+.plan-free:focus-visible .plan-tick {
+  background: var(--green);
+  transform: scaleY(1.5);
+}
+.plan-free:hover .plan-tick-near {
+  transform: scaleY(2.1);
+}
+.plan-free:active .plan-tick {
+  transform: scaleY(0.8);
+  transition-delay: 0s;
+}
 /* Each person's colour is their avatar's: ink for the line, pastel to fill. */
 .tone-violet { --tone: #6d28d9; --tone-soft: #ede9fe; }
 .tone-rose { --tone: #be123c; --tone-soft: #ffe4e6; }
@@ -1958,6 +2000,9 @@ main,
 }
 /* No hover under a finger: the bookable stretches show faintly, dashed. */
 @media (pointer: coarse) {
+  .plan-free .plan-tick {
+    background: var(--green-line);
+  }
   .plan-free::before {
     height: 0;
     border-top: 2px dashed var(--green-line);

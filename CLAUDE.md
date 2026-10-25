@@ -365,7 +365,7 @@ return, the way `CarDetail` draws a route; no return runs off the right edge, as
 car to end of day. Now is an ink rule behind the roads (not red, which is for removal); each pool car
 says when it is next free (`rowStatus`). Switching to it jumps to today; `range` is that one day. A tapped bar
 opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
-(`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour) opens `RideForm` with `slot`: that car, departure at the tapped
+(`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour; a company car's hour ticks are elements, `.plan-tick`, and the ones on a free stretch are green-tinted and stand up in a wave from the pointer, `--d` delaying each by its distance) opens `RideForm` with `slot`: that car, departure at the tapped
 half hour, back by the next booking or 17:00. A picked ride that you run (`runs()`, so any ride for an
 admin) grows a pencil at its end (`.plan-edit`), and a double click on it opens the edit form too. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
