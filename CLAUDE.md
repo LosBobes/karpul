@@ -100,7 +100,17 @@ the whole board in `GET /api/rides`, next to the thread's message counts), and `
 for everyone but the driver. Email is optional too; the production `appuser.email` started out
 NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
 
-**Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
+**Admins run every ride.** `_may_run` in `routers/rides.py` lets the driver *or an admin* edit and
+remove a ride (and its following weeks) and manage its seats; the frontend twin is `runs()` in
+`lib/me.ts` (`Me.admin`), which `CarDetail` uses for the ⋮ menu and the seat controls. An admin can
+also add a ride in someone else's name: `RideCreate.driver_id` (create only; anyone else naming
+another account is a 403, an unknown one a 404), chosen in `RideForm` through `DriverPicker`
+(the form's driver line made pressable, listing `/api/admin/users`); that account then drives and
+owns the ride and is pushed `ride_assigned`. An admin's edit or removal of someone's ride is pushed to
+its driver too, and the passengers' `ride_changed` / `ride_removed` name whoever did it.
+Tests: `tests/test_admin_rides.py`.
+
+**Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
 **Waiting list, thread, requests.** A full car has a queue (`WaitlistEntry`, `POST/DELETE
 /api/rides/{id}/waitlist`): only for yourself, refused while seats are free. When a seat frees
@@ -175,7 +185,8 @@ the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak
     drop below the number of existing bookings (409).
   - For corporate rides the server overwrites `car_name` with `"<Name> (<PLATE>)"`; a client-supplied
     value is ignored.
-  - `driver_name` is absent from `RideUpdate` — the driver of a ride can never change. `App.tsx`
+  - `driver_name` is absent from `RideUpdate` — the driver of a ride can never change (an admin
+    picks it once, at creation, with `driver_id`). `App.tsx`
     strips it from the edit payload for that reason.
   - `GET /api/rides` takes `date` or `from`/`to`; with no params it returns the current Mon–Sun week,
     and a range longer than 92 days is rejected.

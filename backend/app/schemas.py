@@ -433,6 +433,10 @@ class RideCreate(RideBase):
     # A ride offered in answer to someone's request (RideRequest): the
     # requester is put in the car. Not stored on the ride.
     request_id: int | None = None
+    # Who drives, when an admin adds a ride for someone else. Left out (or
+    # the caller's own id) the caller drives. Not stored as given: the ride's
+    # driver_id/driver_name are set from the account.
+    driver_id: int | None = None
 
     @model_validator(mode="after")
     def check_repeat(self) -> "RideCreate":

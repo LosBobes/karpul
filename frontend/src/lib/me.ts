@@ -15,6 +15,13 @@ import type { Booking, Ride, RideRequest, WaitlistEntry } from './types'
 export interface Me {
   id: number
   name: string
+  /** An admin may edit and remove anyone's ride and add rides for others (backend: _may_run). */
+  admin?: boolean
+}
+
+/** May `me` edit, remove and manage the seats of this ride? Its driver, or an admin. */
+export function runs(ride: Ride, me: Me): boolean {
+  return drives(ride, me) || !!me.admin
 }
 
 /** Is a row with this account id and this name `me`? */

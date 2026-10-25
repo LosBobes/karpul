@@ -84,7 +84,10 @@ function Board({ session }: { session: Session }) {
   const t = useT()
   const user = session.user
   const userName = user.display_name
-  const me = useMemo<Me>(() => ({ id: user.id, name: user.display_name }), [user.id, user.display_name])
+  const me = useMemo<Me>(
+    () => ({ id: user.id, name: user.display_name, admin: user.is_admin }),
+    [user.id, user.display_name, user.is_admin],
+  )
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -386,8 +389,9 @@ function Board({ session }: { session: Session }) {
     try {
       if (form?.mode === 'edit') {
         // The driver of a ride never changes, and the API has no field for it.
-        const { driver_name: _driver, request_id: _request, ...patch } = input
+        const { driver_name: _driver, driver_id: _driverId, request_id: _request, ...patch } = input
         void _driver
+        void _driverId
         void _request
         upsertRide(await api.updateRide(form.ride.id, patch))
         setToast({ kind: 'ok', text: t.toasts.rideUpdated })
@@ -402,7 +406,14 @@ function Board({ session }: { session: Session }) {
           const weeks = Math.floor((parseISODate(input.repeat_until).getTime() - parseISODate(input.ride_date).getTime()) / (7 * 86_400_000)) + 1
           setToast({ kind: 'ok', text: t.toasts.ridesAdded(weeks) })
         } else {
-          setToast({ kind: 'ok', text: answered ? t.toasts.requestAnswered(answered.name) : t.toasts.rideAdded })
+          setToast({
+            kind: 'ok',
+            text: answered
+              ? t.toasts.requestAnswered(answered.name)
+              : input.driver_id
+                ? t.toasts.rideAddedFor(input.driver_name)
+                : t.toasts.rideAdded,
+          })
         }
         // The request is answered now; the socket brings that too, this is just sooner.
         if (answered) upsertRequest({ ...answered, ride_id: created.id })

@@ -2,7 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { addDays, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
+import { useMe } from '../lib/me'
 import { Avatar } from './Avatar'
+import { DriverPicker, type Driver } from './DriverPicker'
 import { DatePicker } from './DatePicker'
 import { CarIcon, ChevronRightIcon, HandIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
@@ -101,6 +103,12 @@ function weeklyCount(from: string, until: string): number {
 export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, submitting, error, onSubmit, onDelete, onClose }: Props) {
   const t = useT()
   const seed = existing ?? template ?? null
+  const me = useMe()
+  // An admin adding a ride picks who drives it; a duplicate keeps its driver.
+  const picksDriver = !!me.admin && !existing
+  const [driver, setDriver] = useState<Driver>(() =>
+    picksDriver && template?.driver_id != null ? { id: template.driver_id, name: template.driver_name } : { id: me.id, name: userName },
+  )
   const [last] = useState(loadLastRoute)
   const [mode, setModeState] = useState<Mode>(() => (isAdvancedRide(seed) ? 'advanced' : loadMode()))
   const [rideDate, setRideDate] = useState(existing?.ride_date ?? request?.request_date ?? date)
@@ -180,8 +188,9 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     e.preventDefault()
     if (localError || distanceBad) return
     try {
+      // A ride an admin adds for someone else is not their own commute to remember.
       const remembered: LastRoute = { origin, destination, car_name: carType === 'own' ? carName : last.car_name, seats }
-      localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify(remembered))
+      if (driver.id === me.id) localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify(remembered))
     } catch {
       /* ignore */
     }
@@ -190,7 +199,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       car_type: carType,
       car_name: carType === 'own' ? carName : '',
       corporate_car_id: carType === 'corporate' && carId !== '' ? carId : null,
-      driver_name: userName,
+      driver_name: driver.name,
+      driver_id: picksDriver && driver.id !== me.id ? driver.id : null,
       origin,
       destination,
       departure_time: departure,
@@ -249,12 +259,17 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         </div>
       )}
 
-      {/* The driver never changes, so it is a line that says so, not a field. */}
-      <div className="form-driver">
-        <Avatar name={userName} size="sm" />
-        <span className="form-driver-name">{userName}</span>
-        <span className="form-driver-role">{t.form.driver}</span>
-      </div>
+      {/* The driver never changes, so it is a line that says so, not a field;
+          only an admin adding a ride may choose whose it is. */}
+      {picksDriver ? (
+        <DriverPicker value={driver} meId={me.id} onChange={setDriver} />
+      ) : (
+        <div className="form-driver">
+          <Avatar name={existing?.driver_name ?? userName} size="sm" />
+          <span className="form-driver-name">{existing?.driver_name ?? userName}</span>
+          <span className="form-driver-role">{t.form.driver}</span>
+        </div>
+      )}
 
       <div className="field">
         <span className="field-label">{t.form.car}</span>

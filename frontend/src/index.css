@@ -2910,6 +2910,48 @@ body.dragging {
   font-size: 0.8rem;
   color: var(--muted);
 }
+/* An admin's driver line is the same line, made pressable: it lists the
+   people (components/DriverPicker.tsx) to book a ride in someone's name. */
+.form-driver-pick {
+  width: 100%;
+  color: var(--text);
+  text-align: left;
+  transition: border-color var(--hover), background var(--hover);
+}
+.form-driver-pick .form-driver-role {
+  margin-left: auto;
+}
+.form-driver-pick .control-chevron {
+  flex: none;
+  color: var(--muted);
+}
+.form-driver-pick:hover,
+.form-driver-pick[aria-expanded='true'] {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+.people-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.4rem;
+}
+.people-pick-list {
+  padding: 0;
+}
+.people-pick-option {
+  justify-content: flex-start;
+}
+.people-pick-option .option-text {
+  flex: 1;
+  min-width: 0;
+}
+.people-pick-note {
+  margin: 0;
+  padding: 0.7rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
 /* Labels wrap differently in different languages, so the pairs in this form
    line up on their controls, not on their first line of label. */
 .ride-form .grid-2 {

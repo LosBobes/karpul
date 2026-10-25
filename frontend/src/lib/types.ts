@@ -137,6 +137,8 @@ export interface RideInput {
   repeat_until?: string | null
   /** Create only: the ride answers this request, and its requester gets a seat. */
   request_id?: number | null
+  /** Create only, admins only: the account that drives it, when not the caller. */
+  driver_id?: number | null
 }
 
 /** GET /api/stats/me */
