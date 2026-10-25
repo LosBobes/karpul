@@ -7,8 +7,10 @@ import { PowertrainMark } from './CarArt'
 import { ArrowRightIcon, HandIcon, SearchIcon, XIcon } from './icons'
 import { RequestList } from './RequestList'
 
-type Filter = 'all' | 'free' | 'mine' | 'joined'
+type Filter = 'all' | 'free' | 'mine' | 'joined' | 'pending'
 const FILTERS: Filter[] = ['all', 'free', 'mine', 'joined']
+/** Admins also get the shared-car rides waiting for their approval. */
+const ADMIN_FILTERS: Filter[] = [...FILTERS, 'pending']
 
 function fold(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -47,6 +49,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
     if (filter === 'free' && r.free_seats <= 0) return false
     if (filter === 'mine' && !drives(r, me)) return false
     if (filter === 'joined' && !seatedIn(r, me)) return false
+    if (filter === 'pending' && r.approval !== 'pending') return false
     if (q && !fold(`${r.origin} ${r.destination} ${r.driver_name} ${r.car_name} ${r.stops.join(' ')}`).includes(q)) return false
     return true
   }
@@ -69,7 +72,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
     <section className="upcoming" aria-label={t.upcoming.label}>
       <div className="filters">
         <div className="chips" role="radiogroup" aria-label={t.filters.label}>
-          {FILTERS.map((f) => (
+          {(me.admin ? ADMIN_FILTERS : FILTERS).map((f) => (
             <button
               key={f}
               type="button"
@@ -144,6 +147,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
                           <span className="when-value">{fmtTime(r.departure_time)}</span>
                           <small>{r.return_time ? t.upcoming.back(fmtTime(r.return_time)) : t.upcoming.oneWay}</small>
                         </span>
+                        {r.approval === 'pending' && <span className="tag tag-amber">{t.upcoming.awaiting}</span>}
                         {driving ? (
                           <span className="tag tag-green">{t.upcoming.driving}</span>
                         ) : riding ? (

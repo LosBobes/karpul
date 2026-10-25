@@ -31,6 +31,7 @@ function ride(over: Partial<Ride>): Ride {
     waitlist: [],
     message_count: 0,
     free_seats: 3,
+    approval: '',
     ...over,
   }
 }

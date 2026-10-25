@@ -95,6 +95,8 @@ function Board({ session }: { session: Session }) {
   const [toast, setToast] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
   const [form, setForm] = useState<FormState>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  // The error is the shared-car share: the form offers to ask an admin instead.
+  const [formAsk, setFormAsk] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // "Ask for a ride" (components/RequestForm.tsx): the day it opens on, or closed.
   const [askDate, setAskDate] = useState<string | null>(null)
@@ -397,11 +399,13 @@ function Board({ session }: { session: Session }) {
   const closeForm = useCallback(() => {
     setForm(null)
     setFormError(null)
+    setFormAsk(false)
   }, [])
 
   async function onSubmitForm(input: RideInput) {
     setSubmitting(true)
     setFormError(null)
+    setFormAsk(false)
     try {
       if (form?.mode === 'edit') {
         // The driver of a ride never changes, and the API has no field for it.
@@ -424,11 +428,14 @@ function Board({ session }: { session: Session }) {
         } else {
           setToast({
             kind: 'ok',
-            text: answered
-              ? t.toasts.requestAnswered(answered.name)
-              : input.driver_id
-                ? t.toasts.rideAddedFor(input.driver_name)
-                : t.toasts.rideAdded,
+            text:
+              created.approval === 'pending'
+                ? t.toasts.rideAwaiting
+                : answered
+                  ? t.toasts.requestAnswered(answered.name)
+                  : input.driver_id
+                    ? t.toasts.rideAddedFor(input.driver_name)
+                    : t.toasts.rideAdded,
           })
         }
         // The request is answered now; the socket brings that too, this is just sooner.
@@ -441,10 +448,35 @@ function Board({ session }: { session: Session }) {
       setSelectedDate(input.ride_date)
     } catch (e) {
       setFormError(errMsg(e))
+      // The share's refusal (backend: services.LIMIT_WEEK / LIMIT_DAY) names its own way out.
+      setFormAsk(e instanceof ApiError && /An admin can approve another$/.test(e.message))
     } finally {
       setSubmitting(false)
     }
   }
+
+  // --- a shared car past the driver's share: the admin's call ---
+
+  const onApprove = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.approveRide(ride.id))
+      setToast({ kind: 'ok', text: t.toasts.rideApproved(ride.driver_name) })
+    })
+
+  const onDecline = (ride: Ride) =>
+    setConfirm({
+      title: t.confirm.declineTitle,
+      body: t.confirm.declineBody(ride.driver_name),
+      label: t.detail.decline,
+      onConfirm: () => {
+        setConfirm(null)
+        void withBusy(ride.id, async () => {
+          await api.declineRide(ride.id)
+          removeRides((r) => r.id === ride.id)
+          setToast({ kind: 'ok', text: t.toasts.rideDeclined })
+        })
+      },
+    })
 
   // --- asking for a ride ---
 
@@ -599,6 +631,8 @@ function Board({ session }: { session: Session }) {
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
       onDuplicate={(r) => setForm({ mode: 'create', template: r })}
       onTogglePassengersManage={onTogglePassengersManage}
+      onApprove={onApprove}
+      onDecline={onDecline}
       onGuide={() => setGuideOpen(true)}
       onWait={onWait}
       onLeaveLine={onLeaveLine}
@@ -859,6 +893,7 @@ function Board({ session }: { session: Session }) {
             slot={form.mode === 'create' ? form.slot : null}
             submitting={submitting}
             error={formError}
+            canAskApproval={formAsk}
             onSubmit={onSubmitForm}
             onDelete={
               form.mode === 'edit'

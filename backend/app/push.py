@@ -84,6 +84,9 @@ TEXTS: dict[str, dict[str, Any]] = {
         "message": lambda name, text: f"{name}: {text}",
         "request_answered": lambda driver: f"{driver} offers you a ride",
         "ride_assigned": lambda name: f"{name} put you down to drive",
+        "approval_requested": lambda name: f"{name} asks for another shared car",
+        "ride_approved": lambda name: f"{name} approved your shared car",
+        "ride_declined": lambda name: f"{name} declined your shared car",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} to {destination}",
     },
     "sr": {
@@ -97,6 +100,9 @@ TEXTS: dict[str, dict[str, Any]] = {
         "message": lambda name, text: f"{name}: {text}",
         "request_answered": lambda driver: f"{driver} ti nudi prevoz",
         "ride_assigned": lambda name: f"{name} te je upisao/la kao vozača",
+        "approval_requested": lambda name: f"{name} traži još jedan zajednički auto",
+        "ride_approved": lambda name: f"{name} je odobrio/la tvoj zajednički auto",
+        "ride_declined": lambda name: f"{name} je odbio/la tvoj zajednički auto",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} do {destination}",
     },
 }

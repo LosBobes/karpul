@@ -1,0 +1,144 @@
+"""A shared car is rationed: one ride a week per driver, past that an admin approves."""
+
+from datetime import date, timedelta
+
+import pytest
+
+from app.services import LIMIT_DAY, LIMIT_WEEK
+
+# A Monday well ahead, so a week's rides never straddle today.
+MONDAY = date.today() + timedelta(days=(7 - date.today().weekday()) % 7 + 7)
+
+
+def shared(car_id, day=MONDAY, **overrides):
+    base = {
+        "ride_date": day.isoformat(),
+        "car_type": "corporate",
+        "corporate_car_id": car_id,
+        "car_name": "",
+        "driver_name": "Ana Petrović",
+        "origin": "Novi Sad",
+        "destination": "HQ",
+        "departure_time": "08:00",
+        "return_time": "12:00",
+        "seats": 2,
+    }
+    base.update(overrides)
+    return base
+
+
+@pytest.fixture()
+def sent(monkeypatch):
+    out = []
+
+    def fake_notify(session, user_ids, kind, ride, **args):
+        out.append((kind, sorted(uid for uid in user_ids if uid is not None), args))
+        return 0
+
+    monkeypatch.setattr("app.routers.rides.notify", fake_notify)
+    return out
+
+
+@pytest.fixture()
+def cars(client):
+    return client.get("/api/cars/corporate").json()
+
+
+def user_id(client, name):
+    return client.get("/api/auth/me", headers={"X-User-Name": name}).json()["id"]
+
+
+def test_one_shared_car_a_week_then_a_refusal_that_names_the_way_out(client, cars):
+    first = client.post("/api/rides", json=shared(cars[0]["id"]))
+    assert first.status_code == 201, first.text
+    assert first.json()["approval"] == ""
+
+    # Another car, another day of the same week: still the same person's second shared car.
+    again = client.post("/api/rides", json=shared(cars[1]["id"], MONDAY + timedelta(days=2)))
+    assert again.status_code == 409
+    assert again.json()["detail"] == LIMIT_WEEK
+
+    # The same day says so (it is the nearer reason).
+    same_day = client.post("/api/rides", json=shared(cars[1]["id"], departure_time="14:00", return_time="16:00"))
+    assert same_day.status_code == 409
+    assert same_day.json()["detail"] == LIMIT_DAY
+
+    # Next week is a new share, and own cars are never rationed.
+    assert client.post("/api/rides", json=shared(cars[0]["id"], MONDAY + timedelta(days=7))).status_code == 201
+    own = shared(None, MONDAY + timedelta(days=1), car_type="own", car_name="Blue Golf")
+    assert client.post("/api/rides", json=own).status_code == 201
+
+
+def test_asking_for_approval_adds_the_ride_as_pending_and_tells_the_admins(client, cars, admin_auth, sent):
+    ada = client.get("/api/auth/me", headers=admin_auth).json()["id"]
+    ana = user_id(client, "Ana Petrović")
+    client.post("/api/rides", json=shared(cars[0]["id"]))
+    sent.clear()
+    res = client.post("/api/rides", json=shared(cars[1]["id"], MONDAY + timedelta(days=2), request_approval=True))
+    assert res.status_code == 201, res.text
+    ride = res.json()
+    assert ride["approval"] == "pending"
+    assert sent == [("approval_requested", [ada], {"name": "Ana Petrović"})]
+
+    # The pending ride counts: a third one is refused the same way.
+    third = client.post("/api/rides", json=shared(cars[2]["id"], MONDAY + timedelta(days=3), request_approval=True))
+    assert third.status_code == 201  # asked again: pending again
+    assert third.json()["approval"] == "pending"
+
+    # Approving is the admin's, and only a pending ride can be approved.
+    assert client.post(f"/api/rides/{ride['id']}/approve", headers={"X-User-Name": "Ana Petrović"}).status_code == 403
+    sent.clear()
+    ok = client.post(f"/api/rides/{ride['id']}/approve", headers=admin_auth)
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["approval"] == "approved"
+    assert sent == [("ride_approved", [ana], {"name": "Ada Admin"})]
+    twice = client.post(f"/api/rides/{ride['id']}/approve", headers=admin_auth)
+    assert twice.status_code == 409
+    assert twice.json()["detail"] == "This ride is not waiting for approval"
+
+    # Declining removes the ride and tells the driver once, as a decline.
+    other = third.json()
+    client.post(f"/api/rides/{other['id']}/bookings", json={"passenger_name": "Mila Ilić"})
+    mila = user_id(client, "Mila Ilić")
+    sent.clear()
+    assert client.post(f"/api/rides/{other['id']}/decline", headers=admin_auth).status_code == 204
+    assert client.get(f"/api/rides/{other['id']}").status_code == 404
+    assert sent == [
+        ("ride_declined", [ana], {"name": "Ada Admin"}),
+        ("ride_removed", [mila], {"driver": "Ada Admin"}),
+    ]
+
+    # Both decisions are in the admin's log.
+    log = client.get("/api/admin/log", headers=admin_auth).json()
+    assert [line["action"] for line in log[:2]] == ["ride_declined", "ride_approved"]
+    assert all(line["subject"] == "Ana Petrović" for line in log[:2])
+
+
+def test_an_admin_is_the_approval(client, cars, admin_auth, sent):
+    marko = user_id(client, "Marko Jovanović")
+    client.post("/api/rides", json=shared(cars[0]["id"], driver_name="Marko Jovanović"))
+    # An admin adding Marko's second shared car of the week: approved by the act.
+    res = client.post("/api/rides", json=shared(cars[1]["id"], MONDAY + timedelta(days=1), driver_id=marko), headers=admin_auth)
+    assert res.status_code == 201, res.text
+    assert res.json()["approval"] == "approved"
+    assert not any(kind == "approval_requested" for kind, _, _ in sent)
+    # And an admin's own rides are never refused.
+    client.post("/api/rides", json=shared(cars[2]["id"]), headers=admin_auth)
+    mine = client.post("/api/rides", json=shared(cars[0]["id"], MONDAY + timedelta(days=4)), headers=admin_auth)
+    assert mine.status_code == 201
+    assert mine.json()["approval"] == "approved"
+
+
+def test_moving_a_ride_is_held_to_the_share_too(client, cars):
+    ana = {"X-User-Name": "Ana Petrović"}
+    first = client.post("/api/rides", json=shared(cars[0]["id"])).json()
+    second = client.post("/api/rides", json=shared(cars[1]["id"], MONDAY + timedelta(days=7))).json()
+    # Into the week of the first: refused.
+    moved = client.patch(f"/api/rides/{second['id']}", json={"ride_date": (MONDAY + timedelta(days=2)).isoformat()}, headers=ana)
+    assert moved.status_code == 409
+    assert moved.json()["detail"] == LIMIT_WEEK
+    # Within its own week, or to an own car (which also drops any approval): fine.
+    assert client.patch(f"/api/rides/{second['id']}", json={"ride_date": (MONDAY + timedelta(days=9)).isoformat()}, headers=ana).status_code == 200
+    own = client.patch(f"/api/rides/{first['id']}", json={"car_type": "own", "car_name": "Blue Golf", "corporate_car_id": None}, headers=ana)
+    assert own.status_code == 200, own.text
+    assert own.json()["approval"] == ""

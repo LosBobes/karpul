@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { addDays, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
@@ -26,6 +26,8 @@ interface Props {
   slot?: { carId: number; departure: string; ret: string } | null
   submitting: boolean
   error: string | null
+  /** The error is the shared-car share (one a week): offer to add the ride for an admin to approve. */
+  canAskApproval?: boolean
   onSubmit: (input: RideInput) => void
   onDelete?: () => void
   onClose: () => void
@@ -100,7 +102,7 @@ function weeklyCount(from: string, until: string): number {
 }
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
-export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, submitting, error, onSubmit, onDelete, onClose }: Props) {
+export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, submitting, error, canAskApproval = false, onSubmit, onDelete, onClose }: Props) {
   const t = useT()
   const seed = existing ?? template ?? null
   const me = useMe()
@@ -186,6 +188,12 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     notes.trim() ? t.form.sumNotes : null,
   ].filter((x): x is string => x !== null)
 
+  // What was last sent, so "ask an admin" can send the same ride once more as pending.
+  const lastInput = useRef<RideInput | null>(null)
+  const askApproval = () => {
+    if (lastInput.current) onSubmit({ ...lastInput.current, request_approval: true })
+  }
+
   function setStop(i: number, value: string) {
     setStops((ss) => ss.map((s, j) => (j === i ? value : s)))
   }
@@ -200,7 +208,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     } catch {
       /* ignore */
     }
-    onSubmit({
+    lastInput.current = {
       ride_date: rideDate,
       car_type: carType,
       car_name: carType === 'own' ? carName : '',
@@ -219,7 +227,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       chip_in: chipIn.trim(),
       repeat_until: !existing && repeat && repeatCount > 1 ? repeatUntil : null,
       request_id: request?.id ?? null,
-    })
+    }
+    onSubmit(lastInput.current)
   }
 
   return (
@@ -505,6 +514,14 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       )}
 
       {(localError || error) && <p className="error">{localError ?? error}</p>}
+      {!localError && error && canAskApproval && !existing && (
+        <div className="form-ask">
+          <button type="button" className="btn btn-soft btn-block" disabled={submitting} onClick={askApproval}>
+            <HandIcon size={18} /> {t.form.askApproval}
+          </button>
+          <p className="hint">{t.form.askApprovalHint}</p>
+        </div>
+      )}
     </Sheet>
   )
 }

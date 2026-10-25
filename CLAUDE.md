@@ -119,6 +119,23 @@ the changes as chips with the old value struck through; a line about a ride that
 on the day plan. A new action needs its sentence in `adminLog.line` (both languages) and a new field
 its label in `adminLog.fields`. Tests: `tests/test_admin_rides.py`.
 
+**A shared car is rationed.** `SHARED_CAR_PER_WEEK` / `SHARED_CAR_PER_DAY` (both 1) in `services.py`:
+`shared_car_use` counts a driver's shared-car rides in a Mon–Sun week and on a day (pending and
+approved ones too), `over_shared_car_share` turns that into `LIMIT_WEEK` / `LIMIT_DAY` (the day's
+text wins). `_approval_for` in `routers/rides.py` applies it on create (per occurrence of a series)
+and when an edit moves an unapproved ride to another day or car type: within the share the ride's
+`approval` is `""`; past it a plain user gets the 409, or with `RideCreate.request_approval` the ride
+is added as `"pending"` and every admin (`admin.admin_ids`) is pushed `approval_requested`; an admin
+adding it (for anyone) gets `"approved"` outright, and own cars are never rationed. `POST
+/api/rides/{id}/approve` (admin, 409 unless pending) sets `"approved"` and pushes `ride_approved`;
+`/decline` removes the ride through `_remove_rides` with `ride_declined` to the driver and
+`ride_removed` to the passengers; both are in the admin's log. On screen: the share's refusal in
+`RideForm` grows an *Ask an admin to approve it* button (`canAskApproval`, matched on the text's
+tail in `App.tsx`), a pending ride wears an amber *Awaiting approval* tag on the card, the Upcoming
+row and as a hollow stretch on the day plan (`.plan-ride-pending`), admins get an *Approve* /
+*Decline* row on the card (`.approval-row`) and an *Awaiting approval* chip among the Upcoming
+filters. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
+
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
 **Waiting list, thread, requests.** A full car has a queue (`WaitlistEntry`, `POST/DELETE
@@ -176,7 +193,7 @@ signed out, 403 for a non-admin. `routers/admin.py`: list accounts, make or unma
 cancelled them, its coming seats and queue places go with `promote_waitlist`, its requests are
 withdrawn; the past keeps the names with the ids nulled, messages keep their text; its open sockets
 are closed through `events.disconnect`, which the hub sends only to that account's subscriptions). `UserRead.is_admin`
-is the effective value (`routers/auth.user_read`). The drawer shows *Company cars*, *People* and
+is the effective value (`routers/auth.user_read`). The drawer shows *Shared cars*, *People* and
 *All rides* (`CarAdmin`, `PeopleAdmin`, `RideLog`) to admins only. *All rides* is a spreadsheet-style
 table for an office manager: `GET /api/admin/rides?from&to` (any window up to `MAX_LOG_DAYS`, past
 included, unlike the board's 92), shown in a wide sheet (`.panel-wide`, sticky header row and date
@@ -347,8 +364,8 @@ Wording rule for both languages: no em dashes.
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: your account (the identity block and *Your account* both open
 `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
-*Notifications* (`NotificationsSheet`, the push switch), *Admin log* (admins only, `AdminLog`), *Company cars* (`CarAdmin`, with a
-*Usage* tab that reads `/api/cars/corporate/usage`) and the *Company car guide* (`CarGuide`: how to charge
+*Notifications* (`NotificationsSheet`, the push switch), *Admin log* (admins only, `AdminLog`), *Shared cars* (`CarAdmin`, with a
+*Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
 line-icon style with the green accent on the one thing the step is about; also reachable from
@@ -402,7 +419,9 @@ scrolling body and flips above the anchor when the viewport runs out. `TimePicke
 24-hour columns depending on the browser locale but always emits `HH:MM`. `App.tsx` resolves which tile is open (`selection`):
 an explicit pick that still exists, else your own ride, else the first ride, else nothing (the empty card).
 **Wording:** the thing you add, edit, duplicate or remove is a *ride*; *car* is reserved for the
-vehicle (the pool, "Company car" / "Own car", "get in this car", "in this car").
+vehicle (the pool, "Shared car" / "Own car", "get in this car", "in this car"). The pool cars are
+*shared cars* on screen (Serbian *zajednički auto*); the code and the API keep saying *corporate*
+(`CarType.corporate`, `/api/cars/corporate`), and the charging card stays the *company card*.
 
 **Adding a ride.** `RideForm` is one form at two depths, switched by the segmented control
 stuck to the head of the sheet's body and remembered as `karpul.formMode` (*Simple* is the

@@ -98,7 +98,7 @@ const en = {
     barLabel: (driver: string, when: string, origin: string, destination: string, pax: number) =>
       `${driver}, ${when}, ${origin} to ${destination}, ${enPlural(pax, 'passenger', 'passengers')}`,
     book: (car: string, from: string, to: string) => `Book ${car}, free ${from} to ${to}`,
-    hint: "Tap an empty part of a company car's road to book it from that time. Pick a ride you run and its pencil edits it.",
+    hint: "Tap an empty part of a shared car's road to book it from that time. Pick a ride you run and its pencil edits it.",
     pick: 'Tap a ride on the plan to open it here.',
   },
 
@@ -107,11 +107,11 @@ const en = {
   sidebar: {
     account: 'Your account',
     accountHint: 'Name, phone, email, password',
-    cars: 'Company cars',
+    cars: 'Shared cars',
     carsHint: 'The pool and how it is used',
     people: 'People',
     peopleHint: 'Accounts, admins, password resets',
-    guide: 'Company car guide',
+    guide: 'Shared car guide',
     guideHint: 'Charging with the card, the Mazda 6e',
     closeMenu: 'Close menu',
     signedInAs: (handle: string) => `Signed in as ${handle}`,
@@ -247,7 +247,7 @@ const en = {
     oneWay: 'One way',
     from: 'From:',
     to: 'To:',
-    companyCar: 'Company car',
+    companyCar: 'Shared car',
     ownCar: 'Own car',
     howTo: 'How to charge and drive it',
     passengersTitle: 'Passengers in this car',
@@ -270,6 +270,12 @@ const en = {
     addToCalendar: 'Add to calendar',
     removeFollowing: 'Remove this and following rides',
     weekly: 'Weekly',
+    /** A shared car past the driver's one a week: waiting for an admin, or let through. */
+    awaiting: 'Awaiting approval',
+    approved: 'Approved',
+    approvalAsk: (driver: string) => `${driver} asks for a shared car past their one a week. Your call.`,
+    approve: 'Approve',
+    decline: 'Decline',
     pickup: 'Pickup',
     start: 'Start',
     getsInAt: (place: string) => `Gets in at ${place}`,
@@ -349,9 +355,9 @@ const en = {
     sumChipIn: 'chip in',
     sumNotes: 'a note',
     car: 'Car',
-    companyCar: 'Company car',
+    companyCar: 'Shared car',
     myOwnCar: 'My own car',
-    whichCar: 'Which company car',
+    whichCar: 'Which shared car',
     carHint: (plate: string, seats: number) => `${plate} · ${enPlural(seats, 'seat', 'seats')}`,
     yourCar: 'Your car',
     carPlaceholder: 'e.g. grey Octavia',
@@ -386,6 +392,9 @@ const en = {
     optional: '(optional)',
     notesPlaceholder: 'Meeting point, detours, luggage…',
     repeatWeekly: 'Repeat every week',
+    /** Under the "one a week" refusal: add it anyway, for an admin to approve. */
+    askApproval: 'Ask an admin to approve it',
+    askApprovalHint: 'The ride is added as waiting. The admins are told and can let it through.',
     repeatUntil: 'Until',
     repeatCount: (n: number) => `${enPlural(n, 'ride', 'rides')}, one a week, same weekday.`,
     repeatMax: 'Up to 26 weeks ahead.',
@@ -404,7 +413,7 @@ const en = {
   },
 
   admin: {
-    title: 'Company cars',
+    title: 'Shared cars',
     hint: 'Changes here affect everyone. Retiring a car keeps it on past rides but takes it out of the "Add ride" form.',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
     retired: 'Retired',
@@ -412,7 +421,7 @@ const en = {
     retire: 'Retire',
     restore: 'Restore',
     addCar: 'Add car',
-    addCompanyCar: 'Add company car',
+    addCompanyCar: 'Add shared car',
     name: 'Name',
     namePlaceholder: 'e.g. Skoda Octavia',
     plate: 'Plate',
@@ -434,7 +443,7 @@ const en = {
     never: 'Never',
     booked: (n: number) => (n === 1 ? '1 ride booked ahead' : `${n} rides booked ahead`),
     history: 'Rides in this window',
-    noUsage: 'No company-car rides in this window.',
+    noUsage: 'No shared-car rides in this window.',
     retired: 'Retired',
     pax: (n: number, seats: number) => `${n} of ${seats}`,
     download: 'Download as a spreadsheet',
@@ -443,7 +452,7 @@ const en = {
   /** The admin's list of accounts: components/PeopleAdmin.tsx. */
   people: {
     title: 'People',
-    hint: 'Everyone with an account. An admin manages the company cars and the people here.',
+    hint: 'Everyone with an account. An admin manages the shared cars and the people here.',
     count: (n: number) => enPlural(n, 'account', 'accounts'),
     search: 'Search people',
     admin: 'Admin',
@@ -465,7 +474,7 @@ const en = {
   adminLog: {
     title: 'Admin log',
     hint: 'What the admins changed, newest first',
-    intro: "Every change an admin made to someone else's ride, to the company cars and to the people. Only admins can see this.",
+    intro: "Every change an admin made to someone else's ride, to the shared cars and to the people. Only admins can see this.",
     empty: 'Nothing yet. Changes an admin makes show up here.',
     older: 'Show older',
     openRide: 'Open the ride',
@@ -485,11 +494,11 @@ const en = {
         case 'seat_removed':
           return `${admin} took someone out of the car of ${subject}`
         case 'car_added':
-          return `${admin} added the company car ${subject}`
+          return `${admin} added the shared car ${subject}`
         case 'car_edited':
-          return `${admin} changed the company car ${subject}`
+          return `${admin} changed the shared car ${subject}`
         case 'car_removed':
-          return `${admin} deleted the company car ${subject}`
+          return `${admin} deleted the shared car ${subject}`
         case 'admin_granted':
           return `${admin} made ${subject} an admin`
         case 'admin_revoked':
@@ -536,7 +545,7 @@ const en = {
     to: 'To',
     kind: 'Cars',
     kindAll: 'All cars',
-    kindCorporate: 'Company cars',
+    kindCorporate: 'Shared cars',
     kindOwn: 'Own cars',
     search: 'Search driver, passenger, place or car',
     col: {
@@ -578,6 +587,7 @@ const en = {
     driving: 'Driving',
     youreIn: "You're in",
     full: 'Full',
+    awaiting: 'Awaiting approval',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
     stops: (n: number) => enPlural(n, 'stop', 'stops'),
   },
@@ -588,6 +598,7 @@ const en = {
     free: 'Free seats',
     mine: 'My rides',
     joined: "I'm in",
+    pending: 'Awaiting approval',
     search: 'Search by place or driver',
     noMatch: 'No rides match.',
     clear: 'Clear filters',
@@ -611,6 +622,8 @@ const en = {
     removeRidePax: (n: number) => `${n} passenger${n === 1 ? ' is' : 's are'} in this car. They will lose their seat.`,
     removeRideBody: (driver: string, car: string, date: string) =>
       `${driver}'s ride in the ${car} will be removed from ${date}.`,
+    declineTitle: 'Decline this ride?',
+    declineBody: (driver: string) => `The ride is removed and ${driver} is told it was declined. Any passengers are told too.`,
     removeFollowingTitle: 'Remove this and the following rides?',
     removeFollowingBody: 'This ride and every later ride of this weekly series will be removed. Their passengers lose their seats.',
     deleteCarTitle: 'Delete this car?',
@@ -629,6 +642,9 @@ const en = {
     rideUpdated: 'Ride updated.',
     rideAdded: 'Ride added.',
     rideAddedFor: (name: string) => `Ride added for ${name}.`,
+    rideAwaiting: 'Added. The admins are asked to approve it.',
+    rideApproved: (driver: string) => `Approved. ${driver} has the car.`,
+    rideDeclined: 'Declined. The ride is removed.',
     ridesAdded: (n: number) => `${n} rides added, one a week.`,
     ridesRemoved: 'Rides removed.',
     linkCopied: 'Link copied.',
@@ -679,7 +695,7 @@ const en = {
   powertrain: { electric: 'Electric', hybrid: 'Hybrid', diesel: 'Diesel', petrol: 'Petrol' } as Record<PowertrainKind, string>,
 
   guide: {
-    title: 'Company car guide',
+    title: 'Shared car guide',
     chargingTitle: 'Charging with the company card',
     mazdaTitle: 'Mazda 6e, first time behind the wheel',
     charging: [
@@ -780,7 +796,10 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   // Not the server's: lib/api.ts says this when no answer came back at all.
   [/^No connection to the server$/, () => 'Nema veze sa serverom'],
   [/^Booking not found$/, () => 'Rezervacija nije pronađena'],
-  [/^Corporate car not found$/, () => 'Službeni auto nije pronađen'],
+  [/^Corporate car not found$/, () => 'Zajednički auto nije pronađen'],
+  [/^You already have a shared car this week\. An admin can approve another$/, () => 'Već imaš zajednički auto ove sedmice. Administrator može da odobri još jedan'],
+  [/^You already have a shared car that day\. An admin can approve another$/, () => 'Već imaš zajednički auto tog dana. Administrator može da odobri još jedan'],
+  [/^This ride is not waiting for approval$/, () => 'Ova vožnja ne čeka odobrenje'],
   [/^No free seats left$/, () => 'Nema više slobodnih mesta'],
   [/^Only the driver or an admin can cancel this ride$/, () => 'Samo vozač ili administrator može da ukloni ovu vožnju'],
   [/^Only the driver or an admin can edit this ride$/, () => 'Samo vozač ili administrator može da izmeni ovu vožnju'],
@@ -803,7 +822,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   ],
   [
     /^That corporate car is already booked by (.+) from (\d\d:\d\d)(?: to (\d\d:\d\d))? that day(?: \((\S+)\))?$/,
-    (m) => `Taj službeni auto je ${m[4] ? `${m[4]} ` : 'tog dana '}već zauzet: ${m[1]}, od ${m[2]}${m[3] ? ` do ${m[3]}` : ''}`,
+    (m) => `Taj zajednički auto je ${m[4] ? `${m[4]} ` : 'tog dana '}već zauzet: ${m[1]}, od ${m[2]}${m[3] ? ` do ${m[3]}` : ''}`,
   ],
   [/^Pickup must be the ride's origin or one of its stops$/, () => 'Mesto ulaska mora biti polazak ili jedno od mesta ulaska ove vožnje'],
   [/^Only the passenger or the driver can change this booking$/, () => 'Ovu rezervaciju može da izmeni samo taj putnik ili vozač'],
@@ -858,7 +877,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^a pickup point may have at most (\d+) characters$/, (m) => `Mesto ulaska može imati najviše ${m[1]} znakova`],
   // Pydantic (schemas.py), possibly prefixed with the field by api.ts: "origin: must not be empty".
   [/^return_time must be after departure_time$/, () => 'Vreme povratka mora biti posle polaska'],
-  [/^corporate_car_id is required for a corporate car$/, () => 'Izaberi službeni auto'],
+  [/^corporate_car_id is required for a corporate car$/, () => 'Izaberi zajednički auto'],
   [/^car_name is required for an own car$/, () => 'Upiši koji je auto'],
 ]
 
@@ -995,7 +1014,7 @@ const sr: Messages = {
     edit: (driver) => `Izmeni vožnju (vozi ${driver})`,
     barLabel: (driver, when, origin, destination, pax) => `${driver}, ${when}, ${origin} do ${destination}, ${srPassengers(pax)}`,
     book: (car, from, to) => `Rezerviši ${car}, slobodno od ${from} do ${to}`,
-    hint: 'Dodirni prazan deo puta službenog auta da ga rezervišeš od tog vremena. Izaberi vožnju koju vodiš i olovka je menja.',
+    hint: 'Dodirni prazan deo puta zajedničkog auta da ga rezervišeš od tog vremena. Izaberi vožnju koju vodiš i olovka je menja.',
     pick: 'Dodirni vožnju na planu da je otvoriš ovde.',
   },
 
@@ -1004,11 +1023,11 @@ const sr: Messages = {
   sidebar: {
     account: 'Tvoj nalog',
     accountHint: 'Ime, telefon, mejl, lozinka',
-    cars: 'Službeni automobili',
+    cars: 'Zajednički automobili',
     carsHint: 'Vozni park i kako se koristi',
     people: 'Ljudi',
     peopleHint: 'Nalozi, administratori, nove lozinke',
-    guide: 'Vodič za službeni auto',
+    guide: 'Vodič za zajednički auto',
     guideHint: 'Punjenje karticom, Mazda 6e',
     closeMenu: 'Zatvori meni',
     signedInAs: (handle: string) => `Prijavljen/a kao ${handle}`,
@@ -1144,7 +1163,7 @@ const sr: Messages = {
     oneWay: 'U jednom smeru',
     from: 'Od:',
     to: 'Do:',
-    companyCar: 'Službeni auto',
+    companyCar: 'Zajednički auto',
     ownCar: 'Sopstveni auto',
     howTo: 'Kako se puni i vozi',
     passengersTitle: 'Putnici u ovom autu',
@@ -1166,6 +1185,11 @@ const sr: Messages = {
     addToCalendar: 'Dodaj u kalendar',
     removeFollowing: 'Ukloni ovu i sledeće vožnje',
     weekly: 'Nedeljno',
+    awaiting: 'Čeka odobrenje',
+    approved: 'Odobreno',
+    approvalAsk: (driver) => `${driver} traži zajednički auto preko svog jednog nedeljno. Ti odlučuješ.`,
+    approve: 'Odobri',
+    decline: 'Odbij',
     pickup: 'Ulazak',
     start: 'Polazak',
     getsInAt: (place) => `Ulazi: ${place}`,
@@ -1241,9 +1265,9 @@ const sr: Messages = {
     sumChipIn: 'doprinos',
     sumNotes: 'napomena',
     car: 'Auto',
-    companyCar: 'Službeni auto',
+    companyCar: 'Zajednički auto',
     myOwnCar: 'Moj auto',
-    whichCar: 'Koji službeni auto',
+    whichCar: 'Koji zajednički auto',
     carHint: (plate, seats) => `${plate} · ${srSeats(seats)}`,
     yourCar: 'Tvoj auto',
     carPlaceholder: 'npr. siva Octavia',
@@ -1277,6 +1301,8 @@ const sr: Messages = {
     optional: '(nije obavezno)',
     notesPlaceholder: 'Mesto sastanka, obilasci, prtljag…',
     repeatWeekly: 'Ponavljaj svake sedmice',
+    askApproval: 'Zatraži odobrenje administratora',
+    askApprovalHint: 'Vožnja se dodaje kao vožnja na čekanju. Administratori dobijaju obaveštenje i mogu da je odobre.',
     repeatUntil: 'Do',
     repeatCount: (n) => `${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično, isti dan u sedmici.`,
     repeatMax: 'Najviše 26 sedmica unapred.',
@@ -1294,7 +1320,7 @@ const sr: Messages = {
   },
 
   admin: {
-    title: 'Službeni automobili',
+    title: 'Zajednički automobili',
     hint: 'Izmene ovde važe za sve. Povučen auto ostaje na prošlim vožnjama, ali nestaje iz obrasca „Dodaj vožnju“.',
     seats: srSeats,
     retired: 'Povučen',
@@ -1302,7 +1328,7 @@ const sr: Messages = {
     retire: 'Povuci',
     restore: 'Vrati',
     addCar: 'Dodaj auto',
-    addCompanyCar: 'Dodaj službeni auto',
+    addCompanyCar: 'Dodaj zajednički auto',
     name: 'Naziv',
     namePlaceholder: 'npr. Škoda Octavia',
     plate: 'Tablice',
@@ -1324,7 +1350,7 @@ const sr: Messages = {
     never: 'Nikad',
     booked: (n) => `${srPlural(n, 'vožnja zakazana', 'vožnje zakazane', 'vožnji zakazano')} unapred`,
     history: 'Vožnje u ovom periodu',
-    noUsage: 'U ovom periodu nije bilo vožnji službenim autom.',
+    noUsage: 'U ovom periodu nije bilo vožnji zajedničkim autom.',
     retired: 'Povučen',
     pax: (n, seats) => `${n} od ${seats}`,
     download: 'Preuzmi kao tabelu',
@@ -1333,7 +1359,7 @@ const sr: Messages = {
   adminLog: {
     title: 'Dnevnik administratora',
     hint: 'Šta su administratori menjali, najnovije prvo',
-    intro: 'Svaka izmena koju je administrator napravio na tuđoj vožnji, službenim automobilima i nalozima. Ovo vide samo administratori.',
+    intro: 'Svaka izmena koju je administrator napravio na tuđoj vožnji, zajedničkim automobilima i nalozima. Ovo vide samo administratori.',
     empty: 'Još ništa. Izmene administratora pojavljuju se ovde.',
     older: 'Prikaži starije',
     openRide: 'Otvori vožnju',
@@ -1353,11 +1379,11 @@ const sr: Messages = {
         case 'seat_removed':
           return `${admin} je uklonio/la putnika, vozi ${subject}`
         case 'car_added':
-          return `${admin} je dodao/la službeni auto ${subject}`
+          return `${admin} je dodao/la zajednički auto ${subject}`
         case 'car_edited':
-          return `${admin} je izmenio/la službeni auto ${subject}`
+          return `${admin} je izmenio/la zajednički auto ${subject}`
         case 'car_removed':
-          return `${admin} je obrisao/la službeni auto ${subject}`
+          return `${admin} je obrisao/la zajednički auto ${subject}`
         case 'admin_granted':
           return `${admin} je dodelio/la administratorska prava: ${subject}`
         case 'admin_revoked':
@@ -1403,7 +1429,7 @@ const sr: Messages = {
     to: 'Do',
     kind: 'Automobili',
     kindAll: 'Svi automobili',
-    kindCorporate: 'Službeni automobili',
+    kindCorporate: 'Zajednički automobili',
     kindOwn: 'Sopstveni automobili',
     search: 'Traži vozača, putnika, mesto ili auto',
     col: {
@@ -1425,7 +1451,7 @@ const sr: Messages = {
       chipIn: 'Doprinos',
       note: 'Napomena',
     },
-    company: 'Službeni',
+    company: 'Zajednički',
     own: 'Sopstveni',
     oneWay: 'u jednom pravcu',
     none: 'Između ovih datuma nema vožnji.',
@@ -1438,7 +1464,7 @@ const sr: Messages = {
 
   people: {
     title: 'Ljudi',
-    hint: 'Svi koji imaju nalog. Administrator upravlja službenim automobilima i ljudima ovde.',
+    hint: 'Svi koji imaju nalog. Administrator upravlja zajedničkim automobilima i ljudima ovde.',
     count: (n) => srPlural(n, 'nalog', 'naloga', 'naloga'),
     search: 'Traži ljude',
     admin: 'Administrator',
@@ -1466,6 +1492,7 @@ const sr: Messages = {
     driving: 'Voziš',
     youreIn: 'Imaš mesto',
     full: 'Puno',
+    awaiting: 'Čeka odobrenje',
     seats: srSeats,
     stops: (n) => srPlural(n, 'usputna stanica', 'usputne stanice', 'usputnih stanica'),
   },
@@ -1476,6 +1503,7 @@ const sr: Messages = {
     free: 'Slobodna mesta',
     mine: 'Moje vožnje',
     joined: 'Imam mesto',
+    pending: 'Čeka odobrenje',
     search: 'Traži po mestu ili vozaču',
     noMatch: 'Nijedna vožnja ne odgovara.',
     clear: 'Poništi filtere',
@@ -1498,6 +1526,8 @@ const sr: Messages = {
     removeRideTitle: 'Ukloniti ovu vožnju?',
     removeRidePax: (n) => `${srPassengers(n)} ${srForm(n, 'je', 'su', 'je')} u ovom autu. ${srForm(n, 'Izgubiće mesto.', 'Izgubiće mesta.', 'Izgubiće mesta.')}`,
     removeRideBody: (driver, car, date) => `Vožnja za ${date} (${driver}, ${car}) biće uklonjena.`,
+    declineTitle: 'Odbiti ovu vožnju?',
+    declineBody: (driver) => `Vožnja se uklanja i ${driver} dobija obaveštenje da je odbijena. Putnici takođe.`,
     removeFollowingTitle: 'Ukloniti ovu i sledeće vožnje?',
     removeFollowingBody: 'Ova vožnja i sve kasnije vožnje iz ove nedeljne serije biće uklonjene. Njihovi putnici gube mesta.',
     deleteCarTitle: 'Obrisati ovaj auto?',
@@ -1516,6 +1546,9 @@ const sr: Messages = {
     rideUpdated: 'Vožnja je izmenjena.',
     rideAdded: 'Vožnja je dodata.',
     rideAddedFor: (name) => `Vožnja je dodata, vozi ${name}.`,
+    rideAwaiting: 'Dodato. Administratori su zamoljeni da odobre.',
+    rideApproved: (driver) => `Odobreno. ${driver} ima auto.`,
+    rideDeclined: 'Odbijeno. Vožnja je uklonjena.',
     ridesAdded: (n) => `Dodato: ${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično.`,
     ridesRemoved: 'Vožnje su uklonjene.',
     linkCopied: 'Link je kopiran.',
@@ -1565,7 +1598,7 @@ const sr: Messages = {
   powertrain: { electric: 'Električni', hybrid: 'Hibrid', diesel: 'Dizel', petrol: 'Benzin' },
 
   guide: {
-    title: 'Vodič za službeni auto',
+    title: 'Vodič za zajednički auto',
     chargingTitle: 'Punjenje službenom karticom',
     mazdaTitle: 'Mazda 6e, prvi put za volanom',
     charging: [

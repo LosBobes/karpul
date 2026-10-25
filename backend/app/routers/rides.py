@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, select
 
 from .. import audit
-from ..admin import is_admin
+from ..admin import admin_ids, is_admin, require_admin
 from ..auth import CredsDep, require_user
 from ..calendar import ride_ics
 from ..database import get_session, get_write_session
@@ -35,6 +35,7 @@ from ..services import (
     is_person,
     leave_waitlists_that_day,
     norm_name,
+    over_shared_car_share,
     pickup_or_422,
     promote_waitlist,
     resolve_corporate_car,
@@ -169,7 +170,7 @@ def list_rides(
 
 def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_id: int | None = None) -> dict:
     """The column values for a validated ride, with the corporate-car rules applied."""
-    data = validated.model_dump(exclude={"repeat_until", "request_id", "driver_id"})
+    data = validated.model_dump(exclude={"repeat_until", "request_id", "driver_id", "request_approval"})
     data["stops"] = stops_to_text(validated.stops)  # type: ignore[arg-type]
     if validated.car_type == CarType.corporate:
         car = resolve_corporate_car(session, validated.corporate_car_id)  # type: ignore[arg-type]
@@ -207,6 +208,24 @@ def _request_to_answer(session: Session, payload: RideCreate, user: User) -> Rid
     return request
 
 
+def _approval_for(session: Session, actor: User, driver: User, payload: RideCreate, exclude_ride_id: int | None = None) -> str:
+    """The shared cars are rationed per driver (services.shared_car_use). A
+    ride within the share is "", one past it is a 409 naming the reason,
+    unless the driver asked for approval ("pending") or an admin is the one
+    adding it ("approved": the admin's word is the approval). Own cars are
+    never rationed."""
+    if payload.car_type != CarType.corporate:
+        return ""
+    reason = over_shared_car_share(session, driver.id, payload.ride_date, exclude_ride_id)  # type: ignore[arg-type]
+    if reason is None:
+        return ""
+    if is_admin(actor):
+        return "approved"
+    if payload.request_approval:
+        return "pending"
+    raise HTTPException(status.HTTP_409_CONFLICT, reason)
+
+
 @router.post("", response_model=RideRead, status_code=status.HTTP_201_CREATED)
 def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
     """Add a ride, driven by the signed-in account: `driver_name` is
@@ -239,11 +258,12 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
         occurrence = payload.model_copy(update={"ride_date": ride_date})
         try:
             data = _prepare(session, occurrence)
+            approval = _approval_for(session, user, driver, occurrence)
         except HTTPException as exc:
             if exc.status_code == 409 and len(dates) > 1:
                 raise HTTPException(409, f"{exc.detail} ({ride_date.isoformat()})") from exc
             raise
-        ride = Ride(**data, driver_id=driver.id, series_id=series_id)
+        ride = Ride(**data, driver_id=driver.id, series_id=series_id, approval=approval)
         session.add(ride)
         # Flush so the next occurrence's availability check sees this one.
         session.flush()
@@ -268,6 +288,8 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
         notify(session, [request.user_id], "request_answered", rides[0], driver=driver.display_name)
     if driver is not user:
         notify(session, [driver.id], "ride_assigned", rides[0], name=user.display_name)
+    if any(r.approval == "pending" for r in rides):
+        notify(session, admin_ids(session), "approval_requested", rides[0], name=driver.display_name)
     return to_ride_read_dict(rides[0])
 
 
@@ -303,6 +325,15 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
         {k: merged[k] for k in RideCreate.model_fields if k in merged}
     )
     data = _prepare(session, validated, exclude_ride_id=ride.id)
+    # Moving an unapproved ride into a week (or onto a day) that already has
+    # the driver's shared car is the same ask as adding one there; a pending
+    # ride stays pending wherever it goes, an approved one stays approved.
+    if data["car_type"] != CarType.corporate:
+        data["approval"] = ""
+    elif ride.approval == "" and (data["ride_date"] != ride.ride_date or data["car_type"] != ride.car_type):
+        driver = session.get(User, ride.driver_id) if ride.driver_id is not None else None
+        if driver is not None:
+            data["approval"] = _approval_for(session, user, driver, validated, exclude_ride_id=ride.id)
     if validated.seats < len(ride.bookings):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -354,10 +385,17 @@ def delete_ride(
     if scope == "following" and ride.series_id:
         stmt = select(Ride).where(Ride.series_id == ride.series_id, Ride.ride_date > ride.ride_date, Ride.id != ride.id)
         doomed += [r for r in session.exec(stmt) if _may_run(user, r)]
+    _remove_rides(session, user, doomed)
+
+
+def _remove_rides(session: Session, user: User, doomed: list[Ride], action: str = "ride_removed", tell_driver: bool = True) -> None:
+    """Delete `doomed` as `user`: the passengers (and a driver who is not
+    `user`) are told, the requests they answered are open again, and every
+    tab hears. Commits."""
     gone = []
     reopened: list[RideRequest] = []
     for r in doomed:
-        told = [b.passenger_id for b in r.bookings] + _driver_unless_actor(user, r)
+        told = [b.passenger_id for b in r.bookings] + (_driver_unless_actor(user, r) if tell_driver else [])
         if told:
             notify(session, told, "ride_removed", r, driver=user.display_name)
         for request in session.exec(select(RideRequest).where(RideRequest.ride_id == r.id)):
@@ -365,7 +403,7 @@ def delete_ride(
             session.add(request)
             reopened.append(request)
         if _on_behalf(user, r):
-            audit.record(session, user, "ride_removed", r.driver_name, ride=r)
+            audit.record(session, user, action, r.driver_name, ride=r)
         gone.append((r.id, r.ride_date))
         session.delete(r)
     session.commit()
@@ -374,6 +412,35 @@ def delete_ride(
     for request in reopened:
         session.refresh(request)
         request_saved(request)
+
+
+@router.post("/{ride_id}/approve", response_model=RideRead)
+def approve_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: let a shared-car ride past the driver's share through."""
+    admin = require_admin(session, creds)
+    ride = _get_ride_or_404(session, ride_id)
+    if ride.approval != "pending":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This ride is not waiting for approval")
+    ride.approval = "approved"
+    session.add(ride)
+    audit.record(session, admin, "ride_approved", ride.driver_name, ride=ride)
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+    notify(session, [ride.driver_id], "ride_approved", ride, name=admin.display_name)
+    return to_ride_read_dict(ride)
+
+
+@router.post("/{ride_id}/decline", status_code=status.HTTP_204_NO_CONTENT)
+def decline_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: refuse a shared-car ride waiting for approval. The ride
+    goes, as if cancelled; the driver is told it was declined."""
+    admin = require_admin(session, creds)
+    ride = _get_ride_or_404(session, ride_id)
+    if ride.approval != "pending":
+        raise HTTPException(status.HTTP_409_CONFLICT, "This ride is not waiting for approval")
+    notify(session, [ride.driver_id], "ride_declined", ride, name=admin.display_name)
+    _remove_rides(session, admin, [ride], action="ride_declined", tell_driver=False)
 
 
 @router.post("/{ride_id}/bookings", response_model=RideRead, status_code=status.HTTP_201_CREATED)

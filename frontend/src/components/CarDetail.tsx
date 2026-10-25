@@ -11,6 +11,7 @@ import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
 import {
   ArrowRightIcon,
   CalendarIcon,
+  CheckIcon,
   CarIcon,
   CoinsIcon,
   CopyIcon,
@@ -63,6 +64,9 @@ interface Props {
   onDuplicate: (ride: Ride) => void
   /** The driver's switch: may the passengers add and remove each other? */
   onTogglePassengersManage: (ride: Ride) => void
+  /** Admin: a shared car past the driver's one a week, let through or refused. */
+  onApprove: (ride: Ride) => void
+  onDecline: (ride: Ride) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
   onGuide?: () => void
   /** Queue for a seat in this full car, getting in at `pickup` once one frees up. */
@@ -102,6 +106,8 @@ export function CarDetail({
   onEdit,
   onDuplicate,
   onTogglePassengersManage,
+  onApprove,
+  onDecline,
   onGuide,
   onWait,
   onLeaveLine,
@@ -195,6 +201,8 @@ export function CarDetail({
             <span className="driver-role">
               {t.detail.driver}
               {isDriver && <span className="tag">{t.detail.you}</span>}
+              {ride.approval === 'pending' && <span className="tag tag-amber">{t.detail.awaiting}</span>}
+              {ride.approval === 'approved' && <span className="tag tag-green">{t.detail.approved}</span>}
               {ride.series_id && (
                 <span className="driver-weekly" title={t.form.repeatWeekly}>
                   <RepeatIcon size={13} /> {t.detail.weekly}
@@ -204,6 +212,20 @@ export function CarDetail({
           </div>
           <Menu trigger={<KebabIcon />} label={t.detail.rideOptions} items={menuItems} />
         </header>
+
+        {ride.approval === 'pending' && me.admin && !isPast && (
+          <div className="approval-row">
+            <span className="approval-ask">{t.detail.approvalAsk(ride.driver_name)}</span>
+            <span className="approval-actions">
+              <button type="button" className="btn btn-outline-danger" disabled={busy} onClick={() => onDecline(ride)}>
+                {t.detail.decline}
+              </button>
+              <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onApprove(ride)}>
+                <CheckIcon size={16} /> {t.detail.approve}
+              </button>
+            </span>
+          </div>
+        )}
 
         {ride.driver_phone && !isDriver && (
           <a className="btn btn-soft btn-block driver-call" href={telHref(ride.driver_phone)}>
