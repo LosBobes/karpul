@@ -401,7 +401,11 @@ car to end of day. Now is an ink rule behind the roads (not red, which is for re
 says when it is next free (`rowStatus`). Switching to it jumps to today; `range` is that one day. A tapped bar
 opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
 (`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour; a company car's hour ticks are elements, `.plan-tick`, and the ones on a free stretch are green-tinted and stand up in a wave from the pointer, `--d` delaying each by its distance) opens `RideForm` with `slot`: that car, departure at the tapped
-half hour, back by the next booking or 17:00. A picked ride that you run (`runs()`, so any ride for an
+half hour, back by the next booking or 17:00. While the board scrolls (a phone, a narrow pane), an
+overview strip sits on top of it (`components/PlanOverview.tsx`): the whole day across the card's width,
+one thin lane per car with its rides in the drivers' tones, and a green frame over the hours on screen;
+a tap centres the board there and a drag pans it (`visibleSpan` / `scrollToCentre` in `lib/dayPlan.ts`),
+and it is a keyboard slider too. It hides itself when the day fits. A picked ride that you run (`runs()`, so any ride for an
 admin) grows a pencil at its end (`.plan-edit`), and a double click on it opens the edit form too. The same
 day can be drawn as a **clock** instead (`components/DayClock.tsx`, geometry in `lib/dayClock.ts`, tested in
 `dayClock.test.ts`): a 24-hour dial, midnight at the top, one ring per car (pool cars outermost, then own cars),

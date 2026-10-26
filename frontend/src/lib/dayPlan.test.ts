@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { captionRoom, DAY_AXIS, freeGaps, fromMinutes, planRows, rowStatus, slotTimes, toMinutes } from './dayPlan'
+import { captionRoom, DAY_AXIS, freeGaps, fromMinutes, planRows, rowStatus, scrollToCentre, slotTimes, toMinutes, visibleSpan } from './dayPlan'
 import type { CorporateCar, Ride } from './types'
 
 const car = (id: number, name: string, active = true): CorporateCar => ({ id, name, plate: `P-${id}`, passenger_seats: 4, active })
@@ -123,5 +123,24 @@ describe('day plan and approvals', () => {
       { start: 420, end: 480 },
       { start: 720, end: 1140 },
     ])
+  })
+})
+
+describe('the overview strip', () => {
+  // A phone: the day is drawn 1440px wide from x = 30, the board shows 360px of it.
+  it('reads the hours on screen from the scroll position', () => {
+    expect(visibleSpan(0, 360, 30, 1440)).toEqual({ start: 0, end: 330 })
+    expect(visibleSpan(30 + 600, 360, 30, 1440)).toEqual({ start: 600, end: 960 })
+    // Scrolled to the end, the span stops at midnight.
+    expect(visibleSpan(1300, 360, 30, 1440).end).toBe(24 * 60)
+  })
+
+  it('scrolls a picked minute to the middle, never before the start', () => {
+    expect(scrollToCentre(12 * 60, 360, 30, 1440)).toBe(30 + 720 - 180)
+    expect(scrollToCentre(0, 360, 30, 1440)).toBe(0)
+    // And back: centring a minute puts it in the middle of what is shown.
+    const left = scrollToCentre(9 * 60, 360, 30, 1440)
+    const span = visibleSpan(left, 360, 30, 1440)
+    expect((span.start + span.end) / 2).toBe(9 * 60)
   })
 })

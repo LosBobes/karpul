@@ -22,6 +22,7 @@ import { Avatar } from './Avatar'
 import { PowertrainMark } from './CarArt'
 import { DatePicker } from './DatePicker'
 import { DayClock } from './DayClock'
+import { PlanOverview } from './PlanOverview'
 import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, PencilIcon, TimelineIcon } from './icons'
 import { SegThumb } from './Segmented'
 
@@ -336,6 +337,7 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
         </div>
       ) : (
         <div className="card plan-board" style={style}>
+          <PlanOverview pool={pool} own={own} now={showNow ? now : null} scroller={scroller} />
           <div className="plan-scroll" ref={scroller}>
             <div className="plan-track">
               {/* The clock face: the hours across the top, and now as an ink rule
