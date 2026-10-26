@@ -172,6 +172,13 @@ export const ClockIcon = icon(
     <path d="M12 7.5V12l3 1.75" />
   </>,
 )
+/** The day plan drawn as roads: two lines across, a stretch taken on each. */
+export const TimelineIcon = icon(
+  <>
+    <path d="M3.5 8h17M3.5 16h17" />
+    <path d="M6 8h7M11 16h6.5" strokeWidth={3.4} />
+  </>,
+)
 export const UserIcon = icon(
   <>
     <circle cx="12" cy="8.25" r="3.75" />

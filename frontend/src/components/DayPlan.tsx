@@ -14,13 +14,16 @@ import {
   type PlanRow,
 } from '../lib/dayPlan'
 import { useT } from '../lib/i18n'
+import { useWide } from '../lib/useWide'
 import { drives, runs, seatedIn, useMe } from '../lib/me'
 import type { CorporateCar, Ride } from '../lib/types'
 import { avatarTone } from '../lib/tone'
 import { Avatar } from './Avatar'
 import { PowertrainMark } from './CarArt'
 import { DatePicker } from './DatePicker'
-import { ChevronLeftIcon, ChevronRightIcon, PencilIcon } from './icons'
+import { DayClock } from './DayClock'
+import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, PencilIcon, TimelineIcon } from './icons'
+import { SegThumb } from './Segmented'
 
 /** A free stretch of a company car, tapped: the ride form opens on it. */
 export interface Slot {
@@ -62,6 +65,20 @@ function useNowMinutes(on: boolean): number {
   return now
 }
 
+type Shape = 'clock' | 'timeline'
+const SHAPES: Shape[] = ['clock', 'timeline']
+/** The day as a clock or as roads across the hours, remembered per browser. */
+const SHAPE_KEY = 'karpul.planShape'
+
+function loadShape(): Shape | null {
+  try {
+    const v = localStorage.getItem(SHAPE_KEY)
+    return v === 'clock' || v === 'timeline' ? v : null
+  } catch {
+    return null
+  }
+}
+
 const at = (min: number, axis: Axis) => `${((min - axis.from) / (axis.to - axis.from)) * 100}%`
 const len = (minutes: number, axis: Axis) => `${(minutes / (axis.to - axis.from)) * 100}%`
 
@@ -92,6 +109,19 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   const isToday = date === today
   const now = useNowMinutes(isToday)
   const [ghost, setGhost] = useState<{ row: string; min: number } | null>(null)
+  // A wide screen has a square to spare, so the day opens as a clock there;
+  // a phone keeps the roads, which scroll sideways under a thumb.
+  const wide = useWide()
+  const [chosen, setChosen] = useState<Shape | null>(loadShape)
+  const shape: Shape = chosen ?? (wide ? 'clock' : 'timeline')
+  const pickShape = (next: Shape) => {
+    setChosen(next)
+    try {
+      localStorage.setItem(SHAPE_KEY, next)
+    } catch {
+      // Not remembered, still switched.
+    }
+  }
   const axis = DAY_AXIS
   // Today the time already gone is not offered: booking starts at the next half hour.
   const { pool, own } = planRows(rides, cars, axis, isToday ? Math.ceil(now / 30) * 30 : 0)
@@ -113,20 +143,21 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
     const el = scroller.current
     const scale = el?.querySelector<HTMLElement>('.plan-hours')
     // Only when the day or the board itself changes, never under the reader's finger.
-    const key = `${date}|${loading}|${empty}`
+    const key = `${date}|${loading}|${empty}|${shape}`
     if (!el || !scale || placed.current === key) return
     placed.current = key
     // The hour before the focus lands at the left edge, just inside the board's padding.
     el.scrollLeft = ((Math.max(focus - 60, DAY_AXIS.from) - DAY_AXIS.from) / (DAY_AXIS.to - DAY_AXIS.from)) * scale.offsetWidth
-  }, [date, loading, empty, focus])
+  }, [date, loading, empty, focus, shape])
 
-  const book = (row: PlanRow, gap: Gap, e: MouseEvent<HTMLButtonElement>) => {
+  const bookAt = (row: PlanRow, gap: Gap, min: number | null) => {
     if (!row.car) return
-    // A keyboard press has no point on the road: it books from the start of the stretch.
-    const { departure, ret } = slotTimes(gap, e.detail > 0 ? minuteAt(gap, e) : null, axis)
+    const { departure, ret } = slotTimes(gap, min, axis)
     setGhost(null)
     onBook({ date, carId: row.car.id, departure: fromMinutes(departure), ret: fromMinutes(ret) })
   }
+  // A keyboard press has no point on the road: it books from the start of the stretch.
+  const book = (row: PlanRow, gap: Gap, e: MouseEvent<HTMLButtonElement>) => bookAt(row, gap, e.detail > 0 ? minuteAt(gap, e) : null)
   const hover = (row: PlanRow, gap: Gap, e: PointerEvent<HTMLButtonElement>) => {
     if (e.pointerType !== 'mouse') return
     setGhost({ row: row.key, min: slotTimes(gap, minuteAt(gap, e), axis).departure })
@@ -250,6 +281,23 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
       <div className="dates-head">
         <DatePicker variant="title" label={t.dates.jumpToDate} value={date} onChange={onDate} linkText={`${fmtDayLabel(date)}, ${fmtDayDate(date)}`} />
         <div className="week-nav" role="group" aria-label={t.plan.label}>
+          <div className="segmented plan-shape" role="radiogroup" aria-label={t.plan.shape}>
+            <SegThumb count={SHAPES.length} index={SHAPES.indexOf(shape)} />
+            {SHAPES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="radio"
+                aria-checked={shape === s}
+                aria-label={t.plan[s]}
+                title={t.plan[s]}
+                className={shape === s ? 'seg seg-on' : 'seg'}
+                onClick={() => pickShape(s)}
+              >
+                {s === 'clock' ? <ClockIcon size={16} /> : <TimelineIcon size={16} />}
+              </button>
+            ))}
+          </div>
           {!isToday && (
             <button type="button" className="today-chip" onClick={() => onDate(today)}>
               {t.common.today}
@@ -269,6 +317,22 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
       ) : empty ? (
         <div className="card empty-card empty-card-short">
           <strong>{isPast ? t.empty.noRidesWent : t.empty.noRidesDay}</strong>
+        </div>
+      ) : shape === 'clock' ? (
+        <div className="card plan-board plan-board-clock">
+          <DayClock
+            date={date}
+            pool={pool}
+            own={own}
+            isPast={isPast}
+            isToday={isToday}
+            now={now}
+            selectedId={selectedId}
+            status={status}
+            onSelect={onSelect}
+            onBook={bookAt}
+            onEdit={onEdit}
+          />
         </div>
       ) : (
         <div className="card plan-board" style={style}>
