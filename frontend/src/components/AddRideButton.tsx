@@ -78,3 +78,18 @@ export function AddRideFab({ onClick }: { onClick: () => void }) {
     </button>
   )
 }
+
+/**
+ * The same control on a wide screen, where nothing floats: a green button at
+ * the right end of the toolbar, where a desktop app keeps its "new" action.
+ * It is still the only add control on the screen.
+ */
+export function AddRideToolbarButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+  const t = useT()
+  return (
+    <button type="button" className="btn btn-primary toolbar-add" onClick={onClick} disabled={disabled} title={t.fab.addRide}>
+      <PlusIcon size={16} weight="bold" />
+      {t.fab.addRide}
+    </button>
+  )
+}

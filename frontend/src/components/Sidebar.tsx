@@ -8,7 +8,7 @@ import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
 
-interface Props {
+interface Content {
   userName: string
   /** The account's username, shown under the name in the identity block. */
   handle: string
@@ -25,6 +25,9 @@ interface Props {
   onGuide: () => void
   onMyRides: () => void
   onNotifications: () => void
+}
+
+interface Props extends Content {
   onClose: () => void
 }
 
@@ -55,51 +58,12 @@ function loadOpen(): Record<GroupKey, boolean> {
 }
 
 /**
- * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the things that are not about one particular ride, in
- * collapsible groups: yours (rides, notifications, the shared-car guide), the
- * admin's (approvals, the pool, the people, every ride, the log) and the
- * settings (appearance, language). Your account is the identity block on top.
- * Adding a ride is not here; that is the floating plus. Picking an item closes
- * the drawer first, so the sheet it opens is the only thing left on screen.
+ * What the menu holds, drawer or dock alike: who you are, then the items in
+ * collapsible groups, the settings at the foot. `pick` wraps each item's
+ * action (the drawer closes itself first; the dock has nothing to close).
  */
-export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onMyRides, onNotifications, onClose }: Props) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onMyRides, onNotifications, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
-  const panel = useRef<HTMLDivElement>(null)
-  // The drawer slides back out before it unmounts, whichever way it is closed.
-  const { closing, requestClose, onAnimationEnd } = useClosing(onClose)
-  // The phone's back button closes the drawer instead of leaving the page.
-  useBackClose(requestClose)
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && requestClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [requestClose])
-
-  // Same lock as a sheet: the page behind must not scroll under the drawer.
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [])
-
-  // Keyboard users land inside the drawer; the ☰ gets focus back when it unmounts
-  // because the browser restores it to the last focused element still in the DOM.
-  useEffect(() => {
-    panel.current?.focus()
-  }, [])
-
-  // Picking an item closes on the spot: the sheet it opens must own the
-  // history entry and the body-scroll lock alone, so the drawer does not
-  // linger under it playing its exit.
-  const pick = (fn: () => void) => () => {
-    onClose()
-    fn()
-  }
-
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
     setOpen((prev) => {
@@ -198,6 +162,101 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
   )
 
   return (
+    <>
+          <button type="button" className="drawer-me" onClick={pick(onAccount)}>
+            <Avatar name={userName || '?'} size="lg" />
+            <span className="drawer-me-text">
+              <span className="drawer-me-name">{userName}</span>
+              <span className="drawer-me-hint">@{handle}</span>
+            </span>
+            <ChevronRightIcon size={18} className="drawer-me-chevron" />
+          </button>
+
+          <nav className="drawer-nav" aria-label={t.common.menu}>
+            {group('me', t.sidebar.mine, mine.map(renderItem))}
+            {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
+          </nav>
+
+          {group(
+            'settings',
+            t.sidebar.settings,
+            <div className="drawer-settings">
+              <ThemeSwitch />
+              <LanguageSwitch />
+            </div>,
+            0,
+            'drawer-foot',
+          )}
+    </>
+  )
+}
+
+/**
+ * The same menu on a wide screen: always there down the left edge, the way a
+ * desktop app keeps its sidebar, instead of a drawer behind the ☰. Nothing
+ * to close, no backdrop, no history entry; an item opens its sheet directly.
+ */
+export function Dock(props: Content) {
+  const pick = (fn: () => void) => fn
+  return (
+    <aside id="app-sidebar" className="drawer dock" aria-label="Karpul">
+      <header className="drawer-head dock-head">
+        <span className="topbar-title">
+          <Logo /> Karpul
+        </span>
+      </header>
+      <SidebarBody {...props} pick={pick} />
+    </aside>
+  )
+}
+
+/**
+ * The app menu: a drawer that slides in from the left edge under the ☰ in the
+ * top bar. It holds the things that are not about one particular ride, in
+ * collapsible groups: yours (rides, notifications, the shared-car guide), the
+ * admin's (approvals, the pool, the people, every ride, the log) and the
+ * settings (appearance, language). Your account is the identity block on top.
+ * Adding a ride is not here; that is the plus. Picking an item closes
+ * the drawer first, so the sheet it opens is the only thing left on screen.
+ */
+export function Sidebar({ onClose, ...props }: Props) {
+  const t = useT()
+  const panel = useRef<HTMLDivElement>(null)
+  // The drawer slides back out before it unmounts, whichever way it is closed.
+  const { closing, requestClose, onAnimationEnd } = useClosing(onClose)
+  // The phone's back button closes the drawer instead of leaving the page.
+  useBackClose(requestClose)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && requestClose()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [requestClose])
+
+  // Same lock as a sheet: the page behind must not scroll under the drawer.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
+
+  // Keyboard users land inside the drawer; the ☰ gets focus back when it unmounts
+  // because the browser restores it to the last focused element still in the DOM.
+  useEffect(() => {
+    panel.current?.focus()
+  }, [])
+
+  // Picking an item closes on the spot: the sheet it opens must own the
+  // history entry and the body-scroll lock alone, so the drawer does not
+  // linger under it playing its exit.
+  const pick = (fn: () => void) => () => {
+    onClose()
+    fn()
+  }
+
+  return (
     <div
       className={closing ? 'backdrop backdrop-drawer backdrop-closing' : 'backdrop backdrop-drawer'}
       onMouseDown={(e) => e.target === e.currentTarget && requestClose()}
@@ -221,30 +280,7 @@ export function Sidebar({ userName, handle, isAdmin, onAccount, onCompanyCars, o
           </button>
         </header>
 
-        <button type="button" className="drawer-me" onClick={pick(onAccount)}>
-          <Avatar name={userName || '?'} size="lg" />
-          <span className="drawer-me-text">
-            <span className="drawer-me-name">{userName}</span>
-            <span className="drawer-me-hint">@{handle}</span>
-          </span>
-          <ChevronRightIcon size={18} className="drawer-me-chevron" />
-        </button>
-
-        <nav className="drawer-nav" aria-label={t.common.menu}>
-          {group('me', t.sidebar.mine, mine.map(renderItem))}
-          {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
-        </nav>
-
-        {group(
-          'settings',
-          t.sidebar.settings,
-          <div className="drawer-settings">
-            <ThemeSwitch />
-            <LanguageSwitch />
-          </div>,
-          0,
-          'drawer-foot',
-        )}
+        <SidebarBody {...props} pick={pick} />
       </div>
     </div>
   )

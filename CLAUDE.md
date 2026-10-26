@@ -278,12 +278,16 @@ hairline borders and a faint shadow that deepens under a mouse (`--shadow-hover`
 removal, Inter throughout (bundled from `@fontsource/inter` in `main.tsx`, because the app ships as
 one self-hosted container). The semantic class names (`.card`, `.date`, `.car-tile`, `.pax-row`,
 `.panel`, `.btn`, …) are the contract the components render against. On a phone the layout is
-one 600px column. From 1024px (`lib/useWide.ts`, the *Wide screens* block in `index.css`) the shell
-widens to 1440px, the view switch moves into the top bar and both views become two panes (`.split`):
+one 600px column. From 1024px (`lib/useWide.ts`, the *Wide screens* block in `index.css`) it is a desktop app
+that fills the window: the page never scrolls; the drawer's content is docked down the left edge
+(`Dock` in `Sidebar.tsx`, no ☰), a toolbar carries the view's name, the view switch and the add
+button, and each view is two full-height panes (`.split`) that scroll on their own
+(`data-scroll-pane`, which `lib/dnd.ts` auto-scrolls during a drag instead of the window):
 Upcoming is the list beside the open ride (no unfolding in place: `Upcoming` gets no `renderDetail`,
 and the pane shows your next ride when nothing is picked), Week is the days, the day's rides as a
-vertical list (`CarCarousel vertical`) and `YouPanel` beside the open ride. The pane is sticky and a
-container: past 760px the ride itself splits into the driver card and the passengers. Two media
+vertical list (`CarCarousel vertical`) and `YouPanel` beside the open ride, Day is the plan with the
+ride in a column on the right. The ride pane is a container: past 760px the ride becomes one big
+card split into the driver's half and the passengers'. From 1600px the root font grows to 16px. Two media
 blocks carry the phone layout:
 `max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
@@ -301,7 +305,8 @@ dots. The named exports are the contract the components render against (`size` i
 `GarageIcon`, `PlugIcon`), each on its own tinted tile (`.drawer-tone-*`), so the menu reads by
 shape and colour before it reads by word. Adding a ride has exactly one control: `AddRideFab`
 (`components/AddRideButton.tsx`), a white plus in a green circle floating at the bottom right of
-the column on both views whenever a ride can be added (`.fab`, under every sheet's backdrop).
+the column on every view whenever a ride can be added (`.fab`, under every sheet's backdrop); on a
+wide screen it is `AddRideToolbarButton` at the right end of the toolbar instead.
 There is deliberately no *Add ride* tile in the carousel, no plus in the empty card and no drawer
 item; the empty card says only that there is nothing yet. Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
 Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`

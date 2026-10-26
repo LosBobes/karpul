@@ -55,9 +55,9 @@ const TOUCH_LIFT_PX = 24
  * at full speed. A linear ramp drifts the board noticeably under a finger
  * that is merely resting on a card near the bottom of a phone screen.
  */
-function edgeScroll(y: number): number {
-  const fromTop = Math.max(y, 0)
-  const fromBottom = Math.max(window.innerHeight - y, 0)
+function edgeScroll(y: number, top = 0, bottom = window.innerHeight): number {
+  const fromTop = Math.max(y - top, 0)
+  const fromBottom = Math.max(bottom - y, 0)
   if (fromTop < EDGE_PX) return -EDGE_SPEED_PX * (1 - fromTop / EDGE_PX) ** 2
   if (fromBottom < EDGE_PX) return EDGE_SPEED_PX * (1 - fromBottom / EDGE_PX) ** 2
   return 0
@@ -142,8 +142,17 @@ export function grabPassenger(
   function tick() {
     // Auto-scroll at the edges, then re-read what is under the pointer: a
     // scrolling board moves targets under a finger that is standing still.
-    const dy = edgeScroll(pos.y)
-    if (dy) window.scrollBy(0, dy)
+    // On a wide screen the page stands still and each pane scrolls on its own
+    // (`data-scroll-pane`), so the band is the pane's edges under the pointer.
+    const pane = document.elementFromPoint(pos.x, pos.y)?.closest<HTMLElement>('[data-scroll-pane]')
+    if (pane) {
+      const box = pane.getBoundingClientRect()
+      const dy = edgeScroll(pos.y, box.top, box.bottom)
+      if (dy) pane.scrollBy(0, dy)
+    } else {
+      const dy = edgeScroll(pos.y)
+      if (dy) window.scrollBy(0, dy)
+    }
     if (ghost) {
       // Anchor the ghost with percentage translates, which are resolved against
       // the ghost's own box by the browser: centred on the pointer for a mouse,

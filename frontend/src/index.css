@@ -5344,84 +5344,178 @@ body.dragging {
 }
 
 /* --- Wide screens ------------------------------------------------------------
-   From 1024px (lib/useWide.ts) the board stops being a phone in the middle of
-   a monitor. The shell widens to 1440px, the view switch moves up into the
-   top bar, and each view becomes two panes: Upcoming is the list beside the
-   open ride, Week is the days, the day's rides and you beside the open ride.
-   The pane on the right stays in view while the list scrolls, and once it is
-   wide enough the ride itself splits: the driver card on the left, the
-   passengers on the right. */
+   From 1024px (lib/useWide.ts) Karpul stops being a phone in the middle of a
+   monitor and becomes a desktop app that fills the window. The page itself
+   never scrolls: the menu is docked down the left edge (Dock in Sidebar.tsx),
+   a toolbar runs across the top with the view's name, the view switch and
+   the add button, and under it each view is two panes side by side that
+   scroll on their own, divided by a hairline the way a mail client divides
+   its list from the message. Upcoming and Week are the list on the left and
+   the open ride filling the rest; Day is the plan filling the width and the
+   ride in a column on the right. The open ride is the big piece: once its
+   pane is wide enough it splits into the driver card and the passengers. */
 @media (min-width: 1024px) {
   .app-wide {
-    max-width: 1440px;
-    padding-inline: 2rem;
+    --dock: 264px;
+    --toolbar: 60px;
+    --list: clamp(380px, 30vw, 520px);
+    display: grid;
+    grid-template-columns: var(--dock) minmax(0, 1fr);
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  /* The docked menu: the drawer's own content, standing in place. */
+  .dock {
+    width: auto;
+    height: 100dvh;
+    background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+    box-shadow: none;
+    animation: none;
+  }
+  .dock-head {
+    min-height: var(--toolbar);
+    padding: 0 1.25rem;
+    border-bottom-color: transparent;
+  }
+  .dock .drawer-me {
+    margin-top: 0.25rem;
+    background: var(--surface);
+  }
+  .dock .drawer-item {
+    min-height: 44px;
+    padding-block: 0.4rem;
+  }
+  .dock .drawer-item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  .dock .drawer-item-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
   }
   .app-wide .topbar {
-    display: flex;
-    gap: 0.5rem;
-    margin-inline: -2rem;
-    margin-bottom: 1.75rem;
-    padding-inline: 1.4rem 2rem;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    min-height: var(--toolbar);
+    margin: 0;
+    padding: 0 1.5rem 0 2rem;
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
-  .app-wide .topbar-right {
-    margin-left: auto;
+  .toolbar-title {
+    font-size: 1.3rem;
+    font-weight: 650;
+    letter-spacing: -0.025em;
   }
   .topbar-center {
-    position: absolute;
-    left: 50%;
-    top: calc(50% + env(safe-area-inset-top) / 2);
-    width: 400px;
-    transform: translate(-50%, -50%);
+    width: 360px;
   }
   .topbar-center .seg {
     min-height: 34px;
     font-size: 0.88rem;
   }
+  .app-wide .topbar-right {
+    gap: 0.9rem;
+  }
+  .toolbar-add {
+    min-height: 38px;
+    padding: 0.45rem 1rem 0.45rem 0.85rem;
+    font-size: 0.9rem;
+  }
+  .app-wide main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* A view without panes (an empty board) still sits in from the edges. */
+  .app-wide main > .stack:not(:has(> .split)) {
+    width: min(100%, 720px);
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  .app-wide main > .stack:has(> .split) {
+    flex: 1;
+    min-height: 0;
+  }
   .split {
+    flex: 1;
+    min-height: 0;
     display: grid;
-    grid-template-columns: minmax(400px, 480px) minmax(0, 1fr);
-    gap: 2rem;
-    align-items: start;
+    grid-template-columns: var(--list) minmax(0, 1fr);
   }
   /* The day plan wants the width: the timeline on the left, the ride beside. */
   .split-day {
-    grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+    grid-template-columns: minmax(0, 1fr) var(--list);
   }
-  .split-day .plan-board {
-    --plan-pad: 1.25rem;
-    --plan-hour: 3.5rem;
-  }
-  .split-day .plan-car + .plan-car {
-    margin-top: 0.55rem;
+  .split-side,
+  .split-pane {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
   }
   .split-side {
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
-    min-width: 0;
+    padding: 1.5rem 1.5rem 3rem;
+    border-right: 1px solid var(--border);
+  }
+  .split-day .split-side {
+    padding: 1.75rem 2rem 3rem;
+    border-right: none;
   }
   .split-pane {
-    position: sticky;
-    top: calc(3.5rem + 1.75rem);
-    max-height: calc(100dvh - 3.5rem - 3.5rem);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scrollbar-width: thin;
-    /* Room for the cards' shadows and the open tile's ring. */
-    margin: -6px;
-    padding: 6px 6px 5rem;
+    padding: 2rem clamp(1.5rem, 3vw, 3rem) 4rem;
     container-type: inline-size;
+    background: color-mix(in srgb, var(--surface) 35%, var(--bg));
+  }
+  .split-day .split-pane {
+    padding: 1.75rem 1.5rem 3rem;
+    border-left: 1px solid var(--border);
+  }
+  /* However wide the window, the ride stays a comfortable read. */
+  .split-pane > .stack {
+    max-width: 1320px;
+    margin-inline: auto;
+  }
+  .split-day .plan-board {
+    --plan-pad: 1.25rem;
+    --plan-hour: 3.75rem;
+  }
+  .split-day .plan-car + .plan-car {
+    margin-top: 0.75rem;
   }
   /* The list and the pane read as one: the open row is lifted toward it. */
   .split .session-open {
     box-shadow: 0 0 0 1px var(--green), var(--shadow-hover);
   }
+  /* The day headings stick to the top of the list's own pane. */
   .split .upcoming-head {
-    top: 3.5rem;
+    top: -1.5rem;
+    margin-inline: -1.5rem;
+    padding-inline: 1.65rem;
   }
-  .app-wide .fab {
-    right: max(2rem, calc((100vw - 1440px) / 2 + 2rem));
-    bottom: 2rem;
+  .split .filters {
+    position: relative;
+  }
+  .app-wide .toast {
+    left: calc(50% + var(--dock) / 2);
   }
 
   /* The day's rides down the side column instead of a strip to scroll. */
@@ -5485,26 +5579,75 @@ body.dragging {
     font-size: 0.8rem;
   }
 }
-/* The ride splits in two once its pane has the room. */
+/* A laptop gives the panes a little more of the width. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .app-wide {
+    --dock: 232px;
+    --list: 360px;
+  }
+}
+/* A big screen gets a little more of everything. */
+@media (min-width: 1600px) {
+  :root {
+    font-size: 16px;
+  }
+  .app-wide {
+    --dock: 288px;
+    --toolbar: 64px;
+  }
+  .split-day .plan-board {
+    --plan-hour: 4.5rem;
+  }
+}
+/* The ride splits in two once its pane has the room, and takes it. */
 @container (min-width: 760px) {
   .split-pane .detail {
     display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    gap: 1.75rem;
     align-items: start;
   }
   .split-pane .driver-card {
-    padding: 1.4rem 1.5rem 1.5rem;
+    padding: 1.75rem 2rem 2rem;
+    gap: 1.4rem;
     grid-row: span 2;
+  }
+  .split-pane .driver-times {
+    padding: 1rem 1.25rem;
+  }
+  .split-pane .driver-times .when-value {
+    font-size: 1.85rem;
+  }
+  .split-pane .trip-stop {
+    font-size: 1.05rem;
   }
   /* The passengers take the height they need and the thread sits right under
      them; whatever the tall driver card leaves over goes below the thread. */
-  .split-pane .detail {
-    grid-template-rows: auto 1fr;
-  }
   .split-pane .thread {
     grid-column: 2;
     align-self: start;
+    margin: 0 2rem 2rem 0;
+  }
+  /* One piece: the ride is a single big card, the driver's half and the
+     passengers' half divided by a hairline, instead of cards floating apart. */
+  .split-pane .detail {
+    gap: 0 2rem;
+    min-height: min(560px, calc(100dvh - 9rem));
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow-hover);
+  }
+  .split-pane .detail > .driver-card {
+    align-self: stretch;
+    border: none;
+    border-right: 1px solid var(--border);
+    border-radius: 20px 0 0 20px;
+    box-shadow: none;
+  }
+  .split-pane .detail > .pax {
+    margin: 1.75rem 2rem 1.25rem 0;
   }
 }
 
