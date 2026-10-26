@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
-import { AddRideFab } from './components/AddRideButton'
+import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
 import { AdminLog } from './components/AdminLog'
 import { Approvals } from './components/Approvals'
 import { AuthGate } from './components/AuthGate'
@@ -22,7 +22,7 @@ import { RequestForm } from './components/RequestForm'
 import { RequestList } from './components/RequestList'
 import { UpdateScreen } from './components/UpdateScreen'
 import { RideForm } from './components/RideForm'
-import { Sidebar } from './components/Sidebar'
+import { Dock, Sidebar } from './components/Sidebar'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
@@ -746,146 +746,168 @@ function Board({ session }: { session: Session }) {
     </div>
   )
 
+  // The app menu's items: a drawer under the ☰ on a phone, docked down the
+  // left edge on a wide screen.
+  const menu = {
+    userName,
+    handle: user.username,
+    isAdmin,
+    onAccount: () => setAccountOpen(true),
+    onCompanyCars: openAdmin,
+    onPeople: () => setPeopleOpen(true),
+    onRideLog: () => setRideLogOpen(true),
+    onAdminLog: () => setAdminLogOpen(true),
+    onApprovals: () => setApprovalsOpen(true),
+    approvals: waiting,
+    onGuide: () => setGuideOpen(true),
+    onMyRides: () => setMyRidesOpen(true),
+    onNotifications: () => setNotifOpen(true),
+  }
+  // On a wide screen each pane scrolls on its own (index.css, "Wide screens").
+  const wrapSide = (node: ReactNode) =>
+    wide ? (
+      <div className="split-side" data-scroll-pane="">
+        {node}
+      </div>
+    ) : (
+      node
+    )
+
   return (
     <MeContext.Provider value={me}>
       <div className={wide ? 'app app-wide' : 'app'}>
-        <header className="topbar">
-          <button
-            type="button"
-            className="icon-btn topbar-menu"
-            aria-label={t.common.menu}
-            aria-haspopup="dialog"
-            aria-expanded={sidebarOpen}
-            aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
-            onClick={() => setSidebarOpen(true)}
-          >
-            <MenuIcon size={22} />
-            {isAdmin && waiting > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting)} />}
-          </button>
-          <h1 className="topbar-title">
-            <Logo /> Karpul
-          </h1>
-          {wide && <div className="topbar-center">{viewSwitch}</div>}
-          <div className="topbar-right">
-            <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
-              <span className="live-dot" aria-hidden="true" />
-              <span className="sr-only">{t.live.label[liveStatus]}</span>
-            </span>
-          </div>
-        </header>
+        {wide && <Dock {...menu} />}
+        <div className="workspace">
+          <header className="topbar">
+            {wide ? (
+              <h1 className="toolbar-title">{t.view[view]}</h1>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="icon-btn topbar-menu"
+                  aria-label={t.common.menu}
+                  aria-haspopup="dialog"
+                  aria-expanded={sidebarOpen}
+                  aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
+                  onClick={() => setSidebarOpen(true)}
+                >
+                  <MenuIcon size={22} />
+                  {isAdmin && waiting > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting)} />}
+                </button>
+                <h1 className="topbar-title">
+                  <Logo /> Karpul
+                </h1>
+              </>
+            )}
+            {wide && <div className="topbar-center">{viewSwitch}</div>}
+            <div className="topbar-right">
+              <span className={`live live-${liveStatus}`} role="status" title={t.live.title[liveStatus]}>
+                <span className="live-dot" aria-hidden="true" />
+                <span className="sr-only">{t.live.label[liveStatus]}</span>
+              </span>
+              {wide && <AddRideToolbarButton onClick={openNewCar} disabled={!canAdd} />}
+            </div>
+          </header>
 
-        <main>
-          {!wide && viewSwitch}
+          <main>
+            {!wide && viewSwitch}
 
-          {upcoming && (
-            <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-              {loading ? (
-                <div className="session-list session-skeleton" aria-busy="true">
-                  <span className="card session skeleton" />
-                  <span className="card session skeleton" />
-                  <span className="card session skeleton" />
-                </div>
-              ) : rides.length === 0 && openRequests.length === 0 ? (
-                <>
-                  <AddCarCard isPast={false} emptyTitle={t.empty.noUpcoming} />
-                  <button type="button" className="add-row add-row-quiet" onClick={() => openAsk(todayISO())}>
-                    {t.requests.ask}
-                  </button>
-                </>
-              ) : (
-                <div className={wide ? 'split' : undefined}>
-                  <Upcoming
-                    rides={rides}
-                    requests={openRequests}
-                    busy={busyId !== null}
-                    onAsk={() => openAsk(todayISO())}
-                    onOffer={onOffer}
-                    onWithdraw={(r) => void onWithdraw(r)}
-                    openId={openUpcomingId}
-                    onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
-                    renderDetail={wide ? undefined : (ride) => detailFor(ride, true)}
-                  />
-                  {wide && openUpcomingRide && (
-                    <aside className="split-pane" aria-label={openUpcomingRide.car_name}>
-                      <div key={openUpcomingRide.id} className="stack swap-right">
-                        {detailFor(openUpcomingRide, true)}
-                      </div>
+            {upcoming && (
+              <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
+                {loading ? (
+                  <div className="session-list session-skeleton" aria-busy="true">
+                    <span className="card session skeleton" />
+                    <span className="card session skeleton" />
+                    <span className="card session skeleton" />
+                  </div>
+                ) : rides.length === 0 && openRequests.length === 0 ? (
+                  <>
+                    <AddCarCard isPast={false} emptyTitle={t.empty.noUpcoming} />
+                    <button type="button" className="add-row add-row-quiet" onClick={() => openAsk(todayISO())}>
+                      {t.requests.ask}
+                    </button>
+                  </>
+                ) : (
+                  <div className={wide ? 'split' : undefined}>
+                    {wrapSide(
+                      <Upcoming
+                        rides={rides}
+                        requests={openRequests}
+                        busy={busyId !== null}
+                        onAsk={() => openAsk(todayISO())}
+                        onOffer={onOffer}
+                        onWithdraw={(r) => void onWithdraw(r)}
+                        openId={openUpcomingId}
+                        onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
+                        renderDetail={wide ? undefined : (ride) => detailFor(ride, true)}
+                      />,
+                    )}
+                    {wide && openUpcomingRide && (
+                      <aside className="split-pane" data-scroll-pane="" aria-label={openUpcomingRide.car_name}>
+                        <div key={openUpcomingRide.id} className="stack swap-right">
+                          {detailFor(openUpcomingRide, true)}
+                        </div>
+                      </aside>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {view === 'day' && (
+              <div key="day" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
+                {wide ? (
+                  <div className="split split-day">
+                    <div className="split-side" data-scroll-pane="">{dayPlan}</div>
+                    <aside className="split-pane" data-scroll-pane="" aria-label={planPicked?.car_name ?? t.plan.label}>
+                      {planDetail ?? <div className="card empty-card empty-card-short plan-pick">{t.plan.pick}</div>}
                     </aside>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                  </div>
+                ) : (
+                  <>
+                    {dayPlan}
+                    {planDetail}
+                  </>
+                )}
+              </div>
+            )}
 
-          {view === 'day' && (
-            <div key="day" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-              {wide ? (
-                <div className="split split-day">
-                  <div className="split-side">{dayPlan}</div>
-                  <aside className="split-pane" aria-label={planPicked?.car_name ?? t.plan.label}>
-                    {planDetail ?? <div className="card empty-card empty-card-short plan-pick">{t.plan.pick}</div>}
-                  </aside>
-                </div>
-              ) : (
-                <>
-                  {dayPlan}
-                  {planDetail}
-                </>
-              )}
-            </div>
-          )}
-
-          {view === 'week' && (
-            <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-              {wide ? (
-                <div className="split split-week">
-                  <div className="split-side">
+            {view === 'week' && (
+              <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
+                {wide ? (
+                  <div className="split split-week">
+                    <div className="split-side" data-scroll-pane="">
+                      <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
+                      <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                        {dayTiles}
+                        {dayYou}
+                      </div>
+                    </div>
+                    <div className="split-pane" data-scroll-pane="">
+                      <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                        {dayDetail}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                     <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
                     <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
                       {dayTiles}
+                      {dayDetail}
                       {dayYou}
                     </div>
-                  </div>
-                  <div className="split-pane">
-                    <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
-                      {dayDetail}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
-                  <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
-                    {dayTiles}
-                    {dayDetail}
-                    {dayYou}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </main>
+                  </>
+                )}
+              </div>
+            )}
+          </main>
+        </div>
 
-        {canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
+        {!wide && canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
 
-        {sidebarOpen && (
-          <Sidebar
-            userName={userName}
-            handle={user.username}
-            isAdmin={isAdmin}
-            onAccount={() => setAccountOpen(true)}
-            onCompanyCars={openAdmin}
-            onPeople={() => setPeopleOpen(true)}
-            onRideLog={() => setRideLogOpen(true)}
-            onAdminLog={() => setAdminLogOpen(true)}
-            onApprovals={() => setApprovalsOpen(true)}
-            approvals={waiting}
-            onGuide={() => setGuideOpen(true)}
-            onMyRides={() => setMyRidesOpen(true)}
-            onNotifications={() => setNotifOpen(true)}
-            onClose={closeSidebar}
-          />
-        )}
+        {sidebarOpen && !wide && <Sidebar {...menu} onClose={closeSidebar} />}
 
         {guideOpen && <CarGuide onClose={closeGuide} />}
 
