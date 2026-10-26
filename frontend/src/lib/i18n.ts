@@ -99,6 +99,9 @@ const en = {
       `${driver}, ${when}, ${origin} to ${destination}, ${enPlural(pax, 'passenger', 'passengers')}`,
     book: (car: string, from: string, to: string) => `Book ${car}, free ${from} to ${to}`,
     pick: 'Tap a ride on the plan to open it here.',
+    shape: 'Show the day as',
+    clock: 'Clock',
+    timeline: 'Timeline',
   },
 
   fab: { addRide: 'Add ride' },
@@ -1000,6 +1003,9 @@ const sr: Messages = {
     barLabel: (driver, when, origin, destination, pax) => `${driver}, ${when}, ${origin} do ${destination}, ${srPassengers(pax)}`,
     book: (car, from, to) => `Rezerviši ${car}, slobodno od ${from} do ${to}`,
     pick: 'Dodirni vožnju na planu da je otvoriš ovde.',
+    shape: 'Prikaz dana',
+    clock: 'Časovnik',
+    timeline: 'Vremenska linija',
   },
 
   fab: { addRide: 'Dodaj vožnju' },

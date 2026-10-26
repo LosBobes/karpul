@@ -1855,7 +1855,7 @@ main,
 }
 .plan-road {
   position: relative;
-  height: 52px;
+  height: 60px;
   margin: 0 var(--plan-in-r) 0 var(--plan-in-l);
 }
 /* The road itself, and a tick per hour standing on it. */
@@ -1989,11 +1989,11 @@ main,
 }
 .plan-ride-line {
   position: absolute;
-  top: 11px;
+  top: 6px;
   left: 0;
   right: 0;
-  height: 12px;
-  border-radius: 6px;
+  height: 22px;
+  border-radius: 11px;
   background: var(--tone-soft);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tone) 45%, transparent);
   transition: box-shadow var(--hover);
@@ -2002,23 +2002,26 @@ main,
 .plan-ride-line::after {
   content: '';
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--tone);
 }
 .plan-ride .avatar {
   position: absolute;
-  top: 3px;
-  left: -14px;
-  box-shadow: 0 0 0 2.5px var(--surface);
-  transition: transform 0.15s var(--ease-smooth);
+  top: -1px;
+  left: -18px;
+  width: 36px;
+  height: 36px;
+  font-size: 0.8rem;
+  box-shadow: 0 0 0 3px var(--surface), 0 3px 8px -2px rgba(16, 24, 40, 0.25);
+  transition: transform 0.3s var(--ease-spring), box-shadow var(--hover);
 }
 .plan-ride-caption {
   position: absolute;
-  top: 31px;
+  top: 39px;
   left: 2px;
   width: var(--room, 100%);
   font-size: 0.74rem;
@@ -2061,7 +2064,7 @@ main,
   background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--tone-soft) 4px 8px);
 }
 .plan-ride-open .plan-ride-line {
-  border-radius: 6px 0 0 6px;
+  border-radius: 11px 0 0 11px;
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
 }
@@ -2073,7 +2076,7 @@ main,
   box-shadow: inset 0 0 0 2px var(--tone), 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent);
 }
 .plan-ride-on .avatar {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--tone);
+  box-shadow: 0 0 0 2.5px var(--surface), 0 0 0 5px var(--tone), 0 4px 10px -2px rgba(16, 24, 40, 0.3);
 }
 .plan-ride-on .plan-ride-caption strong {
   color: var(--tone);
@@ -2087,37 +2090,76 @@ main,
 .plan-ride:focus-visible .plan-ride-line {
   box-shadow: inset 0 0 0 2px var(--tone), 0 0 0 3px var(--surface), 0 0 0 5px var(--green);
 }
-/* Picked, a ride you run grows a pencil at its end: edit it from the plan. */
+/* Picked, a ride you run grows a pencil at its end: edit it from the plan.
+   A green button rather than a grey chip, so it reads as the thing to press;
+   it pops in with a ring thrown off it, and under a mouse it lifts and the
+   pencil tilts as if about to write. */
 .plan-edit {
   position: absolute;
-  top: 3px;
-  z-index: 2;
+  top: -1px;
+  z-index: 3;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-left: -6px;
+  width: 36px;
+  height: 36px;
+  margin-left: -4px;
   padding: 0;
-  border: 1px solid var(--border-strong);
+  border: 3px solid var(--surface);
   border-radius: 50%;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-pop);
-  animation: pop-in 0.22s var(--ease-spring);
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--green) 55%, transparent);
+  animation: pop-in 0.3s var(--ease-spring);
+  transition: transform 0.3s var(--ease-spring), box-shadow var(--hover), background var(--hover);
+}
+.plan-edit::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  pointer-events: none;
+  animation: edit-ping 0.9s var(--ease-out) 0.15s both;
+}
+@keyframes edit-ping {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+.plan-edit svg {
+  transition: transform 0.35s var(--ease-spring);
 }
 .plan-edit-edge {
-  margin-left: -28px;
+  margin-left: -36px;
 }
 .plan-edit:hover {
-  border-color: var(--green);
-  color: var(--green);
+  background: var(--green-dark);
+  transform: translateY(-2px) scale(1.12);
+  box-shadow: 0 8px 18px -4px color-mix(in srgb, var(--green) 65%, transparent);
+}
+.plan-edit:hover svg {
+  transform: rotate(-18deg) translate(1px, -1px);
+}
+.plan-edit:active {
+  transform: scale(0.92);
+  transition-duration: 0.08s;
+}
+.plan-edit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--green);
 }
 .plan-pick {
   color: var(--muted);
 }
 @media (hover: hover) and (pointer: fine) {
   .plan-ride:hover .avatar {
-    transform: translateY(-1px) scale(1.06);
+    transform: translateY(-3px) scale(1.14);
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--tone), 0 8px 16px -4px rgba(16, 24, 40, 0.35);
   }
   .plan-ride:hover .plan-ride-line {
     box-shadow: inset 0 0 0 1.5px var(--tone);
@@ -2134,6 +2176,384 @@ main,
     background: none;
     opacity: 1;
   }
+}
+
+/* --- Day clock (components/DayClock.tsx) ----------------------------------
+   The same day as a 24-hour dial: midnight at the top, noon at the bottom, one
+   ring per car, a ride an arc in its driver's colour. Everything inside the SVG
+   is in the dial's 1000-unit box (lib/dayClock.ts), so strokes and type scale
+   with the dial; the readout in the middle is HTML and sizes itself in
+   container units of the dial. The legend beside (under, when narrow) names
+   the rings, outermost first. */
+.plan-shape {
+  margin-right: 0.35rem;
+  padding: 2px;
+}
+.plan-shape .seg {
+  display: inline-grid;
+  place-items: center;
+  min-height: 30px;
+  width: 38px;
+  padding: 0;
+}
+.plan-board-clock {
+  padding: 1.25rem;
+  container-type: inline-size;
+}
+.clock {
+  display: grid;
+  gap: 1.25rem;
+  align-items: center;
+}
+@container (min-width: 760px) {
+  .clock {
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 240px);
+    gap: 2rem;
+  }
+}
+.clock-dial {
+  position: relative;
+  width: 100%;
+  max-width: var(--dial-max, 760px);
+  aspect-ratio: 1;
+  margin-inline: auto;
+  container-type: inline-size;
+}
+.clock-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.clock-face {
+  fill: var(--surface-2);
+  opacity: 0.55;
+}
+/* Today, the part of the day already gone: a faint wedge, nothing to book in it. */
+.clock-past {
+  pointer-events: none;
+  fill: color-mix(in srgb, var(--text) 3.5%, transparent);
+}
+.clock-spoke {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.clock-spoke-main {
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.clock-hour {
+  fill: var(--muted);
+  font-size: 19px;
+  font-variant-numeric: tabular-nums;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.clock-hour-main {
+  fill: var(--text);
+  font-size: 23px;
+  font-weight: 650;
+}
+.clock-ring-band {
+  fill: none;
+  stroke: transparent;
+  transition: stroke var(--hover);
+}
+.clock-ring-lit .clock-ring-band {
+  stroke: color-mix(in srgb, var(--green) 7%, transparent);
+}
+.clock-track {
+  fill: none;
+  pointer-events: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.clock-ring-label {
+  fill: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.clock-ring-lit .clock-ring-label {
+  fill: var(--text);
+}
+/* A free stretch of a company car: invisible until the pointer is on it. */
+.clock-free {
+  fill: none;
+  stroke: transparent;
+  cursor: pointer;
+  outline: none;
+  transition: stroke var(--hover);
+}
+.clock-free:hover,
+.clock-free:focus-visible {
+  stroke: color-mix(in srgb, var(--green) 16%, transparent);
+}
+.clock-ride {
+  cursor: pointer;
+  outline: none;
+}
+.clock-ride path {
+  fill: none;
+  stroke-linecap: butt;
+}
+.clock-ride-edge {
+  stroke: color-mix(in srgb, var(--tone) 55%, var(--surface));
+}
+.clock-ride-fill {
+  stroke: var(--tone-soft);
+}
+.clock-ride-end {
+  fill: var(--tone);
+}
+.clock-ride-avatar {
+  fill: var(--tone-soft);
+  stroke: var(--surface);
+  stroke-width: 5;
+  filter: drop-shadow(0 3px 5px rgba(16, 24, 40, 0.25));
+}
+/* The initials grow from their own centre under the pointer. */
+.clock-ride-face {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.3s var(--ease-spring);
+}
+.clock-ride:hover .clock-ride-face,
+.clock-ride:focus-visible .clock-ride-face {
+  transform: scale(1.18);
+}
+.clock-ride-initials {
+  fill: var(--tone);
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+/* Yours is the one arc drawn solid, so it reads before anyone else's. */
+.clock-ride-mine .clock-ride-edge,
+.clock-ride-mine .clock-ride-fill {
+  stroke: var(--green);
+}
+.clock-ride-mine .clock-ride-end {
+  fill: var(--surface);
+}
+.clock-ride-mine .clock-ride-avatar {
+  fill: var(--green);
+}
+.clock-ride-mine .clock-ride-initials {
+  fill: #fff;
+}
+/* Waiting for an admin: hollow, dashed, under the free stretch (it holds no slot). */
+.clock-ride-pending .clock-ride-fill {
+  stroke: var(--surface);
+}
+.clock-ride-pending .clock-ride-edge {
+  stroke: var(--tone);
+  stroke-dasharray: 10 7;
+}
+.clock-ride:hover .clock-ride-edge,
+.clock-ride:focus-visible .clock-ride-edge,
+.clock-ride-on .clock-ride-edge {
+  stroke: var(--tone);
+}
+.clock-ride-on {
+  filter: drop-shadow(0 4px 10px color-mix(in srgb, var(--tone) 45%, transparent));
+}
+.clock-ride:focus-visible .clock-ride-avatar,
+.clock-ride-on .clock-ride-avatar {
+  stroke: var(--tone);
+}
+.clock-now line {
+  stroke: var(--text);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+.clock-now circle {
+  fill: var(--text);
+}
+.clock-pin {
+  pointer-events: none;
+}
+.clock-pin circle {
+  fill: var(--surface);
+  stroke: var(--green);
+  stroke-width: 4;
+}
+.clock-pin line {
+  stroke: var(--green);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+/* The middle of the dial: what the pointer or the pick is on, else the time. */
+.clock-readout {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: calc(var(--clock-inner) * 170cqw);
+  max-width: 72cqw;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: clamp(0.72rem, 2.4cqw, 1rem);
+  line-height: 1.3;
+  pointer-events: none;
+}
+.clock-readout > * {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clock-readout-kicker {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.clock-readout-big {
+  font-size: clamp(1.4rem, 6.5cqw, 3.4rem);
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.clock-readout-mid {
+  font-size: clamp(0.95rem, 3.4cqw, 1.6rem);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.clock-readout-who {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+.clock-readout-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.clock-readout-route svg {
+  flex: none;
+  color: var(--muted);
+}
+.clock-readout-line {
+  color: var(--muted);
+}
+.clock-readout-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  padding: 0.45rem 1rem 0.45rem 0.85rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.9em;
+  font-weight: 600;
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--green) 55%, transparent);
+  pointer-events: auto;
+  animation: pop-in 0.3s var(--ease-spring);
+  transition: transform 0.3s var(--ease-spring), box-shadow var(--hover), background var(--hover);
+}
+.clock-readout-edit svg {
+  transition: transform 0.35s var(--ease-spring);
+}
+.clock-readout-edit:hover {
+  background: var(--green-dark);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 8px 18px -4px color-mix(in srgb, var(--green) 65%, transparent);
+}
+.clock-readout-edit:hover svg {
+  transform: rotate(-18deg) translate(1px, -1px);
+}
+.clock-readout-edit:active {
+  transform: scale(0.95);
+  transition-duration: 0.08s;
+}
+.clock-readout-focus {
+  animation: clock-readout-in 0.22s var(--ease-out);
+}
+@keyframes clock-readout-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+}
+.clock-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.clock-legend-group {
+  margin: 0.6rem 0 0.15rem;
+  padding-inline: 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.clock-legend-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: 'mark name' 'mark status';
+  column-gap: 0.7rem;
+  align-items: center;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--hover);
+}
+.clock-legend-lit {
+  background: var(--surface-2);
+}
+.clock-legend-mark {
+  grid-area: mark;
+  flex: none;
+}
+.clock-legend-mark circle {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+.clock-legend-mark circle.on {
+  stroke: var(--green);
+  stroke-width: 2.5;
+}
+.clock-legend-name {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.clock-legend-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.clock-legend-row .plan-status {
+  grid-area: status;
+  margin: 0;
+  background: none;
 }
 
 /* --- Admin log -------------------------------------------------------------
@@ -5458,7 +5878,7 @@ body.dragging {
   }
   /* The day plan wants the width: the timeline on the left, the ride beside. */
   .split-day {
-    grid-template-columns: minmax(0, 1fr) var(--list);
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 26vw, 460px);
   }
   .split-side,
   .split-pane {
@@ -5500,6 +5920,11 @@ body.dragging {
   }
   .split-day .plan-car + .plan-car {
     margin-top: 0.75rem;
+  }
+  /* The dial takes the height the pane has: the toolbar, the day's head and
+     the card's padding come off the window. */
+  .split-day .clock-dial {
+    --dial-max: max(420px, calc(100dvh - var(--toolbar) - 10rem));
   }
   /* The list and the pane read as one: the open row is lifted toward it. */
   .split .session-open {

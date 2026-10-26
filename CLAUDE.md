@@ -402,7 +402,15 @@ says when it is next free (`rowStatus`). Switching to it jumps to today; `range`
 opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
 (`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour; a company car's hour ticks are elements, `.plan-tick`, and the ones on a free stretch are green-tinted and stand up in a wave from the pointer, `--d` delaying each by its distance) opens `RideForm` with `slot`: that car, departure at the tapped
 half hour, back by the next booking or 17:00. A picked ride that you run (`runs()`, so any ride for an
-admin) grows a pencil at its end (`.plan-edit`), and a double click on it opens the edit form too. Upcoming is
+admin) grows a pencil at its end (`.plan-edit`), and a double click on it opens the edit form too. The same
+day can be drawn as a **clock** instead (`components/DayClock.tsx`, geometry in `lib/dayClock.ts`, tested in
+`dayClock.test.ts`): a 24-hour dial, midnight at the top, one ring per car (pool cars outermost, then own cars),
+rides as arcs in the driver's tone from their initials to a dot, the hours gone today as a faint wedge and now as
+a hand. A free arc of a pool car books like `.plan-free` (pin at the half hour under the pointer), the middle of
+the dial reads out the hovered slot, the hovered or picked ride (with *Edit* when you run it) or the time, and a
+legend beside it names the rings with each car's status. The Clock / Timeline switch sits in the plan's head,
+remembered as `karpul.planShape`; with nothing remembered a wide screen opens on the clock (its dial takes the
+pane's height) and a phone on the timeline. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
 unfolds `CarDetail` beneath it with `draggable={false}`, because there is no `YouPanel` tray and
