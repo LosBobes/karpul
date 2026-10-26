@@ -147,3 +147,19 @@ export function captionRoom(bars: Bar[], i: number, axis: Axis): number {
   const next = bars[i + 1]
   return (next ? next.start : axis.to) - bars[i].start
 }
+
+/**
+ * The part of the day a sideways-scrolled board shows, in minutes. `start` is
+ * where 00:00 sits in the board's scrolled content and `span` how wide the whole
+ * day is drawn, both in pixels, as the overview strip measures them.
+ */
+export function visibleSpan(scrollLeft: number, viewWidth: number, start: number, span: number, axis: Axis = DAY_AXIS): Gap {
+  const total = axis.to - axis.from
+  const at = (x: number) => Math.min(Math.max(axis.from + ((x - start) / span) * total, axis.from), axis.to)
+  return { start: at(scrollLeft), end: at(scrollLeft + viewWidth) }
+}
+
+/** The scroll position that puts a minute in the middle of the board. */
+export function scrollToCentre(min: number, viewWidth: number, start: number, span: number, axis: Axis = DAY_AXIS): number {
+  return Math.max(0, start + ((min - axis.from) / (axis.to - axis.from)) * span - viewWidth / 2)
+}

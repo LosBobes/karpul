@@ -2178,6 +2178,107 @@ main,
   }
 }
 
+/* --- The whole day at once (components/PlanOverview.tsx) --------------------
+   Above a timeline that scrolls sideways: one thin lane per car with its rides
+   in the drivers' colours, 00:00 to 24:00 across the card's width, and a green
+   frame over the hours the board is showing. A tap or a drag moves the frame,
+   and the board with it. */
+.plan-overview {
+  padding: 0.8rem var(--plan-pad) 0.55rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-2) 45%, var(--surface));
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+.plan-overview:focus-visible .plan-ov-window {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 30%, transparent);
+}
+.plan-ov-lanes {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 0;
+}
+.plan-ov-lane {
+  position: relative;
+  height: 7px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+}
+.plan-ov-lane-own {
+  margin-top: 3px;
+}
+.plan-ov-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 3px;
+  border-radius: 4px;
+  background: var(--tone);
+  opacity: 0.75;
+}
+.plan-ov-mine {
+  background: var(--green);
+  opacity: 1;
+}
+.plan-ov-pending {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--tone);
+}
+.plan-ov-past {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 4px 0 0 4px;
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+  pointer-events: none;
+}
+.plan-ov-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text);
+  opacity: 0.65;
+  pointer-events: none;
+}
+/* What the board below is showing. */
+.plan-ov-window {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 12px;
+  border: 2px solid var(--green);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  pointer-events: none;
+  transition: box-shadow var(--hover);
+}
+.plan-ov-hours {
+  position: relative;
+  height: 1rem;
+  margin-top: 0.2rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.plan-ov-hours > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.plan-ov-hours > span:first-child {
+  transform: none;
+}
+
 /* --- Day clock (components/DayClock.tsx) ----------------------------------
    The same day as a 24-hour dial: midnight at the top, noon at the bottom, one
    ring per car, a ride an arc in its driver's colour. Everything inside the SVG

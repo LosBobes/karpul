@@ -102,6 +102,7 @@ const en = {
     shape: 'Show the day as',
     clock: 'Clock',
     timeline: 'Timeline',
+    overview: 'The whole day',
   },
 
   fab: { addRide: 'Add ride' },
@@ -1006,6 +1007,7 @@ const sr: Messages = {
     shape: 'Prikaz dana',
     clock: 'Časovnik',
     timeline: 'Vremenska linija',
+    overview: 'Ceo dan',
   },
 
   fab: { addRide: 'Dodaj vožnju' },
