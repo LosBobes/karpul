@@ -129,7 +129,7 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
     const picked = ride.id === selectedId
     const end = Math.min(b.end, DAY_END)
     const when = b.open ? t.plan.from(fmtTime(ride.departure_time)) : `${fmtTime(ride.departure_time)}–${fmtTime(ride.return_time)}`
-    const width = band * 0.6
+    const width = band * 0.68
     const start = pointAt(r, b.start)
     const stop = pointAt(r, end)
     const editable = !isPast && runs(ride, me)
@@ -160,10 +160,12 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
         <path className="clock-ride-edge" d={arcPath(r, b.start, end)} style={{ strokeWidth: width }} />
         <path className="clock-ride-fill" d={arcPath(r, b.start, end)} style={{ strokeWidth: Math.max(width - 5, 2) }} />
         {!b.open && <circle className="clock-ride-end" cx={stop.x} cy={stop.y} r={width * 0.17} />}
-        <circle className="clock-ride-avatar" cx={start.x} cy={start.y} r={width * 0.62} />
-        <text className="clock-ride-initials" x={start.x} y={start.y} style={{ fontSize: width * 0.5 }}>
-          {initials(ride.driver_name)}
-        </text>
+        <g className="clock-ride-face">
+          <circle className="clock-ride-avatar" cx={start.x} cy={start.y} r={band * 0.46} />
+          <text className="clock-ride-initials" x={start.x} y={start.y} style={{ fontSize: band * 0.34 }}>
+            {initials(ride.driver_name)}
+          </text>
+        </g>
       </g>
     )
   }
@@ -258,7 +260,7 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
           <span className="clock-readout-line">{shortCarName(r.car_name)}</span>
           {editable && (
             <button type="button" className="clock-readout-edit" onClick={() => onEdit(r)} aria-label={t.plan.edit(r.driver_name)}>
-              <PencilIcon size={14} /> {t.common.edit}
+              <PencilIcon size={15} weight="bold" /> {t.common.edit}
             </button>
           )}
         </>

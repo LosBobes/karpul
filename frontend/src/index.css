@@ -1855,7 +1855,7 @@ main,
 }
 .plan-road {
   position: relative;
-  height: 52px;
+  height: 60px;
   margin: 0 var(--plan-in-r) 0 var(--plan-in-l);
 }
 /* The road itself, and a tick per hour standing on it. */
@@ -1989,11 +1989,11 @@ main,
 }
 .plan-ride-line {
   position: absolute;
-  top: 11px;
+  top: 6px;
   left: 0;
   right: 0;
-  height: 12px;
-  border-radius: 6px;
+  height: 22px;
+  border-radius: 11px;
   background: var(--tone-soft);
   box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tone) 45%, transparent);
   transition: box-shadow var(--hover);
@@ -2002,23 +2002,26 @@ main,
 .plan-ride-line::after {
   content: '';
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 6px;
-  height: 6px;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--tone);
 }
 .plan-ride .avatar {
   position: absolute;
-  top: 3px;
-  left: -14px;
-  box-shadow: 0 0 0 2.5px var(--surface);
-  transition: transform 0.15s var(--ease-smooth);
+  top: -1px;
+  left: -18px;
+  width: 36px;
+  height: 36px;
+  font-size: 0.8rem;
+  box-shadow: 0 0 0 3px var(--surface), 0 3px 8px -2px rgba(16, 24, 40, 0.25);
+  transition: transform 0.3s var(--ease-spring), box-shadow var(--hover);
 }
 .plan-ride-caption {
   position: absolute;
-  top: 31px;
+  top: 39px;
   left: 2px;
   width: var(--room, 100%);
   font-size: 0.74rem;
@@ -2061,7 +2064,7 @@ main,
   background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--tone-soft) 4px 8px);
 }
 .plan-ride-open .plan-ride-line {
-  border-radius: 6px 0 0 6px;
+  border-radius: 11px 0 0 11px;
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent);
 }
@@ -2073,7 +2076,7 @@ main,
   box-shadow: inset 0 0 0 2px var(--tone), 0 0 0 3px color-mix(in srgb, var(--tone) 22%, transparent);
 }
 .plan-ride-on .avatar {
-  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--tone);
+  box-shadow: 0 0 0 2.5px var(--surface), 0 0 0 5px var(--tone), 0 4px 10px -2px rgba(16, 24, 40, 0.3);
 }
 .plan-ride-on .plan-ride-caption strong {
   color: var(--tone);
@@ -2087,37 +2090,76 @@ main,
 .plan-ride:focus-visible .plan-ride-line {
   box-shadow: inset 0 0 0 2px var(--tone), 0 0 0 3px var(--surface), 0 0 0 5px var(--green);
 }
-/* Picked, a ride you run grows a pencil at its end: edit it from the plan. */
+/* Picked, a ride you run grows a pencil at its end: edit it from the plan.
+   A green button rather than a grey chip, so it reads as the thing to press;
+   it pops in with a ring thrown off it, and under a mouse it lifts and the
+   pencil tilts as if about to write. */
 .plan-edit {
   position: absolute;
-  top: 3px;
-  z-index: 2;
+  top: -1px;
+  z-index: 3;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  margin-left: -6px;
+  width: 36px;
+  height: 36px;
+  margin-left: -4px;
   padding: 0;
-  border: 1px solid var(--border-strong);
+  border: 3px solid var(--surface);
   border-radius: 50%;
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-pop);
-  animation: pop-in 0.22s var(--ease-spring);
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--green) 55%, transparent);
+  animation: pop-in 0.3s var(--ease-spring);
+  transition: transform 0.3s var(--ease-spring), box-shadow var(--hover), background var(--hover);
+}
+.plan-edit::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  pointer-events: none;
+  animation: edit-ping 0.9s var(--ease-out) 0.15s both;
+}
+@keyframes edit-ping {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.8);
+  }
+}
+.plan-edit svg {
+  transition: transform 0.35s var(--ease-spring);
 }
 .plan-edit-edge {
-  margin-left: -28px;
+  margin-left: -36px;
 }
 .plan-edit:hover {
-  border-color: var(--green);
-  color: var(--green);
+  background: var(--green-dark);
+  transform: translateY(-2px) scale(1.12);
+  box-shadow: 0 8px 18px -4px color-mix(in srgb, var(--green) 65%, transparent);
+}
+.plan-edit:hover svg {
+  transform: rotate(-18deg) translate(1px, -1px);
+}
+.plan-edit:active {
+  transform: scale(0.92);
+  transition-duration: 0.08s;
+}
+.plan-edit:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--green);
 }
 .plan-pick {
   color: var(--muted);
 }
 @media (hover: hover) and (pointer: fine) {
   .plan-ride:hover .avatar {
-    transform: translateY(-1px) scale(1.06);
+    transform: translateY(-3px) scale(1.14);
+    box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--tone), 0 8px 16px -4px rgba(16, 24, 40, 0.35);
   }
   .plan-ride:hover .plan-ride-line {
     box-shadow: inset 0 0 0 1.5px var(--tone);
@@ -2274,7 +2316,18 @@ main,
 .clock-ride-avatar {
   fill: var(--tone-soft);
   stroke: var(--surface);
-  stroke-width: 4;
+  stroke-width: 5;
+  filter: drop-shadow(0 3px 5px rgba(16, 24, 40, 0.25));
+}
+/* The initials grow from their own centre under the pointer. */
+.clock-ride-face {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.3s var(--ease-spring);
+}
+.clock-ride:hover .clock-ride-face,
+.clock-ride:focus-visible .clock-ride-face {
+  transform: scale(1.18);
 }
 .clock-ride-initials {
   fill: var(--tone);
@@ -2403,19 +2456,34 @@ main,
 .clock-readout-edit {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  margin-top: 0.4rem;
-  padding: 0.3rem 0.75rem;
-  border: 1px solid var(--border);
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+  padding: 0.45rem 1rem 0.45rem 0.85rem;
+  border: none;
   border-radius: 999px;
-  background: var(--surface);
-  font-size: 0.85em;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.9em;
   font-weight: 600;
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--green) 55%, transparent);
   pointer-events: auto;
+  animation: pop-in 0.3s var(--ease-spring);
+  transition: transform 0.3s var(--ease-spring), box-shadow var(--hover), background var(--hover);
+}
+.clock-readout-edit svg {
+  transition: transform 0.35s var(--ease-spring);
 }
 .clock-readout-edit:hover {
-  border-color: var(--green);
-  color: var(--green);
+  background: var(--green-dark);
+  transform: translateY(-2px) scale(1.06);
+  box-shadow: 0 8px 18px -4px color-mix(in srgb, var(--green) 65%, transparent);
+}
+.clock-readout-edit:hover svg {
+  transform: rotate(-18deg) translate(1px, -1px);
+}
+.clock-readout-edit:active {
+  transform: scale(0.95);
+  transition-duration: 0.08s;
 }
 .clock-readout-focus {
   animation: clock-readout-in 0.22s var(--ease-out);

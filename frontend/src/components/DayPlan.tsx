@@ -219,7 +219,7 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
           title={t.plan.edit(r.driver_name)}
           onClick={() => onEdit(r)}
         >
-          <PencilIcon size={14} />
+          <PencilIcon size={17} weight="bold" />
         </button>
       ),
     ]
