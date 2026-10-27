@@ -457,7 +457,7 @@ function Board({ session }: { session: Session }) {
     } catch (e) {
       setFormError(errMsg(e))
       // The share's refusal (backend: services.LIMIT_WEEK / LIMIT_DAY) names its own way out.
-      setFormAsk(e instanceof ApiError && /An admin can approve another$/.test(e.message))
+      setFormAsk(e instanceof ApiError && /An admin can approve (another|it)$/.test(e.message))
     } finally {
       setSubmitting(false)
     }

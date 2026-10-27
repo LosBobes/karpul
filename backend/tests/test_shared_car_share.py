@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.services import LIMIT_DAY, LIMIT_WEEK
+from app.services import LIMIT_DAY, LIMIT_STRETCH, LIMIT_WEEK
 
 # A Monday well ahead, so a week's rides never straddle today.
 MONDAY = date.today() + timedelta(days=(7 - date.today().weekday()) % 7 + 7)
@@ -176,3 +176,50 @@ def test_the_admins_list_of_rides_waiting_for_approval(client, cars, admin_auth)
     client.post(f"/api/rides/{sooner['id']}/approve", headers=admin_auth)
     assert [r["id"] for r in client.get("/api/admin/approvals", headers=admin_auth).json()] == [later["id"]]
     assert client.get("/api/admin/approvals", headers={"X-User-Name": "Ana Petrović"}).status_code == 403
+
+
+# A Sunday then the Monday after: two weeks, so the weekly share allows both
+# and only the stretch between them is in question.
+SUNDAY = MONDAY + timedelta(days=6)
+NEXT_MONDAY = MONDAY + timedelta(days=7)
+
+
+def test_rides_that_join_up_past_24_hours_need_an_admin(client, cars):
+    # Out on Sunday at 08:00 with no return, which holds the car to midnight...
+    assert client.post("/api/rides", json=shared(cars[0]["id"], SUNDAY, return_time=None)).status_code == 201
+    # ...and on from 00:00 on Monday, in another shared car even: 26 hours in a row.
+    on = client.post("/api/rides", json=shared(cars[1]["id"], NEXT_MONDAY, departure_time="00:00", return_time="10:00"))
+    assert on.status_code == 409
+    assert on.json()["detail"] == LIMIT_STRETCH
+    asked = client.post("/api/rides", json=shared(cars[1]["id"], NEXT_MONDAY, departure_time="00:00", return_time="10:00", request_approval=True))
+    assert asked.status_code == 201 and asked.json()["approval"] == "pending"
+
+
+def test_24_hours_in_a_row_or_a_break_between_is_within_the_share(client, cars):
+    # Sunday 10:00 to Monday 10:00 is exactly 24 hours.
+    assert client.post("/api/rides", json=shared(cars[0]["id"], SUNDAY, departure_time="10:00", return_time=None)).status_code == 201
+    exact = client.post("/api/rides", json=shared(cars[0]["id"], NEXT_MONDAY, departure_time="00:00", return_time="10:00"))
+    assert exact.status_code == 201 and exact.json()["approval"] == ""
+    # Someone else's rides never join up with yours.
+    other = shared(cars[1]["id"], NEXT_MONDAY + timedelta(days=7), driver_name="Mila Ilić", return_time=None)
+    assert client.post("/api/rides", json=other).status_code == 201
+
+
+def test_a_break_between_the_rides_is_not_a_stretch(client, cars):
+    assert client.post("/api/rides", json=shared(cars[0]["id"], SUNDAY, departure_time="06:00", return_time="23:30")).status_code == 201
+    later = client.post("/api/rides", json=shared(cars[0]["id"], NEXT_MONDAY, departure_time="00:00", return_time="20:00"))
+    assert later.status_code == 201 and later.json()["approval"] == ""
+
+
+def test_stretching_a_ride_into_the_next_one_is_held_to_it_too(client, cars):
+    sunday = client.post("/api/rides", json=shared(cars[0]["id"], SUNDAY)).json()
+    assert client.post("/api/rides", json=shared(cars[0]["id"], NEXT_MONDAY, departure_time="00:00", return_time="10:00")).status_code == 201
+    longer = client.patch(f"/api/rides/{sunday['id']}", json={"return_time": None}, headers=client.auth("Ana Petrović"))
+    assert longer.status_code == 409
+    assert longer.json()["detail"] == LIMIT_STRETCH
+
+
+def test_an_admin_adding_a_long_stretch_is_the_approval(client, cars, admin_auth):
+    assert client.post("/api/rides", json=shared(cars[0]["id"], SUNDAY, return_time=None), headers=admin_auth).status_code == 201
+    on = client.post("/api/rides", json=shared(cars[0]["id"], NEXT_MONDAY, departure_time="00:00", return_time="10:00"), headers=admin_auth)
+    assert on.status_code == 201 and on.json()["approval"] == "approved"
