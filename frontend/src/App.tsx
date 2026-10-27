@@ -13,6 +13,7 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
 import { DayPlan, type Slot } from './components/DayPlan'
 import { FeedbackSheet } from './components/FeedbackSheet'
+import { FluentIcon, type FluentName } from './components/FluentIcon'
 import { ArrowRightIcon, CalendarIcon, ClockIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
@@ -740,6 +741,21 @@ function Board({ session }: { session: Session }) {
     week: <CalendarIcon size={16} />,
     day: <ClockIcon size={16} />,
   }
+  // On a phone the views are a Fluent bottom tab bar instead: the same radio
+  // group, the active tab's mark filled and set on a pill.
+  const tabMarks: Record<View, FluentName> = { upcoming: 'list', week: 'calendar', day: 'clock' }
+  const tabBar = (
+    <nav className="tabbar" role="radiogroup" aria-label={t.view.label}>
+      {VIEWS.map((v) => (
+        <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'tab tab-on' : 'tab'} onClick={() => setView(v)}>
+          <span className="tab-pill" aria-hidden="true">
+            <FluentIcon name={tabMarks[v]} variant={view === v ? 'filled' : 'regular'} size={22} />
+          </span>
+          <span className="tab-label">{t.view[v]}</span>
+        </button>
+      ))}
+    </nav>
+  )
   const viewSwitch = (
     <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
       <SegThumb count={VIEWS.length} index={VIEWS.indexOf(view)} />
@@ -841,7 +857,6 @@ function Board({ session }: { session: Session }) {
           </header>
 
           <main>
-            {!wide && viewSwitch}
 
             {upcoming && (
               <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
@@ -936,6 +951,8 @@ function Board({ session }: { session: Session }) {
         </div>
 
         {!wide && canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
+
+        {!wide && tabBar}
 
         {sidebarOpen && !wide && <Sidebar {...menu} onClose={closeSidebar} />}
 

@@ -299,11 +299,14 @@ claim, and a car's use rate is days out over working days in the window.
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings`, `waitlist`, `message_count`, `driver_phone` and the computed `free_seats`. Every ride-returning endpoint goes through it (pass `board_extras` for a list).
 
 **Styling.** The frontend is Tailwind v4 (via `@tailwindcss/vite`) plus a hand-written design
-system in `src/index.css`: a light, phone-first, card-based UI — off-white ground, white cards with
-hairline borders and a faint shadow that deepens under a mouse (`--shadow-hover`, in the *Hover* block,
-`hover: hover and pointer: fine` only), 14px corners, one green accent for "selected / go", red only for
-removal, Inter throughout (bundled from `@fontsource/inter` in `main.tsx`, because the app ships as
-one self-hosted container). The semantic class names (`.card`, `.date`, `.car-tile`, `.pax-row`,
+system in `src/index.css`, built on Microsoft's Fluent 2 design language in Karpul's own green: a
+phone-first, card-based UI on Fluent's neutrals, white cards with Fluent's two-part elevation shadows
+(`--shadow`, `--shadow-hover` in the *Hover* block, `hover: hover and pointer: fine` only,
+`--shadow-pop`), Fluent's shapes (`--radius-sm` 4px for controls, `--radius` 8px for cards,
+`--radius-lg` 12px for sheets and dialogs), one green accent for "selected / go", red only for
+removal, and Segoe UI Variable where the system has it, else Inter (bundled from `@fontsource/inter`
+in `main.tsx`, because the app ships as one self-hosted container). Karpul keeps its own name, mark
+and colour: Fluent is the language, not a Microsoft brand. The semantic class names (`.card`, `.date`, `.car-tile`, `.pax-row`,
 `.panel`, `.btn`, …) are the contract the components render against. On a phone the layout is
 one 600px column. From 1024px (`lib/useWide.ts`, the *Wide screens* block in `index.css`) it is a desktop app
 that fills the window: the page never scrolls; the drawer's content is docked down the left edge
@@ -319,20 +322,24 @@ blocks carry the phone layout:
 `max-width: 600px` (sheets become true bottom sheets) and `pointer: coarse` (44px targets, hover
 choreography switched off, carousel arrows hidden). `lib/useCoarsePointer.ts` exposes the same
 query to components that need to change their wording. The app's own mark (the top bar, the drawer head, the favicon and the installed-app
-icons) is a car, side-on, whose back half turns into a thunderbolt: one thick white line on a green
-tile, nothing else. `public/favicon.svg` is the source, split by `<!-- tile -->` / `<!-- mark -->`
+icons) is a car, side-on, whose back half turns into a thunderbolt: one thick white line on a tile
+that runs from mint to forest green with a soft light in its top corner, in the manner of the newer
+Fluent app icons. `public/favicon.svg` is the source, split by `<!-- tile -->` / `<!-- mark -->`
 comments that `scripts/render-icons.mjs` uses to derive the PNGs (`pwa-192`/`pwa-512` with rounded
 transparent corners, `pwa-maskable-512` full-bleed with the mark scaled into the platform's safe
 zone, `apple-touch-icon` full-bleed and opaque), and `components/Logo.tsx` repeats the same drawing
-inline with the tile in `currentColor`. Change the mark in all three places. Icons are drawn in
+inline (its gradient ids per instance, through `useId`). Change the mark in all three places. Icons are drawn in
 `components/icons.tsx` itself (no icon package): one 24px grid, one round stroke (`light` /
 `regular` / `bold`, a touch heavier below 16px so small glyphs stay crisp), no fills except the
 dots. The named exports are the contract the components render against (`size` in px, optional
-`weight`). The drawer has its own marks (`RouteIcon`, `BellDotIcon`,
-`GarageIcon`, `PlugIcon`), each on its own tinted tile (`.drawer-tone-*`), so the menu reads by
-shape and colour before it reads by word. Adding a ride has exactly one control: `AddRideFab`
-(`components/AddRideButton.tsx`), a white plus in a green circle floating at the bottom right of
-the column on every view whenever a ride can be added (`.fab`, under every sheet's backdrop); on a
+`weight`). The drawer and the phone's tab bar use the Fluent marks in
+`components/FluentIcon.tsx` instead: a 20px grid, a 1.5px stroke, each drawing split into a body,
+details and extras so one drawing gives three styles (`regular`, `filled` with the details cut out
+in `--icon-knock`, and `color`, a two-stop gradient per mark). The drawer shows them in colour with
+no tile, so the menu reads by shape and colour before it reads by word; the `.drawer-tone-*` tiles
+remain only on the notification centre's category rows. Adding a ride has exactly one control: `AddRideFab`
+(`components/AddRideButton.tsx`), Fluent's FAB: a white plus on a green rounded square (16px corners)
+floating at the bottom right of the column, above the tab bar, on every view whenever a ride can be added (`.fab`, under every sheet's backdrop); on a
 wide screen it is `AddRideToolbarButton` at the right end of the toolbar instead.
 There is deliberately no *Add ride* tile in the carousel, no plus in the empty card and no drawer
 item; the empty card says only that there is nothing yet. Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
@@ -354,7 +361,9 @@ its mark from the `simple-icons` package in `currentColor`. Only the brands list
 are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
 not in that package, so they keep the generic icon.
 
-**Motion.** Nothing fades in; things slide or pop, and go back the way they came. The
+**Motion.** Nothing fades in; things slide or pop, and go back the way they came, on Fluent's
+curves: `--ease-out` decelerates in, `--ease-in` accelerates out, and `--ease-spring` no longer
+overshoots (the one overshoot left is `--ease-bounce`, on the update screen's bolt). The
 keyframes are in the *Motion* and *Sheets & dialogs* sections of `index.css`, the two hooks in
 `lib/motion.ts`. `useSlideDir(value, rank)` says which side freshly keyed content enters from
 (a higher rank enters from the right, a lower one from the left, NaN means no slide) and
@@ -419,8 +428,10 @@ the driver card of any company-car ride; its foot opens *Contact support*). The 
 `SUPPORT` in `lib/support.ts`) and *Report a bug or send feedback* (`FeedbackSheet`, also at the foot of the support
 sheet: a bug or an idea sent as a `mailto:` to the app contact from the person's own mail app, with the account, view,
 browser and screen under the text; nothing on the server). Picking an
-item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. Below the bar, two views are switched by the
-segmented control at the top of `main` and
+item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. The views are switched by a Fluent bottom tab bar on a
+phone (`.tabbar` in `App.tsx`, a radio group named *View*, the active tab's mark filled on a green
+pill; `--tabbar` is its height, which the FAB, the toast and the column's foot leave room for, and 0
+on a wide screen) and by the segmented control in the toolbar on a wide screen, and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.
 Day (`components/DayPlan.tsx`, the arithmetic in `lib/dayPlan.ts`, tested in `dayPlan.test.ts`) is
 one day for scheduling the company cars, drawn as one *road* per car: every active pool car (free

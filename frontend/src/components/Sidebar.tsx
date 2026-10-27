@@ -3,7 +3,8 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AdminLogIcon, ApprovalIcon, BellDotIcon, BugIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, LifebuoyIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { FluentIcon, type FluentName } from './FluentIcon'
+import { ChevronDownIcon, ChevronRightIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -35,9 +36,8 @@ interface Props extends Content {
 
 interface Item {
   label: string
-  icon: ReactNode
-  /** The tint of the icon's tile, one per item so the menu reads by colour too. */
-  tone: 'blue' | 'violet' | 'amber' | 'orange' | 'green' | 'teal' | 'rose' | 'slate'
+  /** The item's Fluent mark, drawn in colour so the menu reads by shape and hue. */
+  icon: FluentName
   onSelect: () => void
   /** Something waiting on you there: an amber count after the label. */
   count?: number
@@ -81,34 +81,29 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
   const mine: Item[] = [
     {
       label: t.myRides.title,
-      icon: <RouteIcon size={20} />,
-      tone: 'violet',
+      icon: 'route',
       onSelect: pick(onMyRides),
     },
     {
       label: t.notif.title,
-      icon: <BellDotIcon size={20} />,
-      tone: 'amber',
+      icon: 'bell',
       onSelect: pick(onNotifications),
     },
   ]
   const help: Item[] = [
     {
       label: t.sidebar.guide,
-      icon: <PlugIcon size={20} />,
-      tone: 'teal',
+      icon: 'plug',
       onSelect: pick(onGuide),
     },
     {
       label: t.support.title,
-      icon: <LifebuoyIcon size={20} />,
-      tone: 'blue',
+      icon: 'lifebuoy',
       onSelect: pick(onSupport),
     },
     {
       label: t.feedback.title,
-      icon: <BugIcon size={20} />,
-      tone: 'rose',
+      icon: 'bug',
       onSelect: pick(onFeedback),
     },
   ]
@@ -116,33 +111,28 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
     ? [
           {
             label: t.approvals.title,
-            icon: <ApprovalIcon size={20} />,
-            tone: 'orange',
+            icon: 'approvals',
             onSelect: pick(onApprovals),
             count: approvals,
           },
           {
             label: t.sidebar.cars,
-            icon: <GarageIcon size={20} />,
-            tone: 'green',
+            icon: 'car',
             onSelect: pick(onCompanyCars),
           },
           {
             label: t.sidebar.people,
-            icon: <PeopleIcon size={20} />,
-            tone: 'rose',
+            icon: 'people',
             onSelect: pick(onPeople),
           },
           {
             label: t.rideLog.title,
-            icon: <TableIcon size={20} />,
-            tone: 'slate',
+            icon: 'table',
             onSelect: pick(onRideLog),
           },
           {
             label: t.adminLog.title,
-            icon: <AdminLogIcon size={20} />,
-            tone: 'violet',
+            icon: 'log',
             onSelect: pick(onAdminLog),
           },
       ]
@@ -150,7 +140,9 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
 
   const renderItem = (it: Item) => (
     <button key={it.label} type="button" className="drawer-item" onClick={it.onSelect}>
-      <span className={`drawer-item-icon drawer-tone-${it.tone}`}>{it.icon}</span>
+      <span className="drawer-item-icon">
+        <FluentIcon name={it.icon} variant="color" size={22} />
+      </span>
       <span className="drawer-item-label">
         {it.label}
         {!!it.count && <span className="drawer-count" aria-label={t.approvals.count(it.count)}>{it.count}</span>}

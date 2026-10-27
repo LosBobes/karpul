@@ -1,6 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="k-tile" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3fd894"/>
+      <stop offset=".55" stop-color="#0f8a58"/>
+      <stop offset="1" stop-color="#0a4f39"/>
+    </linearGradient>
+    <radialGradient id="k-light" cx="18" cy="8" r="40" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
   <!-- tile -->
-  <rect width="64" height="64" rx="14" fill="#0f7b4f"/>
+  <rect width="64" height="64" rx="14" fill="url(#k-tile)"/>
+  <rect width="64" height="64" rx="14" fill="url(#k-light)"/>
   <!-- mark -->
   <g fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
     <path d="M13.5 39.5H10V32.5C10 29.5 12 27.8 15 27.5L26.5 26L34.5 17H49L42 29.5H53L40.5 46"/>
