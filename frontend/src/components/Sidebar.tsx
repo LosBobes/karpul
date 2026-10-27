@@ -4,7 +4,7 @@ import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
 import { FluentIcon, type FluentName } from './FluentIcon'
-import { ChevronDownIcon, ChevronRightIcon, XIcon } from './icons'
+import { ChevronRightIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -159,9 +159,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
         aria-controls={`drawer-group-${key}`}
         onClick={() => toggle(key)}
       >
-        <span>{title}</span>
+        <span className="drawer-group-chevron" aria-hidden="true">
+          <ChevronRightIcon size={14} weight="bold" />
+        </span>
+        <span className="drawer-group-title">{title}</span>
         {!open[key] && count > 0 && <span className="drawer-count" aria-label={t.approvals.count(count)}>{count}</span>}
-        <ChevronDownIcon size={16} className="drawer-group-chevron" />
       </button>
       <div id={`drawer-group-${key}`} className={open[key] ? 'drawer-group-body' : 'drawer-group-body drawer-group-shut'} inert={!open[key]}>
         <div className="drawer-group-clip">{body}</div>

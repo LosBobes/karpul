@@ -433,7 +433,10 @@ says something the control cannot (a consequence, a privacy risk, a format).
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride, in collapsible groups (*You*, *Admin* for admins, *Settings* with the
 theme and language, folded by default; remembered as `karpul.drawerGroups`; a folded *Admin* carries
-the approvals count on its heading). The items are one label each, no hint line. Your account is the
+the approvals count on its heading). Each group heading is a Fluent accordion header: a full-width
+row in the text's ink, a leading chevron in its own small well that turns down when the group opens,
+a tint under a mouse and a darker one when pressed, and the open group's rows hanging off a hairline
+under the chevron. The items are one label each, no hint line. Your account is the
 identity block on top (it opens `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
 *Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
