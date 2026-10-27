@@ -20,7 +20,9 @@ rows follow the log line for line. What the log does not say is filled in:
 - "BG-NS-BG" is Beograd to Novi Sad, "BG-NIS-BG" Beograd to Niš.
 - The driver is the account whose name matches with diacritics ignored
   ("Milan Blazic" is "Milan Blažić"); with no such account the ride carries the
-  name alone, as a ride from before accounts does.
+  name alone, as a ride from before accounts does. Registering under that
+  exact name claims it; a colleague whose account spells it another way
+  claims it from the ride (`POST /api/rides/{id}/claim`, names alike only).
 
 Days before today are history and are written as the log has them, overlaps
 included (on 9 and 18 September the log has the car out twice). From today on
@@ -31,7 +33,6 @@ reported instead of overbooking it.
 import argparse
 import logging
 import sys
-import unicodedata
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 
@@ -41,7 +42,7 @@ from sqlmodel import Session, select
 
 from .database import begin_write, engine
 from .models import CarType, CorporateCar, DataMigration, Ride, User
-from .services import corporate_car_label, ensure_car_available, norm_name
+from .services import corporate_car_label, ensure_car_available, fold_name
 
 log = logging.getLogger("karpul.backfill")
 
@@ -113,10 +114,7 @@ LOG: list[Entry] = [
 ]
 
 
-def fold(name: str) -> str:
-    """`norm_name` with the diacritics dropped: "Blažić" and "Blazic" are one name here."""
-    plain = unicodedata.normalize("NFKD", norm_name(name).replace("đ", "dj"))
-    return "".join(c for c in plain if not unicodedata.combining(c))
+fold = fold_name
 
 
 def days(entry: Entry) -> list[date]:

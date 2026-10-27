@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import { sameName } from './dates'
+import { sameName, similarName } from './dates'
 import type { Booking, Ride, RideRequest, WaitlistEntry } from './types'
 
 /**
@@ -32,6 +32,15 @@ export function isMe(me: Me, personId: number | null | undefined, name: string):
 
 export function drives(ride: Ride, me: Me): boolean {
   return isMe(me, ride.driver_id, ride.driver_name)
+}
+
+/**
+ * May `me` say "this is me" to a ride whose driver is a name with no account
+ * (the shared car's paper log)? Only under a name like their own, and not from
+ * a seat in it. Backend: `claim_ride` in routers/rides.py.
+ */
+export function mayClaim(ride: Ride, me: Me): boolean {
+  return ride.driver_id === null && !drives(ride, me) && !seatedIn(ride, me) && similarName(ride.driver_name, me.name)
 }
 
 export function isMyBooking(booking: Booking, me: Me): boolean {

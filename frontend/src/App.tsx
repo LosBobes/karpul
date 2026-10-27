@@ -489,6 +489,15 @@ function Board({ session }: { session: Session }) {
       }
     })
 
+  // --- a ride under a name with no account: "this is me" ---
+
+  const onClaim = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      const claimed = await api.claimRide(ride.id)
+      for (const r of claimed) upsertRide(r)
+      setToast({ kind: 'ok', text: t.toasts.claimed(claimed.length) })
+    })
+
   const onDecline = (ride: Ride) =>
     setConfirm({
       title: t.confirm.declineTitle,
@@ -673,6 +682,7 @@ function Board({ session }: { session: Session }) {
       onTogglePassengersManage={onTogglePassengersManage}
       onApprove={onApprove}
       onDecline={onDecline}
+      onClaim={(r) => void onClaim(r)}
       onGuide={() => setGuideOpen(true)}
       onWait={onWait}
       onLeaveLine={onLeaveLine}

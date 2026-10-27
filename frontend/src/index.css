@@ -970,6 +970,25 @@ main,
   flex: 1;
   min-height: 40px;
 }
+/* "Is this you?": a ride whose driver is a name with no account, offered to
+   the one signed in under a name like it (lib/me.ts, mayClaim). */
+.claim-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--green-line);
+  border-radius: var(--radius-sm);
+  background: var(--green-soft);
+}
+.claim-ask {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.claim-row .btn {
+  min-height: 40px;
+}
 /* The admin's queue (components/Approvals.tsx): one card per ask, the ride
    on top (a tap opens it on the day plan), the two answers under it. */
 .approval-list {
