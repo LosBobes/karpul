@@ -60,8 +60,14 @@
   /* What a card the pointer is over rises to. */
   --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
   --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.14);
-  /* Motion: things slide and pop, they do not fade (see "Motion" below).
-     Fluent's curves: decelerate in, accelerate out, no overshoot. */
+  /* What a card rests at (Fluent's shadow 4). */
+  --shadow-card: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  /* Fluent's durations: hover 100ms, a popover 150ms, a dialog 250ms. */
+  --dur-fast: 0.15s;
+  --dur-normal: 0.2s;
+  --dur-gentle: 0.25s;
+  /* Motion: Fluent's patterns (see "Motion" below) on Fluent's curves:
+     decelerate in, accelerate out, no overshoot. */
   --ease-out: cubic-bezier(0.1, 0.9, 0.2, 1);
   --ease-in: cubic-bezier(0.7, 0, 1, 0.5);
   --ease-spring: cubic-bezier(0.1, 0.9, 0.2, 1);
@@ -141,10 +147,12 @@ textarea {
   min-height: 44px;
   padding: 0.55rem 0.8rem;
   border: 1px solid var(--border-strong);
+  /* Fluent: the bottom edge is the darker one, and turns into the accent. */
+  border-bottom-color: var(--muted);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--hover), box-shadow var(--hover);
 }
 textarea {
   resize: vertical;
@@ -153,8 +161,8 @@ input:focus,
 select:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
 }
 input:disabled,
 select:disabled {
@@ -263,11 +271,12 @@ input[type='checkbox'] {
   appearance: none;
   position: relative;
   flex: none;
-  width: 38px;
-  height: 22px;
+  width: 40px;
+  height: 20px;
+  border: 1px solid var(--muted);
   border-radius: 999px;
-  background: var(--border-strong);
-  transition: background 0.18s var(--ease-out);
+  background: transparent;
+  transition: background var(--hover), border-color var(--hover);
 }
 .toggle input[type='checkbox']::after,
 .switch-row input[type='checkbox']::after {
@@ -275,25 +284,26 @@ input[type='checkbox'] {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.3);
-  transition: transform 0.18s var(--ease-out);
+  background: var(--muted);
+  transition: transform var(--dur-normal) var(--ease-out), background var(--hover);
 }
 .toggle input[type='checkbox']:checked,
 .switch-row input[type='checkbox']:checked {
+  border-color: var(--green);
   background: var(--green);
 }
 .toggle input[type='checkbox']:checked::after,
 .switch-row input[type='checkbox']:checked::after {
-  transform: translateX(16px);
+  background: #fff;
+  transform: translateX(20px);
 }
 .toggle input[type='checkbox']:focus-visible,
 .switch-row input[type='checkbox']:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent);
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
 }
 /* A switch that stands on its own line, boxed like an input: the wording on
    the left, the switch on the right, so a long explanation never pushes it
@@ -326,45 +336,53 @@ input[type='checkbox'] {
   line-height: 1.4;
   color: var(--muted);
 }
-/* The white pill under the chosen segment is one element (.seg-thumb, see
+/* Fluent's TabList: the choices sit on the page, the picked one semibold with
+   a short accent bar under it. The bar is one element (.seg-thumb, see
    components/Segmented.tsx) that slides to the next choice; the buttons only
-   change colour. */
+   change colour and weight. */
 .segmented {
   position: relative;
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  padding: 0 0 3px;
+  border-bottom: 1px solid var(--border);
 }
 .seg {
   position: relative;
   z-index: 1;
-  min-height: 38px;
+  min-height: 40px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 400;
   font-size: 0.9rem;
-  transition: color 0.2s;
+  transition: color var(--hover), background var(--hover);
+}
+.seg:hover:not(:disabled):not(.seg-on) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 .seg-on {
   color: var(--text);
+  font-weight: 600;
 }
 .seg-thumb {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / var(--seg-n, 2));
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  bottom: -1px;
+  left: 0;
+  height: 3px;
+  width: calc(100% / var(--seg-n, 2));
   transform: translateX(calc(var(--seg-i, 0) * 100%));
-  transition: transform 0.25s var(--ease-out);
+  transition: transform var(--dur-gentle) var(--ease-out);
+}
+.seg-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0 max(12px, 28%);
+  border-radius: 2px;
+  background: var(--green);
 }
 .seg:disabled {
   opacity: 0.5;
@@ -439,18 +457,22 @@ input[type='checkbox'] {
   gap: 0.45rem;
   min-height: 44px;
   padding: 0.6rem 1.1rem;
-  border: 1px solid transparent;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  background: var(--surface);
   color: var(--text);
   font-weight: 600;
   font-size: 0.95rem;
   white-space: nowrap;
   transition: background var(--hover), border-color var(--hover), color var(--hover), opacity var(--hover),
-    box-shadow var(--hover), transform 0.12s var(--ease-smooth);
+    box-shadow var(--hover);
+}
+/* Fluent presses by darkening, never by shrinking. */
+.btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
 }
 .btn:active:not(:disabled) {
-  transform: scale(0.97);
+  background: color-mix(in srgb, var(--text) 9%, var(--surface));
 }
 .btn:disabled {
   opacity: 0.5;
@@ -459,20 +481,21 @@ input[type='checkbox'] {
   width: 100%;
 }
 .btn-primary {
+  border-color: transparent;
   background: var(--green);
   color: #fff;
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--green-dark);
-  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--green) 60%, transparent);
 }
-.btn-soft {
-  background: var(--surface-2);
+.btn-primary:active:not(:disabled) {
+  background: color-mix(in srgb, #000 22%, var(--green));
 }
 .btn-soft:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--text) 8%, var(--surface));
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
 }
 .btn-danger {
+  border-color: transparent;
   background: var(--red);
   color: #fff;
 }
@@ -561,11 +584,12 @@ span.plus-circle svg {
      platform's grey tap flash over the circle. */
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  animation: fab-in 0.32s var(--ease-spring);
+  animation: fab-in var(--dur-gentle) var(--ease-out);
 }
 @keyframes fab-in {
   from {
-    transform: scale(0.4);
+    opacity: 0;
+    transform: scale(0.6);
   }
 }
 .fab .plus-circle {
@@ -612,7 +636,6 @@ span.plus-circle svg {
   padding: 6px max(0.5rem, calc(50% - 300px)) env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border-top: 1px solid var(--border);
 }
 .tab {
@@ -679,7 +702,6 @@ main,
   padding: calc(0.45rem + env(safe-area-inset-top)) 0.7rem 0.45rem;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
-  -webkit-backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 .topbar-menu {
@@ -744,12 +766,12 @@ main,
   left: 0;
   z-index: 40;
   max-width: calc(100vw - 16px);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
   /* transform-origin is set by Popover.tsx to the anchor's corner. */
-  animation: pop-in 0.18s var(--ease-out);
+  animation: pop-in var(--dur-fast) var(--ease-out);
 }
 .popover-up {
   animation-name: pop-in-up;
@@ -775,7 +797,7 @@ main,
   white-space: nowrap;
 }
 .menu-item:hover:not(:disabled) {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .menu-item:disabled {
   opacity: 0.45;
@@ -791,22 +813,17 @@ main,
 .menu-item-danger .menu-item-icon {
   color: inherit;
 }
+/* Fluent's flyout: in from the anchor's side by 10px as it fades up. */
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.9);
-  }
-  35% {
-    opacity: 1;
+    transform: translateY(-10px);
   }
 }
 @keyframes pop-in-up {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.9);
-  }
-  35% {
-    opacity: 1;
+    transform: translateY(10px);
   }
 }
 
@@ -819,11 +836,14 @@ main,
   min-height: 44px;
   padding: 0.55rem 0.8rem;
   border: 1px solid var(--border-strong);
+  /* The same Fluent input as a text field: a darker bottom edge that turns
+     into the accent underline while open or focused. */
+  border-bottom-color: var(--muted);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   text-align: left;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--hover), box-shadow var(--hover);
 }
 .control:hover:not(:disabled) {
   border-color: var(--muted);
@@ -831,8 +851,8 @@ main,
 .control:focus-visible,
 .control[aria-expanded='true'] {
   outline: none;
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
 }
 .control:disabled {
   background: var(--surface-2);
@@ -984,9 +1004,9 @@ main,
 /* --- Cards & tags -------------------------------------------------------- */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
 }
 .tag {
   display: inline-flex;
@@ -1414,16 +1434,16 @@ main,
   gap: 0.15rem;
   min-height: 92px;
   padding: 0.8rem 0.5rem 0.65rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
   transition: background var(--hover), border-color var(--hover), opacity var(--hover), box-shadow var(--hover),
     transform var(--hover);
 }
 .car-tile:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
 }
 .car-tile svg {
   color: var(--muted);
@@ -3981,24 +4001,22 @@ body.dragging {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   overflow: hidden;
-  animation: panel-in 0.26s var(--ease-out);
+  animation: panel-in var(--dur-gentle) var(--ease-out);
 }
 .backdrop-closing .panel {
   animation: panel-out 0.18s var(--ease-in) forwards;
 }
+/* Fluent's dialog: it grows a little out of the middle as it fades in. */
 @keyframes panel-in {
   from {
     opacity: 0;
-    transform: translateY(32px) scale(0.96);
-  }
-  30% {
-    opacity: 1;
+    transform: scale(0.94);
   }
 }
 @keyframes panel-out {
   to {
     opacity: 0;
-    transform: translateY(24px) scale(0.97);
+    transform: scale(0.96);
   }
 }
 .panel-grab {
@@ -4156,14 +4174,15 @@ body.dragging {
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-strong);
+  border-bottom-color: var(--muted);
   border-radius: var(--radius-sm);
   background: var(--surface);
   overflow: hidden;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--hover), box-shadow var(--hover);
 }
 .route:focus-within {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
 }
 .route-row {
   display: flex;
@@ -4290,9 +4309,9 @@ body.dragging {
   flex: none;
   width: 96px;
   height: 64px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface-2) 100%);
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--muted);
 }
 .guide-art-row {
@@ -4770,7 +4789,7 @@ body.dragging {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   text-align: center;
-  animation: confirm-in 0.28s var(--ease-spring);
+  animation: confirm-in var(--dur-gentle) var(--ease-out);
 }
 .backdrop-closing .confirm {
   animation: confirm-out 0.16s var(--ease-in) forwards;
@@ -4778,16 +4797,13 @@ body.dragging {
 @keyframes confirm-in {
   from {
     opacity: 0;
-    transform: scale(0.8) translateY(16px);
-  }
-  30% {
-    opacity: 1;
+    transform: scale(0.94);
   }
 }
 @keyframes confirm-out {
   to {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.96);
   }
 }
 .confirm-badge {
@@ -4907,17 +4923,19 @@ body.dragging {
   width: max-content;
   max-width: calc(100vw - 2rem);
   padding: 0.6rem 1rem;
-  border-radius: 999px;
+  border-radius: var(--radius);
   background: var(--text);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 500;
   box-shadow: var(--shadow-pop);
-  animation: toast-in 0.32s var(--ease-spring);
+  animation: toast-in var(--dur-gentle) var(--ease-out);
 }
+/* Fluent's toast: up from below by a little, fading in. */
 @keyframes toast-in {
   from {
-    transform: translate(-50%, calc(100% + 3rem));
+    opacity: 0;
+    transform: translate(-50%, 16px);
   }
 }
 .toast-error {
@@ -5389,35 +5407,30 @@ body.dragging {
 }
 
 /* --- Motion -------------------------------------------------------------- */
-/* Nothing on this board fades in. A view or a day board that replaces
-   another slides in from the side it came from (App.tsx keys the wrapper and
+/* Fluent's motion. A view or a day board that replaces another steps in 20px
+   from the side it came from as it fades up (App.tsx keys the wrapper and
    picks the direction with useSlideDir in lib/motion.ts); sheets rise from
-   the bottom edge, the drawer comes in from the left, confirmations and
-   popovers pop, and the segmented controls and the date pills slide their
-   marker. The short opacity ramp on the slides only covers the first frames,
-   so content entering from inside the frame does not blink into place. */
+   the bottom edge on a phone, the drawer comes in from the left, dialogs grow
+   a little out of the middle as they fade in, flyouts come 10px out of their
+   anchor, and the tab lists and the date pills slide their marker. Everything
+   decelerates in and accelerates out, with no overshoot. */
 .swap-left {
-  animation: swap-from-left 0.26s var(--ease-out);
+  animation: swap-from-left var(--dur-gentle) var(--ease-out);
 }
 .swap-right {
-  animation: swap-from-right 0.26s var(--ease-out);
+  animation: swap-from-right var(--dur-gentle) var(--ease-out);
 }
+/* Fluent's page step: 20px from the side it comes from, fading in. */
 @keyframes swap-from-left {
   from {
     opacity: 0;
-    transform: translateX(-48px);
-  }
-  30% {
-    opacity: 1;
+    transform: translateX(-20px);
   }
 }
 @keyframes swap-from-right {
   from {
     opacity: 0;
-    transform: translateX(48px);
-  }
-  30% {
-    opacity: 1;
+    transform: translateX(20px);
   }
 }
 
@@ -5607,7 +5620,6 @@ body.dragging {
   padding: 0.45rem 0.25rem;
   background: color-mix(in srgb, var(--bg) 90%, transparent);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   text-transform: none;
   letter-spacing: -0.01em;
   font-size: 0.95rem;
@@ -6012,6 +6024,7 @@ body.dragging {
   --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
   --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
   --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
+  --shadow-card: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -6034,6 +6047,7 @@ body.dragging {
     --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
     --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
     --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
+    --shadow-card: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
     color-scheme: dark;
   }
 }
@@ -6289,7 +6303,6 @@ body.dragging {
     padding: 0 1.5rem 0 2rem;
     background: var(--surface);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   .toolbar-title {
     font-size: 1.3rem;

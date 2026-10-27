@@ -304,7 +304,12 @@ phone-first, card-based UI on Fluent's neutrals, white cards with Fluent's two-p
 (`--shadow`, `--shadow-hover` in the *Hover* block, `hover: hover and pointer: fine` only,
 `--shadow-pop`), Fluent's shapes (`--radius-sm` 4px for controls, `--radius` 8px for cards,
 `--radius-lg` 12px for sheets and dialogs), one green accent for "selected / go", red only for
-removal, and Segoe UI Variable where the system has it, else Inter (bundled from `@fontsource/inter`
+removal, Fluent's controls (an input's bottom edge darker and an accent underline when focused, the custom
+pickers and the route box included; the outlined switch that fills; a secondary button outlined on
+the surface, pressed by darkening rather than shrinking; cards at shadow 4 with no visible stroke;
+the top bar and the tab bar frosted with `backdrop-filter`, written unprefixed only, because the
+CSS minifier keeps just the `-webkit-` copy when both are there), and Segoe UI Variable where the
+system has it, else Inter (bundled from `@fontsource/inter`
 in `main.tsx`, because the app ships as one self-hosted container). Karpul keeps its own name, mark
 and colour: Fluent is the language, not a Microsoft brand. The semantic class names (`.card`, `.date`, `.car-tile`, `.pax-row`,
 `.panel`, `.btn`, …) are the contract the components render against. On a phone the layout is
@@ -329,9 +334,11 @@ comments that `scripts/render-icons.mjs` uses to derive the PNGs (`pwa-192`/`pwa
 transparent corners, `pwa-maskable-512` full-bleed with the mark scaled into the platform's safe
 zone, `apple-touch-icon` full-bleed and opaque), and `components/Logo.tsx` repeats the same drawing
 inline (its gradient ids per instance, through `useId`). Change the mark in all three places. Icons are drawn in
-`components/icons.tsx` itself (no icon package): one 24px grid, one round stroke (`light` /
-`regular` / `bold`, a touch heavier below 16px so small glyphs stay crisp), no fills except the
-dots. The named exports are the contract the components render against (`size` in px, optional
+`components/icons.tsx` itself (no icon package), in Fluent 2's grammar: the 24px grid with its 3px
+margin, a 1.5px round stroke (`light` 1.25 / `regular` 1.5 / `bold` 2, a touch heavier below 16px so
+small glyphs stay crisp), rounded corners on every box, long thin chevrons and arrows, a person as a
+head over a rounded shoulder, Fluent's own shapes for the common glyphs (Dismiss, Navigation,
+Calendar, Clock, Delete, Edit, Chat, Send, Alert, Shield, Money), no fills except the dots. The named exports are the contract the components render against (`size` in px, optional
 `weight`). The drawer and the phone's tab bar use the Fluent marks in
 `components/FluentIcon.tsx` instead: a 20px grid, a 1.5px stroke, each drawing split into a body,
 details and extras so one drawing gives three styles (`regular`, `filled` with the details cut out
@@ -345,7 +352,9 @@ There is deliberately no *Add ride* tile in the carousel, no plus in the empty c
 item; the empty card says only that there is nothing yet. Avatars (`components/Avatar.tsx`) derive a stable pastel from the name.
 Known car models get a side-view illustration instead of the generic icon: `lib/carModels.ts`
 matches a car name (plate suffix and all) to a model key and an `electric` flag, and
-`components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`). Today that is only the
+`components/CarArt.tsx` draws it (`CarGlyph` falls back to `CarIcon`) in Fluent's illustration
+manner: no outline, the shapes modelled by soft gradients (ids per instance through `useId`), a
+sheen across the glass and a blurred shadow under the car. Today that is only the
 white Mazda 6e, used in the ride tiles, the driver card's vehicle strip and the admin list.
 `carPowertrain()` in the same file says whether a name is *electric*, a *hybrid*, *diesel* or
 *petrol* (explicit words and engine badges first, hybrid before electric before diesel before
@@ -361,9 +370,12 @@ its mark from the `simple-icons` package in `currentColor`. Only the brands list
 are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
 not in that package, so they keep the generic icon.
 
-**Motion.** Nothing fades in; things slide or pop, and go back the way they came, on Fluent's
-curves: `--ease-out` decelerates in, `--ease-in` accelerates out, and `--ease-spring` no longer
-overshoots (the one overshoot left is `--ease-bounce`, on the update screen's bolt). The
+**Motion.** Fluent's patterns, and things go back the way they came: a view steps in 20px from
+its side as it fades up, a flyout comes 10px out of its anchor, a dialog grows a little out of the
+middle as it fades in, a toast rises 16px, on Fluent's curves (`--ease-out` decelerates in,
+`--ease-in` accelerates out, `--ease-spring` no longer overshoots; the one overshoot left is
+`--ease-bounce`, on the update screen's bolt) and durations (`--dur-fast` 150ms, `--dur-normal`
+200ms, `--dur-gentle` 250ms, hover 100ms). The
 keyframes are in the *Motion* and *Sheets & dialogs* sections of `index.css`, the two hooks in
 `lib/motion.ts`. `useSlideDir(value, rank)` says which side freshly keyed content enters from
 (a higher rank enters from the right, a lower one from the left, NaN means no slide) and
@@ -376,11 +388,12 @@ adds `backdrop-closing`, and `onClose` runs on the panel's `animationend` (with 
 timeout); a parent that unmounts the overlay itself, after a save, still closes on the spot,
 and the drawer's `pick` closes on the spot on purpose so the sheet it opens owns the history
 entry alone. Sheets rise from the bottom edge on a phone and pop up on a desktop, the drawer
-slides from the left, confirmations and popovers scale out of their anchor (`Popover` sets
+slides from the left, confirmations grow out of the middle and popovers come out of their anchor (`Popover` sets
 `transform-origin` and measures itself with `offsetWidth`, which a transform does not change),
 the toast and the floating plus spring in (the plus also contracts while pressed and springs back on release; the pressed state comes from pointer and key events, not `:active`, which phones apply late and Chrome holds on after the finger lifts), the Upcoming detail unfolds as a grid row from
 `0fr` (the `.session-detail-clip` wrapper hides the overflow and leaves room for shadows), and
-the segmented controls (`SegThumb`, `components/Segmented.tsx`) and the date pills
+the segmented controls (`SegThumb`, `components/Segmented.tsx`, drawn as Fluent's TabList: the
+choices on the page, the pick semibold over a short accent bar) and the date pills
 (`.date-thumb`) move one marker element instead of recolouring buttons. Reduced motion collapses
 every duration, so the exits still fire `animationend`.
 
