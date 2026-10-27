@@ -12,6 +12,7 @@ import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
 import { DayPlan, type Slot } from './components/DayPlan'
+import { FeedbackSheet } from './components/FeedbackSheet'
 import { ArrowRightIcon, CalendarIcon, ClockIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
@@ -23,6 +24,7 @@ import { RequestList } from './components/RequestList'
 import { UpdateScreen } from './components/UpdateScreen'
 import { RideForm } from './components/RideForm'
 import { Dock, Sidebar } from './components/Sidebar'
+import { SupportSheet } from './components/SupportSheet'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
@@ -114,6 +116,10 @@ function Board({ session }: { session: Session }) {
   // Your history and figures (components/MyRides.tsx) and the push switch (NotificationsSheet.tsx).
   const [myRidesOpen, setMyRidesOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  // Who to ask (components/SupportSheet.tsx), from the drawer or the guide's foot,
+  // and the bug / idea form (FeedbackSheet.tsx), from the drawer or the support sheet.
+  const [supportOpen, setSupportOpen] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
   // Taking a waiting build (components/UpdateScreen.tsx): the bolt you trace.
   const [updateOpen, setUpdateOpen] = useState(false)
   // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
@@ -408,6 +414,8 @@ function Board({ session }: { session: Session }) {
   const closeGuide = useCallback(() => setGuideOpen(false), [])
   const closeMyRides = useCallback(() => setMyRidesOpen(false), [])
   const closeNotif = useCallback(() => setNotifOpen(false), [])
+  const closeSupport = useCallback(() => setSupportOpen(false), [])
+  const closeFeedback = useCallback(() => setFeedbackOpen(false), [])
   const closePeople = useCallback(() => setPeopleOpen(false), [])
 
   const closeForm = useCallback(() => {
@@ -768,6 +776,8 @@ function Board({ session }: { session: Session }) {
     onApprovals: () => setApprovalsOpen(true),
     approvals: waiting,
     onGuide: () => setGuideOpen(true),
+    onSupport: () => setSupportOpen(true),
+    onFeedback: () => setFeedbackOpen(true),
     onMyRides: () => setMyRidesOpen(true),
     onNotifications: () => setNotifOpen(true),
   }
@@ -917,7 +927,11 @@ function Board({ session }: { session: Session }) {
 
         {sidebarOpen && !wide && <Sidebar {...menu} onClose={closeSidebar} />}
 
-        {guideOpen && <CarGuide onClose={closeGuide} />}
+        {guideOpen && <CarGuide onSupport={() => setSupportOpen(true)} onClose={closeGuide} />}
+
+        {supportOpen && <SupportSheet onFeedback={() => setFeedbackOpen(true)} onClose={closeSupport} />}
+
+        {feedbackOpen && <FeedbackSheet user={`${userName} (@${user.username})`} view={view} onClose={closeFeedback} />}
 
         {myRidesOpen && <MyRides user={user} onNotice={notice} onClose={closeMyRides} />}
 

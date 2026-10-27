@@ -404,7 +404,11 @@ identity block on top (it opens `AccountSheet`, which is also where you sign out
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
 line-icon style with the green accent on the one thing the step is about; also reachable from
-the driver card of any company-car ride). Picking an
+the driver card of any company-car ride; its foot opens *Contact support*). The *Help* group holds the guide,
+*Contact support* (`SupportSheet`: car, app and organizational contacts with `tel:` / `mailto:` buttons, the list is
+`SUPPORT` in `lib/support.ts`) and *Report a bug or send feedback* (`FeedbackSheet`, also at the foot of the support
+sheet: a bug or an idea sent as a `mailto:` to the app contact from the person's own mail app, with the account, view,
+browser and screen under the text; nothing on the server). Picking an
 item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. Below the bar, two views are switched by the
 segmented control at the top of `main` and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.

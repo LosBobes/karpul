@@ -5,6 +5,7 @@ import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { keepsKm } from '../lib/odometer'
+import { telHref } from '../lib/support'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
@@ -36,11 +37,6 @@ import { Menu } from './Menu'
 import { Odometer } from './Odometer'
 import { RideThread } from './RideThread'
 import { Select } from './Select'
-
-/** `tel:` takes the digits and a leading +, not the spaces and dashes people type. */
-function telHref(phone: string): string {
-  return `tel:${phone.trim().startsWith('+') ? '+' : ''}${phone.replace(/\D/g, '')}`
-}
 
 interface Props {
   ride: Ride

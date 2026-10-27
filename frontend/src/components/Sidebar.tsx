@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AdminLogIcon, ApprovalIcon, BellDotIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { AdminLogIcon, ApprovalIcon, BellDotIcon, BugIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, LifebuoyIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -23,6 +23,8 @@ interface Content {
   /** Admins: how many shared-car rides wait for approval (a count on the item). */
   approvals: number
   onGuide: () => void
+  onSupport: () => void
+  onFeedback: () => void
   onMyRides: () => void
   onNotifications: () => void
 }
@@ -41,11 +43,11 @@ interface Item {
   count?: number
 }
 
-type GroupKey = 'me' | 'admin' | 'settings'
+type GroupKey = 'me' | 'help' | 'admin' | 'settings'
 
 /** Which groups are folded, remembered per browser; settings start folded. */
 const GROUPS_KEY = 'karpul.drawerGroups'
-const DEFAULT_OPEN: Record<GroupKey, boolean> = { me: true, admin: true, settings: false }
+const DEFAULT_OPEN: Record<GroupKey, boolean> = { me: true, help: true, admin: true, settings: false }
 
 function loadOpen(): Record<GroupKey, boolean> {
   try {
@@ -62,7 +64,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * collapsible groups, the settings at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onMyRides, onNotifications, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -89,11 +91,25 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       tone: 'amber',
       onSelect: pick(onNotifications),
     },
+  ]
+  const help: Item[] = [
     {
       label: t.sidebar.guide,
       icon: <PlugIcon size={20} />,
       tone: 'teal',
       onSelect: pick(onGuide),
+    },
+    {
+      label: t.support.title,
+      icon: <LifebuoyIcon size={20} />,
+      tone: 'blue',
+      onSelect: pick(onSupport),
+    },
+    {
+      label: t.feedback.title,
+      icon: <BugIcon size={20} />,
+      tone: 'rose',
+      onSelect: pick(onFeedback),
     },
   ]
   const admin: Item[] = isAdmin
@@ -174,6 +190,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
 
           <nav className="drawer-nav" aria-label={t.common.menu}>
             {group('me', t.sidebar.mine, mine.map(renderItem))}
+            {group('help', t.sidebar.help, help.map(renderItem))}
             {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
           </nav>
 
@@ -213,7 +230,8 @@ export function Dock(props: Content) {
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
  * top bar. It holds the things that are not about one particular ride, in
- * collapsible groups: yours (rides, notifications, the shared-car guide), the
+ * collapsible groups: yours (rides, notifications), help (the shared-car
+ * guide, who to call, a bug or an idea), the
  * admin's (approvals, the pool, the people, every ride, the log) and the
  * settings (appearance, language). Your account is the identity block on top.
  * Adding a ride is not here; that is the plus. Picking an item closes

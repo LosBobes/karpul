@@ -1,4 +1,5 @@
 import { getLocale, useLocale, type Locale } from './locale'
+import type { SupportTopic } from './support'
 
 /**
  * Every word the screen shows, in English and in Serbian (Latin script).
@@ -115,6 +116,7 @@ const en = {
     mine: 'You',
     admin: 'Admin',
     settings: 'Settings',
+    help: 'Help',
   },
 
   myRides: {
@@ -149,6 +151,31 @@ const en = {
     unsupported: 'This browser cannot show push notifications. On an iPhone, install Karpul to the home screen first, then try again.',
     unavailable: 'Push is not set up on this server.',
     denied: 'The browser has blocked notifications for this site. Allow them in the site settings, then try again.',
+  },
+
+  support: {
+    title: 'Contact support',
+    call: 'Call',
+    email: 'Email',
+    stuck: 'Not working?',
+    topics: {
+      car: { title: 'Car issues', body: 'The car will not charge, start or open, a warning light, damage, the charging card.' },
+      app: { title: 'App issues', body: 'Karpul shows something wrong, will not let you sign in or book, or crashes.' },
+      org: { title: 'Organizational issues', body: 'Who may take a shared car, the rules, approvals and anything else about the arrangement.' },
+    } as Record<SupportTopic, { title: string; body: string }>,
+  },
+
+  feedback: {
+    title: 'Report a bug or send feedback',
+    kind: 'What is it',
+    bug: 'Bug',
+    idea: 'Idea',
+    bugLabel: 'What went wrong',
+    ideaLabel: 'Your idea',
+    bugPlaceholder: 'What you did, what you expected and what happened instead.',
+    ideaPlaceholder: 'What would make Karpul better for you?',
+    send: 'Send',
+    hint: 'Opens your email app with the message ready. Your account name, the browser and the screen size go along to help find the problem.',
   },
 
   auth: {
@@ -1054,6 +1081,7 @@ const sr: Messages = {
     mine: 'Ti',
     admin: 'Administracija',
     settings: 'Podešavanja',
+    help: 'Pomoć',
   },
 
   myRides: {
@@ -1088,6 +1116,31 @@ const sr: Messages = {
     unsupported: 'Ovaj pregledač ne može da prikazuje obaveštenja. Na iPhone-u prvo dodaj Karpul na početni ekran, pa pokušaj ponovo.',
     unavailable: 'Obaveštenja nisu podešena na ovom serveru.',
     denied: 'Pregledač je blokirao obaveštenja za ovaj sajt. Dozvoli ih u podešavanjima sajta, pa pokušaj ponovo.',
+  },
+
+  support: {
+    title: 'Kontakt za podršku',
+    call: 'Pozovi',
+    email: 'Pošalji mejl',
+    stuck: 'Nešto ne radi?',
+    topics: {
+      car: { title: 'Problemi sa autom', body: 'Auto neće da se puni, upali ili otključa, lampica upozorenja, oštećenje, kartica za punjenje.' },
+      app: { title: 'Problemi sa aplikacijom', body: 'Karpul prikazuje nešto pogrešno, ne da prijavu ili rezervaciju, ili se ruši.' },
+      org: { title: 'Organizaciona pitanja', body: 'Ko sme da uzme zajednički auto, pravila, odobrenja i sve ostalo oko dogovora.' },
+    },
+  },
+
+  feedback: {
+    title: 'Prijavi grešku ili pošalji predlog',
+    kind: 'Šta je u pitanju',
+    bug: 'Greška',
+    idea: 'Predlog',
+    bugLabel: 'Šta nije u redu',
+    ideaLabel: 'Tvoj predlog',
+    bugPlaceholder: 'Šta si uradio/la, šta si očekivao/la i šta se desilo umesto toga.',
+    ideaPlaceholder: 'Šta bi Karpul učinilo boljim za tebe?',
+    send: 'Pošalji',
+    hint: 'Otvara tvoju aplikaciju za mejl sa spremnom porukom. Ime naloga, pregledač i veličina ekrana idu uz nju, da bi se problem lakše našao.',
   },
 
   auth: {
