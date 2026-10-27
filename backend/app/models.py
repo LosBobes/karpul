@@ -146,6 +146,12 @@ class Ride(SQLModel, table=True):
         back_populates="ride",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "RideMessage.id"},
     )
+    # Who was at the wheel of a shared car, from what odometer reading to
+    # what, in the order they drove (DriveLeg).
+    legs: list["DriveLeg"] = Relationship(
+        back_populates="ride",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "DriveLeg.id"},
+    )
 
 
 class Booking(SQLModel, table=True):
@@ -273,3 +279,24 @@ class DataMigration(SQLModel, table=True):
 
     name: str = Field(primary_key=True)
     applied_at: datetime = Field(default_factory=utcnow)
+
+
+class DriveLeg(SQLModel, table=True):
+    """One stretch at the wheel of a shared car: who drove it and the odometer
+    when they took the wheel and when they handed it on (or brought the car
+    back). A ride's legs follow each other: a handover ends one at the reading
+    the next starts from. The ride's driver is who booked the car; this is who
+    actually drove, and how far."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    ride_id: int = Field(foreign_key="ride.id", index=True)
+    # The account at the wheel; None for a passenger put in by name without
+    # one (or an account since deleted). The name is a snapshot, like everywhere.
+    driver_id: int | None = Field(default=None, foreign_key="appuser.id", index=True)
+    driver_name: str
+    start_km: int
+    # None while this stretch is being driven.
+    end_km: int | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+    ride: Ride = Relationship(back_populates="legs")

@@ -32,6 +32,7 @@ function ride(over: Partial<Ride>): Ride {
     message_count: 0,
     free_seats: 3,
     approval: '',
+    legs: [],
     ...over,
   }
 }

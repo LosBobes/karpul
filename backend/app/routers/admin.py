@@ -22,6 +22,7 @@ from ..events import disconnect, request_deleted, request_saved, ride_deleted, r
 from ..models import (
     AdminAction,
     Booking,
+    DriveLeg,
     PasswordReset,
     PushSubscription,
     Ride,
@@ -184,6 +185,9 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
     for message in session.exec(select(RideMessage).where(RideMessage.author_id == user.id)).all():
         message.author_id = None
         session.add(message)
+    for leg in session.exec(select(DriveLeg).where(DriveLeg.driver_id == user.id)).all():
+        leg.driver_id = None
+        session.add(leg)
     session.exec(delete(PushSubscription).where(col(PushSubscription.user_id) == user.id))
     session.exec(delete(PasswordReset).where(col(PasswordReset.user_id) == user.id))
     audit.record(session, admin, "account_deleted", user.display_name)
@@ -223,7 +227,7 @@ def _log_rides(session: Session, date_from: date | None, date_to: date | None) -
     stmt = (
         select(Ride)
         .where(Ride.ride_date >= date_from, Ride.ride_date <= date_to)
-        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist))  # type: ignore[arg-type]
+        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist), selectinload(Ride.legs))  # type: ignore[arg-type]
         .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
     )
     return date_from, date_to, list(session.exec(stmt).all())
@@ -268,7 +272,7 @@ def approvals(session: SessionDep, creds: CredsDep):
     stmt = (
         select(Ride)
         .where(Ride.approval == "pending", Ride.ride_date >= date.today())
-        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist))  # type: ignore[arg-type]
+        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist), selectinload(Ride.legs))  # type: ignore[arg-type]
         .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
     )
     rides = list(session.exec(stmt).all())

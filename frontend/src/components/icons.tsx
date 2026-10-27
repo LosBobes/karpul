@@ -232,6 +232,14 @@ export const RepeatIcon = icon(
   </>,
 )
 /** A road running away from you: the distance of a ride. */
+/** A steering wheel: whoever is at the wheel of a shared car (Odometer). */
+export const SteeringIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="2.25" />
+    <path d="M3.75 10.5c2.9-.9 5.6-.9 8.25 1.5 2.65-2.4 5.35-2.4 8.25-1.5M12 14.25v6" />
+  </>,
+)
 export const RoadIcon = icon(
   <>
     <path d="M6.5 20 10 4M17.5 20 14 4" />

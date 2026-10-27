@@ -62,6 +62,19 @@ export interface Ride {
   /** How many messages the ride's thread has; a change means "fetch it again". */
   message_count: number
   free_seats: number
+  /** A shared car's odometer, stretch by stretch, in the order they were driven. */
+  legs: DriveLeg[]
+}
+
+/** One stretch at the wheel of a shared car (backend: DriveLeg). */
+export interface DriveLeg {
+  id: number
+  driver_id: number | null
+  driver_name: string
+  start_km: number
+  /** null while this stretch is being driven. */
+  end_km: number | null
+  created_at: string
 }
 
 export interface WaitlistEntry {

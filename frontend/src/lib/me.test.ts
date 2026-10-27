@@ -31,6 +31,7 @@ function ride(overrides: Partial<Ride> = {}): Ride {
     message_count: 0,
     free_seats: 2,
     approval: '',
+    legs: [],
     ...overrides,
   }
 }

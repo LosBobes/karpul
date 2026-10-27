@@ -87,6 +87,7 @@ def to_ride_read_dict(ride: Ride, extras: BoardExtras | None = None) -> dict:
     data["waitlist"] = ride.waitlist
     data["message_count"] = extras.message_counts.get(ride.id, 0)  # type: ignore[arg-type]
     data["free_seats"] = max(ride.seats - len(ride.bookings), 0)
+    data["legs"] = ride.legs
     return data
 
 

@@ -195,6 +195,16 @@ export const api = {
   movePickup: (rideId: number, bookingId: number, pickup: string) =>
     request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, json('PATCH', { pickup })),
 
+  /** Take the wheel of a shared car at `km`: the ride's driver (`bookingId` null) or a passenger; a handover while someone drives. */
+  takeWheel: (rideId: number, km: number, bookingId: number | null) =>
+    request<Ride>(`/api/rides/${rideId}/legs`, json('POST', { km, booking_id: bookingId })),
+
+  /** The shared car is back, at `km`. */
+  bringBack: (rideId: number, km: number) => request<Ride>(`/api/rides/${rideId}/legs/end`, json('POST', { km })),
+
+  /** Take back the last odometer entry (driver or admin). */
+  undoLeg: (rideId: number) => request<Ride>(`/api/rides/${rideId}/legs/last`, { method: 'DELETE' }),
+
   /** Queue for a seat in a full car; the first seat that frees up is yours. */
   joinWaitlist: (rideId: number, pickup = '') => request<Ride>(`/api/rides/${rideId}/waitlist`, json('POST', { pickup })),
 

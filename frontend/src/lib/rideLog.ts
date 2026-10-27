@@ -1,4 +1,5 @@
 import type { Messages } from './i18n'
+import { kmByDriver, kmDriven, odometerSpan } from './odometer'
 import type { Ride } from './types'
 
 /**
@@ -7,7 +8,7 @@ import type { Ride } from './types'
  */
 
 export type LogKind = 'all' | 'corporate' | 'own'
-export type SortKey = 'date' | 'driver' | 'car' | 'from' | 'to' | 'taken' | 'km'
+export type SortKey = 'date' | 'driver' | 'car' | 'from' | 'to' | 'taken' | 'km' | 'driven'
 export interface LogSort {
   key: SortKey
   dir: 1 | -1
@@ -29,7 +30,7 @@ export function filterLog(rides: Ride[], kind: LogKind, query: string): Ride[] {
     if (kind !== 'all' && r.car_type !== kind) return false
     if (!words.length) return true
     const text = fold(
-      [r.driver_name, r.car_name, r.origin, r.destination, ...r.stops, ...r.bookings.map((b) => b.passenger_name), r.notes].join(' '),
+      [r.driver_name, r.car_name, r.origin, r.destination, ...r.stops, ...r.bookings.map((b) => b.passenger_name), ...r.legs.map((l) => l.driver_name), r.notes].join(' '),
     )
     // Every word somewhere in the row: "ana octavia" is Ana's rides in the Octavia.
     return words.every((w) => text.includes(w))
@@ -55,6 +56,8 @@ function compare(key: SortKey, a: Ride, b: Ride): number {
       return a.bookings.length - b.bookings.length
     case 'km':
       return (a.distance_km ?? -1) - (b.distance_km ?? -1)
+    case 'driven':
+      return (kmDriven(a) ?? -1) - (kmDriven(b) ?? -1)
   }
 }
 
@@ -63,12 +66,20 @@ export function sortLog(rides: Ride[], sort: LogSort): Ride[] {
   return [...rides].sort((a, b) => sort.dir * compare(sort.key, a, b) || chronological(a, b))
 }
 
-export function logTotals(rides: Ride[]): { rides: number; pax: number; km: number } {
+export function logTotals(rides: Ride[]): { rides: number; pax: number; km: number; driven: number } {
   return {
     rides: rides.length,
     pax: rides.reduce((n, r) => n + r.bookings.length, 0),
     km: Math.round(rides.reduce((n, r) => n + (r.distance_km ?? 0), 0)),
+    driven: rides.reduce((n, r) => n + (kmDriven(r) ?? 0), 0),
   }
+}
+
+/** Who drove how far, as one cell: "Ana Petrović 120 km, Marko Marković 40 km". */
+export function atWheel(ride: Ride, locale?: string): string {
+  return kmByDriver(ride)
+    .map((d) => `${d.name} ${d.km.toLocaleString(locale)} km`)
+    .join(', ')
 }
 
 const hhmm = (t: string | null) => (t ? t.slice(0, 5) : '')
@@ -82,8 +93,14 @@ const hhmm = (t: string | null) => (t ? t.slice(0, 5) : '')
  */
 export function logCsv(rides: Ride[], t: Messages): string {
   const c = t.rideLog.col
-  const header = [c.date, c.departs, c.back, c.driver, c.phone, c.car, c.type, c.from, c.stops, c.to, c.seats, c.taken, c.passengers, c.waiting, c.km, c.chipIn, c.note]
-  const rows = rides.map((r) => [
+  const header = [
+    c.date, c.departs, c.back, c.driver, c.phone, c.car, c.type, c.from, c.stops, c.to, c.seats, c.taken, c.passengers, c.waiting, c.km,
+    c.odoStart, c.odoEnd, c.driven, c.atWheel, c.chipIn, c.note,
+  ]
+  const rows = rides.map((r) => {
+    const odo = odometerSpan(r)
+    const driven = kmDriven(r)
+    return [
     r.ride_date,
     hhmm(r.departure_time),
     hhmm(r.return_time),
@@ -99,9 +116,15 @@ export function logCsv(rides: Ride[], t: Messages): string {
     r.bookings.map((b) => b.passenger_name).join(', '),
     r.waitlist.map((w) => w.name).join(', '),
     r.distance_km == null ? '' : String(r.distance_km).replace('.', ','),
+    odo.start == null ? '' : String(odo.start),
+    odo.end == null ? '' : String(odo.end),
+    driven == null ? '' : String(driven),
+    // Plain digits here: a thousands separator would read as a decimal comma.
+    kmByDriver(r).map((d) => `${d.name} ${d.km} km`).join(', '),
     r.chip_in,
     r.notes,
-  ])
+    ]
+  })
   return '﻿' + [header, ...rows].map((row) => row.map(cell).join(';')).join('\r\n') + '\r\n'
 }
 

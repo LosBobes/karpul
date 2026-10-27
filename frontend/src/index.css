@@ -3186,6 +3186,98 @@ main,
   color: var(--muted);
 }
 
+/* --- A shared car's odometer (components/Odometer.tsx) ----------------------
+   Who drove the car and how far: one row per stretch at the wheel, the one
+   being driven tinted green, and under it the reading to note next. */
+.odo {
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.odo .section-title {
+  margin: 0;
+}
+.odo-legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.odo-legs > li + li {
+  border-top: 1px solid var(--border);
+}
+.odo-leg {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+}
+.odo-leg-open {
+  background: var(--green-soft);
+}
+.odo-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.odo-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 500;
+}
+.odo-span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.odo-km {
+  min-width: 4.5rem;
+  text-align: right;
+  font-weight: 600;
+}
+.odo-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+.odo-reading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1 1 9rem;
+}
+.odo-reading input {
+  font-variant-numeric: tabular-nums;
+}
+.odo-who-pick {
+  flex: 1 1 12rem;
+}
+.odo-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1 1 100%;
+  justify-content: flex-end;
+}
+.odo-form .error {
+  flex-basis: 100%;
+  margin: 0;
+}
+.odo-undo {
+  align-self: flex-start;
+}
+
 /* --- A ride's thread (components/RideThread.tsx) ---------------------------
    One quiet line under the passengers ("Messages (3)") that unfolds into the
    thread: oldest at the top, yours tinted green like your seat, and a box at
@@ -6139,14 +6231,22 @@ body.dragging {
   .split-pane .detail {
     display: grid;
     grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
     gap: 1.75rem;
     align-items: start;
   }
   .split-pane .driver-card {
     padding: 1.75rem 2rem 2rem;
     gap: 1.4rem;
-    grid-row: span 2;
+    grid-row: 1 / -1;
+  }
+  /* The odometer heads the right half, above the passengers. */
+  .split-pane .detail > .odo {
+    grid-column: 2;
+    margin: 1.75rem 2rem 0 0;
+  }
+  .split-pane .detail > .odo + .pax {
+    margin-top: 1.25rem;
   }
   .split-pane .driver-times {
     padding: 1rem 1.25rem;
@@ -6182,6 +6282,7 @@ body.dragging {
     box-shadow: none;
   }
   .split-pane .detail > .pax {
+    grid-column: 2;
     margin: 1.75rem 2rem 1.25rem 0;
   }
 }

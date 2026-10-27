@@ -144,6 +144,21 @@ again whenever the board's rides change or a decision is made); each ask is deci
 on it opens the ride on the day plan. The card keeps its *Approve* / *Decline* row (`.approval-row`)
 too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
 
+**A shared car's odometer.** Who actually drove a shared car and how far is kept as `DriveLeg`
+rows on the ride (`Ride.legs`, in `RideRead`): one stretch at the wheel each, `start_km` to `end_km`
+(None while being driven), following each other with no gap. The ride's `driver_id` stays who
+*booked* it; the legs say who *drove*. `POST /api/rides/{id}/legs {km, booking_id}` takes the wheel
+(the ride's driver when `booking_id` is null, else that passenger): the first one is the reading at
+pickup (the driver or an admin only), later ones are handovers that end the current stretch at the
+same reading (the driver, an admin or whoever is at the wheel); `POST .../legs/end {km}` is the car
+back; `DELETE .../legs/last` (driver or admin) steps back one entry. Readings only go up, only on a
+shared car that is not pending, from its day on. On screen `components/Odometer.tsx` (the logic in
+`lib/odometer.ts`, tested in `odometer.test.ts`) sits on the ride card for the people in the car and
+for admins; *Hand over* is how the wheel changes hands, so the one who drove becomes a passenger in
+the log. *All rides* shows the odometer out and back, the km driven and who drove how much, and the
+spreadsheet carries the same four columns. Account deletion nulls `DriveLeg.driver_id` and keeps the
+name. Tests: `tests/test_odometer.py`.
+
 **Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
 **Waiting list, thread, requests.** A full car has a queue (`WaitlistEntry`, `POST/DELETE
@@ -205,7 +220,7 @@ is the effective value (`routers/auth.user_read`). The drawer shows *Shared cars
 *All rides* (`CarAdmin`, `PeopleAdmin`, `RideLog`) to admins only. *All rides* is a spreadsheet-style
 table for an office manager: `GET /api/admin/rides?from&to` (any window up to `MAX_LOG_DAYS`, past
 included, unlike the board's 92), shown in a wide sheet (`.panel-wide`, sticky header row and date
-column). Filtering, sorting and the CSV download all happen in the browser (`lib/rideLog.ts`, tested in
+column). It also carries each shared car's odometer (below). Filtering, sorting and the CSV download all happen in the browser (`lib/rideLog.ts`, tested in
 `rideLog.test.ts`): the file holds the rows on screen in the app language, with semicolons and a decimal
 comma because Excel in Germany and Serbia reads a comma file as one column, and a leading apostrophe on
 any cell that starts like a formula. Tests: the `admin_auth` fixture in `conftest.py`;
