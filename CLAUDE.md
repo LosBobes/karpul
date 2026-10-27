@@ -122,8 +122,10 @@ its label in `adminLog.fields`. Tests: `tests/test_admin_rides.py`.
 **A shared car is rationed.** `SHARED_CAR_PER_WEEK` / `SHARED_CAR_PER_DAY` (both 1) in `services.py`:
 `shared_car_use` counts a driver's shared-car rides in a Mon–Sun week and on a day (pending and
 approved ones too), `over_shared_car_share` turns that into `LIMIT_WEEK` / `LIMIT_DAY` (the day's
-text wins). `_approval_for` in `routers/rides.py` applies it on create (per occurrence of a series)
-and when an edit moves an unapproved ride to another day or car type: within the share the ride's
+text wins), and then `LIMIT_STRETCH`: `shared_car_stretch` joins the ride with the driver's shared-car
+rides that meet or overlap it (any car, any approval; no return holds the car to midnight) and more than
+`SHARED_CAR_MAX_STRETCH` (24 h) in a row is past the share too (the day either side is all it reads). `_approval_for` in `routers/rides.py` applies it on create (per occurrence of a series)
+and when an edit moves an unapproved ride to another day, car type or time: within the share the ride's
 `approval` is `""`; past it a plain user gets the 409, or with `RideCreate.request_approval` the ride
 is added as `"pending"` and every admin (`admin.admin_ids`) is pushed `approval_requested`; an admin
 adding it (for anyone) gets `"approved"` outright, and own cars are never rationed. **A pending ride
