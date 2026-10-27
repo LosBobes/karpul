@@ -1,5 +1,6 @@
 import { getLocale, useLocale, type Locale } from './locale'
 import type { SupportTopic } from './support'
+import type { PushCategory } from './types'
 
 /**
  * Every word the screen shows, in English and in Serbian (Latin script).
@@ -143,11 +144,24 @@ const en = {
 
   notif: {
     title: 'Notifications',
-    body: 'Seats, changes to your rides, messages, and a reminder 30 minutes before you leave.',
     enable: 'Turn on',
     disable: 'Turn off',
+    push: 'Push notifications',
     on: 'On, for this browser.',
     off: 'Off.',
+    kinds: 'What to tell you',
+    kindsOff: 'Takes effect once notifications are on.',
+    category: {
+      seats: ['Seats', 'Someone gets in or out, or a seat frees up for you'],
+      changes: ['Ride changes', 'A ride you are in moves or is removed, or you are put down to drive'],
+      reminders: ['Departure reminder', '30 minutes before you leave'],
+      messages: ['Messages', 'Someone writes in the thread of your ride'],
+      requests: ['Ride requests', 'A driver offers you a ride you asked for'],
+      approvals: ['Shared-car approvals', 'An ask past the share, and the answer to yours'],
+    } as Record<PushCategory, [string, string]>,
+    device: 'On this device',
+    updates: 'New version notice',
+    updatesHint: 'The card and the bolt when an update is ready. Off, the app updates itself the next time you open it.',
     unsupported: 'This browser cannot show push notifications. On an iPhone, install Karpul to the home screen first, then try again.',
     unavailable: 'Push is not set up on this server.',
     denied: 'The browser has blocked notifications for this site. Allow them in the site settings, then try again.',
@@ -1115,11 +1129,24 @@ const sr: Messages = {
 
   notif: {
     title: 'Obaveštenja',
-    body: 'Mesta, izmene tvojih vožnji, poruke i podsetnik 30 minuta pre polaska.',
     enable: 'Uključi',
     disable: 'Isključi',
+    push: 'Push obaveštenja',
     on: 'Uključeno, za ovaj pregledač.',
     off: 'Isključeno.',
+    kinds: 'O čemu da te obaveštavamo',
+    kindsOff: 'Važi kada uključiš obaveštenja.',
+    category: {
+      seats: ['Mesta', 'Neko uđe ili izađe, ili se oslobodi mesto za tebe'],
+      changes: ['Izmene vožnji', 'Vožnja u kojoj si se pomeri ili ukloni, ili te upišu kao vozača'],
+      reminders: ['Podsetnik za polazak', '30 minuta pre polaska'],
+      messages: ['Poruke', 'Neko napiše nešto u razgovoru tvoje vožnje'],
+      requests: ['Zahtevi za prevoz', 'Vozač ti ponudi prevoz koji si tražio/la'],
+      approvals: ['Odobrenja zajedničkog auta', 'Zahtev preko dozvoljenog i odgovor na tvoj'],
+    },
+    device: 'Na ovom uređaju',
+    updates: 'Obaveštenje o novoj verziji',
+    updatesHint: 'Kartica i munja kada je spremno ažuriranje. Kad je isključeno, aplikacija se ažurira sama sledeći put kada je otvoriš.',
     unsupported: 'Ovaj pregledač ne može da prikazuje obaveštenja. Na iPhone-u prvo dodaj Karpul na početni ekran, pa pokušaj ponovo.',
     unavailable: 'Obaveštenja nisu podešena na ovom serveru.',
     denied: 'Pregledač je blokirao obaveštenja za ovaj sajt. Dozvoli ih u podešavanjima sajta, pa pokušaj ponovo.',

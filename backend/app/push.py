@@ -29,7 +29,7 @@ from typing import Any
 import httpx
 from sqlmodel import Session, select
 
-from .models import PushSubscription, Ride
+from .models import PushSubscription, Ride, User
 from .webpush import Vapid, encrypt
 
 log = logging.getLogger("karpul.push")
@@ -62,8 +62,29 @@ class Target:
     locale: str
 
 
-def targets_for(session: Session, user_ids: list[int | None]) -> list[Target]:
+# What a person can switch off, kind by kind (`User.push_muted`, the
+# Notifications sheet). Every `kind` notify() sends belongs to exactly one.
+CATEGORIES: dict[str, tuple[str, ...]] = {
+    "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
+    "changes": ("ride_changed", "ride_removed", "ride_assigned"),
+    "reminders": ("leaving_soon",),
+    "messages": ("message",),
+    "requests": ("request_answered",),
+    "approvals": ("approval_requested", "ride_approved", "ride_declined"),
+}
+CATEGORY_OF = {kind: category for category, kinds in CATEGORIES.items() for kind in kinds}
+
+
+def muted(user: User) -> list[str]:
+    return [c for c in user.push_muted.split(",") if c in CATEGORIES]
+
+
+def targets_for(session: Session, user_ids: list[int | None], kind: str | None = None) -> list[Target]:
     wanted = {uid for uid in user_ids if uid is not None}
+    category = CATEGORY_OF.get(kind or "")
+    if category is not None and wanted:
+        people = session.exec(select(User).where(User.id.in_(wanted))).all()  # type: ignore[union-attr]
+        wanted -= {u.id for u in people if category in muted(u)}
     if not wanted:
         return []
     stmt = select(PushSubscription).where(PushSubscription.user_id.in_(wanted))  # type: ignore[union-attr]
@@ -182,7 +203,8 @@ def deliver_all(targets: list[Target], make_message, identity: Vapid) -> list[st
 
 def notify(session: Session, user_ids: list[int | None], kind: str, ride: Ride, **args: Any) -> int:
     """Queue `kind` about `ride` for every browser of the accounts in `user_ids`
-    (None, a seat with no account behind it, is skipped).
+    (None, a seat with no account behind it, is skipped, and so is anyone who
+    switched that kind's category off).
 
     Returns how many subscriptions were found. Call it before the session is
     closed; the ride's fields are copied so the send can outlive the request.
@@ -190,7 +212,7 @@ def notify(session: Session, user_ids: list[int | None], kind: str, ride: Ride, 
     identity = vapid()
     if identity is None:
         return 0
-    targets = targets_for(session, user_ids)
+    targets = targets_for(session, user_ids, kind)
     if not targets:
         return 0
     snapshot = Ride.model_validate(ride.model_dump())

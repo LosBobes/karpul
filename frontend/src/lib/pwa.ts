@@ -8,6 +8,12 @@ import { registerSW } from 'virtual:pwa-register'
  * app shows "a new version is ready" (`useUpdateReady`) and the user applies it
  * with a tap (`applyUpdate`), which hard-refreshes the page onto the new build.
  *
+ * Someone who would rather not be asked turns the notice off (`setUpdateNotices`,
+ * the Notifications sheet, remembered per browser as `karpul.updateNotices`).
+ * Then nothing is shown and a waiting build is taken only in the first seconds
+ * after the app opens (`QUIET_WINDOW_MS`), before anything has been typed, so
+ * an update lands the next time the app is started and never under a finger.
+ *
  * In `npm run dev` the virtual module is a stub and none of this runs.
  */
 
@@ -15,6 +21,20 @@ const CHECK_EVERY_MS = 60 * 60 * 1000
 /** How long a tap waits for the new worker before reloading regardless. */
 const RELOAD_AFTER_MS = 3000
 
+/** With the notice off, how soon after start a waiting build is still taken. */
+const QUIET_WINDOW_MS = 10_000
+const NOTICES_KEY = 'karpul.updateNotices'
+const startedAt = Date.now()
+
+function loadNotices(): boolean {
+  try {
+    return localStorage.getItem(NOTICES_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+let notices = loadNotices()
 let ready = false
 let update: ((reloadPage?: boolean) => Promise<void>) | null = null
 let applying = false
@@ -34,6 +54,7 @@ export function startServiceWorker() {
     onNeedRefresh() {
       ready = true
       listeners.forEach((l) => l())
+      if (!notices && Date.now() - startedAt < QUIET_WINDOW_MS) applyUpdate()
     },
     onRegisteredSW(_url, registration) {
       if (!registration) return
@@ -46,6 +67,25 @@ export function startServiceWorker() {
       document.addEventListener('visibilitychange', check)
     },
   })
+}
+
+/** Is the "new version is ready" card (and its bolt) wanted in this browser? */
+export function useUpdateNotices(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => notices,
+    () => true,
+  )
+}
+
+export function setUpdateNotices(on: boolean) {
+  notices = on
+  try {
+    localStorage.setItem(NOTICES_KEY, on ? 'on' : 'off')
+  } catch {
+    /* private mode: for this visit only */
+  }
+  listeners.forEach((l) => l())
 }
 
 /** True once a newer build is installed and waiting. */

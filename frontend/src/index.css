@@ -3626,6 +3626,179 @@ main,
   color: var(--green);
 }
 
+/* --- Notification centre (components/NotificationsSheet.tsx) ------------- */
+/* The push switch on a card of its own, the bell on a tile that turns green
+   when it is on; then the kinds as one grouped list, a tinted tile, the words
+   and a switch per row, the way the drawer reads. */
+.notif-hero {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.notif-hero-on {
+  border-color: var(--green-line);
+  background: var(--green-soft);
+}
+.notif-hero-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+.notif-hero-on .notif-hero-mark {
+  background: var(--green);
+  color: #fff;
+  animation: notif-ring 0.6s var(--ease-out);
+}
+@keyframes notif-ring {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-10deg); }
+  60% { transform: rotate(6deg); }
+  80% { transform: rotate(-3deg); }
+  100% { transform: rotate(0); }
+}
+.notif-hero-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.notif-hero-text strong {
+  font-size: 0.98rem;
+}
+.notif-hero-text span {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.notif-hero-on .notif-hero-text span {
+  color: var(--green-dark);
+}
+.notif-section {
+  margin-top: 1.4rem;
+}
+.notif-section-title {
+  margin: 0 0 0.5rem 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.notif-list {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.notif-list li + li {
+  border-top: 1px solid var(--border);
+}
+/* Push is off: the choices still save, they just wait. */
+.notif-list-idle .notif-row-mark,
+.notif-list-idle .notif-row-text {
+  opacity: 0.55;
+}
+.notif-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 56px;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+}
+.notif-row-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+.notif-row-mark-bolt {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.notif-row-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.notif-row-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.notif-row-desc {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.notif-switch {
+  display: inline-flex;
+  flex: none;
+  cursor: pointer;
+}
+.notif-switch input[type='checkbox'] {
+  appearance: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background 0.18s var(--ease-out);
+}
+.notif-switch input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.3);
+  transition: transform 0.22s var(--ease-spring, var(--ease-out));
+}
+.notif-switch input[type='checkbox']:checked {
+  background: var(--green);
+}
+.notif-switch input[type='checkbox']:checked::after {
+  transform: translateX(18px);
+}
+.notif-switch input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.notif-switch input[type='checkbox']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .notif-row:hover {
+    background: var(--surface-2);
+  }
+}
+
 /* --- Empty card ---------------------------------------------------------- */
 /* No picture: a small car on a tinted disc, the line, the hint. The card is
    dashed and sits on the ground, a space for a ride rather than a ride. */

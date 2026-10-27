@@ -221,3 +221,32 @@ def test_departure_reminder_goes_out_once(client, configured, sent):
     assert sent[-1][1]["title"] == "Leaving in 20 min" and sent[-1][1]["url"] == f"/ride/{later['id']}"
     # A ride whose departure has passed is never reminded late.
     session.close()
+
+
+def test_a_muted_category_is_not_sent_and_the_rest_still_is(client, configured, sent):
+    client.post("/api/push/subscriptions", json=subscription(), headers={"X-User-Name": "Ana"})
+    assert client.get("/api/push/preferences", headers={"X-User-Name": "Ana"}).json() == {"muted": []}
+    r = client.put("/api/push/preferences", json={"muted": ["seats", "messages"]}, headers={"X-User-Name": "Ana"})
+    assert r.json() == {"muted": ["seats", "messages"]}
+    assert client.put("/api/push/preferences", json={"muted": ["nonsense"]}, headers={"X-User-Name": "Ana"}).status_code == 422
+    assert client.anon.get("/api/push/preferences").status_code == 401
+
+    ride = client.post("/api/rides", json=own_ride()).json()
+    client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Bojan"})
+    client.post(f"/api/rides/{ride['id']}/messages", json={"body": "hi"}, headers={"X-User-Name": "Bojan"})
+    assert sent == []
+
+    # Bojan muted nothing: the driver moving the ride still reaches him.
+    client.post("/api/push/subscriptions", json=subscription("https://push.example/bojan"), headers={"X-User-Name": "Bojan"})
+    client.patch(f"/api/rides/{ride['id']}", json={"departure_time": "08:00"}, headers={"X-User-Name": "Ana"})
+    assert [t.endpoint for t, _ in sent] == ["https://push.example/bojan"]
+
+    client.put("/api/push/preferences", json={"muted": []}, headers={"X-User-Name": "Ana"})
+    client.post(f"/api/rides/{ride['id']}/messages", json={"body": "again"}, headers={"X-User-Name": "Bojan"})
+    assert sent[-1][0].endpoint == "https://push.example/abc"
+
+
+def test_every_kind_belongs_to_a_category():
+    from app.push import CATEGORY_OF, TEXTS
+
+    assert set(TEXTS["en"]) - {"when"} == set(CATEGORY_OF)

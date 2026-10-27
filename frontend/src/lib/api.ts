@@ -7,6 +7,7 @@ import type {
   CorporateCarInput,
   PersonStats,
   ProfilePatch,
+  PushCategory,
   PushConfig,
   Ride,
   RideInput,
@@ -239,6 +240,9 @@ export const api = {
   // --- push notifications (see backend/app/push.py) ---
 
   pushConfig: () => request<PushConfig>('/api/push/config'),
+  /** The kinds of push this account switched off (backend: app/push.py CATEGORIES). */
+  pushPreferences: () => request<{ muted: PushCategory[] }>('/api/push/preferences'),
+  setPushPreferences: (muted: PushCategory[]) => request<{ muted: PushCategory[] }>('/api/push/preferences', json('PUT', { muted })),
 
   subscribePush: (subscription: PushSubscriptionJSON, locale: string) =>
     request<{ ok: boolean }>('/api/push/subscriptions', json('POST', { ...subscription, locale })),

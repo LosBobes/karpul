@@ -278,7 +278,12 @@ note) or is removed, the first in line when a seat frees up, the car when someon
 thread, a requester when a driver answers, and everyone in the car 30 minutes before departure (`app/reminders.py`,
 a minute-by-minute task started in the lifespan; `Ride.reminder_sent` makes it once). The
 browser side is `lib/push.ts` plus `public/push-sw.js`, which Workbox pulls into `sw.js`
-through `importScripts`; every sign-in re-files the browser's subscription under the account (`resubscribePush` in `App.tsx`).
+through `importScripts`; every sign-in re-files the browser's subscription under the account (`resubscribePush` in `App.tsx`). Each `kind` belongs to one of `CATEGORIES` in `app/push.py`
+(seats, changes, reminders, messages, requests, approvals); a person switches categories off per account
+(`User.push_muted`, `GET/PUT /api/push/preferences`) and `notify` skips them. `NotificationsSheet` is the
+notification centre: the push switch on its own card, a row per category, and *New version notice* for this
+device (`useUpdateNotices` / `setUpdateNotices` in `lib/pwa.ts`, `karpul.updateNotices`): off, the update
+toast and its bolt never show and a waiting build is taken only in the first seconds after the app opens.
 
 **Calendar, sharing, figures.** `app/calendar.py` writes floating local times (no zone) for one
 ride (`/api/rides/{id}/calendar.ics`, signed in; the app fetches it and hands it over as a
