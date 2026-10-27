@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react'
+import { useId, type ComponentType } from 'react'
 import {
   siAudi,
   siBmw,
@@ -59,13 +59,18 @@ const ART_RATIO = 48 / 128
 
 /**
  * Mazda 6e: a white electric fastback, drawn side-on and facing left after
- * the press photo — long bonnet, one unbroken roofline into a ducktail, slim
- * light bars, dark glass, big twin-spoke wheels and a dark sill. The outline
- * follows `currentColor` so it takes the tile's muted/green state like the
- * line icons do; the body stays white because the car is white. That it is
- * electric is not drawn here: `PowertrainMark` says so beside the car's name.
+ * the press photo (long bonnet, one unbroken roofline into a ducktail, slim
+ * light bars, dark glass, big twin-spoke wheels and a dark sill), in Fluent's
+ * illustration manner: no outline, the shapes modelled by soft gradients, a
+ * sheen across the glass and a blurred shadow under it. The body stays white
+ * because the car is white; the light bars take `currentColor`, so the tile's
+ * muted or green state still reaches the picture. That it is electric is not
+ * drawn here: `PowertrainMark` says so beside the car's name.
  */
 export function Mazda6eArt({ width, className }: ArtProps) {
+  const id = useId()
+  const g = (name: string) => `url(#${CSS.escape(id + name)})`
+  const BODY = 'M4.6 26.5Q4.4 21 9 20.1C20 18.7 34 17 44 16.1C50 11.2 56.5 8.7 63 8.3C70 7.8 78 7.7 84 8.4C94 9.7 104 13.4 114 16.4L122 17Q124 17.3 124 19V31Q124 35.2 121 36.6L111.3 37A12 12 0 0 0 88.7 37H37.3A12 12 0 0 0 14.7 37H9.5Q6.8 37 6.3 34.5Z'
   return (
     <svg
       className={className}
@@ -78,55 +83,78 @@ export function Mazda6eArt({ width, className }: ArtProps) {
       aria-hidden="true"
       focusable="false"
     >
-      {/* ground shadow */}
-      <ellipse cx="64" cy="43.8" rx="58" ry="1.6" fill="currentColor" opacity="0.14" />
-      {/* body */}
-      <path
-        d="M4.6 26.5Q4.4 21 9 20.1C20 18.7 34 17 44 16.1C50 11.2 56.5 8.7 63 8.3C70 7.8 78 7.7 84 8.4C94 9.7 104 13.4 114 16.4L122 17Q124 17.3 124 19V31Q124 35.2 121 36.6L111.3 37A12 12 0 0 0 88.7 37H37.3A12 12 0 0 0 14.7 37H9.5Q6.8 37 6.3 34.5Z"
-        fill="#fff"
-        stroke="currentColor"
-        strokeWidth="1.2"
-      />
+      <defs>
+        <linearGradient id={`${id}body`} x1="0" y1="8" x2="0" y2="37" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" />
+          <stop offset=".55" stopColor="#f4f6f8" />
+          <stop offset="1" stopColor="#c9d0d7" />
+        </linearGradient>
+        <linearGradient id={`${id}side`} x1="0" y1="24" x2="0" y2="37" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#5c6b7a" stopOpacity="0" />
+          <stop offset="1" stopColor="#5c6b7a" stopOpacity=".28" />
+        </linearGradient>
+        <linearGradient id={`${id}glass`} x1="50" y1="9" x2="100" y2="17" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#5b6b7c" />
+          <stop offset=".6" stopColor="#2f3a46" />
+          <stop offset="1" stopColor="#222a33" />
+        </linearGradient>
+        <linearGradient id={`${id}sheen`} x1="0" y1="9" x2="0" y2="14" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" stopOpacity=".55" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id={`${id}tyre`} cx="0.5" cy="0.4" r="0.6">
+          <stop stopColor="#3d4550" />
+          <stop offset="1" stopColor="#15191e" />
+        </radialGradient>
+        <radialGradient id={`${id}rim`} cx="0.4" cy="0.35" r="0.7">
+          <stop stopColor="#8a949f" />
+          <stop offset="1" stopColor="#3c434c" />
+        </radialGradient>
+        <radialGradient id={`${id}shadow`} cx="0.5" cy="0.5" r="0.5">
+          <stop stopColor="#000" stopOpacity=".22" />
+          <stop offset="1" stopColor="#000" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {/* the blurred shadow it stands in */}
+      <ellipse cx="64" cy="43.4" rx="62" ry="3.2" fill={g('shadow')} />
+      {/* body, modelled from a lit roof to the shaded flank */}
+      <path d={BODY} fill={g('body')} />
+      <path d={BODY} fill={g('side')} />
+      {/* the shoulder catching the light */}
+      <path d="M14 21.2C30 19.4 44 18.2 52 17.6M100 17.4C107 19 113 20.2 121 19.6" stroke="#fff" strokeWidth="1" opacity=".9" />
       {/* dark lower cladding: sill between the wheels and the bumper lips */}
-      <path d="M37.3 35.4H88.7V37H37.3Z" fill="#343a42" />
-      <path d="M9.5 36.5H14.2M111.8 36.5H120.5" stroke="#343a42" strokeWidth="1.3" />
-      {/* glass: dark tint, one greenhouse from A-pillar to the fastback */}
-      <path
-        d="M46.5 17.2C50.5 12.6 56.5 10 63 9.7L81 9.4C90 10.2 100 13.2 108 16.3Z"
-        fill="#3f4a55"
-        stroke="currentColor"
-        strokeWidth="0.9"
-      />
-      <path d="M70.5 9.5 69 17" stroke="currentColor" strokeWidth="0.9" />
-      <path d="M97.5 12.1 96 16.5" stroke="currentColor" strokeWidth="0.9" />
-      {/* window highlight */}
-      <path d="M50 15.3C53.5 12 58 10.6 63 10.4" stroke="#8d98a3" strokeWidth="0.7" opacity="0.8" />
+      <path d="M37.3 35.2H88.7V37H37.3Z" fill="#2f363e" />
+      <path d="M9.5 36.4H14.2M111.8 36.4H120.5" stroke="#2f363e" strokeWidth="1.3" />
+      {/* glass: one greenhouse from A-pillar to the fastback, with a sheen */}
+      <path d="M46.5 17.2C50.5 12.6 56.5 10 63 9.7L81 9.4C90 10.2 100 13.2 108 16.3Z" fill={g('glass')} />
+      <path d="M49 15.6C53 11.9 58 10.4 63 10.2L81 9.9C86 10.3 91 11.3 96 12.7L62 14.6Z" fill={g('sheen')} />
+      <path d="M70.5 9.5 69 17M97.5 12.1 96 16.5" stroke="#eef1f4" strokeWidth="1.1" />
       {/* mirror */}
-      <rect x="42" y="16.6" width="4.2" height="2.6" rx="0.9" fill="#fff" stroke="currentColor" strokeWidth="0.8" />
-      {/* character line and flush door handles */}
-      <path d="M38 26C58 25.2 78 24.2 98 23.6" stroke="currentColor" strokeWidth="0.7" opacity="0.35" />
-      <path d="M58 21.3h5M86 20.5h5" stroke="currentColor" strokeWidth="0.9" opacity="0.55" />
+      <rect x="42" y="16.6" width="4.2" height="2.6" rx="1.1" fill="#e3e8ec" />
+      {/* character line and flush door handles, as soft creases */}
+      <path d="M38 26C58 25.2 78 24.2 98 23.6" stroke="#9aa5b0" strokeWidth="0.6" opacity=".55" />
+      <path d="M58 21.3h5M86 20.5h5" stroke="#8c97a2" strokeWidth="1" opacity=".7" />
       {/* slim light bars: headlight and tail light */}
-      <path d="M5.2 22.6 13.5 20.4V21.7L6 24.2Z" fill="currentColor" opacity="0.6" />
-      <path d="M115 18.9 122.8 17.7V19.1L115.6 20.2Z" fill="currentColor" opacity="0.6" />
-      <Wheel cx={26} />
-      <Wheel cx={100} />
+      <path d="M5.2 22.6 13.5 20.4V21.7L6 24.2Z" fill="currentColor" opacity=".75" />
+      <path d="M115 18.9 122.8 17.7V19.1L115.6 20.2Z" fill="#e0475a" opacity=".85" />
+      <Wheel cx={26} tyre={g('tyre')} rim={g('rim')} />
+      <Wheel cx={100} tyre={g('tyre')} rim={g('rim')} />
     </svg>
   )
 }
 
-/** A big dark alloy with five machined twin spokes, as on the 6e. */
-function Wheel({ cx }: { cx: number }) {
+/** A big dark alloy with five machined spokes, as on the 6e, lit from above. */
+function Wheel({ cx, tyre, rim }: { cx: number; tyre: string; rim: string }) {
   const cy = 32
   const spokes = Array.from({ length: 5 }, (_, i) => i * 72 - 90)
   return (
     <g>
-      <circle cx={cx} cy={cy} r="10.2" fill="#2a2f36" />
-      <circle cx={cx} cy={cy} r="6.9" fill="#4b525b" />
+      <circle cx={cx} cy={cy} r="10.2" fill={tyre} />
+      <circle cx={cx} cy={cy} r="6.9" fill={rim} />
       {spokes.map((deg) => (
-        <path key={deg} d={`M${cx} ${cy}l0 -6.2`} stroke="#d5dae0" strokeWidth="1.7" transform={`rotate(${deg + 90} ${cx} ${cy})`} />
+        <path key={deg} d={`M${cx} ${cy}l0 -6.2`} stroke="#e6eaee" strokeWidth="1.8" transform={`rotate(${deg + 90} ${cx} ${cy})`} />
       ))}
-      <circle cx={cx} cy={cy} r="1.7" fill="#d5dae0" />
+      <circle cx={cx} cy={cy} r="1.8" fill="#f2f4f6" />
     </g>
   )
 }
