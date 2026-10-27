@@ -45,6 +45,20 @@ export default defineConfig({
         // the API, the OpenAPI docs and the schema are served by FastAPI.
         navigateFallbackDenylist: [/^\/api\//, /^\/docs/, /^\/redoc/, /^\/openapi\.json/],
         cleanupOutdatedCaches: true,
+        // Nothing else under /api is cached, but a profile photo's address
+        // changes with the picture (routers/photos.py), so it can be kept for
+        // good and an installed app shows faces offline.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/avatars/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'karpul-photos',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
         // A build the user applies must take over the open page at once, or a
         // page the previous worker never controlled (the first visit) would see
         // no controller change and never reload (lib/pwa.ts).

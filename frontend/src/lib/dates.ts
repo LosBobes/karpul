@@ -30,9 +30,13 @@ export function todayISO(): string {
   return toISODate(new Date())
 }
 
+/** Whitespace-collapsed, lowercased: how names are compared (backend: `norm_name`). */
+export function normName(s: string | null | undefined): string {
+  return (s ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
 export function sameName(a: string | null | undefined, b: string | null | undefined): boolean {
-  const norm = (s: string | null | undefined) => (s ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
-  return norm(a) !== '' && norm(a) === norm(b)
+  return normName(a) !== '' && normName(a) === normName(b)
 }
 
 /** `sameName` with the diacritics dropped ("Blažić" is "Blazic"); backend: `fold_name`. */

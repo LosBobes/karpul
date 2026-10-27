@@ -258,6 +258,12 @@ const en = {
     otherBrowsers: 'Other browsers',
     signOutOthers: 'Sign out everywhere else',
     othersSignedOut: (n: number) => (n === 0 ? 'No other browser was signed in.' : `${enPlural(n, 'browser', 'browsers')} signed out.`),
+    addPhoto: 'Add a photo',
+    changePhoto: 'Change photo',
+    removePhoto: 'Remove photo',
+    photoHint: 'Everyone signed in to Karpul sees it next to your name.',
+    photoUnreadable: 'That file could not be read as a picture.',
+    photoSaving: 'Saving the photo…',
   },
 
   you: {
@@ -511,6 +517,7 @@ const en = {
     optionsFor: (name: string) => `Options for ${name}`,
     you: 'You',
     deleteAccount: 'Delete account',
+    removePhoto: 'Remove photo',
     deleteTitle: (name: string) => `Delete ${name}'s account?`,
     deleteBody:
       'Their coming rides are cancelled (the passengers are told), their seats go to whoever is waiting, and their requests are withdrawn. Past rides keep their name. This cannot be undone.',
@@ -559,6 +566,8 @@ const en = {
           return `${admin} made a password reset link for ${subject}`
         case 'account_deleted':
           return `${admin} deleted the account of ${subject}`
+        case 'photo_removed':
+          return `${admin} removed the photo of ${subject}`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -734,6 +743,7 @@ const en = {
     madeAdmin: (name: string) => `${name} is an admin now.`,
     removedAdmin: (name: string) => `${name} is no longer an admin.`,
     deletedAccount: (name: string) => `${name}'s account is deleted.`,
+    photoRemoved: (name: string) => `${name}'s photo is removed.`,
     updateReady: 'A new version is ready',
     updateHint: 'Trace the bolt to take it.',
     updateAction: 'Update',
@@ -924,6 +934,10 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^(.+) is an admin by the server's configuration \(KARPUL_ADMINS\)$/, (m) => `${m[1]} je administrator po podešavanju servera (KARPUL_ADMINS)`],
   [/^There has to be at least one admin$/, () => 'Mora postojati bar jedan administrator'],
   [/^You cannot delete your own account$/, () => 'Ne možeš obrisati sopstveni nalog'],
+  // Profile photos (routers/photos.py).
+  [/^A photo has to be a JPEG, PNG or WebP image$/, () => 'Fotografija mora biti slika u formatu JPEG, PNG ili WebP'],
+  [/^The photo is too big$/, () => 'Fotografija je prevelika'],
+  [/^Photo not found$/, () => 'Fotografija nije pronađena'],
   // The waiting list, the thread and the requests (routers/rides.py, routers/requests.py).
   [/^You drive this ride$/, () => 'Ti voziš ovu vožnju'],
   [/^You are already in this car$/, () => 'Već si u ovom autu'],
@@ -1254,6 +1268,12 @@ const sr: Messages = {
     signOutOthers: 'Odjavi me svuda drugde',
     othersSignedOut: (n) =>
       n === 0 ? 'Nijedan drugi pregledač nije bio prijavljen.' : `Odjavljeno: ${srPlural(n, 'pregledač', 'pregledača', 'pregledača')}.`,
+    addPhoto: 'Dodaj fotografiju',
+    changePhoto: 'Promeni fotografiju',
+    removePhoto: 'Ukloni fotografiju',
+    photoHint: 'Svi prijavljeni na Karpul je vide pored tvog imena.',
+    photoUnreadable: 'Ta datoteka ne može da se pročita kao slika.',
+    photoSaving: 'Čuvam fotografiju…',
   },
 
   you: {
@@ -1523,6 +1543,8 @@ const sr: Messages = {
           return `${admin} je napravio/la link za novu lozinku: ${subject}`
         case 'account_deleted':
           return `${admin} je obrisao/la nalog: ${subject}`
+        case 'photo_removed':
+          return `${admin} je uklonio/la fotografiju: ${subject}`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -1627,6 +1649,7 @@ const sr: Messages = {
     optionsFor: (name) => `Opcije za ${name}`,
     you: 'Ti',
     deleteAccount: 'Obriši nalog',
+    removePhoto: 'Ukloni fotografiju',
     deleteTitle: (name) => `Obrisati nalog (${name})?`,
     deleteBody:
       'Predstojeće vožnje se otkazuju (putnici dobijaju obaveštenje), mesta prelaze na one koji čekaju, a zahtevi se povlače. Prošle vožnje zadržavaju ime. Ovo se ne može poništiti.',
@@ -1716,6 +1739,7 @@ const sr: Messages = {
     madeAdmin: (name) => `${name} je sada administrator.`,
     removedAdmin: (name) => `${name} više nije administrator.`,
     deletedAccount: (name) => `Nalog je obrisan (${name}).`,
+    photoRemoved: (name) => `Fotografija je uklonjena (${name}).`,
     updateReady: 'Nova verzija je spremna',
     updateHint: 'Prevuci munju da je preuzmeš.',
     updateAction: 'Ažuriraj',

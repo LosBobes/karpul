@@ -108,6 +108,7 @@ export const KebabIcon = icon(
 export const ChevronLeftIcon = icon(<path d="M15.25 4.75 8 12l7.25 7.25" />)
 export const ChevronRightIcon = icon(<path d="M8.75 4.75 16 12l-7.25 7.25" />)
 export const ChevronDownIcon = icon(<path d="M4.75 8.75 12 16l7.25-7.25" />)
+export const ChevronUpIcon = icon(<path d="M4.75 15.25 12 8l7.25 7.25" />)
 export const ArrowRightIcon = icon(<path d="M4 12h16M13.5 5.5 20 12l-6.5 6.5" />)
 export const ArrowLeftIcon = icon(<path d="M20 12H4M10.5 5.5 4 12l6.5 6.5" />)
 /** Fluent's Location. */

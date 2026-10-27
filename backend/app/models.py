@@ -304,3 +304,23 @@ class DriveLeg(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="legs")
+
+
+class ProfilePhoto(SQLModel, table=True):
+    """A person's picture, shown in their avatar instead of the initials.
+
+    The bytes live in the database rather than in a folder next to it, so the
+    backup (app/backup.py) carries them and there is one thing to keep. The
+    browser has already cropped and shrunk it to a small square (a few tens of
+    KB). `key` is random and new with every upload: the picture is served
+    openly at /api/avatars/<key> (an <img> cannot send a bearer token), so the
+    address is the secret, like the calendar feed's, and the old one stops
+    working the moment the photo changes or goes.
+    """
+
+    user_id: int = Field(foreign_key="appuser.id", primary_key=True)
+    key: str = Field(unique=True, index=True)
+    # "image/webp", "image/jpeg" or "image/png", sniffed from the bytes.
+    content_type: str
+    data: bytes
+    updated_at: datetime = Field(default_factory=utcnow)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
@@ -751,18 +751,22 @@ function Board({ session }: { session: Session }) {
     day: <ClockIcon size={16} />,
   }
   // On a phone the views are a Fluent bottom tab bar instead: the same radio
-  // group, the active tab's mark filled and set on a pill.
+  // group, the active tab's mark filled. One green pill glides under the marks
+  // to the picked tab, and the mark it lands on pops (keyed, so it replays).
   const tabMarks: Record<View, FluentName> = { upcoming: 'list', week: 'calendar', day: 'clock' }
   const tabBar = (
     <nav className="tabbar" role="radiogroup" aria-label={t.view.label}>
-      {VIEWS.map((v) => (
-        <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'tab tab-on' : 'tab'} onClick={() => setView(v)}>
-          <span className="tab-pill" aria-hidden="true">
-            <FluentIcon name={tabMarks[v]} variant={view === v ? 'filled' : 'regular'} size={22} />
-          </span>
-          <span className="tab-label">{t.view[v]}</span>
-        </button>
-      ))}
+      <div className="tabbar-track" style={{ '--tab': VIEWS.indexOf(view) } as CSSProperties}>
+        <span className="tab-glider" aria-hidden="true" />
+        {VIEWS.map((v) => (
+          <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'tab tab-on' : 'tab'} onClick={() => setView(v)}>
+            <span className="tab-pill" aria-hidden="true">
+              <FluentIcon key={view === v ? 'on' : 'off'} className="tab-icon" name={tabMarks[v]} variant={view === v ? 'filled' : 'regular'} size={26} />
+            </span>
+            <span className="tab-label">{t.view[v]}</span>
+          </button>
+        ))}
+      </div>
     </nav>
   )
   const viewSwitch = (

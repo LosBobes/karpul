@@ -18,12 +18,13 @@ from .. import audit
 from ..admin import admin_by_config, configured_admins, is_admin, require_admin
 from ..auth import CredsDep, issue_reset
 from ..database import get_session, get_write_session
-from ..events import disconnect, request_deleted, request_saved, ride_deleted, ride_saved
+from ..events import disconnect, photos_changed, request_deleted, request_saved, ride_deleted, ride_saved
 from ..models import (
     AdminAction,
     Booking,
     DriveLeg,
     PasswordReset,
+    ProfilePhoto,
     PushSubscription,
     Ride,
     RideMessage,
@@ -190,11 +191,15 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
         session.add(leg)
     session.exec(delete(PushSubscription).where(col(PushSubscription.user_id) == user.id))
     session.exec(delete(PasswordReset).where(col(PasswordReset.user_id) == user.id))
+    had_photo = session.get(ProfilePhoto, user.id) is not None
+    session.exec(delete(ProfilePhoto).where(col(ProfilePhoto.user_id) == user.id))
     audit.record(session, admin, "account_deleted", user.display_name)
     session.delete(user)  # its sessions go with it
     session.commit()
 
     disconnect(user_id)
+    if had_photo:
+        photos_changed()
     for rid, rdate in gone:
         ride_deleted(rid, rdate)
     for ride, booked in promoted:

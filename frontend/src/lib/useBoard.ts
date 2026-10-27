@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, isNetworkError } from './api'
 import { useLiveBoard, type LiveEvent, type LiveStatus } from './live'
+import { loadPhotos } from './photos'
 import type { CorporateCar, Ride, RideRequest } from './types'
 
 export interface Range {
@@ -187,13 +188,26 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
           reloadCars().catch(() => undefined)
           void load()
           break
+        case 'photos.changed':
+          loadPhotos().catch(() => undefined)
+          break
         default:
           break
       }
     },
     [upsertRide, removeRides, upsertRequest, removeRequest, reloadCars, load],
   )
-  const liveStatus = useLiveBoard({ onEvent, onConnect: load })
+  // Whatever happened while the socket was down was never delivered: the
+  // board and the photos are both fetched again on every (re)connect.
+  const onConnect = useCallback(() => {
+    loadPhotos().catch(() => undefined)
+    return load()
+  }, [load])
+  const liveStatus = useLiveBoard({ onEvent, onConnect })
+  // Also without a socket (a proxy that refuses WebSockets falls back to polling).
+  useEffect(() => {
+    loadPhotos().catch(() => undefined)
+  }, [])
 
   // Keep the board fresh for people who leave the tab open. Polling is the
   // fallback for when the socket is down; a focus always re-syncs.

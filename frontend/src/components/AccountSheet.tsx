@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { api, ApiError } from '../lib/api'
 import { clearSession, setUser, type AuthUser } from '../lib/auth'
 import { intlTag } from '../lib/locale'
 import { messages, useT } from '../lib/i18n'
+import { loadPhotos, squarePhoto, usePhoto } from '../lib/photos'
 import { forgetPushHere } from '../lib/push'
 import type { ProfilePatch } from '../lib/types'
 import { Avatar } from './Avatar'
@@ -40,6 +41,9 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const photo = usePhoto(user.display_name)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const picker = useRef<HTMLInputElement>(null)
 
   const changed =
     firstName.trim() !== user.first_name ||
@@ -74,6 +78,45 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
       const m = messages()
       setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
       setBusy(false)
+    }
+  }
+
+  /** A photo goes up the moment it is picked: it is not part of the form's Save. */
+  async function pickPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // the same file picked again is a change too
+    if (!file) return
+    setPhotoBusy(true)
+    setError(null)
+    try {
+      let image: Blob
+      try {
+        image = await squarePhoto(file)
+      } catch {
+        setError(messages().account.photoUnreadable)
+        return
+      }
+      await api.uploadPhoto(image)
+      await loadPhotos()
+    } catch (err) {
+      const m = messages()
+      setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoBusy(true)
+    setError(null)
+    try {
+      await api.removeMyPhoto()
+      await loadPhotos()
+    } catch (err) {
+      const m = messages()
+      setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+    } finally {
+      setPhotoBusy(false)
     }
   }
 
@@ -124,6 +167,19 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
           <span className="account-me-hint">{t.account.memberSince(joined(user.created_at))}</span>
         </span>
       </div>
+
+      <div className="photo-row">
+        <input ref={picker} type="file" accept="image/*" hidden onChange={(e) => void pickPhoto(e)} />
+        <button type="button" className="btn btn-soft" disabled={photoBusy} onClick={() => picker.current?.click()}>
+          {photoBusy ? t.account.photoSaving : photo ? t.account.changePhoto : t.account.addPhoto}
+        </button>
+        {photo && (
+          <button type="button" className="btn btn-soft" disabled={photoBusy} onClick={() => void removePhoto()}>
+            {t.account.removePhoto}
+          </button>
+        )}
+      </div>
+      <p className="hint">{t.account.photoHint}</p>
 
       <div className="grid-2">
         <label className="field">

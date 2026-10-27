@@ -138,6 +138,14 @@ export interface AdminAction {
 }
 
 /** An account in the admin's People list (GET /api/admin/users). */
+/** A profile photo (backend: routers/photos.py); the board draws avatars by name. */
+export interface Photo {
+  user_id: number
+  name: string
+  /** Served without a token and never changes: a new photo gets a new address. */
+  url: string
+}
+
 export interface AdminUser {
   id: number
   username: string
