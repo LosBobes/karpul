@@ -28,7 +28,8 @@ deploy:
 backup:
 	ssh $(HOST) "docker compose -f $(DEPLOY_PATH)/docker-compose.prod.yml exec -T app python -m app.backup" > karpul-$$(date +%Y%m%d).db
 
-# One-time: add the shared Mazda's 2026 paper log as rides (backend/app/backfill.py).
+# The shared Mazda's 2026 paper log as rides (backend/app/backfill.py). The app
+# applies it once on start by itself; this is for looking at it by hand.
 # A dry run that prints what it would add; `make backfill APPLY=1` writes it.
 backfill:
 	ssh $(HOST) "docker compose -f $(DEPLOY_PATH)/docker-compose.prod.yml exec -T app python -m app.backfill $(if $(APPLY),--apply)"

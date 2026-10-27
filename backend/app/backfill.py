@@ -1,5 +1,9 @@
 """One-time backfill: the shared Mazda's paper log, August to December 2026.
 
+It runs by itself on the app's start (`run_once`, from the lifespan in
+main.py) and records `MARKER` in `DataMigration`, so it is applied once and
+never again, even if its rides are later edited or removed. By hand:
+
     docker compose exec -T app python -m app.backfill           # dry run: prints what it would do
     docker compose exec -T app python -m app.backfill --apply   # writes it
 
@@ -25,18 +29,23 @@ reported instead of overbooking it.
 """
 
 import argparse
+import logging
 import sys
 import unicodedata
 from dataclasses import dataclass
 from datetime import date, time, timedelta
 
 from fastapi import HTTPException
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, select
 
 from .database import begin_write, engine
-from .models import CarType, CorporateCar, Ride, User
+from .models import CarType, CorporateCar, DataMigration, Ride, User
 from .services import corporate_car_label, ensure_car_available, norm_name
 
+log = logging.getLogger("karpul.backfill")
+
+MARKER = "mazda-log-2026"
 DAY_START = time(8, 0)
 DAY_END = time(18, 0)
 BG, NS, NIS = "Beograd", "Novi Sad", "Niš"
@@ -114,10 +123,14 @@ def days(entry: Entry) -> list[date]:
     return [entry.first + timedelta(n) for n in range((entry.last - entry.first).days + 1)]
 
 
+class NoMazda(Exception):
+    """The pool has no one Mazda to put the log's rides in."""
+
+
 def the_mazda(session: Session) -> CorporateCar:
     cars = [c for c in session.exec(select(CorporateCar)) if "mazda" in c.name.casefold()]
     if len(cars) != 1:
-        raise SystemExit(f"Expected one Mazda in the shared cars, found {len(cars)}: {[c.name for c in cars]}")
+        raise NoMazda(f"Expected one Mazda in the shared cars, found {len(cars)}: {[c.name for c in cars]}")
     return cars[0]
 
 
@@ -169,6 +182,34 @@ def backfill(session: Session, today: date) -> dict[str, list[str]]:
     return report
 
 
+def report_lines(report: dict[str, list[str]]) -> list[str]:
+    out = []
+    for heading, lines in report.items():
+        out.append(f"{heading}: {len(lines)}")
+        out.extend(f"  {line}" for line in lines)
+    return out
+
+
+def run_once(target: Engine, today: date | None = None) -> dict[str, list[str]] | None:
+    """Apply the backfill unless it has been already, and mark it applied, in
+    one transaction. With no single Mazda in the pool (a fresh database, the
+    end-to-end test) nothing is written or marked, so a later start tries
+    again. Returns the report, or None when nothing ran."""
+    with Session(target) as session:
+        begin_write(session)
+        if session.get(DataMigration, MARKER) is not None:
+            return None
+        try:
+            report = backfill(session, today or date.today())
+        except NoMazda as e:
+            log.warning("Shared-car log not backfilled yet: %s", e)
+            return None
+        session.add(DataMigration(name=MARKER))
+        session.commit()
+    log.info("Shared-car log backfilled:\n%s", "\n".join(report_lines(report)))
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Add the shared Mazda's 2026 log as rides.")
     parser.add_argument("--apply", action="store_true", help="write the rides (without it, a dry run)")
@@ -176,12 +217,14 @@ def main() -> None:
 
     with Session(engine) as session:
         begin_write(session)
-        report = backfill(session, date.today())
-        for heading, lines in report.items():
-            print(f"{heading}: {len(lines)}")
-            for line in lines:
-                print(f"  {line}")
+        try:
+            report = backfill(session, date.today())
+        except NoMazda as e:
+            raise SystemExit(str(e)) from e
+        print("\n".join(report_lines(report)))
         if args.apply:
+            if session.get(DataMigration, MARKER) is None:
+                session.add(DataMigration(name=MARKER))
             session.commit()
             print("Written.")
         else:

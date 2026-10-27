@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlmodel import Session
 
+from . import backfill
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
 from .models import Ride
@@ -49,6 +50,12 @@ async def lifespan(_: FastAPI):
     init_db()
     with Session(engine) as session:
         seed_corporate_cars(session)
+    # The shared Mazda's 2026 paper log, once (app/backfill.py). It must never
+    # keep the app from starting.
+    try:
+        backfill.run_once(engine)
+    except Exception:
+        backfill.log.exception("Backfilling the shared-car log failed")
     # Departure reminders (app/reminders.py); a no-op tick while push is off.
     reminders = asyncio.create_task(reminder_loop())
     try:

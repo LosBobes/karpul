@@ -265,3 +265,11 @@ class AdminAction(SQLModel, table=True):
     ride_label: str = ""
     # JSON: [[field, before, after], ...], each value already in words.
     changes: str = "[]"
+
+
+class DataMigration(SQLModel, table=True):
+    """A one-time change to the data that has been applied, by name, so that it
+    is never applied twice (app/backfill.py runs on start until it is here)."""
+
+    name: str = Field(primary_key=True)
+    applied_at: datetime = Field(default_factory=utcnow)
