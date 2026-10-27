@@ -99,6 +99,19 @@ bearer token to every call and clears the store on a 401. `App.tsx` is the door:
 session it renders `AuthGate` and nothing else, so the board never loads signed out; it
 refreshes the account from `/api/auth/me` on start (an admin may have been made one).
 
+**Profile photos** (`routers/photos.py`, table `ProfilePhoto`). `components/AccountSheet.tsx` picks a file, and
+`squarePhoto` in `lib/photos.ts` crops the middle square to 256 px WebP (JPEG where the browser cannot write
+WebP) before `PUT /api/auth/me/photo` (raw body, no multipart). The server only sniffs the first bytes
+(JPEG/PNG/WebP) and caps the size (`MAX_PHOTO_BYTES`). The bytes live in the database, so the backup carries
+them. An `<img>` cannot send a bearer token, so a photo is served openly at `/api/avatars/<key>` with a random
+key that changes on every upload (the old address 404s), `immutable` and `nosniff`; the service worker caches
+those addresses (`karpul-photos`), the one exception to "nothing under `/api` is cached". Every place draws an
+avatar by *name*, so the board fetches the whole list (`GET /api/avatars`, signed in) into the external store in
+`lib/photos.ts`, and `Avatar` looks its name up there (`normName` in `lib/dates.ts`) and falls back to the
+initials. `useBoard` refetches it on every (re)connect and on `photos.changed`, which an upload, a removal, a
+rename of someone with a photo and an account deletion publish. An admin takes one down from *People*
+(`DELETE /api/admin/users/{id}/photo`, logged as `photo_removed`). Tests: `tests/test_photos.py`.
+
 **Calling the driver.** `User.phone` is optional and shown on the rides that person drives:
 `RideRead.driver_phone` is looked up by `driver_id` (`board_extras` in `services.py`, one query for
 the whole board in `GET /api/rides`, next to the thread's message counts), and `CarDetail` turns it into a *Call the driver* `tel:` link
@@ -616,7 +629,7 @@ manifest cannot express (`apple-touch-icon`, standalone mode, the app title).
 A browser cannot put a header on a WebSocket, so the first message is `{"type": "auth", "token": ...}`;
 the server answers `hello` (the client's cue that it is live) or closes with 4401, which drops the session.
 The server pushes `ride.created` / `ride.updated` (carrying the full `RideRead`), `ride.deleted`,
-`request.saved` / `request.deleted` and `cars.changed`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
+`request.saved` / `request.deleted`, `photos.changed` and `cars.changed`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
 (re-sorting with the API's order: date, departure, id) and treats `cars.changed` as "reload
 both car lists and the board", because a pool edit can relabel rides. The hook reconnects with
 exponential backoff and immediately on `visibilitychange`/`online`/`focus`, and calls

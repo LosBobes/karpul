@@ -29,8 +29,8 @@ from ..auth import (
     verify_password,
 )
 from ..database import get_session, get_write_session
-from ..events import ride_saved
-from ..models import User, utcnow
+from ..events import photos_changed, ride_saved
+from ..models import ProfilePhoto, User, utcnow
 from ..schemas import AuthOut, LoginIn, ProfileUpdate, RegisterIn, ResetIn, ResetInfo, UserRead
 from ..services import claim_rows, new_calendar_token, norm_name, rename_person
 
@@ -202,6 +202,7 @@ def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep)
     last = payload.last_name if payload.last_name is not None else user.last_name
     new_name = f"{first} {last}"
     renamed: list = []
+    renamed_photo = False
     if norm_name(new_name) != user.name_key or new_name != old_name:
         clash = _taken(session, name_key=norm_name(new_name))
         if clash is not None and clash.id != user.id:
@@ -209,6 +210,7 @@ def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep)
         user.first_name, user.last_name = first, last
         user.name_key = norm_name(new_name)
         renamed = rename_person(session, user, new_name)
+        renamed_photo = session.get(ProfilePhoto, user.id) is not None
 
     if "new_password" in data and payload.new_password is not None:
         if not verify_password(payload.current_password or "", user.password_hash):
@@ -223,6 +225,9 @@ def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep)
     for ride in renamed:
         session.refresh(ride)
         ride_saved(ride, created=False)
+    # The board puts photos to names, so a renamed face has to be fetched again.
+    if renamed_photo:
+        photos_changed()
     return user_read(user)
 
 

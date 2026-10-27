@@ -4,6 +4,7 @@ import { CLOCK } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import { useMe } from '../lib/me'
+import { loadPhotos, photoFor, usePhotos } from '../lib/photos'
 import type { AdminUser } from '../lib/types'
 import { Avatar } from './Avatar'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -45,6 +46,7 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
   const [link, setLink] = useState<{ userId: number; url: string; expires: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [doomed, setDoomed] = useState<AdminUser | null>(null)
+  const photos = usePhotos()
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong), [])
 
@@ -86,6 +88,20 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
     } finally {
       setBusyId(null)
       setDoomed(null)
+    }
+  }
+
+  async function takePhotoDown(u: AdminUser) {
+    setBusyId(u.id)
+    setError(null)
+    try {
+      await api.removePhoto(u.id)
+      await loadPhotos()
+      onNotice(messages().toasts.photoRemoved(u.display_name))
+    } catch (e) {
+      fail(e)
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -173,6 +189,16 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                     onSelect: () => void makeLink(u),
                     disabled: busyId === u.id,
                   },
+                  ...(photoFor(photos, u.display_name)
+                    ? [
+                        {
+                          label: t.people.removePhoto,
+                          icon: <XIcon size={18} />,
+                          onSelect: () => void takePhotoDown(u),
+                          disabled: busyId === u.id,
+                        },
+                      ]
+                    : []),
                   {
                     label: t.people.deleteAccount,
                     icon: <TrashIcon size={18} />,

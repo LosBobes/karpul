@@ -23,7 +23,7 @@ from .geofence import GeoFence
 from .models import Ride
 from .monitoring import init_sentry
 from .reminders import reminder_loop
-from .routers import admin, auth, cars, live, push, requests, rides, stats
+from .routers import admin, auth, cars, live, photos, push, requests, rides, stats
 from .seed import seed_corporate_cars
 
 # The app's own loggers (karpul.*) at INFO next to uvicorn's: push, reminders,
@@ -109,6 +109,7 @@ app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)
 app.include_router(requests.router)
+app.include_router(photos.router)
 
 
 @app.get("/api/health", tags=["meta"])
