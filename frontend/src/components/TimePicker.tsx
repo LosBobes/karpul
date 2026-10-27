@@ -1,7 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { fmtTime } from '../lib/dates'
 import { useT } from '../lib/i18n'
-import { intlTag } from '../lib/locale'
 import { ClockIcon } from './icons'
 import { Popover } from './Popover'
 
@@ -14,9 +13,6 @@ interface Props {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
-
-/** Does the app's locale write clock times with AM/PM? (Serbian never does.) */
-const twelveHour = () => new Intl.DateTimeFormat(intlTag(), { hour: 'numeric' }).resolvedOptions().hour12 === true
 
 /** Hour and minute columns in a popover, replacing the native time input. Always the same UI. */
 export function TimePicker({ value, onChange, label, disabled }: Props) {
@@ -67,36 +63,10 @@ function Columns({ value, onChange }: { value: string; onChange: (hhmm: string) 
     minutes.sort((a, b) => a - b)
   }
 
-  if (!twelveHour()) {
-    return (
-      <div className="timepick">
-        <Column label={t.time.hour} items={Array.from({ length: 24 }, (_, i) => ({ v: i, text: pad(i) }))} value={h} onPick={(v) => set(v, m)} />
-        <Column label={t.time.minute} items={minutes.map((v) => ({ v, text: pad(v) }))} value={m} onPick={(v) => set(h, v)} />
-      </div>
-    )
-  }
-
-  const pm = h >= 12
-  const h12 = h % 12 === 0 ? 12 : h % 12
-  const to24 = (hour12: number, isPm: boolean) => (hour12 % 12) + (isPm ? 12 : 0)
   return (
     <div className="timepick">
-      <Column
-        label={t.time.hour}
-        items={[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((v) => ({ v, text: String(v) }))}
-        value={h12}
-        onPick={(v) => set(to24(v, pm), m)}
-      />
+      <Column label={t.time.hour} items={Array.from({ length: 24 }, (_, i) => ({ v: i, text: pad(i) }))} value={h} onPick={(v) => set(v, m)} />
       <Column label={t.time.minute} items={minutes.map((v) => ({ v, text: pad(v) }))} value={m} onPick={(v) => set(h, v)} />
-      <Column
-        label={t.time.ampm}
-        items={[
-          { v: 0, text: 'AM' },
-          { v: 1, text: 'PM' },
-        ]}
-        value={pm ? 1 : 0}
-        onPick={(v) => set(to24(h12, v === 1), m)}
-      />
     </div>
   )
 }

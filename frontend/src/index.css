@@ -1912,6 +1912,13 @@ main,
   border-radius: 50%;
   background: var(--surface);
   pointer-events: none;
+  /* Pops in with a spring under the pointer and shrinks away when it leaves. */
+  transform: scale(0);
+  transition: transform 0.16s var(--ease-in);
+}
+.plan-pin-on {
+  transform: scale(1);
+  transition: transform 0.32s var(--ease-spring);
 }
 .plan-pin-label {
   position: absolute;
@@ -2348,14 +2355,14 @@ main,
 }
 .clock-hour {
   fill: var(--muted);
-  font-size: 19px;
+  font-size: 22px;
   font-variant-numeric: tabular-nums;
   text-anchor: middle;
   dominant-baseline: central;
 }
 .clock-hour-main {
   fill: var(--text);
-  font-size: 23px;
+  font-size: 26px;
   font-weight: 650;
 }
 .clock-ring-band {
@@ -2482,16 +2489,17 @@ main,
 }
 .clock-pin {
   pointer-events: none;
-}
-.clock-pin circle {
   fill: var(--surface);
   stroke: var(--green);
   stroke-width: 4;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(0);
+  transition: transform 0.16s var(--ease-in);
 }
-.clock-pin line {
-  stroke: var(--green);
-  stroke-width: 3;
-  stroke-linecap: round;
+.clock-pin-on {
+  transform: scale(1);
+  transition: transform 0.32s var(--ease-spring);
 }
 /* The middle of the dial: what the pointer or the pick is on, else the time. */
 .clock-readout {
@@ -6022,10 +6030,11 @@ body.dragging {
   .split-day .plan-car + .plan-car {
     margin-top: 0.75rem;
   }
-  /* The dial takes the height the pane has: the toolbar, the day's head and
-     the card's padding come off the window. */
+  /* The dial takes the height the pane has (the toolbar, the day's head and
+     the card's padding come off the window), up to a size a glance takes in:
+     past that a big monitor only made it shout. */
   .split-day .clock-dial {
-    --dial-max: max(420px, calc(100dvh - var(--toolbar) - 10rem));
+    --dial-max: clamp(420px, calc(100dvh - var(--toolbar) - 10rem), 640px);
   }
   /* The list and the pane read as one: the open row is lifted toward it. */
   .split .session-open {

@@ -16,6 +16,7 @@ import { DAY_AXIS, DAY_END, fromMinutes, slotTimes, type Bar, type Gap, type Pla
 import { useT } from '../lib/i18n'
 import { drives, runs, seatedIn, useMe } from '../lib/me'
 import type { Ride } from '../lib/types'
+import { useLinger } from '../lib/motion'
 import { avatarTone } from '../lib/tone'
 import { Avatar } from './Avatar'
 import { PowertrainMark } from './CarArt'
@@ -189,7 +190,7 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
         <circle className="clock-ring-band" cx={CENTER} cy={CENTER} r={r} style={{ strokeWidth: band - 2 }} />
         <circle className="clock-track" cx={CENTER} cy={CENTER} r={r} />
         <path id={labelPath} d={arcPath(r, DAY_END * 0.7, DAY_END - 8)} fill="none" stroke="none" />
-        <text className="clock-ring-label" style={{ fontSize: Math.min(band * 0.36, 19) }} dy="0.35em">
+        <text className="clock-ring-label" style={{ fontSize: Math.min(band * 0.42, 19) }} dy="0.35em">
           <textPath href={`#${labelPath}`} startOffset="100%" textAnchor="end">
             {shortCarName(row.label)}
           </textPath>
@@ -219,17 +220,11 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
     )
   }
 
-  // Where a tap would book: a ring across the road at the half hour under the pointer.
-  const pinRing = slot ? rings[rows.indexOf(slot.row)] : undefined
-  const pin =
-    slot && pinRing
-      ? {
-          ring: pinRing,
-          at: pointAt(pinRing.r, slot.min),
-          from: pointAt(pinRing.r - pinRing.band / 2, slot.min),
-          to: pointAt(pinRing.r + pinRing.band / 2, slot.min),
-        }
-      : null
+  // Where a tap would book: a ring on the road at the half hour under the
+  // pointer. It lingers once the pointer goes, so it can pop out where it was.
+  const [pinSlot, pinOn] = useLinger(slot)
+  const pinRing = pinSlot ? rings[rows.indexOf(pinSlot.row)] : undefined
+  const pin = pinSlot && pinRing ? { ring: pinRing, at: pointAt(pinRing.r, pinSlot.min) } : null
   const hand = (r: number) => pointAt(r, now)
 
   const readout = () => {
@@ -295,7 +290,7 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
               <g key={h} aria-hidden="true">
                 <line className={main ? 'clock-spoke clock-spoke-main' : 'clock-spoke'} x1={a.x} y1={a.y} x2={b.x} y2={b.y} />
                 <text className={main ? 'clock-hour clock-hour-main' : 'clock-hour'} x={l.x} y={l.y}>
-                  {main ? fmtHour(h) : h % 3 === 0 ? fmtHour(h) : String(h % 12 || 12)}
+                  {fmtHour(h)}
                 </text>
               </g>
             )
@@ -308,10 +303,7 @@ export function DayClock({ date, pool, own, isPast, isToday, now, selectedId, st
             </g>
           )}
           {pin && (
-            <g className="clock-pin" aria-hidden="true">
-              <circle cx={pin.at.x} cy={pin.at.y} r={pin.ring.band * 0.42} />
-              <line x1={pin.from.x} y1={pin.from.y} x2={pin.to.x} y2={pin.to.y} />
-            </g>
+            <circle className={pinOn ? 'clock-pin clock-pin-on' : 'clock-pin'} cx={pin.at.x} cy={pin.at.y} r={pin.ring.band * 0.42} aria-hidden="true" />
           )}
         </svg>
         <div className={focus ? 'clock-readout clock-readout-focus' : 'clock-readout'}>

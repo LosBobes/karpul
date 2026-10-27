@@ -608,7 +608,7 @@ const en = {
     nextMonth: 'Next month',
   },
 
-  time: { hour: 'Hour', minute: 'Minute', ampm: 'AM or PM' },
+  time: { hour: 'Hour', minute: 'Minute' },
 
   confirm: {
     removeRideTitle: 'Remove this ride?',
@@ -1501,7 +1501,7 @@ const sr: Messages = {
     nextMonth: 'Sledeći mesec',
   },
 
-  time: { hour: 'Sat', minute: 'Minut', ampm: 'AM ili PM' },
+  time: { hour: 'Sat', minute: 'Minut' },
 
   confirm: {
     removeRideTitle: 'Ukloniti ovu vožnju?',

@@ -109,7 +109,10 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   const today = todayISO()
   const isToday = date === today
   const now = useNowMinutes(isToday)
-  const [ghost, setGhost] = useState<{ row: string; min: number } | null>(null)
+  // The pin under the pointer, per road. A road keeps its last pin once the
+  // pointer leaves (`on` false), so the pin pops out where it was.
+  const [pins, setPins] = useState<Record<string, { min: number; on: boolean }>>({})
+  const pinOff = (key: string) => setPins((p) => (p[key]?.on ? { ...p, [key]: { ...p[key], on: false } } : p))
   // A wide screen has a square to spare, so the day opens as a clock there;
   // a phone keeps the roads, which scroll sideways under a thumb.
   const wide = useWide()
@@ -154,14 +157,15 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   const bookAt = (row: PlanRow, gap: Gap, min: number | null) => {
     if (!row.car) return
     const { departure, ret } = slotTimes(gap, min, axis)
-    setGhost(null)
+    pinOff(row.key)
     onBook({ date, carId: row.car.id, departure: fromMinutes(departure), ret: fromMinutes(ret) })
   }
   // A keyboard press has no point on the road: it books from the start of the stretch.
   const book = (row: PlanRow, gap: Gap, e: MouseEvent<HTMLButtonElement>) => bookAt(row, gap, e.detail > 0 ? minuteAt(gap, e) : null)
   const hover = (row: PlanRow, gap: Gap, e: PointerEvent<HTMLButtonElement>) => {
     if (e.pointerType !== 'mouse') return
-    setGhost({ row: row.key, min: slotTimes(gap, minuteAt(gap, e), axis).departure })
+    const min = slotTimes(gap, minuteAt(gap, e), axis).departure
+    setPins((p) => (p[row.key]?.on && p[row.key].min === min ? p : { ...p, [row.key]: { min, on: true } }))
   }
 
   const status = (row: PlanRow): string | null => {
@@ -227,7 +231,8 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   }
 
   const road = (row: PlanRow) => {
-    const pin = ghost?.row === row.key ? ghost.min : null
+    const shown = pins[row.key]
+    const pin = shown?.on ? shown.min : null
     const free = row.car !== null && row.bars.length === 0 && !isPast
     // A company car's hour ticks are real marks: the ones on a free stretch
     // belong to its button and light up under the pointer, the rest just stand.
@@ -261,15 +266,15 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
                 aria-label={t.plan.book(shortCarName(row.label), fmtTime(fromMinutes(g.start)), fmtTime(fromMinutes(g.end)))}
                 onClick={(e) => book(row, g, e)}
                 onPointerMove={(e) => hover(row, g, e)}
-                onPointerLeave={() => setGhost(null)}
+                onPointerLeave={() => pinOff(row.key)}
               >
                 {hours.filter((h) => inGap(h) === g).map((h) => tick(h, `${((h - g.start) / (g.end - g.start)) * 100}%`, true))}
               </button>
             ))}
           {row.bars.map((b, i) => stretch(row, b, i))}
-          {pin !== null && (
-            <span className="plan-pin" style={{ left: at(pin, axis) }} aria-hidden="true">
-              <span className="plan-pin-label">{t.plan.pin(fmtTime(fromMinutes(pin)))}</span>
+          {shown && (
+            <span className={shown.on ? 'plan-pin plan-pin-on' : 'plan-pin'} style={{ left: at(shown.min, axis) }} aria-hidden="true">
+              <span className="plan-pin-label">{t.plan.pin(fmtTime(fromMinutes(shown.min)))}</span>
             </span>
           )}
         </div>
