@@ -391,7 +391,7 @@ not in that package, so they keep the generic icon.
 its side as it fades up, a flyout comes 10px out of its anchor, a dialog grows a little out of the
 middle as it fades in, a toast rises 16px, on Fluent's curves (`--ease-out` decelerates in,
 `--ease-in` accelerates out, `--ease-spring` no longer overshoots; the one overshoot left is
-`--ease-bounce`, on the update screen's bolt) and durations (`--dur-fast` 150ms, `--dur-normal`
+`--ease-bounce`, on the update screen's bolt and the phone tab bar's glide and pop) and durations (`--dur-fast` 150ms, `--dur-normal`
 200ms, `--dur-gentle` 250ms, hover 100ms). The
 keyframes are in the *Motion* and *Sheets & dialogs* sections of `index.css`, the two hooks in
 `lib/motion.ts`. `useSlideDir(value, rank)` says which side freshly keyed content enters from
@@ -446,9 +446,11 @@ says something the control cannot (a consequence, a privacy risk, a format).
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: under your account, the two things opened most with no heading over them
 (*Your rides*, the *Shared car guide*), then collapsible groups, *Manage* for admins (approvals, the
-pool, the people, every ride, the log), *Help* (support, feedback) and *Settings* at the foot,
-folded by default (*Notifications*, *Install the app* while the browser can, the theme and the
-language); remembered as `karpul.drawerGroups`; a folded *Manage* carries the approvals count on
+pool, the people, every ride, the log), *Help* (support, feedback), and *Settings*: not a group but a card of its
+own pinned to the foot (`.settings-card`, a gear, a chevron pointing up), folded by default, that unfolds
+*upwards* out of its head (the body is a grid row above the head, 0fr to 1fr; the rest of the menu is
+`.drawer-scroll` and gives way), holding *Notifications*, *Install the app* while the browser can, the
+theme and the language. What is open is remembered as `karpul.drawerGroups`; a folded *Manage* carries the approvals count on
 its heading. Each group heading is a Fluent accordion header: a full-width
 row in the text's ink, a leading chevron in its own small well that turns down when the group opens,
 a tint under a mouse and a darker one when pressed, and the open group's rows hanging off a hairline
@@ -467,8 +469,9 @@ the driver card of any company-car ride; its foot opens *Contact support*). The 
 sheet: a bug or an idea sent as a `mailto:` to the app contact from the person's own mail app, with the account, view,
 browser and screen under the text; nothing on the server). Picking an
 item closes the drawer before the sheet opens, so the two body-scroll locks never overlap. The views are switched by a Fluent bottom tab bar on a
-phone (`.tabbar` in `App.tsx`, a radio group named *View*, the active tab's mark filled on a green
-pill; `--tabbar` is its height, which the FAB, the toast and the column's foot leave room for, and 0
+phone (`.tabbar` in `App.tsx`, a radio group named *View*, 26px marks, the active one filled; one
+green pill, `.tab-glider`, slides under the marks to the picked tab on `--ease-bounce`, and the mark it
+lands on pops, keyed so the animation replays; `--tabbar` is its height, which the FAB, the toast and the column's foot leave room for, and 0
 on a wide screen) and by the segmented control in the toolbar on a wide screen, and
 remembered in `localStorage` (`karpul.view`): *Upcoming* (the default), *Week* and *Day*.
 Day (`components/DayPlan.tsx`, the arithmetic in `lib/dayPlan.ts`, tested in `dayPlan.test.ts`) is
