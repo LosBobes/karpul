@@ -256,6 +256,12 @@ export const CoinsIcon = icon(
 export const PhoneIcon = icon(
   <path d="M8.6 4.25 6.4 4A1.9 1.9 0 0 0 4.3 6c.5 7.25 6.45 13.2 13.7 13.7a1.9 1.9 0 0 0 2-2.1l-.25-2.2a1.5 1.5 0 0 0-1.1-1.3l-2.55-.7a1.5 1.5 0 0 0-1.5.4l-1.25 1.25a11.5 11.5 0 0 1-4.9-4.9L9.7 8.9a1.5 1.5 0 0 0 .4-1.5l-.7-2.55a1.5 1.5 0 0 0-.8-.6Z" />,
 )
+export const MailIcon = icon(
+  <>
+    <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
+    <path d="m4.5 7 7.5 6 7.5-6" />
+  </>,
+)
 export const BellIcon = icon(
   <>
     <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15L6 16.5Z" />
@@ -312,6 +318,22 @@ export const PlugIcon = icon(
     <path d="M9 3.5V7M15 3.5V7" />
     <path d="M6.75 7h10.5v3a5.25 5.25 0 0 1-10.5 0V7Z" />
     <path d="M12 15.25V17a3.5 3.5 0 0 0 3.5 3.5H18" />
+  </>,
+)
+/** A life ring: who to ask when something does not work. */
+export const LifebuoyIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="3.5" />
+    <path d="m6 6 3.5 3.5M18 6l-3.5 3.5M6 18l3.5-3.5M18 18l-3.5-3.5" />
+  </>,
+)
+/** A beetle: reporting a bug, or any thought about the app. */
+export const BugIcon = icon(
+  <>
+    <path d="M8.5 9.5a3.5 3.5 0 0 1 7 0" />
+    <path d="M7.5 10.5h9V14a4.5 4.5 0 0 1-9 0v-3.5Z" />
+    <path d="M12 10.5v8M4 13.5h3.5M16.5 13.5H20M5 8.5l2.5 2M19 8.5l-2.5 2M5 19l2.75-2M19 19l-2.75-2M9.5 5l1 1.5M14.5 5l-1 1.5" />
   </>,
 )
 /** Three people, one standing forward: the admin's list of accounts. */

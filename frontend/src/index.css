@@ -6353,3 +6353,62 @@ body.dragging {
     animation: none !important;
   }
 }
+
+/* --- Support and feedback (components/SupportSheet.tsx, FeedbackSheet.tsx) - */
+.support .panel-body {
+  gap: 0.9rem;
+}
+.support-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.support-topic {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.support-what {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.support-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+.support-link {
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+.support-link-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.support-link-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.guide-support {
+  text-wrap: balance;
+}
+.guide-support svg {
+  flex: none;
+}
+.feedback-hint {
+  margin: 0;
+  font-size: 0.82rem;
+}

@@ -1,6 +1,6 @@
 import { useT, type GuideEntry } from '../lib/i18n'
 import { GuideArt } from './GuideArt'
-import { BoltIcon, KeyIcon } from './icons'
+import { BoltIcon, KeyIcon, LifebuoyIcon } from './icons'
 import { Sheet } from './Sheet'
 
 /**
@@ -9,12 +9,26 @@ import { Sheet } from './Sheet'
  * EV driver looks for in the wrong place. The words live in `lib/i18n.ts`
  * (`guide`, in both languages), one picture per entry in `GuideArt.tsx`;
  * edit those when the fleet or the chargers change, nothing else needs to
- * know.
+ * know. Its foot is the way to a person (`SupportSheet`) when a step does
+ * not work.
  */
-export function CarGuide({ onClose }: { onClose: () => void }) {
+export function CarGuide({ onSupport, onClose }: { onSupport: () => void; onClose: () => void }) {
   const t = useT()
   return (
-    <Sheet id="guide-title" title={t.guide.title} onClose={onClose} className="guide">
+    <Sheet
+      id="guide-title"
+      title={t.guide.title}
+      onClose={onClose}
+      className="guide"
+      footer={
+        <button type="button" className="btn btn-soft btn-block guide-support" onClick={onSupport}>
+          <LifebuoyIcon size={18} />
+          <span>
+            {t.support.stuck} <b>{t.support.title}</b>
+          </span>
+        </button>
+      }
+    >
       <section className="guide-section">
         <h3 className="section-title">
           <KeyIcon size={16} /> {t.guide.chargingTitle}
