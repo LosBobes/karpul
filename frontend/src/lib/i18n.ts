@@ -788,6 +788,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Corporate car not found$/, () => 'Zajednički auto nije pronađen'],
   [/^You already have a shared car this week\. An admin can approve another$/, () => 'Već imaš zajednički auto ove sedmice. Administrator može da odobri još jedan'],
   [/^You already have a shared car that day\. An admin can approve another$/, () => 'Već imaš zajednički auto tog dana. Administrator može da odobri još jedan'],
+  [/^That keeps a shared car with you for more than 24 hours in a row\. An admin can approve it$/, () => 'Tako bi zajednički auto bio kod tebe duže od 24 sata zaredom. Administrator može da to odobri'],
   [/^This ride is not waiting for approval$/, () => 'Ova vožnja ne čeka odobrenje'],
   [/^No free seats left$/, () => 'Nema više slobodnih mesta'],
   [/^Only the driver or an admin can cancel this ride$/, () => 'Samo vozač ili administrator može da ukloni ovu vožnju'],

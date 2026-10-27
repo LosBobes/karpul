@@ -3,7 +3,7 @@
 import secrets
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import object_session, selectinload
@@ -306,6 +306,12 @@ SHARED_CAR_PER_WEEK = 1
 SHARED_CAR_PER_DAY = 1
 LIMIT_WEEK = "You already have a shared car this week. An admin can approve another"
 LIMIT_DAY = "You already have a shared car that day. An admin can approve another"
+# Nor may a driver's shared-car rides join up into one stretch longer than this
+# (a ride left with no return holds the car to midnight, and the next day's
+# ride from 00:00 carries straight on). Rides are same-day, so one ride alone
+# is at most 24 hours: it takes two that meet.
+SHARED_CAR_MAX_STRETCH = timedelta(hours=24)
+LIMIT_STRETCH = "That keeps a shared car with you for more than 24 hours in a row. An admin can approve it"
 
 
 def shared_car_use(session: Session, driver_id: int, day: date, exclude_ride_id: int | None = None) -> tuple[int, int]:
@@ -324,7 +330,51 @@ def shared_car_use(session: Session, driver_id: int, day: date, exclude_ride_id:
     return len(dates), sum(1 for d in dates if d == day)
 
 
-def over_shared_car_share(session: Session, driver_id: int, day: date, exclude_ride_id: int | None = None) -> str | None:
+def _span(day: date, departure: time, return_time: time | None) -> tuple[datetime, datetime]:
+    """When a ride holds its car: from departure to its return, or to midnight
+    without one (as `ensure_car_available` reads it)."""
+    start = datetime.combine(day, departure)
+    end = datetime.combine(day, return_time) if return_time else datetime.combine(day + timedelta(days=1), time())
+    return start, end
+
+
+def shared_car_stretch(
+    session: Session, driver_id: int, day: date, departure: time, return_time: time | None, exclude_ride_id: int | None = None
+) -> timedelta:
+    """How long the driver would have a shared car without a break, counting
+    this ride and every shared-car ride of theirs that meets or overlaps it,
+    one after another, whatever its approval and whichever car it is in.
+
+    The day either side is all it needs to look at: a chain reaching further
+    covers a whole neighbouring day, which is already past 24 hours.
+    """
+    stmt = select(Ride).where(
+        Ride.driver_id == driver_id,
+        Ride.car_type == CarType.corporate,
+        Ride.ride_date >= day - timedelta(days=1),
+        Ride.ride_date <= day + timedelta(days=1),
+    )
+    if exclude_ride_id is not None:
+        stmt = stmt.where(Ride.id != exclude_ride_id)
+    others = sorted(_span(r.ride_date, r.departure_time, r.return_time) for r in session.exec(stmt))
+    start, end = _span(day, departure, return_time)
+    grown = True
+    while grown:
+        grown = False
+        for a, b in others:
+            if a <= end and start <= b and (a < start or b > end):
+                start, end, grown = min(start, a), max(end, b), True
+    return end - start
+
+
+def over_shared_car_share(
+    session: Session,
+    driver_id: int,
+    day: date,
+    departure: time,
+    return_time: time | None,
+    exclude_ride_id: int | None = None,
+) -> str | None:
     """The reason a shared-car ride on `day` is past the driver's share, or
     None while it is within it. The day's text wins, being the nearer one."""
     week, same_day = shared_car_use(session, driver_id, day, exclude_ride_id)
@@ -332,6 +382,8 @@ def over_shared_car_share(session: Session, driver_id: int, day: date, exclude_r
         return LIMIT_DAY
     if week >= SHARED_CAR_PER_WEEK:
         return LIMIT_WEEK
+    if shared_car_stretch(session, driver_id, day, departure, return_time, exclude_ride_id) > SHARED_CAR_MAX_STRETCH:
+        return LIMIT_STRETCH
     return None
 
 

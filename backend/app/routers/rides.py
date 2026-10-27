@@ -216,7 +216,9 @@ def _approval_for(session: Session, actor: User, driver: User, payload: RideCrea
     never rationed."""
     if payload.car_type != CarType.corporate:
         return ""
-    reason = over_shared_car_share(session, driver.id, payload.ride_date, exclude_ride_id)  # type: ignore[arg-type]
+    reason = over_shared_car_share(
+        session, driver.id, payload.ride_date, payload.departure_time, payload.return_time, exclude_ride_id  # type: ignore[arg-type]
+    )
     if reason is None:
         return ""
     if is_admin(actor):
@@ -326,11 +328,14 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
     )
     data = _prepare(session, validated, exclude_ride_id=ride.id)
     # Moving an unapproved ride into a week (or onto a day) that already has
-    # the driver's shared car is the same ask as adding one there; a pending
-    # ride stays pending wherever it goes, an approved one stays approved.
+    # the driver's shared car, or stretching it into their next one, is the
+    # same ask as adding one there; a pending ride stays pending wherever it
+    # goes, an approved one stays approved.
     if data["car_type"] != CarType.corporate:
         data["approval"] = ""
-    elif ride.approval == "" and (data["ride_date"] != ride.ride_date or data["car_type"] != ride.car_type):
+    elif ride.approval == "" and any(
+        data[key] != getattr(ride, key) for key in ("ride_date", "car_type", "departure_time", "return_time")
+    ):
         driver = session.get(User, ride.driver_id) if ride.driver_id is not None else None
         if driver is not None:
             data["approval"] = _approval_for(session, user, driver, validated, exclude_ride_id=ride.id)
