@@ -345,8 +345,8 @@ input[type='checkbox'] {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  padding: 0 0 3px;
-  border-bottom: 1px solid var(--border);
+  gap: 2px;
+  padding-bottom: 3px;
 }
 .seg {
   position: relative;
@@ -370,17 +370,17 @@ input[type='checkbox'] {
 }
 .seg-thumb {
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   height: 3px;
-  width: calc(100% / var(--seg-n, 2));
-  transform: translateX(calc(var(--seg-i, 0) * 100%));
+  width: calc((100% - (var(--seg-n, 2) - 1) * 2px) / var(--seg-n, 2));
+  transform: translateX(calc(var(--seg-i, 0) * (100% + 2px)));
   transition: transform var(--dur-gentle) var(--ease-out);
 }
 .seg-thumb::after {
   content: '';
   position: absolute;
-  inset: 0 max(12px, 28%);
+  inset: 0 max(14px, 34%);
   border-radius: 2px;
   background: var(--green);
 }
@@ -1280,13 +1280,17 @@ main,
   min-height: 32px;
   margin-right: 0.25rem;
   padding: 0 0.75rem;
-  border: 1px solid var(--green-line);
-  border-radius: 999px;
-  background: var(--green-soft);
-  color: var(--green);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
   font-size: 0.84rem;
   font-weight: 600;
   white-space: nowrap;
+  transition: background var(--hover);
+}
+.today-chip:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
 }
 .dates-strip {
   position: relative;
@@ -1295,10 +1299,11 @@ main,
   padding: 2px;
   touch-action: pan-y;
 }
-/* The green pill: one element behind the seven days that slides to the
-   selected one (DateCarousel.tsx sets --date-i). The width is a seventh of the
-   strip minus its padding and the six gaps, and each step is one pill plus a
-   gap. The selected day's own background goes clear so the pill shows through. */
+/* The picked day, as Fluent's calendar marks it: a brand-tinted cell with a
+   short accent bar along its foot. It is one element behind the seven days
+   that slides to the selected one (DateCarousel.tsx sets --date-i). The width
+   is a seventh of the strip minus its padding and the six gaps, and each step
+   is one cell plus a gap. */
 .date-thumb {
   position: absolute;
   top: 2px;
@@ -1306,10 +1311,19 @@ main,
   left: 2px;
   width: calc((100% - 4px - 6 * 0.3rem) / 7);
   border-radius: var(--radius);
-  background: var(--green);
-  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--green) 70%, transparent);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
   transform: translateX(calc(var(--date-i, 0) * (100% + 0.3rem)));
-  transition: transform 0.25s var(--ease-out);
+  transition: transform var(--dur-gentle) var(--ease-out);
+}
+.date-thumb::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--green);
 }
 .date {
   position: relative;
@@ -1330,7 +1344,7 @@ main,
     transform var(--hover);
 }
 .date:hover:not(.date-selected) {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 .date-wd {
   font-size: 0.74rem;
@@ -1358,6 +1372,7 @@ main,
 }
 .date-today .date-md {
   color: var(--green);
+  font-weight: 700;
 }
 .date-past {
   color: var(--muted);
@@ -1368,18 +1383,17 @@ main,
 .date-selected,
 .date-selected:hover {
   background: transparent;
-  color: #fff;
 }
-.date-selected .date-wd,
-.date-selected.date-today .date-wd,
-.date-selected.date-today .date-md {
-  color: rgba(255, 255, 255, 0.85);
+.date-selected .date-wd {
+  color: var(--green);
+  font-weight: 600;
 }
 .date-selected .date-md {
-  color: #fff;
+  color: var(--green);
+  font-weight: 700;
 }
 .date-selected .date-dot {
-  background: #fff;
+  visibility: hidden;
 }
 .week-nav {
   display: inline-flex;
@@ -1392,20 +1406,18 @@ main,
   place-items: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius-sm);
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
-  box-shadow: var(--shadow);
   flex: none;
-  transition: background var(--hover), border-color var(--hover), transform 0.12s var(--ease-smooth);
-}
-.week-btn:active {
-  transform: scale(0.92);
+  transition: background var(--hover);
 }
 .week-btn:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.week-btn:active {
+  background: color-mix(in srgb, var(--text) 11%, transparent);
 }
 /* --- Car carousel -------------------------------------------------------- */
 .cars {
@@ -1479,9 +1491,9 @@ main,
 }
 .car-tile-selected,
 .car-tile-selected:hover {
-  border-color: var(--green);
-  background: color-mix(in srgb, var(--green-soft) 70%, var(--surface));
-  box-shadow: 0 0 0 1px var(--green);
+  border-color: var(--green-line);
+  background: color-mix(in srgb, var(--green) 6%, var(--surface));
+  box-shadow: var(--shadow-card);
 }
 .car-tile-selected svg,
 .car-tile-selected .car-tile-seats {
@@ -2915,7 +2927,7 @@ main,
   transition: border-color var(--hover), box-shadow var(--hover), transform var(--hover), background var(--hover);
 }
 .session:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
 }
 /* Yours (you drive or sit in it): a green edge, not a green card. */
 .session-mine::before {
@@ -2930,8 +2942,8 @@ main,
 }
 .session-open,
 .session-open:hover {
-  border-color: var(--green);
-  box-shadow: 0 0 0 1px var(--green);
+  border-color: var(--green-line);
+  background: color-mix(in srgb, var(--green) 6%, var(--surface));
 }
 /* Line one: the clock and its return on the left, your place on the right. */
 .session-top {
@@ -3818,13 +3830,9 @@ main,
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-}
-.notif-row-mark-bolt {
-  background: var(--green-soft);
-  color: var(--green);
+  width: 24px;
+  height: 24px;
+  color: var(--text);
 }
 .notif-row-text {
   display: flex;
@@ -4329,13 +4337,23 @@ body.dragging {
   fill: var(--green-soft);
   stroke: var(--green);
 }
+.guide-art .accent-solid {
+  fill: var(--green);
+  stroke: none;
+}
+.guide-art text.on-accent {
+  fill: #fff;
+}
+:root[data-resolved='dark'] .guide-art text.on-accent {
+  fill: #10141a;
+}
 .guide-art .soft {
   fill: currentColor;
-  fill-opacity: 0.09;
+  fill-opacity: 0.08;
 }
 .guide-art .glass {
   fill: currentColor;
-  fill-opacity: 0.22;
+  fill-opacity: 0.18;
 }
 .guide-art .ink {
   fill: currentColor;
@@ -4697,71 +4715,14 @@ body.dragging {
 .drawer-item:hover:not(:disabled) {
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
-/* No tile: the Fluent mark in colour stands on its own (FluentIcon). */
+/* No tile: the plain Fluent mark (FluentIcon), in the label's own ink. */
 .drawer-item-icon {
   display: inline-grid;
   place-items: center;
   width: 24px;
   height: 24px;
   flex: none;
-}
-/* The notification centre's category tiles, from the avatars' palette (dark
-   versions below). */
-.drawer-tone-blue {
-  background: #e3ecff;
-  color: #1d4ed8;
-}
-.drawer-tone-violet {
-  background: #efeafe;
-  color: #6d28d9;
-}
-.drawer-tone-amber {
-  background: #fdf1d6;
-  color: #b45309;
-}
-.drawer-tone-teal {
-  background: #d7f6f0;
-  color: #0f766e;
-}
-.drawer-tone-rose {
-  background: #fde4ec;
-  color: #be185d;
-}
-.drawer-tone-orange {
-  background: #ffedd5;
-  color: #c2410c;
-}
-.drawer-tone-slate {
-  background: #e6ebf1;
-  color: #334155;
-}
-:root[data-resolved='dark'] .drawer-tone-blue {
-  background: #1e2d5c;
-  color: #93c5fd;
-}
-:root[data-resolved='dark'] .drawer-tone-violet {
-  background: #2e2352;
-  color: #c4b5fd;
-}
-:root[data-resolved='dark'] .drawer-tone-amber {
-  background: #45300b;
-  color: #fcd34d;
-}
-:root[data-resolved='dark'] .drawer-tone-teal {
-  background: #113b36;
-  color: #5eead4;
-}
-:root[data-resolved='dark'] .drawer-tone-rose {
-  background: #4a1830;
-  color: #f9a8d4;
-}
-:root[data-resolved='dark'] .drawer-tone-orange {
-  background: #47270f;
-  color: #fdba74;
-}
-:root[data-resolved='dark'] .drawer-tone-slate {
-  background: #263241;
-  color: #cbd5e1;
+  color: var(--text);
 }
 .drawer-item-label {
   font-weight: 500;
@@ -5583,31 +5544,31 @@ body.dragging {
 }
 .chip {
   flex: none;
-  min-height: 34px;
-  padding: 0.3rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  min-height: 32px;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font-size: 0.84rem;
   font-weight: 500;
-  transition: background var(--hover), border-color var(--hover), color var(--hover), transform 0.12s var(--ease-smooth);
+  transition: background var(--hover), border-color var(--hover), color var(--hover);
 }
 .chip:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
 }
 .chip:active:not(:disabled) {
-  transform: scale(0.95);
+  background: color-mix(in srgb, var(--text) 9%, var(--surface));
 }
 .chip:disabled {
   opacity: 0.5;
 }
 .chip-on,
 .chip-on:hover:not(:disabled) {
-  background: var(--green);
-  border-color: var(--green);
-  color: #fff;
+  background: var(--green-soft);
+  border-color: var(--green-line);
+  color: var(--green-dark);
+  font-weight: 600;
 }
 .search > input {
   min-height: 40px;
@@ -6061,7 +6022,6 @@ body.dragging {
 }
 :root[data-resolved='dark'] .btn-primary,
 :root[data-resolved='dark'] .btn-danger,
-:root[data-resolved='dark'] .chip-on,
 :root[data-resolved='dark'] .update-toast-go {
   color: #10141a;
 }

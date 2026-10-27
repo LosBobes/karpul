@@ -36,7 +36,7 @@ interface Props extends Content {
 
 interface Item {
   label: string
-  /** The item's Fluent mark, drawn in colour so the menu reads by shape and hue. */
+  /** The item's Fluent mark, in the regular (outline) style. */
   icon: FluentName
   onSelect: () => void
   /** Something waiting on you there: an amber count after the label. */
@@ -141,7 +141,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
   const renderItem = (it: Item) => (
     <button key={it.label} type="button" className="drawer-item" onClick={it.onSelect}>
       <span className="drawer-item-icon">
-        <FluentIcon name={it.icon} variant="color" size={22} />
+        <FluentIcon name={it.icon} size={20} />
       </span>
       <span className="drawer-item-label">
         {it.label}

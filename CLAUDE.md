@@ -341,10 +341,14 @@ head over a rounded shoulder, Fluent's own shapes for the common glyphs (Dismiss
 Calendar, Clock, Delete, Edit, Chat, Send, Alert, Shield, Money), no fills except the dots. The named exports are the contract the components render against (`size` in px, optional
 `weight`). The drawer and the phone's tab bar use the Fluent marks in
 `components/FluentIcon.tsx` instead: a 20px grid, a 1.5px stroke, each drawing split into a body,
-details and extras so one drawing gives three styles (`regular`, `filled` with the details cut out
-in `--icon-knock`, and `color`, a two-stop gradient per mark). The drawer shows them in colour with
-no tile, so the menu reads by shape and colour before it reads by word; the `.drawer-tone-*` tiles
-remain only on the notification centre's category rows. Adding a ride has exactly one control: `AddRideFab`
+details and extras so one drawing gives two styles (`regular`, and `filled` with the details cut out
+in `--icon-knock` for the selected tab). Every icon in the app is monochrome, in `currentColor`: the
+drawer's marks stand in the label's ink with no tile, and the notification centre's rows have no
+tinted tiles either. Selection is shown the Fluent way, by a brand tint and an accent bar, never by a
+solid green block: the picked day in the week strip is a tinted cell with a short bar at its foot
+(`.date-thumb`, today's number in green), a picked car tile or Upcoming row is tinted with a green
+hairline (`.car-tile-selected`, `.session-open`), a filter chip is a square-cornered toggle that tints
+when on (`.chip-on`), and the week arrows are borderless icon buttons (`.week-btn`). Adding a ride has exactly one control: `AddRideFab`
 (`components/AddRideButton.tsx`), Fluent's FAB: a white plus on a green rounded square (16px corners)
 floating at the bottom right of the column, above the tab bar, on every view whenever a ride can be added (`.fab`, under every sheet's backdrop); on a
 wide screen it is `AddRideToolbarButton` at the right end of the toolbar instead.
@@ -434,8 +438,10 @@ identity block on top (it opens `AccountSheet`, which is also where you sign out
 *Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
-entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
-line-icon style with the green accent on the one thing the step is about; also reachable from
+entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn like Fluent's
+own icons only bigger (a 120×80 box at 96px, so the 1.875 stroke lands on 1.5px, round corners, soft
+neutral fills, numbers and ticks on a solid green disc) with the green accent on the one thing the
+step is about; also reachable from
 the driver card of any company-car ride; its foot opens *Contact support*). The *Help* group holds the guide,
 *Contact support* (`SupportSheet`: car, app and organizational contacts with `tel:` / `mailto:` buttons, the list is
 `SUPPORT` in `lib/support.ts`) and *Report a bug or send feedback* (`FeedbackSheet`, also at the foot of the support
