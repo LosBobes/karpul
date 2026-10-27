@@ -13,13 +13,13 @@ interface Props {
 }
 
 /** Each kind on its own tinted tile, the way the drawer reads by shape and colour. */
-const KIND_LOOK: Record<PushCategory, { icon: ReactNode; tone: string }> = {
-  seats: { icon: <UsersIcon size={18} />, tone: 'teal' },
-  changes: { icon: <RouteIcon size={18} />, tone: 'blue' },
-  reminders: { icon: <ClockIcon size={18} />, tone: 'amber' },
-  messages: { icon: <MessageIcon size={18} />, tone: 'violet' },
-  requests: { icon: <HandIcon size={18} />, tone: 'orange' },
-  approvals: { icon: <ApprovalIcon size={18} />, tone: 'rose' },
+const KIND_LOOK: Record<PushCategory, { icon: ReactNode }> = {
+  seats: { icon: <UsersIcon size={18} /> },
+  changes: { icon: <RouteIcon size={18} /> },
+  reminders: { icon: <ClockIcon size={18} /> },
+  messages: { icon: <MessageIcon size={18} /> },
+  requests: { icon: <HandIcon size={18} /> },
+  approvals: { icon: <ApprovalIcon size={18} /> },
 }
 
 const errMsg = (e: unknown) => messages().apiError(e instanceof Error ? e.message : String(e))
@@ -114,7 +114,7 @@ export function NotificationsSheet({ onChanged, onClose }: Props) {
             return (
               <li key={kind}>
                 <label className="notif-row">
-                  <span className={`notif-row-mark drawer-tone-${look.tone}`} aria-hidden="true">
+                  <span className="notif-row-mark" aria-hidden="true">
                     {look.icon}
                   </span>
                   <span className="notif-row-text">
@@ -146,7 +146,7 @@ export function NotificationsSheet({ onChanged, onClose }: Props) {
         <ul className="notif-list">
           <li>
             <label className="notif-row">
-              <span className="notif-row-mark notif-row-mark-bolt" aria-hidden="true">
+              <span className="notif-row-mark" aria-hidden="true">
                 <BoltIcon size={18} />
               </span>
               <span className="notif-row-text">

@@ -41,6 +41,8 @@ import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
 import { useBoard } from './lib/useBoard'
 import { useWide } from './lib/useWide'
+import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
+import { InstallCard } from './components/InstallCard'
 
 type FormState = { mode: 'create'; template?: Ride; request?: RideRequest; slot?: Slot } | { mode: 'edit'; ride: Ride } | null
 
@@ -631,6 +633,13 @@ function Board({ session }: { session: Session }) {
   // a wide screen the pane beside the list is never empty: with nothing
   // picked it shows your next ride, else the first one.
   const wide = useWide()
+  // The home-screen install offer (lib/install.ts): a card once, the drawer item after.
+  const installMode = useInstallMode()
+  const installDismissed = useInstallDismissed()
+  const installDone = () => notice(messages().install.done)
+  const installCard = installMode && !installDismissed && (
+    <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
+  )
   const pickedUpcoming = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
   const openUpcomingId = pickedUpcoming ?? (upcoming && wide ? (rides.find((r) => inRide(r, me))?.id ?? rides[0]?.id ?? null) : null)
   const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
@@ -808,6 +817,12 @@ function Board({ session }: { session: Session }) {
     onFeedback: () => setFeedbackOpen(true),
     onMyRides: () => setMyRidesOpen(true),
     onNotifications: () => setNotifOpen(true),
+    onInstall: installMode
+      ? () => {
+          if (installMode === 'prompt') void promptInstall().then((ok) => ok && installDone())
+          else setInstallDismissed(false)
+        }
+      : undefined,
   }
   // On a wide screen each pane scrolls on its own (index.css, "Wide screens").
   const wrapSide = (node: ReactNode) =>
@@ -857,6 +872,7 @@ function Board({ session }: { session: Session }) {
           </header>
 
           <main>
+            {!wide && installCard}
 
             {upcoming && (
               <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
@@ -953,6 +969,8 @@ function Board({ session }: { session: Session }) {
         {!wide && canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
 
         {!wide && tabBar}
+
+        {wide && installCard}
 
         {sidebarOpen && !wide && <Sidebar {...menu} onClose={closeSidebar} />}
 

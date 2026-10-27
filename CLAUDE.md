@@ -341,10 +341,14 @@ head over a rounded shoulder, Fluent's own shapes for the common glyphs (Dismiss
 Calendar, Clock, Delete, Edit, Chat, Send, Alert, Shield, Money), no fills except the dots. The named exports are the contract the components render against (`size` in px, optional
 `weight`). The drawer and the phone's tab bar use the Fluent marks in
 `components/FluentIcon.tsx` instead: a 20px grid, a 1.5px stroke, each drawing split into a body,
-details and extras so one drawing gives three styles (`regular`, `filled` with the details cut out
-in `--icon-knock`, and `color`, a two-stop gradient per mark). The drawer shows them in colour with
-no tile, so the menu reads by shape and colour before it reads by word; the `.drawer-tone-*` tiles
-remain only on the notification centre's category rows. Adding a ride has exactly one control: `AddRideFab`
+details and extras so one drawing gives two styles (`regular`, and `filled` with the details cut out
+in `--icon-knock` for the selected tab). Every icon in the app is monochrome, in `currentColor`: the
+drawer's marks stand in the label's ink with no tile, and the notification centre's rows have no
+tinted tiles either. Selection is shown the Fluent way, by a brand tint and an accent bar, never by a
+solid green block: the picked day in the week strip is a tinted cell with a short bar at its foot
+(`.date-thumb`, today's number in green), a picked car tile or Upcoming row is tinted with a green
+hairline (`.car-tile-selected`, `.session-open`), a filter chip is a square-cornered toggle that tints
+when on (`.chip-on`), and the week arrows are borderless icon buttons (`.week-btn`). Adding a ride has exactly one control: `AddRideFab`
 (`components/AddRideButton.tsx`), Fluent's FAB: a white plus on a green rounded square (16px corners)
 floating at the bottom right of the column, above the tab bar, on every view whenever a ride can be added (`.fab`, under every sheet's backdrop); on a
 wide screen it is `AddRideToolbarButton` at the right end of the toolbar instead.
@@ -427,15 +431,23 @@ says something the control cannot (a consequence, a privacy risk, a format).
 
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
-about one particular ride, in collapsible groups (*You*, *Admin* for admins, *Settings* with the
-theme and language, folded by default; remembered as `karpul.drawerGroups`; a folded *Admin* carries
-the approvals count on its heading). The items are one label each, no hint line. Your account is the
+about one particular ride: under your account, the two things opened most with no heading over them
+(*Your rides*, the *Shared car guide*), then collapsible groups, *Manage* for admins (approvals, the
+pool, the people, every ride, the log), *Help* (support, feedback) and *Settings* at the foot,
+folded by default (*Notifications*, *Install the app* while the browser can, the theme and the
+language); remembered as `karpul.drawerGroups`; a folded *Manage* carries the approvals count on
+its heading. Each group heading is a Fluent accordion header: a full-width
+row in the text's ink, a leading chevron in its own small well that turns down when the group opens,
+a tint under a mouse and a darker one when pressed, and the open group's rows hanging off a hairline
+under the chevron. The items are one label each, no hint line. Your account is the
 identity block on top (it opens `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
 *Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`CarAdmin`, with a
 *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
-entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn in the
-line-icon style with the green accent on the one thing the step is about; also reachable from
+entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn like Fluent's
+own icons only bigger (a 120×80 box at 96px, so the 1.875 stroke lands on 1.5px, round corners, soft
+neutral fills, numbers and ticks on a solid green disc) with the green accent on the one thing the
+step is about; also reachable from
 the driver card of any company-car ride; its foot opens *Contact support*). The *Help* group holds the guide,
 *Contact support* (`SupportSheet`: car, app and organizational contacts with `tel:` / `mailto:` buttons, the list is
 `SUPPORT` in `lib/support.ts`) and *Report a bug or send feedback* (`FeedbackSheet`, also at the foot of the support
@@ -539,6 +551,15 @@ initials keep their contrast.
 (`manifest.webmanifest`, standalone display, the icons above, off-white theme colour to match the
 top bar) and generates a Workbox service worker, `sw.js`, that precaches the built shell: `index.html`,
 the hashed bundles, the fonts and the icons, so an installed app opens offline and starts instantly.
+**The install offer** (`lib/install.ts`, `components/InstallCard.tsx`): Chrome and Edge fire
+`beforeinstallprompt` once the app qualifies, and `listenForInstall` (called in `main.tsx` before
+React, because the event can fire before the first render) keeps it and suppresses the browser's
+own mini-infobar; Safari on an iPhone or iPad has no such event, so there the offer is the two taps
+through the Share menu (`ios()` also catches an iPad that calls itself a Mac). Signed in and not
+running standalone, the board opens with an *Install Karpul* card (above the board on a phone,
+floating in the bottom corner on a wide screen): *Install* runs the browser's dialog, *Not now* /
+*Got it* puts it away for good in this browser (`karpul.installHint`), and *Install the app* in the
+drawer's *Settings* group stays while the browser can still install, bringing the card back on iOS.
 Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc` and `/openapi.json`
 are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
 (`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
