@@ -2,8 +2,8 @@ from datetime import date, time
 
 from sqlmodel import Session, select
 
-from app.backfill import LOG, backfill, days
-from app.models import CarType, CorporateCar, Ride
+from app.backfill import LOG, MARKER, backfill, days, run_once
+from app.models import CarType, CorporateCar, DataMigration, Ride
 from tests.conftest import make_person
 
 TODAY = date(2026, 10, 27)
@@ -87,3 +87,27 @@ def test_a_coming_day_already_booked_is_skipped(engine):
     # The past is written as the log has it, the double-booked 18 September included.
     with Session(engine) as session:
         assert len(session.exec(select(Ride).where(Ride.ride_date == date(2026, 9, 18))).all()) == 2
+
+
+def test_on_start_it_runs_once_and_never_again(engine):
+    car_id = mazda(engine)
+    first = run_once(engine, TODAY)
+    assert first is not None and len(first["added"]) == sum(len(days(e)) for e in LOG)
+    with Session(engine) as session:
+        assert session.get(DataMigration, MARKER) is not None
+        # Someone removes a backfilled ride: the next start must not put it back.
+        ride = session.exec(select(Ride).where(Ride.corporate_car_id == car_id)).first()
+        session.delete(ride)
+        session.commit()
+    assert run_once(engine, TODAY) is None
+    with Session(engine) as session:
+        assert len(session.exec(select(Ride)).all()) == sum(len(days(e)) for e in LOG) - 1
+
+
+def test_without_the_mazda_a_start_does_nothing_and_tries_again_later(engine):
+    assert run_once(engine, TODAY) is None
+    with Session(engine) as session:
+        assert session.get(DataMigration, MARKER) is None
+        assert session.exec(select(Ride)).all() == []
+    mazda(engine)
+    assert run_once(engine, TODAY) is not None
