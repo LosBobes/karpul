@@ -1,6 +1,7 @@
 """Business rules shared by routers."""
 
 import secrets
+import unicodedata
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -20,6 +21,45 @@ def norm_name(name: str) -> str:
     """Whitespace-collapsed, casefolded: how two names are compared everywhere
     (the frontend mirrors it as `sameName` in lib/dates.ts)."""
     return " ".join(name.split()).casefold()
+
+
+def fold_name(name: str) -> str:
+    """`norm_name` with the diacritics dropped: "Blažić" and "Blazic" are one
+    name here (the frontend mirrors it in `similarName`, lib/dates.ts)."""
+    plain = unicodedata.normalize("NFKD", norm_name(name).replace("đ", "dj"))
+    return "".join(c for c in plain if not unicodedata.combining(c))
+
+
+def _edit_distance(a: str, b: str) -> int:
+    row = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev, row[0] = row[0], i
+        for j, cb in enumerate(b, 1):
+            prev, row[j] = row[j], min(row[j] + 1, row[j - 1] + 1, prev + (ca != cb))
+    return row[-1]
+
+
+# How alike two folded names must be, 1 - edits / longer length, to count as
+# one person typed two ways ("Nikola Stevic" and "Nikola Stević", "Pavle
+# Cicmil" and "Pavle Čičmil", a dropped letter). Two colleagues who share only
+# a first name stay well below it.
+SIMILAR_NAME = 0.8
+
+
+def similar_names(a: str, b: str) -> bool:
+    """Could these two names be the same person? Diacritics, case, spacing and
+    the order of the words aside, they may differ by about one letter in five
+    (`SIMILAR_NAME`). Mirrored by `similarName` in lib/dates.ts; keep both in step."""
+    fa, fb = fold_name(a), fold_name(b)
+    if not fa or not fb:
+        return False
+    variants = (fb, " ".join(sorted(fb.split())))
+    fa_sorted = " ".join(sorted(fa.split()))
+    for x in (fa, fa_sorted):
+        for y in variants:
+            if 1 - _edit_distance(x, y) / max(len(x), len(y)) >= SIMILAR_NAME:
+                return True
+    return False
 
 
 def stops_from_text(text: str) -> list[str]:
@@ -229,6 +269,29 @@ def claim_rows(session: Session, user: User) -> list[Ride]:
             if ride is not None:
                 touched[ride.id] = ride  # type: ignore[index]
     return list(touched.values())
+
+
+def claim_driver_rides(session: Session, user: User, name: str) -> list[Ride]:
+    """Make `user` the driver of every ride that goes by `name` and belongs to
+    no account (the shared car's paper log, a ride from before accounts), with
+    their stretches at the wheel, under the account's own name. A ride they sit
+    in as a passenger is left alone: nobody drives their own seat. Returns the
+    rides it changed."""
+    key = norm_name(name)
+    claimed = []
+    for ride in session.exec(select(Ride).where(Ride.driver_id.is_(None))).all():  # type: ignore[union-attr]
+        if norm_name(ride.driver_name) != key or any(is_person(user, b.passenger_id, b.passenger_name) for b in ride.bookings):
+            continue
+        ride.driver_id = user.id
+        ride.driver_name = user.display_name
+        for leg in ride.legs:
+            if leg.driver_id is None and norm_name(leg.driver_name) == key:
+                leg.driver_id = user.id
+                leg.driver_name = user.display_name
+                session.add(leg)
+        session.add(ride)
+        claimed.append(ride)
+    return claimed
 
 
 def seated_elsewhere(session: Session, user_id: int, ride_date: date, exclude_ride_id: int | None) -> bool:

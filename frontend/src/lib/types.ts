@@ -241,6 +241,11 @@ export interface UsageRide {
   distance_km: number | null
 }
 
+/** What a person can switch off, kind by kind (backend: CATEGORIES in app/push.py). */
+export type PushCategory = 'seats' | 'changes' | 'reminders' | 'messages' | 'requests' | 'approvals'
+
+export const PUSH_CATEGORIES: PushCategory[] = ['seats', 'changes', 'reminders', 'messages', 'requests', 'approvals']
+
 export interface PushConfig {
   enabled: boolean
   public_key: string | null

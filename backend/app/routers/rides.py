@@ -31,6 +31,7 @@ from ..schemas import (
 from ..services import (
     account_for_name,
     board_extras,
+    claim_driver_rides,
     corporate_car_label,
     drop_orphaned_pickups,
     ensure_car_available,
@@ -42,6 +43,7 @@ from ..services import (
     promote_waitlist,
     resolve_corporate_car,
     ride_to_create_dict,
+    similar_names,
     stops_to_text,
     to_ride_read_dict,
     weekly_dates,
@@ -454,6 +456,32 @@ def decline_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
         raise HTTPException(status.HTTP_409_CONFLICT, "This ride is not waiting for approval")
     notify(session, [ride.driver_id], "ride_declined", ride, name=admin.display_name)
     _remove_rides(session, admin, [ride], action="ride_declined", tell_driver=False)
+
+
+@router.post("/{ride_id}/claim", response_model=list[RideRead])
+def claim_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """"This is me": take over a ride whose driver is a name with no account
+    (the shared car's paper log, `app/backfill.py`, wrote people who had not
+    registered yet). Registering already claims a name typed exactly as the
+    account's (`claim_rows`); this is for one typed another way, so the two
+    names must be alike (`similar_names`), and it claims every ride that goes
+    by that name at once. Returns the rides claimed, this one first."""
+    user = require_user(session, creds)
+    ride = _get_ride_or_404(session, ride_id)
+    if ride.driver_id is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This ride's driver already has an account")
+    if not similar_names(ride.driver_name, user.display_name):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, f"{ride.driver_name} is not a name like yours")
+    if _booking_of(ride, user) is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{user.display_name} already joined this ride")
+    claimed = claim_driver_rides(session, user, ride.driver_name)
+    claimed.sort(key=lambda r: (r.id != ride.id, r.ride_date, r.departure_time, r.id))
+    session.commit()
+    for r in claimed:
+        session.refresh(r)
+        ride_saved(r, created=False)
+    extras = board_extras(session, claimed)
+    return [to_ride_read_dict(r, extras) for r in claimed]
 
 
 @router.post("/{ride_id}/bookings", response_model=RideRead, status_code=status.HTTP_201_CREATED)

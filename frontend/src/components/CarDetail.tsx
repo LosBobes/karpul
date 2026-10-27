@@ -3,7 +3,7 @@ import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carMo
 import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
-import { drives, inRide, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
+import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { keepsKm } from '../lib/odometer'
 import { telHref } from '../lib/support'
 import type { Ride } from '../lib/types'
@@ -65,6 +65,8 @@ interface Props {
   /** Admin: a shared car past the driver's one a week, let through or refused. */
   onApprove: (ride: Ride) => void
   onDecline: (ride: Ride) => void
+  /** "This is me": take over a ride whose driver is a name with no account. */
+  onClaim: (ride: Ride) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
   onGuide?: () => void
   /** Queue for a seat in this full car, getting in at `pickup` once one frees up. */
@@ -110,6 +112,7 @@ export function CarDetail({
   onTogglePassengersManage,
   onApprove,
   onDecline,
+  onClaim,
   onGuide,
   onWait,
   onLeaveLine,
@@ -205,6 +208,7 @@ export function CarDetail({
             <span className="driver-role">
               {t.detail.driver}
               {isDriver && <span className="tag">{t.detail.you}</span>}
+              {ride.driver_id === null && <span className="tag tag-muted">{t.detail.noAccount}</span>}
               {ride.approval === 'pending' && <span className="tag tag-amber">{t.detail.awaiting}</span>}
               {ride.approval === 'approved' && <span className="tag tag-green">{t.detail.approved}</span>}
               {ride.series_id && (
@@ -228,6 +232,15 @@ export function CarDetail({
                 <CheckIcon size={16} /> {t.detail.approve}
               </button>
             </span>
+          </div>
+        )}
+
+        {mayClaim(ride, me) && (
+          <div className="claim-row">
+            <span className="claim-ask">{t.detail.claimAsk(ride.driver_name)}</span>
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onClaim(ride)}>
+              <CheckIcon size={16} /> {t.detail.claim}
+            </button>
           </div>
         )}
 

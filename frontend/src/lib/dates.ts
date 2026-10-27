@@ -35,6 +35,44 @@ export function sameName(a: string | null | undefined, b: string | null | undefi
   return norm(a) !== '' && norm(a) === norm(b)
 }
 
+/** `sameName` with the diacritics dropped ("Blažić" is "Blazic"); backend: `fold_name`. */
+export function foldName(s: string | null | undefined): string {
+  const norm = (s ?? '').trim().replace(/\s+/g, ' ').toLowerCase().replace(/đ/g, 'dj')
+  return norm.normalize('NFKD').replace(/\p{M}/gu, '')
+}
+
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0]
+    row[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const here = row[j]
+      row[j] = Math.min(row[j] + 1, row[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1))
+      prev = here
+    }
+  }
+  return row[b.length]
+}
+
+/**
+ * Could these two names be one person typed two ways? Diacritics, case, spacing
+ * and word order aside, about one letter in five may differ. Mirrors
+ * `similar_names` in backend/app/services.py (SIMILAR_NAME); keep both in step.
+ */
+export function similarName(a: string | null | undefined, b: string | null | undefined): boolean {
+  const fa = foldName(a)
+  const fb = foldName(b)
+  if (!fa || !fb) return false
+  const sorted = (s: string) => s.split(' ').sort().join(' ')
+  for (const x of [fa, sorted(fa)]) {
+    for (const y of [fb, sorted(fb)]) {
+      if (1 - editDistance(x, y) / Math.max(x.length, y.length) >= 0.8) return true
+    }
+  }
+  return false
+}
+
 /** "HH:MM[:SS]" from the API as "08:05": the app writes a 24-hour clock in every language. */
 export function fmtTime(t: string | null): string {
   if (!t) return ''

@@ -276,3 +276,20 @@ def test_usage_report_counts_per_car(client, admin_auth):
     wide = client.get("/api/cars/corporate/usage", params={"days": 365}, headers=admin_auth).json()
     assert {row["car"]["id"]: row["rides"] for row in wide["cars"]}[b["id"]] == 1
     assert client.get("/api/cars/corporate/usage", params={"days": 1}, headers=admin_auth).status_code == 422
+
+
+def test_similar_names_forgive_diacritics_order_and_a_typo_but_not_another_person():
+    from app.backfill import LOG
+    from app.services import similar_names
+
+    assert similar_names("Milan Blazic", "Milan Blažić")
+    assert similar_names("  milos   JELACA", "Miloš Jelača")
+    assert similar_names("Stojanovic Nevenka", "Nevenka Stojanović")
+    assert similar_names("Marina Obrenovic", "Marina Obrenović")
+    assert similar_names("Sandra Kozomara", "Sandra Kozomarra")
+    assert similar_names("Nikola Drobac", "Nikola Đrobac")
+    assert not similar_names("Milan Kolacek", "Milan Katanic")
+    assert not similar_names("", "")
+    # No two people in the paper log pass for each other.
+    names = sorted({e.driver for e in LOG})
+    assert not [(a, b) for a in names for b in names if a < b and similar_names(a, b)]

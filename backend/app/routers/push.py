@@ -1,6 +1,6 @@
 """`/api/push`: the browser's side of the notifications (see app/push.py)."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -9,7 +9,7 @@ from sqlmodel import Session, select
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..models import PushSubscription
-from ..push import vapid
+from ..push import CATEGORIES, muted, vapid
 
 router = APIRouter(prefix="/api/push", tags=["push"])
 
@@ -28,6 +28,15 @@ class SubscriptionIn(BaseModel):
     endpoint: str = Field(min_length=1, max_length=1000)
     keys: PushKeys
     locale: str = Field(default="en", max_length=8)
+
+
+Category = Literal["seats", "changes", "reminders", "messages", "requests", "approvals"]
+
+
+class Preferences(BaseModel):
+    """The kinds of push the signed-in person switched off."""
+
+    muted: list[Category] = []
 
 
 class EndpointIn(BaseModel):
@@ -70,3 +79,18 @@ def unsubscribe(payload: EndpointIn, session: WriteSessionDep):
     if sub is not None:
         session.delete(sub)
         session.commit()
+
+
+@router.get("/preferences", response_model=Preferences)
+def get_preferences(session: SessionDep, creds: CredsDep):
+    return Preferences(muted=muted(require_user(session, creds)))
+
+
+@router.put("/preferences", response_model=Preferences)
+def set_preferences(payload: Preferences, session: WriteSessionDep, creds: CredsDep):
+    """Switch kinds of push off (or back on) for this account, in every browser."""
+    user = require_user(session, creds)
+    user.push_muted = ",".join(c for c in CATEGORIES if c in payload.muted)
+    session.add(user)
+    session.commit()
+    return Preferences(muted=muted(user))

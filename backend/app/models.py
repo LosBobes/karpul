@@ -54,6 +54,10 @@ class User(SQLModel, table=True):
     # Kept in the clear because the owner has to be shown it again; rotating it
     # (POST /api/auth/me/calendar-token) cuts off every old subscription.
     calendar_token: str | None = Field(default=None, index=True)
+    # The kinds of push this person switched off (app/push.py CATEGORIES),
+    # comma-separated; "" is everything on. Per account, so it holds in every
+    # browser they turned notifications on in.
+    push_muted: str = Field(default="", sa_column_kwargs={"server_default": ""})
     created_at: datetime = Field(default_factory=utcnow)
 
     sessions: list["AuthSession"] = Relationship(

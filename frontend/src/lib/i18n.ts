@@ -1,5 +1,6 @@
 import { getLocale, useLocale, type Locale } from './locale'
 import type { SupportTopic } from './support'
+import type { PushCategory } from './types'
 
 /**
  * Every word the screen shows, in English and in Serbian (Latin script).
@@ -143,11 +144,24 @@ const en = {
 
   notif: {
     title: 'Notifications',
-    body: 'Seats, changes to your rides, messages, and a reminder 30 minutes before you leave.',
     enable: 'Turn on',
     disable: 'Turn off',
+    push: 'Push notifications',
     on: 'On, for this browser.',
     off: 'Off.',
+    kinds: 'What to tell you',
+    kindsOff: 'Takes effect once notifications are on.',
+    category: {
+      seats: ['Seats', 'Someone gets in or out, or a seat frees up for you'],
+      changes: ['Ride changes', 'A ride you are in moves or is removed, or you are put down to drive'],
+      reminders: ['Departure reminder', '30 minutes before you leave'],
+      messages: ['Messages', 'Someone writes in the thread of your ride'],
+      requests: ['Ride requests', 'A driver offers you a ride you asked for'],
+      approvals: ['Shared-car approvals', 'An ask past the share, and the answer to yours'],
+    } as Record<PushCategory, [string, string]>,
+    device: 'On this device',
+    updates: 'New version notice',
+    updatesHint: 'The card and the bolt when an update is ready. Off, the app updates itself the next time you open it.',
     unsupported: 'This browser cannot show push notifications. On an iPhone, install Karpul to the home screen first, then try again.',
     unavailable: 'Push is not set up on this server.',
     denied: 'The browser has blocked notifications for this site. Allow them in the site settings, then try again.',
@@ -296,6 +310,10 @@ const en = {
     awaiting: 'Awaiting approval',
     approved: 'Approved',
     approvalAsk: (driver: string) => `${driver} asks for a shared car past their one a week. Your call.`,
+    /** The driver is a name with no account behind it (the shared car's paper log). */
+    noAccount: 'No account',
+    claimAsk: (driver: string) => `Is this you? ${driver} has no account yet. Claiming it makes every ride under this name yours.`,
+    claim: 'This is me',
     approve: 'Approve',
     decline: 'Decline',
     pickup: 'Pickup',
@@ -686,6 +704,7 @@ const en = {
     rideAddedFor: (name: string) => `Ride added for ${name}.`,
     rideAwaiting: 'Added. The admins are asked to approve it.',
     rideApproved: (driver: string) => `Approved. ${driver} has the car.`,
+    claimed: (n: number) => (n === 1 ? 'The ride is yours now.' : `${n} rides are yours now.`),
     rideDeclined: 'Declined. The ride is removed.',
     ridesAdded: (n: number) => `${n} rides added, one a week.`,
     ridesRemoved: 'Rides removed.',
@@ -839,6 +858,8 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^You already have a shared car that day\. An admin can approve another$/, () => 'Već imaš zajednički auto tog dana. Administrator može da odobri još jedan'],
   [/^That keeps a shared car with you for more than 24 hours in a row\. An admin can approve it$/, () => 'Tako bi zajednički auto bio kod tebe duže od 24 sata zaredom. Administrator može da to odobri'],
   [/^This ride is not waiting for approval$/, () => 'Ova vožnja ne čeka odobrenje'],
+  [/^This ride's driver already has an account$/, () => 'Vozač ove vožnje već ima nalog'],
+  [/^(.+) is not a name like yours$/, (m) => `Ime ${m[1]} ne liči na tvoje`],
   [/^An admin has to approve this ride first$/, () => 'Administrator prvo mora da odobri ovu vožnju'],
   [/^(.+) is already at the wheel$/, (m) => `${m[1]} je već za volanom`],
   [/^Kilometres are only kept for the shared cars$/, () => 'Kilometraža se vodi samo za zajedničke automobile'],
@@ -1108,11 +1129,24 @@ const sr: Messages = {
 
   notif: {
     title: 'Obaveštenja',
-    body: 'Mesta, izmene tvojih vožnji, poruke i podsetnik 30 minuta pre polaska.',
     enable: 'Uključi',
     disable: 'Isključi',
+    push: 'Push obaveštenja',
     on: 'Uključeno, za ovaj pregledač.',
     off: 'Isključeno.',
+    kinds: 'O čemu da te obaveštavamo',
+    kindsOff: 'Važi kada uključiš obaveštenja.',
+    category: {
+      seats: ['Mesta', 'Neko uđe ili izađe, ili se oslobodi mesto za tebe'],
+      changes: ['Izmene vožnji', 'Vožnja u kojoj si se pomeri ili ukloni, ili te upišu kao vozača'],
+      reminders: ['Podsetnik za polazak', '30 minuta pre polaska'],
+      messages: ['Poruke', 'Neko napiše nešto u razgovoru tvoje vožnje'],
+      requests: ['Zahtevi za prevoz', 'Vozač ti ponudi prevoz koji si tražio/la'],
+      approvals: ['Odobrenja zajedničkog auta', 'Zahtev preko dozvoljenog i odgovor na tvoj'],
+    },
+    device: 'Na ovom uređaju',
+    updates: 'Obaveštenje o novoj verziji',
+    updatesHint: 'Kartica i munja kada je spremno ažuriranje. Kad je isključeno, aplikacija se ažurira sama sledeći put kada je otvoriš.',
     unsupported: 'Ovaj pregledač ne može da prikazuje obaveštenja. Na iPhone-u prvo dodaj Karpul na početni ekran, pa pokušaj ponovo.',
     unavailable: 'Obaveštenja nisu podešena na ovom serveru.',
     denied: 'Pregledač je blokirao obaveštenja za ovaj sajt. Dozvoli ih u podešavanjima sajta, pa pokušaj ponovo.',
@@ -1259,6 +1293,9 @@ const sr: Messages = {
     awaiting: 'Čeka odobrenje',
     approved: 'Odobreno',
     approvalAsk: (driver) => `${driver} traži zajednički auto preko svog jednog nedeljno. Ti odlučuješ.`,
+    noAccount: 'Bez naloga',
+    claimAsk: (driver) => `Da li si ovo ti? ${driver} još nema nalog. Ako potvrdiš, sve vožnje pod ovim imenom postaju tvoje.`,
+    claim: 'Ovo sam ja',
     approve: 'Odobri',
     decline: 'Odbij',
     pickup: 'Ulazak',
@@ -1638,6 +1675,7 @@ const sr: Messages = {
     rideAddedFor: (name) => `Vožnja je dodata, vozi ${name}.`,
     rideAwaiting: 'Dodato. Administratori su zamoljeni da odobre.',
     rideApproved: (driver) => `Odobreno. ${driver} ima auto.`,
+    claimed: (n) => (n === 1 ? 'Vožnja je sada tvoja.' : `Vožnje su sada tvoje (${n}).`),
     rideDeclined: 'Odbijeno. Vožnja je uklonjena.',
     ridesAdded: (n) => `Dodato: ${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično.`,
     ridesRemoved: 'Vožnje su uklonjene.',

@@ -62,7 +62,8 @@ test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
   // And writes in the thread.
   await marko.getByRole('button', { name: 'Write to the car' }).first().click()
   await marko.getByLabel('Write a message').first().fill('See you at the fountain')
-  await marko.getByRole('button', { name: 'Send' }).first().click()
+  // Exact: the docked drawer's "Report a bug or send feedback" also contains "send".
+  await marko.getByRole('button', { name: 'Send', exact: true }).first().click()
   await expect(marko.getByText('See you at the fountain').first()).toBeVisible()
 
   // Ana's board shows him in the car and the message count, live.

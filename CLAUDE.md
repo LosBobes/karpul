@@ -73,7 +73,12 @@ accounts, falls back to the normalised name (`norm_name`, mirrored by `sameName`
 start (and gives every account a calendar token); registering claims the id-less rows that go
 by the new name (`claim_rows`), which is also how a seat a driver gave a colleague by name
 becomes theirs. A driver can still add someone without an account by name (`passenger_id`
-null). `PATCH /api/auth/me` renaming an account rewrites the snapshots (`rename_person`, by
+null). A ride whose driver is a name with no account (`driver_id` null, mostly the
+backfilled paper log) wears a *No account* tag on the driver card, and someone signed in under a
+*similar* name (`similar_names` in `services.py`: diacritics, case and word order aside, edit
+similarity ≥ `SIMILAR_NAME`; mirrored by `similarName` in `lib/dates.ts`, `mayClaim` in `lib/me.ts`)
+gets *This is me*: `POST /api/rides/{id}/claim` takes every account-less ride under that name
+(`claim_driver_rides`), renaming the snapshots to the account's name. `PATCH /api/auth/me` renaming an account rewrites the snapshots (`rename_person`, by
 id) and republishes the changed rides.
 
 **The doors are throttled** (`app/ratelimit.py`, in-process, which is fine for one worker):
@@ -273,7 +278,12 @@ note) or is removed, the first in line when a seat frees up, the car when someon
 thread, a requester when a driver answers, and everyone in the car 30 minutes before departure (`app/reminders.py`,
 a minute-by-minute task started in the lifespan; `Ride.reminder_sent` makes it once). The
 browser side is `lib/push.ts` plus `public/push-sw.js`, which Workbox pulls into `sw.js`
-through `importScripts`; every sign-in re-files the browser's subscription under the account (`resubscribePush` in `App.tsx`).
+through `importScripts`; every sign-in re-files the browser's subscription under the account (`resubscribePush` in `App.tsx`). Each `kind` belongs to one of `CATEGORIES` in `app/push.py`
+(seats, changes, reminders, messages, requests, approvals); a person switches categories off per account
+(`User.push_muted`, `GET/PUT /api/push/preferences`) and `notify` skips them. `NotificationsSheet` is the
+notification centre: the push switch on its own card, a row per category, and *New version notice* for this
+device (`useUpdateNotices` / `setUpdateNotices` in `lib/pwa.ts`, `karpul.updateNotices`): off, the update
+toast and its bolt never show and a waiting build is taken only in the first seconds after the app opens.
 
 **Calendar, sharing, figures.** `app/calendar.py` writes floating local times (no zone) for one
 ride (`/api/rides/{id}/calendar.ics`, signed in; the app fetches it and hands it over as a

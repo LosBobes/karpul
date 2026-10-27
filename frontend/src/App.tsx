@@ -36,7 +36,7 @@ import { slideClass, useSlideDir } from './lib/motion'
 import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
 import { drives, inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
-import { useUpdateReady } from './lib/pwa'
+import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
 import { useBoard } from './lib/useBoard'
 import { useWide } from './lib/useWide'
@@ -228,7 +228,9 @@ function Board({ session }: { session: Session }) {
   const openRequests = useMemo(() => requests.filter((r) => r.ride_id === null), [requests])
 
   // A newer build is installed and waiting (lib/pwa.ts); offered as a toast when no other shows.
-  const updateReady = useUpdateReady()
+  // ... unless this browser switched the notice off (the Notifications sheet).
+  const updateNotices = useUpdateNotices()
+  const updateReady = useUpdateReady() && updateNotices
 
   useEffect(() => {
     if (!toast) return
@@ -489,6 +491,15 @@ function Board({ session }: { session: Session }) {
       }
     })
 
+  // --- a ride under a name with no account: "this is me" ---
+
+  const onClaim = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      const claimed = await api.claimRide(ride.id)
+      for (const r of claimed) upsertRide(r)
+      setToast({ kind: 'ok', text: t.toasts.claimed(claimed.length) })
+    })
+
   const onDecline = (ride: Ride) =>
     setConfirm({
       title: t.confirm.declineTitle,
@@ -673,6 +684,7 @@ function Board({ session }: { session: Session }) {
       onTogglePassengersManage={onTogglePassengersManage}
       onApprove={onApprove}
       onDecline={onDecline}
+      onClaim={(r) => void onClaim(r)}
       onGuide={() => setGuideOpen(true)}
       onWait={onWait}
       onLeaveLine={onLeaveLine}

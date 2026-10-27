@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { drives, inRide, isMe, myBooking, placeInLine, seatedIn, type Me } from './me'
+import { drives, inRide, isMe, mayClaim, myBooking, placeInLine, seatedIn, type Me } from './me'
+import { similarName } from './dates'
 import type { Ride } from './types'
 
 const ana: Me = { id: 1, name: 'Ana Petrović' }
@@ -72,5 +73,32 @@ describe('who is who', () => {
     })
     expect(placeInLine(queued, ana)).toBe(2)
     expect(placeInLine(ride(), ana)).toBe(0)
+  })
+})
+
+describe('mayClaim', () => {
+  const blazic: Me = { id: 7, name: 'Milan Blažić' }
+  const logged = (driver: string, extra: Partial<Ride> = {}) => ride({ driver_id: null, driver_name: driver, ...extra })
+
+  it('offers a ride under your name typed another way', () => {
+    expect(mayClaim(logged('Milan Blazic'), blazic)).toBe(true)
+    expect(mayClaim(logged('blazic  milan'), blazic)).toBe(true)
+  })
+
+  it('not under someone else, an account, or your own seat', () => {
+    expect(mayClaim(logged('Milan Katanic'), blazic)).toBe(false)
+    expect(mayClaim(ride({ driver_id: 3, driver_name: 'Milan Blazic' }), blazic)).toBe(false)
+    const seated = logged('Milan Blazic', {
+      bookings: [{ id: 1, passenger_id: 7, passenger_name: 'Milan Blažić', pickup: '', created_at: '' }],
+    })
+    expect(mayClaim(seated, blazic)).toBe(false)
+  })
+
+  it('mirrors similar_names on the server', () => {
+    expect(similarName('Pavle Cicmil', 'Pavle Čičmil')).toBe(true)
+    expect(similarName('Nikola Drobac', 'Nikola Đrobac')).toBe(true)
+    expect(similarName('Sandra Kozomara', 'Sandra Kozomarra')).toBe(true)
+    expect(similarName('Milan Kolacek', 'Milan Katanic')).toBe(false)
+    expect(similarName('', '')).toBe(false)
   })
 })

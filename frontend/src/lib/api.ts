@@ -7,6 +7,7 @@ import type {
   CorporateCarInput,
   PersonStats,
   ProfilePatch,
+  PushCategory,
   PushConfig,
   Ride,
   RideInput,
@@ -175,6 +176,8 @@ export const api = {
   updateRide: (id: number, patch: Partial<RideInput>) => request<Ride>(`/api/rides/${id}`, json('PATCH', patch)),
   /** Admin: a shared-car ride past the driver's share, let through or refused (refused: the ride goes). */
   approveRide: (id: number) => request<Ride>(`/api/rides/${id}/approve`, { method: 'POST' }),
+  /** "This is me": every ride under that account-less driver name, the one asked about first. */
+  claimRide: (id: number) => request<Ride[]>(`/api/rides/${id}/claim`, { method: 'POST' }),
   declineRide: (id: number) => request<void>(`/api/rides/${id}/decline`, { method: 'POST' }),
 
   /** `following` also removes the later rides of the same weekly series. */
@@ -237,6 +240,9 @@ export const api = {
   // --- push notifications (see backend/app/push.py) ---
 
   pushConfig: () => request<PushConfig>('/api/push/config'),
+  /** The kinds of push this account switched off (backend: app/push.py CATEGORIES). */
+  pushPreferences: () => request<{ muted: PushCategory[] }>('/api/push/preferences'),
+  setPushPreferences: (muted: PushCategory[]) => request<{ muted: PushCategory[] }>('/api/push/preferences', json('PUT', { muted })),
 
   subscribePush: (subscription: PushSubscriptionJSON, locale: string) =>
     request<{ ok: boolean }>('/api/push/subscriptions', json('POST', { ...subscription, locale })),
