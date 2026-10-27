@@ -45,11 +45,11 @@ interface Item {
   count?: number
 }
 
-type GroupKey = 'me' | 'help' | 'admin' | 'settings'
+type GroupKey = 'admin' | 'help' | 'settings'
 
 /** Which groups are folded, remembered per browser; settings start folded. */
 const GROUPS_KEY = 'karpul.drawerGroups'
-const DEFAULT_OPEN: Record<GroupKey, boolean> = { me: true, help: true, admin: true, settings: false }
+const DEFAULT_OPEN: Record<GroupKey, boolean> = { admin: true, help: true, settings: false }
 
 function loadOpen(): Record<GroupKey, boolean> {
   try {
@@ -62,8 +62,9 @@ function loadOpen(): Record<GroupKey, boolean> {
 }
 
 /**
- * What the menu holds, drawer or dock alike: who you are, then the items in
- * collapsible groups, the settings at the foot. `pick` wraps each item's
+ * What the menu holds, drawer or dock alike: who you are, the two things
+ * opened most (your rides, the shared car guide) with no heading over them,
+ * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
 function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onInstall, pick }: Content & { pick: (fn: () => void) => () => void }) {
@@ -80,24 +81,21 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       return next
     })
 
-  const mine: Item[] = [
+  // Every day: what you would open most, straight under your name.
+  const daily: Item[] = [
     {
       label: t.myRides.title,
       icon: 'route',
       onSelect: pick(onMyRides),
     },
     {
-      label: t.notif.title,
-      icon: 'bell',
-      onSelect: pick(onNotifications),
-    },
-  ]
-  const help: Item[] = [
-    {
       label: t.sidebar.guide,
       icon: 'plug',
       onSelect: pick(onGuide),
     },
+  ]
+  // When something goes wrong, or there is something to say.
+  const help: Item[] = [
     {
       label: t.support.title,
       icon: 'lifebuoy',
@@ -107,6 +105,14 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       label: t.feedback.title,
       icon: 'bug',
       onSelect: pick(onFeedback),
+    },
+  ]
+  // How the app behaves on this device and for this account.
+  const settings: Item[] = [
+    {
+      label: t.notif.title,
+      icon: 'bell',
+      onSelect: pick(onNotifications),
     },
     ...(onInstall ? [{ label: t.install.menu, icon: 'install' as const, onSelect: pick(onInstall) }] : []),
   ]
@@ -186,18 +192,21 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
           </button>
 
           <nav className="drawer-nav" aria-label={t.common.menu}>
-            {group('me', t.sidebar.mine, mine.map(renderItem))}
-            {group('help', t.sidebar.help, help.map(renderItem))}
+            <div className="drawer-daily">{daily.map(renderItem)}</div>
             {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
+            {group('help', t.sidebar.help, help.map(renderItem))}
           </nav>
 
           {group(
             'settings',
             t.sidebar.settings,
-            <div className="drawer-settings">
-              <ThemeSwitch />
-              <LanguageSwitch />
-            </div>,
+            <>
+              {settings.map(renderItem)}
+              <div className="drawer-settings">
+                <ThemeSwitch />
+                <LanguageSwitch />
+              </div>
+            </>,
             0,
             'drawer-foot',
           )}
@@ -226,11 +235,12 @@ export function Dock(props: Content) {
 
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the things that are not about one particular ride, in
- * collapsible groups: yours (rides, notifications), help (the shared-car
- * guide, who to call, a bug or an idea), the
- * admin's (approvals, the pool, the people, every ride, the log) and the
- * settings (appearance, language). Your account is the identity block on top.
+ * top bar. It holds the things that are not about one particular ride: your
+ * rides and the shared car guide on their own, then collapsible groups for
+ * the admins' work (approvals, the pool, the people, every ride, the log),
+ * help (who to call, a bug or an idea) and the settings (notifications,
+ * installing the app, appearance, language). Your account is the identity
+ * block on top.
  * Adding a ride is not here; that is the plus. Picking an item closes
  * the drawer first, so the sheet it opens is the only thing left on screen.
  */

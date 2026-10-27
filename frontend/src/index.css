@@ -4691,6 +4691,11 @@ body.dragging {
   gap: 0.25rem;
   padding: 0.35rem 0.6rem 0.5rem;
 }
+/* The two everyday items, under your name with no heading over them. */
+.drawer-daily {
+  display: flex;
+  flex-direction: column;
+}
 .drawer-foot {
   margin-top: auto;
   padding: 0.35rem 0.6rem 0.6rem;

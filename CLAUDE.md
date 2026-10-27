@@ -431,9 +431,12 @@ says something the control cannot (a consequence, a privacy risk, a format).
 
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
-about one particular ride, in collapsible groups (*You*, *Admin* for admins, *Settings* with the
-theme and language, folded by default; remembered as `karpul.drawerGroups`; a folded *Admin* carries
-the approvals count on its heading). Each group heading is a Fluent accordion header: a full-width
+about one particular ride: under your account, the two things opened most with no heading over them
+(*Your rides*, the *Shared car guide*), then collapsible groups, *Manage* for admins (approvals, the
+pool, the people, every ride, the log), *Help* (support, feedback) and *Settings* at the foot,
+folded by default (*Notifications*, *Install the app* while the browser can, the theme and the
+language); remembered as `karpul.drawerGroups`; a folded *Manage* carries the approvals count on
+its heading. Each group heading is a Fluent accordion header: a full-width
 row in the text's ink, a leading chevron in its own small well that turns down when the group opens,
 a tint under a mouse and a darker one when pressed, and the open group's rows hanging off a hairline
 under the chevron. The items are one label each, no hint line. Your account is the
@@ -556,7 +559,7 @@ through the Share menu (`ios()` also catches an iPad that calls itself a Mac). S
 running standalone, the board opens with an *Install Karpul* card (above the board on a phone,
 floating in the bottom corner on a wide screen): *Install* runs the browser's dialog, *Not now* /
 *Got it* puts it away for good in this browser (`karpul.installHint`), and *Install the app* in the
-drawer's *Help* group stays while the browser can still install, bringing the card back on iOS.
+drawer's *Settings* group stays while the browser can still install, bringing the card back on iOS.
 Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc` and `/openapi.json`
 are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
 (`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
