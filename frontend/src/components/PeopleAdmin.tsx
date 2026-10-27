@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../lib/api'
+import { CLOCK } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import { useMe } from '../lib/me'
@@ -17,7 +18,7 @@ function fold(s: string): string {
 /** "Sat 26 Oct, 14:05": when a reset link stops working. */
 function until(iso: string): string {
   const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : `${iso}Z`)
-  return d.toLocaleString(intlTag(), { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+  return d.toLocaleString(intlTag(), { weekday: 'short', day: 'numeric', month: 'short', ...CLOCK })
 }
 
 interface Props {

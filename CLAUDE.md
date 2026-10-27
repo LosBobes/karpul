@@ -38,7 +38,7 @@ CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
-Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`. The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits.
+Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`, and the one-time `make backfill` (the shared Mazda's 2026 paper log as rides, `app/backfill.py`; a dry run unless `APPLY=1`, safe to repeat). The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits.
 
 ## Architecture
 
@@ -364,8 +364,10 @@ and would need case endings on names, so the sentences are built to keep the nam
 Components read text with `useT()`; non-component code (`lib/dates.ts`, `lib/carModels.ts`) with
 `messages()`. The choice is an external store in `lib/locale.ts` (`karpul.locale`, first visit
 follows the browser language), which also hands `Intl` its tag (`intlTag()`, `sr-Latn-RS`), so
-weekday and month names, the week range and 12/24-hour clocks follow the app language rather
-than the browser. Backend error texts stay English on the wire and are rendered through
+weekday and month names and the week range follow the app language rather
+than the browser. Clock times are 24-hour in both languages, always: `fmtTime` / `fmtHour` in
+`lib/dates.ts` write `HH:MM` / `HH` by hand, and a `Date` goes through `toLocale*String` with `CLOCK`
+(`hourCycle: 'h23'`), never a bare `hour: 'numeric'`. Backend error texts stay English on the wire and are rendered through
 `apiError` in the same file, which matches the server's wordings (keep it in step when a
 `detail` string changes). The switch is `LanguageSwitch`, at the foot of the drawer and on the
 sign-in screen, the two places a newcomer looks first. `main.tsx` also bundles Inter's Latin Extended subset for č ć š ž đ.
@@ -400,7 +402,7 @@ return, the way `CarDetail` draws a route; no return runs off the right edge, as
 car to end of day. Now is an ink rule behind the roads (not red, which is for removal); each pool car
 says when it is next free (`rowStatus`). Switching to it jumps to today; `range` is that one day. A tapped bar
 opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
-(`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour; a company car's hour ticks are elements, `.plan-tick`, and the ones on a free stretch are green-tinted and stand up in a wave from the pointer, `--d` delaying each by its distance) opens `RideForm` with `slot`: that car, departure at the tapped
+(`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour, popping in on a spring and shrinking away where it was when the pointer leaves, per road in `pins`, and the clock's ring the same through `useLinger` in `lib/motion.ts`; a company car's hour ticks are elements, `.plan-tick`, and the ones on a free stretch are green-tinted and stand up in a wave from the pointer, `--d` delaying each by its distance) opens `RideForm` with `slot`: that car, departure at the tapped
 half hour, back by the next booking or 17:00. While the board scrolls (a phone, a narrow pane), an
 overview strip sits on top of it (`components/PlanOverview.tsx`): the whole day across the card's width,
 one thin lane per car with its rides in the drivers' tones, and a green frame over the hours on screen;
@@ -445,8 +447,8 @@ join an in-memory stack, back pops the top and re-pushes while any remain, and a
 other route pops the entry when it was the last, so back never lands on a dead entry. **No native pickers or dropdowns**: `Select`, `DatePicker` and `TimePicker` are
 custom controls (and `Menu` is the ⋮ menu) built on `Popover`, which portals to `<body>` and
 positions itself against its anchor with `position: fixed`, so it is never clipped by a sheet's
-scrolling body and flips above the anchor when the viewport runs out. `TimePicker` shows 12- or
-24-hour columns depending on the browser locale but always emits `HH:MM`. `App.tsx` resolves which tile is open (`selection`):
+scrolling body and flips above the anchor when the viewport runs out. `TimePicker` shows hour (00–23)
+and minute columns and emits `HH:MM`. `App.tsx` resolves which tile is open (`selection`):
 an explicit pick that still exists, else your own ride, else the first ride, else nothing (the empty card).
 **Wording:** the thing you add, edit, duplicate or remove is a *ride*; *car* is reserved for the
 vehicle (the pool, "Shared car" / "Own car", "get in this car", "in this car"). The pool cars are

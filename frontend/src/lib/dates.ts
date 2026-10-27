@@ -35,17 +35,20 @@ export function sameName(a: string | null | undefined, b: string | null | undefi
   return norm(a) !== '' && norm(a) === norm(b)
 }
 
-/** "HH:MM[:SS]" from the API, shown the way the app's locale writes clock times. */
+/** "HH:MM[:SS]" from the API as "08:05": the app writes a 24-hour clock in every language. */
 export function fmtTime(t: string | null): string {
   if (!t) return ''
   const [h, m] = t.split(':').map(Number)
-  return new Date(2000, 0, 1, h, m).toLocaleTimeString(intlTag(), { hour: 'numeric', minute: '2-digit' })
+  return `${pad(h)}:${pad(m)}`
 }
 
-/** An hour on a timeline axis, the way the app's locale writes one ("8 AM", "08"). */
+/** An hour on a timeline axis: "08". */
 export function fmtHour(h: number): string {
-  return new Date(2000, 0, 1, h).toLocaleTimeString(intlTag(), { hour: 'numeric' })
+  return pad(h)
 }
+
+/** A moment's clock time, 24-hour like `fmtTime`; `Intl` options for a date can ride along. */
+export const CLOCK: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }
 
 export function fmtLongDate(iso: string): string {
   return parseISODate(iso).toLocaleDateString(intlTag(), {

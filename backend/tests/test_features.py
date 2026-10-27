@@ -253,8 +253,9 @@ def test_usage_report_counts_per_car(client, admin_auth):
     client.post(f"/api/rides/{r1['id']}/bookings", json={"passenger_name": "Bojan"})
     client.post("/api/rides", json=own_ride(ride_date=yesterday, car_type="corporate", corporate_car_id=a["id"], car_name="", driver_name="Mila", departure_time="18:00", return_time="20:00", distance_km=12))
     client.post("/api/rides", json=own_ride(ride_date=long_ago, car_type="corporate", corporate_car_id=b["id"], car_name=""))
-    # Tomorrow's is "upcoming", not usage.
-    client.post("/api/rides", json=own_ride(car_type="corporate", corporate_car_id=b["id"], car_name=""))
+    # Tomorrow's is "upcoming", not usage. Someone else drives it: on most days
+    # tomorrow is in yesterday's week, past the first driver's shared-car share.
+    client.post("/api/rides", json=own_ride(car_type="corporate", corporate_car_id=b["id"], car_name="", driver_name="Rade"))
     # An own car never counts.
     client.post("/api/rides", json=own_ride(ride_date=yesterday, driver_name="Vuk"))
 

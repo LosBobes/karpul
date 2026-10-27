@@ -13,7 +13,7 @@ export const R_OUT = 412
 /** The inner edge of the innermost ring; inside it is the readout. */
 export const R_IN = 196
 /** The thickest a ring gets when there are only a few cars. */
-export const MAX_BAND = 64
+export const MAX_BAND = 44
 /** The gap between the company cars' rings and the own cars' rings, in bands. */
 export const GROUP_GAP = 0.35
 

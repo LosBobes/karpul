@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api } from '../lib/api'
+import { CLOCK } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import { useMe } from '../lib/me'
@@ -14,7 +15,7 @@ const MAX_MESSAGE = 500
 function when(iso: string): string {
   const d = new Date(iso.endsWith('Z') || iso.includes('+') ? iso : `${iso}Z`)
   if (Number.isNaN(d.getTime())) return ''
-  const time = d.toLocaleTimeString(intlTag(), { hour: 'numeric', minute: '2-digit' })
+  const time = d.toLocaleTimeString(intlTag(), CLOCK)
   const today = new Date()
   if (d.toDateString() === today.toDateString()) return time
   return `${d.toLocaleDateString(intlTag(), { weekday: 'short' })} ${time}`

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
-import { fmtDayDate, fmtDayLabel, fmtShortDate, fmtTime, toISODate } from '../lib/dates'
+import { CLOCK, fmtDayDate, fmtDayLabel, fmtShortDate, fmtTime, toISODate } from '../lib/dates'
 import { useT, type Messages } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import type { AdminAction } from '../lib/types'
@@ -90,7 +90,7 @@ export function AdminLog({ onOpenRide, onClose }: Props) {
               const body = (
                 <>
                   <span className="log-when">
-                    {new Date(line.at).toLocaleTimeString(intlTag(), { hour: 'numeric', minute: '2-digit' })}
+                    {new Date(line.at).toLocaleTimeString(intlTag(), CLOCK)}
                   </span>
                   <span className="log-what">
                     <span className="log-line">{t.adminLog.line(line.action, line.admin_name, line.subject)}</span>

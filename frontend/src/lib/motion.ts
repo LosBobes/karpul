@@ -28,6 +28,18 @@ export function useSlideDir(value: string, rank: (v: string) => number): SlideDi
   return last.dir
 }
 
+/**
+ * Keeps the last value around after it goes, so a marker can pop out where it
+ * was instead of vanishing: `[shown, on]` is the value to draw and whether it
+ * is still current. `value` must keep its identity between renders (state,
+ * not an object built in render), or this would set state on every render.
+ */
+export function useLinger<T>(value: T | null): [T | null, boolean] {
+  const [last, setLast] = useState<T | null>(value)
+  if (value !== null && value !== last) setLast(value)
+  return [value ?? last, value !== null]
+}
+
 /** The class that plays the slide on a keyed element; nothing when there is no direction. */
 export function slideClass(dir: SlideDir): string | undefined {
   return dir ? `swap swap-${dir}` : undefined
