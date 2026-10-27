@@ -83,6 +83,10 @@ const FLUENT = {
     body: <path d="M10 2.5 16 4.6v4.65c0 3.75-2.55 6.6-6 8.25-3.45-1.65-6-4.5-6-8.25V4.6Z" />,
     detail: <path d="M10 6.75V10l2.1 1.3" />,
   },
+  install: {
+    body: <></>,
+    extra: <path d="M10 3.25v9M6.25 8.75 10 12.5l3.75-3.75M4.25 16.25h11.5" />,
+  },
   list: {
     body: <rect x="3" y="3.5" width="14" height="13" rx="2" />,
     detail: <path d="M6.5 7.5h7M6.5 10h7M6.5 12.5h4" />,

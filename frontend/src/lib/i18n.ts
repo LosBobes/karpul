@@ -120,6 +120,18 @@ const en = {
     help: 'Help',
   },
 
+  install: {
+    title: 'Install Karpul',
+    body: 'It opens from your home screen like any other app, full screen and offline.',
+    go: 'Install',
+    later: 'Not now',
+    gotIt: 'Got it',
+    iosShare: 'Tap Share in the browser bar',
+    iosAdd: 'Choose Add to Home Screen',
+    menu: 'Install the app',
+    done: 'Karpul is on your home screen',
+  },
+
   myRides: {
     title: 'Your rides',
     thisMonth: 'This month',
@@ -1103,6 +1115,18 @@ const sr: Messages = {
     admin: 'Administracija',
     settings: 'Podešavanja',
     help: 'Pomoć',
+  },
+
+  install: {
+    title: 'Instaliraj Karpul',
+    body: 'Otvara se sa početnog ekrana kao svaka druga aplikacija, preko celog ekrana i bez interneta.',
+    go: 'Instaliraj',
+    later: 'Ne sada',
+    gotIt: 'U redu',
+    iosShare: 'Dodirnite Deli u traci pregledača',
+    iosAdd: 'Izaberite Dodaj na početni ekran',
+    menu: 'Instaliraj aplikaciju',
+    done: 'Karpul je na početnom ekranu',
   },
 
   myRides: {

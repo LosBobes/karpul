@@ -28,6 +28,8 @@ interface Content {
   onFeedback: () => void
   onMyRides: () => void
   onNotifications: () => void
+  /** Present while this browser can install the app (lib/install.ts). */
+  onInstall?: () => void
 }
 
 interface Props extends Content {
@@ -64,7 +66,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * collapsible groups, the settings at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onInstall, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -106,6 +108,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       icon: 'bug',
       onSelect: pick(onFeedback),
     },
+    ...(onInstall ? [{ label: t.install.menu, icon: 'install' as const, onSelect: pick(onInstall) }] : []),
   ]
   const admin: Item[] = isAdmin
     ? [

@@ -548,6 +548,15 @@ initials keep their contrast.
 (`manifest.webmanifest`, standalone display, the icons above, off-white theme colour to match the
 top bar) and generates a Workbox service worker, `sw.js`, that precaches the built shell: `index.html`,
 the hashed bundles, the fonts and the icons, so an installed app opens offline and starts instantly.
+**The install offer** (`lib/install.ts`, `components/InstallCard.tsx`): Chrome and Edge fire
+`beforeinstallprompt` once the app qualifies, and `listenForInstall` (called in `main.tsx` before
+React, because the event can fire before the first render) keeps it and suppresses the browser's
+own mini-infobar; Safari on an iPhone or iPad has no such event, so there the offer is the two taps
+through the Share menu (`ios()` also catches an iPad that calls itself a Mac). Signed in and not
+running standalone, the board opens with an *Install Karpul* card (above the board on a phone,
+floating in the bottom corner on a wide screen): *Install* runs the browser's dialog, *Not now* /
+*Got it* puts it away for good in this browser (`karpul.installHint`), and *Install the app* in the
+drawer's *Help* group stays while the browser can still install, bringing the card back on iOS.
 Nothing under `/api` is ever cached, and navigations to `/api`, `/docs`, `/redoc` and `/openapi.json`
 are left to FastAPI (`navigateFallbackDenylist`). `lib/pwa.ts` registers the worker from `main.tsx`
 (`registerType: 'prompt'`): a new build waits instead of reloading under the user's fingers, `App.tsx`
