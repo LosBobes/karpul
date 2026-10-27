@@ -3,9 +3,10 @@
 /* ---------------------------------------------------------------------------
    Karpul — a light, card-based board.
 
-   One green accent for "selected / go", white cards on an off-white ground,
-   hairline borders and a soft shadow that deepens under the pointer, 14px
-   corners, Inter throughout. A phone gets one column; from 1024px wide the
+   Fluent 2 in Karpul green: one green accent for "selected / go" (step 80 of
+   the brand ramp below), white cards on a neutral ground, Fluent's two-part
+   elevation shadows, 4px controls, 8px cards and 12px sheets, Segoe UI
+   Variable where the system has it and Inter everywhere else. A phone gets one column; from 1024px wide the
    board opens into two panes (the list beside the open ride, see "Wide
    screens" at the end).
    Semantic class names (.card, .date, .car-tile, .pax-row, .panel, …) are
@@ -13,13 +14,13 @@
 --------------------------------------------------------------------------- */
 
 @theme {
-  --color-bg: #f4f5f7;
+  --color-bg: #f5f5f5;
   --color-surface: #ffffff;
-  --color-surface-2: #f2f4f6;
-  --color-text: #111418;
-  --color-muted: #687280;
-  --color-border: #e7e9ed;
-  --color-border-strong: #d2d7de;
+  --color-surface-2: #f0f0f0;
+  --color-text: #242424;
+  --color-muted: #616161;
+  --color-border: #e0e0e0;
+  --color-border-strong: #d1d1d1;
   --color-green: #0f7b4f;
   --color-green-dark: #0b613e;
   --color-green-soft: #e8f4ee;
@@ -29,7 +30,9 @@
   --color-blue: #2563eb;
   --color-blue-soft: #e8efff;
 
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Segoe UI Variable on Windows (Fluent's own face); the bundled Inter on
+     every other system, so Serbian letters never fall back to something odd. */
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, Roboto, sans-serif;
 }
 
 :root {
@@ -48,19 +51,25 @@
   --red-soft: var(--color-red-soft);
   --blue: var(--color-blue);
   --blue-soft: var(--color-blue-soft);
-  --radius: 14px;
-  --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 1px rgba(16, 24, 40, 0.02);
+  /* Fluent shapes: cards 8px, controls 4px, sheets and dialogs 12px. */
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-lg: 12px;
+  /* Fluent elevation: an ambient ring plus a key shadow (2, 8 and 28). */
+  --shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
   /* What a card the pointer is over rises to. */
-  --shadow-hover: 0 10px 24px -10px rgba(16, 24, 40, 0.18), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
-  --shadow-pop: 0 12px 32px -6px rgba(16, 24, 40, 0.18), 0 2px 6px rgba(16, 24, 40, 0.06);
-  /* Motion: things slide and pop, they do not fade (see "Motion" below). */
-  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-  /* Hover and press: quick, and settling rather than snapping. */
-  --ease-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --hover: 0.18s var(--ease-smooth);
+  --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
+  --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.14);
+  /* Motion: things slide and pop, they do not fade (see "Motion" below).
+     Fluent's curves: decelerate in, accelerate out, no overshoot. */
+  --ease-out: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --ease-in: cubic-bezier(0.7, 0, 1, 0.5);
+  --ease-spring: cubic-bezier(0.1, 0.9, 0.2, 1);
+  /* The one overshoot left: the bolt on the update screen. */
+  --ease-bounce: cubic-bezier(0.34, 1.4, 0.64, 1);
+  /* Hover and press: Fluent's easyEase, fast. */
+  --ease-smooth: cubic-bezier(0.33, 0, 0.67, 1);
+  --hover: 0.1s var(--ease-smooth);
 
   color-scheme: light;
   font-family: var(--font-sans);
@@ -335,7 +344,7 @@ input[type='checkbox'] {
   z-index: 1;
   min-height: 38px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--muted);
   font-weight: 500;
@@ -351,7 +360,7 @@ input[type='checkbox'] {
   bottom: 3px;
   left: 3px;
   width: calc((100% - 6px) / var(--seg-n, 2));
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: var(--shadow);
   transform: translateX(calc(var(--seg-i, 0) * 100%));
@@ -501,7 +510,7 @@ input[type='checkbox'] {
   width: 40px;
   height: 40px;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   flex: none;
@@ -543,7 +552,8 @@ span.plus-circle svg {
   position: fixed;
   z-index: 8;
   right: max(1rem, calc(50% - 300px + 1rem));
-  bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  /* Above the tab bar (64px), with Fluent's 16px gap. */
+  bottom: calc(var(--tabbar) + 1rem + env(safe-area-inset-bottom));
   padding: 0;
   border: none;
   background: none;
@@ -559,7 +569,9 @@ span.plus-circle svg {
   }
 }
 .fab .plus-circle {
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--green) 40%, transparent), 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* Fluent's FAB: a rounded square at elevation 16, not a circle. */
+  border-radius: 16px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
   /* The press pulse: the circle contracts the moment it is pressed (the short
      ease-in below) and springs back when the finger lifts, overshooting a
      touch on the way, so the tap reads as a press even under a thumb.
@@ -570,12 +582,14 @@ span.plus-circle svg {
 }
 .fab:hover .plus-circle {
   background: var(--green-dark);
-  transform: scale(1.06) rotate(90deg);
-  box-shadow: 0 10px 26px color-mix(in srgb, var(--green) 45%, transparent), 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.16);
 }
 .fab.fab-pressed .plus-circle {
   transform: scale(0.88);
   transition: background 0.12s, box-shadow 0.12s, transform 0.08s var(--ease-in);
+}
+.fab .plus-circle {
+  transform-origin: center;
 }
 .fab:focus-visible {
   outline: none;
@@ -584,11 +598,68 @@ span.plus-circle svg {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 30%, transparent);
 }
 
+/* The phone's view switch: a Fluent bottom tab bar over a Mica-like blur.
+   The active tab's mark is filled and sits on a green pill. */
+.tabbar {
+  position: fixed;
+  z-index: 8;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: calc(var(--tabbar) + env(safe-area-inset-bottom));
+  padding: 6px max(0.5rem, calc(50% - 300px)) env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border-top: 1px solid var(--border);
+}
+.tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-pill {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 30px;
+  border-radius: 999px;
+  --icon-knock: var(--green-soft);
+  transition: background var(--hover);
+}
+.tab-on {
+  color: var(--green);
+  font-weight: 600;
+}
+.tab-on .tab-pill {
+  background: var(--green-soft);
+}
+.tab:focus-visible {
+  outline: none;
+}
+.tab:focus-visible .tab-pill {
+  box-shadow: 0 0 0 2px var(--green);
+}
+
 /* --- Layout -------------------------------------------------------------- */
+:root {
+  --tabbar: 64px;
+}
 .app {
   max-width: 600px;
   margin: 0 auto;
-  padding: 0 1.1rem calc(6.5rem + env(safe-area-inset-bottom));
+  padding: 0 1.1rem calc(var(--tabbar) + 6.5rem + env(safe-area-inset-bottom));
 }
 main,
 .stack {
@@ -1214,7 +1285,7 @@ main,
   bottom: 2px;
   left: 2px;
   width: calc((100% - 4px - 6 * 0.3rem) / 7);
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: var(--green);
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--green) 70%, transparent);
   transform: translateX(calc(var(--date-i, 0) * (100% + 0.3rem)));
@@ -1232,7 +1303,7 @@ main,
   min-height: 58px;
   padding: 0.45rem 0.1rem 0.35rem;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   transition: background var(--hover), border-color var(--hover), color var(--hover), box-shadow var(--hover),
@@ -1302,7 +1373,7 @@ main,
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
@@ -3907,7 +3978,7 @@ body.dragging {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   overflow: hidden;
   animation: panel-in 0.26s var(--ease-out);
@@ -4445,12 +4516,15 @@ body.dragging {
   width: min(320px, 86vw);
   height: 100dvh;
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  box-shadow: var(--shadow-pop);
+  /* Mica: the surface faintly washed with the brand from the top corner. */
+  background:
+    radial-gradient(120% 45% at 0% 0%, color-mix(in srgb, var(--green) 9%, transparent), transparent 70%),
+    var(--bg);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2), 0 32px 64px rgba(0, 0, 0, 0.24);
   overflow-y: auto;
   outline: none;
-  animation: drawer-in 0.28s var(--ease-out);
+  animation: drawer-in 0.25s var(--ease-out);
 }
 .backdrop-closing .drawer {
   animation: drawer-out 0.2s var(--ease-in) forwards;
@@ -4467,14 +4541,16 @@ body.dragging {
   align-items: center;
   gap: 0.8rem;
   margin: 0.75rem 0.6rem 0.25rem;
-  padding: 0.75rem 0.7rem;
-  border: 1px solid var(--border);
+  padding: 0.7rem 0.75rem;
+  border: none;
   border-radius: var(--radius);
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: var(--shadow);
   text-align: left;
+  transition: box-shadow var(--hover);
 }
 .drawer-me:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
 }
 .drawer-me-text {
   display: flex;
@@ -4520,10 +4596,8 @@ body.dragging {
   border-radius: var(--radius-sm);
   background: none;
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   text-align: left;
 }
 .drawer-group-head:hover {
@@ -4531,8 +4605,6 @@ body.dragging {
 }
 .drawer-group-head .drawer-count {
   margin-left: 0;
-  text-transform: none;
-  letter-spacing: 0;
 }
 .drawer-group-chevron {
   margin-left: auto;
@@ -4564,9 +4636,9 @@ body.dragging {
 .drawer-item {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  min-height: 48px;
-  padding: 0.55rem 0.7rem;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
   border: none;
   border-radius: var(--radius-sm);
   background: none;
@@ -4604,27 +4676,18 @@ body.dragging {
   box-shadow: 0 0 0 2px var(--bg);
 }
 .drawer-item:hover:not(:disabled) {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
-@media (hover: hover) and (pointer: fine) {
-  .drawer-item-icon {
-    transition: transform 0.25s var(--ease-spring);
-  }
-  .drawer-item:hover:not(:disabled) .drawer-item-icon {
-    transform: scale(1.08) rotate(-4deg);
-  }
-}
+/* No tile: the Fluent mark in colour stands on its own (FluentIcon). */
 .drawer-item-icon {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  background: var(--green-soft);
-  color: var(--green);
+  width: 24px;
+  height: 24px;
   flex: none;
 }
-/* Each item its own tint, from the avatars' palette (dark versions below). */
+/* The notification centre's category tiles, from the avatars' palette (dark
+   versions below). */
 .drawer-tone-blue {
   background: #e3ecff;
   color: #1d4ed8;
@@ -4704,7 +4767,7 @@ body.dragging {
   gap: 0.5rem;
   padding: 1.5rem 1.25rem 1.25rem;
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   text-align: center;
   animation: confirm-in 0.28s var(--ease-spring);
@@ -4783,7 +4846,7 @@ body.dragging {
   width: 48px;
   height: 36px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--green-soft);
   color: var(--green);
   flex: none;
@@ -4835,7 +4898,7 @@ body.dragging {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--tabbar) + 1.25rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 20;
   /* Anchored by its left edge, a fixed box gets half the viewport to lay out
@@ -4873,7 +4936,7 @@ body.dragging {
   gap: 0.7rem;
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--green-line);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text);
   font: inherit;
@@ -5208,7 +5271,7 @@ body.dragging {
 }
 /* A finger that left the line: the bolt shrugs and waits to be started again. */
 .bolt-pad-slip {
-  animation: bolt-slip 0.38s var(--ease-spring);
+  animation: bolt-slip 0.38s var(--ease-bounce);
 }
 @keyframes bolt-slip {
   0%,
@@ -5225,7 +5288,7 @@ body.dragging {
 /* The moment it closes: the pad pops, the whole lane goes white-hot and cools
    back to green, the current speeds up and the glow swells behind it. */
 .bolt-pad-charged {
-  animation: bolt-charge 0.5s var(--ease-spring);
+  animation: bolt-charge 0.5s var(--ease-bounce);
   filter: drop-shadow(0 0 26px color-mix(in srgb, var(--bolt) 65%, transparent));
 }
 @keyframes bolt-charge {
@@ -5931,13 +5994,13 @@ body.dragging {
    as data-resolved; the tokens are also under the media query so a dark phone
    never paints light before the script runs. */
 :root[data-theme='dark'] {
-  --bg: #15171b;
-  --surface: #1f2227;
-  --surface-2: #2a2e35;
-  --text: #eceef1;
-  --muted: #9aa3ad;
-  --border: #2f343c;
-  --border-strong: #444b55;
+  --bg: #1a1a1a;
+  --surface: #292929;
+  --surface-2: #333333;
+  --text: #ffffff;
+  --muted: #adadad;
+  --border: #3d3d3d;
+  --border-strong: #525252;
   --green: #3ecf8e;
   --green-dark: #2fb377;
   --green-soft: #17332a;
@@ -5946,20 +6009,20 @@ body.dragging {
   --red-soft: #3a2022;
   --blue: #7ca6ff;
   --blue-soft: #1c2a44;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-hover: 0 12px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #15171b;
-    --surface: #1f2227;
-    --surface-2: #2a2e35;
-    --text: #eceef1;
-    --muted: #9aa3ad;
-    --border: #2f343c;
-    --border-strong: #444b55;
+    --bg: #1a1a1a;
+    --surface: #292929;
+    --surface-2: #333333;
+    --text: #ffffff;
+    --muted: #adadad;
+    --border: #3d3d3d;
+    --border-strong: #525252;
     --green: #3ecf8e;
     --green-dark: #2fb377;
     --green-soft: #17332a;
@@ -5968,9 +6031,9 @@ body.dragging {
     --red-soft: #3a2022;
     --blue: #7ca6ff;
     --blue-soft: #1c2a44;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --shadow-hover: 0 12px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+    --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
     color-scheme: dark;
   }
 }
@@ -5986,6 +6049,10 @@ body.dragging {
 :root[data-resolved='dark'] .btn-danger,
 :root[data-resolved='dark'] .chip-on,
 :root[data-resolved='dark'] .update-toast-go {
+  color: #10141a;
+}
+/* The bright dark-theme green carries dark ink, like the primary button. */
+:root[data-resolved='dark'] span.plus-circle svg {
   color: #10141a;
 }
 :root[data-resolved='dark'] .toast {
@@ -6079,7 +6146,7 @@ body.dragging {
   .panel-sheet {
     max-width: none;
     max-height: calc(100dvh - 1.5rem);
-    border-radius: 16px 16px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     animation: sheet-up 0.3s var(--ease-out);
   }
   .backdrop-closing .panel-sheet {
@@ -6168,6 +6235,10 @@ body.dragging {
    ride in a column on the right. The open ride is the big piece: once its
    pane is wide enough it splits into the driver card and the passengers. */
 @media (min-width: 1024px) {
+  /* No tab bar here: the toolbar carries the view switch. */
+  :root {
+    --tabbar: 0px;
+  }
   .app-wide {
     --dock: 264px;
     --toolbar: 60px;
@@ -6184,6 +6255,7 @@ body.dragging {
   .dock {
     width: auto;
     height: 100dvh;
+    border-radius: 0;
     background: color-mix(in srgb, var(--surface) 70%, var(--bg));
     box-shadow: none;
     animation: none;
@@ -6200,15 +6272,6 @@ body.dragging {
   .dock .drawer-item {
     min-height: 44px;
     padding-block: 0.4rem;
-  }
-  .dock .drawer-item-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-  }
-  .dock .drawer-item-icon svg {
-    width: 18px;
-    height: 18px;
   }
   .workspace {
     display: flex;
@@ -6463,14 +6526,14 @@ body.dragging {
     min-height: min(560px, calc(100dvh - 9rem));
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-hover);
   }
   .split-pane .detail > .driver-card {
     align-self: stretch;
     border: none;
     border-right: 1px solid var(--border);
-    border-radius: 20px 0 0 20px;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
     box-shadow: none;
   }
   .split-pane .detail > .pax {
