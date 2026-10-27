@@ -4,7 +4,7 @@ import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
 import { FluentIcon, type FluentName } from './FluentIcon'
-import { ChevronRightIcon, XIcon } from './icons'
+import { ChevronRightIcon, ChevronUpIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -159,8 +159,8 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
     </button>
   )
 
-  const group = (key: GroupKey, title: string, body: ReactNode, count = 0, className = '') => (
-    <section className={`drawer-group ${className}`} aria-label={title}>
+  const group = (key: GroupKey, title: string, body: ReactNode, count = 0) => (
+    <section className="drawer-group" aria-label={title}>
       <button
         type="button"
         className="drawer-group-head"
@@ -180,8 +180,42 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
     </section>
   )
 
+  // Settings are their own card pinned to the foot, folding *upwards* out of
+  // its head: the menu above gives up the room (it scrolls), so nothing ever
+  // opens past the bottom edge.
+  const settingsOpen = open.settings
+  const settingsCard = (
+    <section className={settingsOpen ? 'settings-card settings-card-open' : 'settings-card'} aria-label={t.sidebar.settings}>
+      <div id="drawer-group-settings" className="settings-card-body" inert={!settingsOpen}>
+        <div className="settings-card-clip">
+          <div className="settings-card-items">{settings.map(renderItem)}</div>
+          <div className="drawer-settings">
+            <ThemeSwitch />
+            <LanguageSwitch />
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="settings-card-head"
+        aria-expanded={settingsOpen}
+        aria-controls="drawer-group-settings"
+        onClick={() => toggle('settings')}
+      >
+        <span className="drawer-item-icon">
+          <FluentIcon name="settings" size={20} />
+        </span>
+        <span className="drawer-group-title">{t.sidebar.settings}</span>
+        <span className="settings-card-chevron" aria-hidden="true">
+          <ChevronUpIcon size={16} weight="bold" />
+        </span>
+      </button>
+    </section>
+  )
+
   return (
     <>
+        <div className="drawer-scroll">
           <button type="button" className="drawer-me" onClick={pick(onAccount)}>
             <Avatar name={userName || '?'} size="lg" />
             <span className="drawer-me-text">
@@ -196,20 +230,9 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
             {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
             {group('help', t.sidebar.help, help.map(renderItem))}
           </nav>
+        </div>
 
-          {group(
-            'settings',
-            t.sidebar.settings,
-            <>
-              {settings.map(renderItem)}
-              <div className="drawer-settings">
-                <ThemeSwitch />
-                <LanguageSwitch />
-              </div>
-            </>,
-            0,
-            'drawer-foot',
-          )}
+        <div className="drawer-foot">{settingsCard}</div>
     </>
   )
 }

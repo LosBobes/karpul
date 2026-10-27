@@ -623,56 +623,112 @@ span.plus-circle svg {
 }
 
 /* The phone's view switch: a Fluent bottom tab bar over a Mica-like blur.
-   The active tab's mark is filled and sits on a green pill. */
+   The active tab's mark is filled; one green pill (.tab-glider) slides under
+   the marks to it, a little past and back, and the mark it lands on pops. */
 .tabbar {
   position: fixed;
   z-index: 8;
   left: 0;
   right: 0;
   bottom: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
   height: calc(var(--tabbar) + env(safe-area-inset-bottom));
-  padding: 6px max(0.5rem, calc(50% - 300px)) env(safe-area-inset-bottom);
+  padding: 8px max(0.5rem, calc(50% - 300px)) env(safe-area-inset-bottom);
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   backdrop-filter: blur(24px) saturate(1.4);
   border-top: 1px solid var(--border);
 }
+.tabbar-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 100%;
+}
+.tab-glider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / 3);
+  height: 38px;
+  transform: translateX(calc(var(--tab, 0) * 100%));
+  transition: transform 0.42s var(--ease-bounce);
+  pointer-events: none;
+}
+.tab-glider::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 68px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--green-soft);
+}
 .tab {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   padding: 0;
   border: none;
   background: none;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.2;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-normal) var(--ease-smooth);
 }
 .tab-pill {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 30px;
+  width: 68px;
+  height: 38px;
   border-radius: 999px;
   --icon-knock: var(--green-soft);
-  transition: background var(--hover);
+}
+.tab-label {
+  transition: transform var(--dur-gentle) var(--ease-out);
 }
 .tab-on {
   color: var(--green);
   font-weight: 600;
 }
-.tab-on .tab-pill {
-  background: var(--green-soft);
+.tab-on .tab-label {
+  transform: translateY(-1px);
+}
+.tab-on .tab-icon {
+  animation: tab-pop 0.45s var(--ease-bounce);
+}
+.tab:not(.tab-on) .tab-icon {
+  animation: tab-settle var(--dur-normal) var(--ease-out);
 }
 .tab:focus-visible {
   outline: none;
 }
 .tab:focus-visible .tab-pill {
   box-shadow: 0 0 0 2px var(--green);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tab:not(.tab-on):hover {
+    color: var(--text);
+  }
+}
+@keyframes tab-pop {
+  0% {
+    transform: scale(0.72) translateY(3px);
+  }
+  55% {
+    transform: scale(1.14) translateY(-2px);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes tab-settle {
+  from {
+    transform: scale(0.88);
+    opacity: 0.6;
+  }
 }
 
 /* The home-screen install offer (InstallCard.tsx): a card above the board on
@@ -753,7 +809,7 @@ span.plus-circle svg {
 
 /* --- Layout -------------------------------------------------------------- */
 :root {
-  --tabbar: 64px;
+  --tabbar: 72px;
 }
 .app {
   max-width: 600px;
@@ -4647,7 +4703,7 @@ body.dragging {
     var(--bg);
   border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.2), 0 32px 64px rgba(0, 0, 0, 0.24);
-  overflow-y: auto;
+  overflow: hidden;
   outline: none;
   animation: drawer-in 0.25s var(--ease-out);
 }
@@ -4708,10 +4764,126 @@ body.dragging {
   display: flex;
   flex-direction: column;
 }
+/* Everything but the settings scrolls; the settings card stays at the foot. */
+.drawer-scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .drawer-foot {
-  margin-top: auto;
-  padding: 0.35rem 0.6rem 0.6rem;
+  flex: none;
+  padding: 0.5rem 0.6rem 0.75rem;
+}
+/* Settings: a card of its own at the foot that folds *upwards* out of its
+   head, the way a taskbar menu does. The body is a grid row above the head
+   going from 0fr to 1fr, so the card grows up and the menu above gives way;
+   the rows rise into place a beat behind. */
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: box-shadow var(--dur-gentle) var(--ease-out);
+}
+.settings-card-open {
+  box-shadow: var(--shadow-pop);
+}
+.settings-card-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s var(--ease-out);
+}
+.settings-card-open .settings-card-body {
+  grid-template-rows: 1fr;
+}
+.settings-card-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.settings-card-clip > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity var(--dur-fast) var(--ease-in),
+    transform var(--dur-fast) var(--ease-in);
+}
+.settings-card-open .settings-card-clip > * {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-gentle) var(--ease-out) 0.06s,
+    transform 0.3s var(--ease-out) 0.06s;
+}
+.settings-card-open .settings-card-clip > :last-child {
+  transition-delay: 0.1s;
+}
+.settings-card-items {
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0.35rem 0;
+}
+.settings-card .drawer-settings {
+  margin: 0.25rem 0.35rem 0;
+  padding: 0.6rem 0.45rem 0.65rem;
   border-top: 1px solid var(--border);
+}
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 0.6rem 0.5rem 0.7rem;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--hover);
+}
+.settings-card-open .settings-card-head {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.settings-card-head:active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.settings-card-head:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+.settings-card-head .drawer-item-icon svg {
+  transition: transform 0.4s var(--ease-out);
+}
+.settings-card-open .settings-card-head .drawer-item-icon svg {
+  transform: rotate(60deg);
+}
+.settings-card-chevron {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--muted);
+  transition: transform var(--dur-gentle) var(--ease-out), background var(--hover), color var(--hover);
+}
+.settings-card-open .settings-card-chevron {
+  transform: rotate(180deg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .settings-card-head:hover {
+    background: color-mix(in srgb, var(--text) 5%, transparent);
+  }
+  .settings-card-head:hover .settings-card-chevron {
+    color: var(--text);
+  }
 }
 /* A group: a quiet heading that folds the rows under it (a grid row from
    1fr to 0fr, so it slides rather than jumps; inert while folded). */
