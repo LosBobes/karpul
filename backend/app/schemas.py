@@ -3,6 +3,7 @@
 import json
 import re
 from datetime import date, datetime, time, timezone
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -321,6 +322,37 @@ class WaitlistRead(BaseModel):
     created_at: datetime
 
 
+class DriveLegRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    driver_id: int | None
+    driver_name: str
+    start_km: int
+    # None while this stretch is being driven.
+    end_km: int | None
+    created_at: datetime
+
+
+# An odometer reading: a car's whole life fits, a typo of a few extra digits does not.
+Km = Annotated[int, Field(ge=0, le=2_000_000)]
+
+
+class LegStart(BaseModel):
+    """Take the wheel at this reading: the first stretch of the ride, or a
+    handover that ends the current one here. `booking_id` is the passenger
+    taking it; None is the ride's own driver."""
+
+    km: Km
+    booking_id: int | None = None
+
+
+class LegEnd(BaseModel):
+    """The car is back: the reading that ends the current stretch."""
+
+    km: Km
+
+
 class WaitlistJoin(BaseModel):
     # Where to get in once a seat frees up: "" is the origin, else one of the stops.
     pickup: str = Field(default="", max_length=120)
@@ -528,6 +560,8 @@ class RideRead(BaseModel):
     waitlist: list[WaitlistRead] = []
     message_count: int = 0
     free_seats: int
+    # A shared car's odometer, stretch by stretch, in the order they were driven.
+    legs: list[DriveLegRead] = []
 
 
 # --- ride requests ------------------------------------------------------------

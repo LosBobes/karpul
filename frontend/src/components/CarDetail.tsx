@@ -3,7 +3,8 @@ import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carMo
 import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
-import { drives, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
+import { drives, inRide, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
+import { keepsKm } from '../lib/odometer'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
@@ -32,6 +33,7 @@ import {
   XIcon,
 } from './icons'
 import { Menu } from './Menu'
+import { Odometer } from './Odometer'
 import { RideThread } from './RideThread'
 import { Select } from './Select'
 
@@ -73,6 +75,10 @@ interface Props {
   onWait: (ride: Ride, pickup: string) => void
   /** Leave the queue (yourself), or take someone off it (the driver). */
   onLeaveLine: (ride: Ride, entryId: number) => void
+  /** A shared car's odometer: runs the call and puts the ride it returns on the board. */
+  onOdometer: (ride: Ride, call: () => Promise<Ride>) => void
+  /** The ride's day is after today: its odometer waits for the day. */
+  coming: boolean
   /** Something in the thread failed; the board says so in its toast. */
   onError: (text: string) => void
   dragActive: boolean
@@ -111,6 +117,8 @@ export function CarDetail({
   onGuide,
   onWait,
   onLeaveLine,
+  onOdometer,
+  coming,
   onError,
   dragActive,
   lifted,
@@ -323,6 +331,11 @@ export function CarDetail({
         )}
         {ride.notes && <p className="driver-notes">{ride.notes}</p>}
       </article>
+
+      {/* The kilometres: kept by whoever is in the car, read by the admins. */}
+      {keepsKm(ride) && (me.admin || inRide(ride, me)) && (!coming || ride.legs.length > 0) && (
+        <Odometer ride={ride} busy={busy} coming={coming} onOdometer={onOdometer} />
+      )}
 
       <section
         className={[

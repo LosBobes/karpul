@@ -270,6 +270,12 @@ function Board({ session }: { session: Session }) {
       setToast({ kind: 'ok', text: t.toasts.pickupChanged(pickup || ride.origin) })
     })
 
+  /** A shared car's odometer (components/Odometer.tsx): the call returns the ride. */
+  const onOdometer = (ride: Ride, call: () => Promise<Ride>) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await call())
+    })
+
   /** Queue for a seat in a full car. */
   const onWait = (ride: Ride, pickup: string) =>
     withBusy(ride.id, async () => {
@@ -662,6 +668,8 @@ function Board({ session }: { session: Session }) {
       onGuide={() => setGuideOpen(true)}
       onWait={onWait}
       onLeaveLine={onLeaveLine}
+      onOdometer={onOdometer}
+      coming={ride.ride_date > todayISO()}
       onError={failure}
       dragActive={drag !== null}
       lifted={drag?.fromRideId === ride.id}

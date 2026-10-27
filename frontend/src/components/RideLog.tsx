@@ -3,7 +3,8 @@ import { api } from '../lib/api'
 import { addDays, fmtTime, parseISODate, todayISO, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import { filterLog, logCsv, logTotals, sortLog, type LogKind, type LogSort, type SortKey } from '../lib/rideLog'
+import { odometerSpan, kmDriven } from '../lib/odometer'
+import { atWheel, filterLog, logCsv, logTotals, sortLog, type LogKind, type LogSort, type SortKey } from '../lib/rideLog'
 import type { Ride } from '../lib/types'
 import { DatePicker } from './DatePicker'
 import { CarIcon, DownloadIcon, SearchIcon, XIcon } from './icons'
@@ -162,7 +163,7 @@ export function RideLog({ onClose }: Props) {
 
       {rides && (
         <div className="log-summary">
-          <p className="section-meta">{t.rideLog.totals(totals.rides, totals.pax, totals.km)}</p>
+          <p className="section-meta">{t.rideLog.totals(totals.rides, totals.pax, totals.km, totals.driven)}</p>
           <button
             type="button"
             className="btn btn-soft"
@@ -191,6 +192,9 @@ export function RideLog({ onClose }: Props) {
                 {sortable('taken', c.taken, 'log-num')}
                 <th scope="col">{c.passengers}</th>
                 {sortable('km', c.km, 'log-num')}
+                <th scope="col" className="log-num">{c.odometer}</th>
+                {sortable('driven', c.driven, 'log-num')}
+                <th scope="col">{c.atWheel}</th>
                 <th scope="col">{c.chipIn}</th>
                 <th scope="col">{c.note}</th>
               </tr>
@@ -232,6 +236,7 @@ export function RideLog({ onClose }: Props) {
                     )}
                   </td>
                   <td className="log-num mono">{r.distance_km == null ? '' : r.distance_km.toLocaleString(intlTag())}</td>
+                  <OdometerCells ride={r} />
                   <td>{r.chip_in}</td>
                   <td className="log-wide">{r.notes}</td>
                 </tr>
@@ -241,5 +246,19 @@ export function RideLog({ onClose }: Props) {
         </div>
       )}
     </Sheet>
+  )
+}
+
+/** The odometer's three cells: out and back, how far, and who drove how much (lib/odometer.ts). */
+function OdometerCells({ ride }: { ride: Ride }) {
+  const { start, end } = odometerSpan(ride)
+  const driven = kmDriven(ride)
+  const n = (v: number | null) => (v == null ? '' : v.toLocaleString(intlTag()))
+  return (
+    <>
+      <td className="log-num mono">{start == null ? '' : `${n(start)} → ${n(end)}`}</td>
+      <td className="log-num mono">{n(driven)}</td>
+      <td className="log-wide">{atWheel(ride, intlTag())}</td>
+    </>
   )
 }

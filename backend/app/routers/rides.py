@@ -13,12 +13,14 @@ from ..auth import CredsDep, require_user
 from ..calendar import ride_ics
 from ..database import get_session, get_write_session
 from ..events import request_saved, ride_deleted, ride_saved
-from ..models import Booking, CarType, Ride, RideMessage, RideRequest, User, WaitlistEntry
+from ..models import Booking, CarType, DriveLeg, Ride, RideMessage, RideRequest, User, WaitlistEntry
 from ..push import notify
 from ..schemas import (
     BookingCreate,
     BookingRead,
     BookingUpdate,
+    LegEnd,
+    LegStart,
     MessageIn,
     MessageRead,
     RideCreate,
@@ -160,7 +162,7 @@ def list_rides(
         .where(Ride.ride_date >= date_from, Ride.ride_date <= date_to)
         # Bookings and queues are fetched in one extra query each for the whole
         # list rather than lazily once per ride; every tab reloads this on reconnect.
-        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist))  # type: ignore[arg-type]
+        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist), selectinload(Ride.legs))  # type: ignore[arg-type]
         .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
     )
     rides = session.exec(stmt).all()
@@ -572,6 +574,128 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
     if promoted:
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
     return to_ride_read_dict(ride)
+
+
+# --- the odometer -------------------------------------------------------------
+#
+# A shared car's kilometres are noted stretch by stretch (DriveLeg): the reading
+# when someone takes the wheel, and when they hand it on or bring the car back,
+# so the office knows who drove it and how far. Legs follow each other with no
+# gap: a handover ends one stretch at the reading the next one starts from.
+
+
+def _open_leg(ride: Ride) -> DriveLeg | None:
+    return ride.legs[-1] if ride.legs and ride.legs[-1].end_km is None else None
+
+
+def _odometer_ride(session: Session, ride_id: int) -> Ride:
+    """The ride, if its odometer can be noted at all: a shared car, let
+    through, on its day or after."""
+    ride = _get_ride_or_404(session, ride_id)
+    if ride.car_type != CarType.corporate:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Kilometres are only kept for the shared cars")
+    if ride.approval == "pending":
+        raise HTTPException(status.HTTP_409_CONFLICT, "An admin has to approve this ride first")
+    if ride.ride_date > date.today():
+        raise HTTPException(status.HTTP_409_CONFLICT, "The odometer is noted from the day of the ride")
+    return ride
+
+
+def _may_note_km(user: User, ride: Ride) -> bool:
+    """The ride's driver, an admin, or whoever is at the wheel right now."""
+    leg = _open_leg(ride)
+    return _may_run(user, ride) or (leg is not None and is_person(user, leg.driver_id, leg.driver_name))
+
+
+def _note_km_or_403(user: User, ride: Ride) -> None:
+    if not _may_note_km(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver, whoever is at the wheel or an admin can note the odometer")
+
+
+def _km_at_least(km: int, floor: int) -> None:
+    if km < floor:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"The odometer cannot read less than {floor} km here")
+
+
+def _saved(session: Session, ride: Ride) -> dict:
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+    return to_ride_read_dict(ride)
+
+
+@router.post("/{ride_id}/legs", response_model=RideRead, status_code=status.HTTP_201_CREATED)
+def take_wheel(ride_id: int, payload: LegStart, session: WriteSessionDep, creds: CredsDep):
+    """Someone takes the wheel at `km`: the ride's driver (`booking_id` None)
+    or a passenger in the car. The first time it is the reading the car was
+    picked up at; while someone is driving it is a handover, which ends their
+    stretch at the same reading."""
+    user = require_user(session, creds)
+    ride = _odometer_ride(session, ride_id)
+    current = _open_leg(ride)
+    if current is None:
+        if ride.legs:
+            raise HTTPException(status.HTTP_409_CONFLICT, "The car is already back; undo that to carry on")
+        if not _may_run(user, ride):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can note the odometer at the start")
+    else:
+        _note_km_or_403(user, ride)
+        _km_at_least(payload.km, current.start_km)
+    if payload.booking_id is None:
+        driver_id, driver_name = ride.driver_id, ride.driver_name
+    else:
+        booking = next((b for b in ride.bookings if b.id == payload.booking_id), None)
+        if booking is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+        driver_id, driver_name = booking.passenger_id, booking.passenger_name
+    if current is not None:
+        if (current.driver_id is not None and current.driver_id == driver_id) or (
+            current.driver_id is None and driver_id is None and norm_name(current.driver_name) == norm_name(driver_name)
+        ):
+            raise HTTPException(status.HTTP_409_CONFLICT, f"{driver_name} is already at the wheel")
+        current.end_km = payload.km
+        session.add(current)
+    ride.legs.append(DriveLeg(ride_id=ride.id, driver_id=driver_id, driver_name=driver_name, start_km=payload.km))  # type: ignore[arg-type]
+    return _saved(session, ride)
+
+
+@router.post("/{ride_id}/legs/end", response_model=RideRead)
+def bring_back(ride_id: int, payload: LegEnd, session: WriteSessionDep, creds: CredsDep):
+    """The car is back: the reading that ends the current stretch."""
+    user = require_user(session, creds)
+    ride = _odometer_ride(session, ride_id)
+    current = _open_leg(ride)
+    if current is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Nobody is at the wheel of this car")
+    _note_km_or_403(user, ride)
+    _km_at_least(payload.km, current.start_km)
+    current.end_km = payload.km
+    session.add(current)
+    return _saved(session, ride)
+
+
+@router.delete("/{ride_id}/legs/last", response_model=RideRead)
+def undo_leg(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """Take back the last thing noted, for a typo or the wrong person: a car
+    noted as back is out again, else the newest stretch goes and the one before
+    it (a handover) is being driven again."""
+    user = require_user(session, creds)
+    ride = _get_ride_or_404(session, ride_id)
+    if not _may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can undo the odometer")
+    if not ride.legs:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Nothing has been noted on the odometer")
+    last = ride.legs[-1]
+    if last.end_km is not None:
+        last.end_km = None
+        session.add(last)
+    else:
+        ride.legs.remove(last)
+        session.delete(last)
+        if ride.legs:
+            ride.legs[-1].end_km = None
+            session.add(ride.legs[-1])
+    return _saved(session, ride)
 
 
 # --- waiting for a seat -------------------------------------------------------
