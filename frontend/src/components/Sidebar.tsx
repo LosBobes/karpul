@@ -3,7 +3,8 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AdminLogIcon, ApprovalIcon, BellDotIcon, BugIcon, CarIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, LifebuoyIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { FluentIcon, type FluentName } from './FluentIcon'
+import { ChevronRightIcon, ChevronUpIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -27,6 +28,8 @@ interface Content {
   onFeedback: () => void
   onMyRides: () => void
   onNotifications: () => void
+  /** Present while this browser can install the app (lib/install.ts). */
+  onInstall?: () => void
   /** How the shared cars stand (components/CarStatus.tsx), for everyone. */
   onCarState: () => void
 }
@@ -37,19 +40,18 @@ interface Props extends Content {
 
 interface Item {
   label: string
-  icon: ReactNode
-  /** The tint of the icon's tile, one per item so the menu reads by colour too. */
-  tone: 'blue' | 'violet' | 'amber' | 'orange' | 'green' | 'teal' | 'rose' | 'slate'
+  /** The item's Fluent mark, in the regular (outline) style. */
+  icon: FluentName
   onSelect: () => void
   /** Something waiting on you there: an amber count after the label. */
   count?: number
 }
 
-type GroupKey = 'me' | 'help' | 'admin' | 'settings'
+type GroupKey = 'admin' | 'help' | 'settings'
 
 /** Which groups are folded, remembered per browser; settings start folded. */
 const GROUPS_KEY = 'karpul.drawerGroups'
-const DEFAULT_OPEN: Record<GroupKey, boolean> = { me: true, help: true, admin: true, settings: false }
+const DEFAULT_OPEN: Record<GroupKey, boolean> = { admin: true, help: true, settings: false }
 
 function loadOpen(): Record<GroupKey, boolean> {
   try {
@@ -62,11 +64,12 @@ function loadOpen(): Record<GroupKey, boolean> {
 }
 
 /**
- * What the menu holds, drawer or dock alike: who you are, then the items in
- * collapsible groups, the settings at the foot. `pick` wraps each item's
+ * What the menu holds, drawer or dock alike: who you are, the two things
+ * opened most (your rides, the shared car guide) with no heading over them,
+ * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -80,77 +83,72 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       return next
     })
 
-  const mine: Item[] = [
+  // Every day: what you would open most, straight under your name.
+  const daily: Item[] = [
     {
       label: t.myRides.title,
-      icon: <RouteIcon size={20} />,
-      tone: 'violet',
+      icon: 'route',
       onSelect: pick(onMyRides),
     },
     {
       label: t.sidebar.carState,
-      icon: <CarIcon size={20} />,
-      tone: 'green',
+      icon: 'car',
       onSelect: pick(onCarState),
     },
     {
-      label: t.notif.title,
-      icon: <BellDotIcon size={20} />,
-      tone: 'amber',
-      onSelect: pick(onNotifications),
-    },
-  ]
-  const help: Item[] = [
-    {
       label: t.sidebar.guide,
-      icon: <PlugIcon size={20} />,
-      tone: 'teal',
+      icon: 'plug',
       onSelect: pick(onGuide),
     },
+  ]
+  // When something goes wrong, or there is something to say.
+  const help: Item[] = [
     {
       label: t.support.title,
-      icon: <LifebuoyIcon size={20} />,
-      tone: 'blue',
+      icon: 'lifebuoy',
       onSelect: pick(onSupport),
     },
     {
       label: t.feedback.title,
-      icon: <BugIcon size={20} />,
-      tone: 'rose',
+      icon: 'bug',
       onSelect: pick(onFeedback),
     },
+  ]
+  // How the app behaves on this device and for this account.
+  const settings: Item[] = [
+    {
+      label: t.notif.title,
+      icon: 'bell',
+      onSelect: pick(onNotifications),
+    },
+    ...(onInstall ? [{ label: t.install.menu, icon: 'install' as const, onSelect: pick(onInstall) }] : []),
   ]
   const admin: Item[] = isAdmin
     ? [
           {
             label: t.approvals.title,
-            icon: <ApprovalIcon size={20} />,
-            tone: 'orange',
+            icon: 'approvals',
             onSelect: pick(onApprovals),
             count: approvals,
           },
           {
             label: t.sidebar.cars,
-            icon: <GarageIcon size={20} />,
-            tone: 'green',
+            icon: 'car',
             onSelect: pick(onCompanyCars),
           },
           {
             label: t.sidebar.people,
-            icon: <PeopleIcon size={20} />,
-            tone: 'rose',
+            icon: 'people',
             onSelect: pick(onPeople),
           },
           {
             label: t.rideLog.title,
-            icon: <TableIcon size={20} />,
-            tone: 'slate',
+            icon: 'table',
             onSelect: pick(onRideLog),
           },
           {
             label: t.adminLog.title,
-            icon: <AdminLogIcon size={20} />,
-            tone: 'violet',
+            icon: 'log',
             onSelect: pick(onAdminLog),
           },
       ]
@@ -158,7 +156,9 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
 
   const renderItem = (it: Item) => (
     <button key={it.label} type="button" className="drawer-item" onClick={it.onSelect}>
-      <span className={`drawer-item-icon drawer-tone-${it.tone}`}>{it.icon}</span>
+      <span className="drawer-item-icon">
+        <FluentIcon name={it.icon} size={20} />
+      </span>
       <span className="drawer-item-label">
         {it.label}
         {!!it.count && <span className="drawer-count" aria-label={t.approvals.count(it.count)}>{it.count}</span>}
@@ -166,8 +166,8 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
     </button>
   )
 
-  const group = (key: GroupKey, title: string, body: ReactNode, count = 0, className = '') => (
-    <section className={`drawer-group ${className}`} aria-label={title}>
+  const group = (key: GroupKey, title: string, body: ReactNode, count = 0) => (
+    <section className="drawer-group" aria-label={title}>
       <button
         type="button"
         className="drawer-group-head"
@@ -175,9 +175,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
         aria-controls={`drawer-group-${key}`}
         onClick={() => toggle(key)}
       >
-        <span>{title}</span>
+        <span className="drawer-group-chevron" aria-hidden="true">
+          <ChevronRightIcon size={14} weight="bold" />
+        </span>
+        <span className="drawer-group-title">{title}</span>
         {!open[key] && count > 0 && <span className="drawer-count" aria-label={t.approvals.count(count)}>{count}</span>}
-        <ChevronDownIcon size={16} className="drawer-group-chevron" />
       </button>
       <div id={`drawer-group-${key}`} className={open[key] ? 'drawer-group-body' : 'drawer-group-body drawer-group-shut'} inert={!open[key]}>
         <div className="drawer-group-clip">{body}</div>
@@ -185,8 +187,42 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
     </section>
   )
 
+  // Settings are their own card pinned to the foot, folding *upwards* out of
+  // its head: the menu above gives up the room (it scrolls), so nothing ever
+  // opens past the bottom edge.
+  const settingsOpen = open.settings
+  const settingsCard = (
+    <section className={settingsOpen ? 'settings-card settings-card-open' : 'settings-card'} aria-label={t.sidebar.settings}>
+      <div id="drawer-group-settings" className="settings-card-body" inert={!settingsOpen}>
+        <div className="settings-card-clip">
+          <div className="settings-card-items">{settings.map(renderItem)}</div>
+          <div className="drawer-settings">
+            <ThemeSwitch />
+            <LanguageSwitch />
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="settings-card-head"
+        aria-expanded={settingsOpen}
+        aria-controls="drawer-group-settings"
+        onClick={() => toggle('settings')}
+      >
+        <span className="drawer-item-icon">
+          <FluentIcon name="settings" size={20} />
+        </span>
+        <span className="drawer-group-title">{t.sidebar.settings}</span>
+        <span className="settings-card-chevron" aria-hidden="true">
+          <ChevronUpIcon size={16} weight="bold" />
+        </span>
+      </button>
+    </section>
+  )
+
   return (
     <>
+        <div className="drawer-scroll">
           <button type="button" className="drawer-me" onClick={pick(onAccount)}>
             <Avatar name={userName || '?'} size="lg" />
             <span className="drawer-me-text">
@@ -197,21 +233,13 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
           </button>
 
           <nav className="drawer-nav" aria-label={t.common.menu}>
-            {group('me', t.sidebar.mine, mine.map(renderItem))}
-            {group('help', t.sidebar.help, help.map(renderItem))}
+            <div className="drawer-daily">{daily.map(renderItem)}</div>
             {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
+            {group('help', t.sidebar.help, help.map(renderItem))}
           </nav>
+        </div>
 
-          {group(
-            'settings',
-            t.sidebar.settings,
-            <div className="drawer-settings">
-              <ThemeSwitch />
-              <LanguageSwitch />
-            </div>,
-            0,
-            'drawer-foot',
-          )}
+        <div className="drawer-foot">{settingsCard}</div>
     </>
   )
 }
@@ -237,11 +265,12 @@ export function Dock(props: Content) {
 
 /**
  * The app menu: a drawer that slides in from the left edge under the ☰ in the
- * top bar. It holds the things that are not about one particular ride, in
- * collapsible groups: yours (rides, notifications), help (the shared-car
- * guide, who to call, a bug or an idea), the
- * admin's (approvals, the pool, the people, every ride, the log) and the
- * settings (appearance, language). Your account is the identity block on top.
+ * top bar. It holds the things that are not about one particular ride: your
+ * rides and the shared car guide on their own, then collapsible groups for
+ * the admins' work (approvals, the pool, the people, every ride, the log),
+ * help (who to call, a bug or an idea) and the settings (notifications,
+ * installing the app, appearance, language). Your account is the identity
+ * block on top.
  * Adding a ride is not here; that is the plus. Picking an item closes
  * the drawer first, so the sheet it opens is the only thing left on screen.
  */

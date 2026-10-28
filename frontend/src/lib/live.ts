@@ -12,6 +12,7 @@ export type LiveEvent =
   | { type: 'cars.state' }
   | { type: 'request.saved'; request: RideRequest }
   | { type: 'request.deleted'; request_id: number }
+  | { type: 'photos.changed' }
 
 export type LiveStatus = 'connecting' | 'live' | 'offline'
 

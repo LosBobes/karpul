@@ -147,31 +147,31 @@
 }
 .chip {
   flex: none;
-  min-height: 34px;
-  padding: 0.3rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  min-height: 32px;
+  padding: 0.3rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   font-size: 0.84rem;
   font-weight: 500;
-  transition: background var(--hover), border-color var(--hover), color var(--hover), transform 0.12s var(--ease-smooth);
+  transition: background var(--hover), border-color var(--hover), color var(--hover);
 }
 .chip:hover:not(:disabled) {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
 }
 .chip:active:not(:disabled) {
-  transform: scale(0.95);
+  background: color-mix(in srgb, var(--text) 9%, var(--surface));
 }
 .chip:disabled {
   opacity: 0.5;
 }
 .chip-on,
 .chip-on:hover:not(:disabled) {
-  background: var(--green);
-  border-color: var(--green);
-  color: #fff;
+  background: var(--green-soft);
+  border-color: var(--green-line);
+  color: var(--green-dark);
+  font-weight: 600;
 }
 .search > input {
   min-height: 40px;
@@ -184,7 +184,6 @@
   padding: 0.45rem 0.25rem;
   background: color-mix(in srgb, var(--bg) 90%, transparent);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   text-transform: none;
   letter-spacing: -0.01em;
   font-size: 0.95rem;

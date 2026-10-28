@@ -31,27 +31,25 @@
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   overflow: hidden;
-  animation: panel-in 0.26s var(--ease-out);
+  animation: panel-in var(--dur-gentle) var(--ease-out);
 }
 .backdrop-closing .panel {
   animation: panel-out 0.18s var(--ease-in) forwards;
 }
+/* Fluent's dialog: it grows a little out of the middle as it fades in. */
 @keyframes panel-in {
   from {
     opacity: 0;
-    transform: translateY(32px) scale(0.96);
-  }
-  30% {
-    opacity: 1;
+    transform: scale(0.94);
   }
 }
 @keyframes panel-out {
   to {
     opacity: 0;
-    transform: translateY(24px) scale(0.97);
+    transform: scale(0.96);
   }
 }
 .panel-grab {
@@ -209,14 +207,15 @@
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-strong);
+  border-bottom-color: var(--muted);
   border-radius: var(--radius-sm);
   background: var(--surface);
   overflow: hidden;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--hover), box-shadow var(--hover);
 }
 .route:focus-within {
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
 }
 .route-row {
   display: flex;
@@ -343,9 +342,9 @@
   flex: none;
   width: 96px;
   height: 64px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface-2) 100%);
+  box-shadow: inset 0 0 0 1px var(--border);
   color: var(--muted);
 }
 .guide-art-row {
@@ -363,13 +362,23 @@
   fill: var(--green-soft);
   stroke: var(--green);
 }
+.guide-art .accent-solid {
+  fill: var(--green);
+  stroke: none;
+}
+.guide-art text.on-accent {
+  fill: #fff;
+}
+:root[data-resolved='dark'] .guide-art text.on-accent {
+  fill: #10141a;
+}
 .guide-art .soft {
   fill: currentColor;
-  fill-opacity: 0.09;
+  fill-opacity: 0.08;
 }
 .guide-art .glass {
   fill: currentColor;
-  fill-opacity: 0.22;
+  fill-opacity: 0.18;
 }
 .guide-art .ink {
   fill: currentColor;
@@ -550,6 +559,60 @@
   font-size: 0.8rem;
   color: var(--muted);
 }
+.photo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+/* The cropper (components/PhotoCropper.tsx): the picture dimmed round a square
+   outline (what is saved) with the avatar's circle drawn inside it. */
+.cropper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cropper-stage {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #1b1b1b;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.cropper-stage:active {
+  cursor: grabbing;
+}
+.cropper-stage:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.cropper-img {
+  position: absolute;
+  max-width: none;
+  height: auto;
+  pointer-events: none;
+}
+.cropper-frame {
+  position: absolute;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+.cropper-circle {
+  position: absolute;
+  inset: 0;
+  border: 1.5px dashed rgb(255 255 255 / 0.9);
+  border-radius: 50%;
+}
+.cropper-zoom {
+  width: min(100%, 300px);
+  margin: 0 auto;
+  accent-color: var(--green);
+}
 .account-section {
   margin: 0.4rem 0 -0.2rem;
   font-size: 0.86rem;
@@ -569,12 +632,15 @@
   width: min(320px, 86vw);
   height: 100dvh;
   padding-bottom: env(safe-area-inset-bottom);
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  box-shadow: var(--shadow-pop);
-  overflow-y: auto;
+  /* Mica: the surface faintly washed with the brand from the top corner. */
+  background:
+    radial-gradient(120% 45% at 0% 0%, color-mix(in srgb, var(--green) 9%, transparent), transparent 70%),
+    var(--bg);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2), 0 32px 64px rgba(0, 0, 0, 0.24);
+  overflow: hidden;
   outline: none;
-  animation: drawer-in 0.28s var(--ease-out);
+  animation: drawer-in 0.25s var(--ease-out);
 }
 .backdrop-closing .drawer {
   animation: drawer-out 0.2s var(--ease-in) forwards;
@@ -591,14 +657,16 @@
   align-items: center;
   gap: 0.8rem;
   margin: 0.75rem 0.6rem 0.25rem;
-  padding: 0.75rem 0.7rem;
-  border: 1px solid var(--border);
+  padding: 0.7rem 0.75rem;
+  border: none;
   border-radius: var(--radius);
-  background: var(--surface-2);
+  background: var(--surface);
+  box-shadow: var(--shadow);
   text-align: left;
+  transition: box-shadow var(--hover);
 }
 .drawer-me:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
 }
 .drawer-me-text {
   display: flex;
@@ -626,44 +694,191 @@
   gap: 0.25rem;
   padding: 0.35rem 0.6rem 0.5rem;
 }
+/* The two everyday items, under your name with no heading over them. */
+.drawer-daily {
+  display: flex;
+  flex-direction: column;
+}
+/* Everything but the settings scrolls; the settings card stays at the foot. */
+.drawer-scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .drawer-foot {
-  margin-top: auto;
-  padding: 0.35rem 0.6rem 0.6rem;
+  flex: none;
+  padding: 0.5rem 0.6rem 0.75rem;
+}
+/* Settings: a card of its own at the foot that folds *upwards* out of its
+   head, the way a taskbar menu does. The body is a grid row above the head
+   going from 0fr to 1fr, so the card grows up and the menu above gives way;
+   the rows rise into place a beat behind. */
+.settings-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: box-shadow var(--dur-gentle) var(--ease-out);
+}
+.settings-card-open {
+  box-shadow: var(--shadow-pop);
+}
+.settings-card-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s var(--ease-out);
+}
+.settings-card-open .settings-card-body {
+  grid-template-rows: 1fr;
+}
+.settings-card-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+.settings-card-clip > * {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity var(--dur-fast) var(--ease-in),
+    transform var(--dur-fast) var(--ease-in);
+}
+.settings-card-open .settings-card-clip > * {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-gentle) var(--ease-out) 0.06s,
+    transform 0.3s var(--ease-out) 0.06s;
+}
+.settings-card-open .settings-card-clip > :last-child {
+  transition-delay: 0.1s;
+}
+.settings-card-items {
+  display: flex;
+  flex-direction: column;
+  padding: 0.35rem 0.35rem 0;
+}
+.settings-card .drawer-settings {
+  margin: 0.25rem 0.35rem 0;
+  padding: 0.6rem 0.45rem 0.65rem;
   border-top: 1px solid var(--border);
+}
+.settings-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.5rem 0.6rem 0.5rem 0.7rem;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--hover);
+}
+.settings-card-open .settings-card-head {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.settings-card-head:active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.settings-card-head:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+.settings-card-head .drawer-item-icon svg {
+  transition: transform 0.4s var(--ease-out);
+}
+.settings-card-open .settings-card-head .drawer-item-icon svg {
+  transform: rotate(60deg);
+}
+.settings-card-chevron {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--muted);
+  transition: transform var(--dur-gentle) var(--ease-out), background var(--hover), color var(--hover);
+}
+.settings-card-open .settings-card-chevron {
+  transform: rotate(180deg);
+}
+@media (hover: hover) and (pointer: fine) {
+  .settings-card-head:hover {
+    background: color-mix(in srgb, var(--text) 5%, transparent);
+  }
+  .settings-card-head:hover .settings-card-chevron {
+    color: var(--text);
+  }
 }
 /* A group: a quiet heading that folds the rows under it (a grid row from
    1fr to 0fr, so it slides rather than jumps; inert while folded). */
 .drawer-group-head {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.6rem;
   width: 100%;
-  min-height: 36px;
-  padding: 0.35rem 0.7rem;
+  min-height: 40px;
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.45rem;
   border: none;
   border-radius: var(--radius-sm);
   background: none;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-align: left;
-}
-.drawer-group-head:hover {
   color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--hover);
+}
+.drawer-group-head:active {
+  background: color-mix(in srgb, var(--text) 11%, transparent);
+}
+.drawer-group-head:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+.drawer-group-title {
+  flex: 1;
+  min-width: 0;
 }
 .drawer-group-head .drawer-count {
   margin-left: 0;
-  text-transform: none;
-  letter-spacing: 0;
 }
+/* Fluent's accordion: the chevron leads, in its own small well, pointing at
+   the rows it opens and turning down when they show. */
 .drawer-group-chevron {
-  margin-left: auto;
-  transition: transform 0.22s var(--ease-out);
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--muted);
+  transition: transform var(--dur-normal) var(--ease-out), background var(--hover), color var(--hover);
 }
-.drawer-group-head[aria-expanded='false'] .drawer-group-chevron {
-  transform: rotate(-90deg);
+.drawer-group-head[aria-expanded='true'] .drawer-group-chevron {
+  transform: rotate(90deg);
+}
+/* Hover only under a mouse: a phone keeps :hover on the last thing tapped. */
+@media (hover: hover) and (pointer: fine) {
+  .drawer-group-head:hover {
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+  }
+  .drawer-group-head:hover .drawer-group-chevron {
+    color: var(--text);
+    background: color-mix(in srgb, var(--text) 10%, transparent);
+  }
 }
 .drawer-group-body {
   display: grid;
@@ -673,11 +888,15 @@
 .drawer-group-shut {
   grid-template-rows: 0fr;
 }
+/* The rows of an open group hang off a hairline under its chevron. */
 .drawer-group-clip {
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  margin-left: 1.05rem;
+  padding-left: 0.4rem;
+  border-left: 1px solid var(--border);
 }
 .drawer-settings {
   display: flex;
@@ -688,9 +907,9 @@
 .drawer-item {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  min-height: 48px;
-  padding: 0.55rem 0.7rem;
+  gap: 0.75rem;
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
   border: none;
   border-radius: var(--radius-sm);
   background: none;
@@ -728,90 +947,16 @@
   box-shadow: 0 0 0 2px var(--bg);
 }
 .drawer-item:hover:not(:disabled) {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
-@media (hover: hover) and (pointer: fine) {
-  .drawer-item-icon {
-    transition: transform 0.25s var(--ease-spring);
-  }
-  .drawer-item:hover:not(:disabled) .drawer-item-icon {
-    transform: scale(1.08) rotate(-4deg);
-  }
-}
+/* No tile: the plain Fluent mark (FluentIcon), in the label's own ink. */
 .drawer-item-icon {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  background: var(--green-soft);
-  color: var(--green);
+  width: 24px;
+  height: 24px;
   flex: none;
-}
-/* Each item its own tint, from the avatars' palette (dark versions below). */
-.drawer-tone-blue {
-  background: #e3ecff;
-  color: #1d4ed8;
-}
-.drawer-tone-violet {
-  background: #efeafe;
-  color: #6d28d9;
-}
-.drawer-tone-amber {
-  background: #fdf1d6;
-  color: #b45309;
-}
-.drawer-tone-teal {
-  background: #d7f6f0;
-  color: #0f766e;
-}
-.drawer-tone-rose {
-  background: #fde4ec;
-  color: #be185d;
-}
-.drawer-tone-orange {
-  background: #ffedd5;
-  color: #c2410c;
-}
-.drawer-tone-green {
-  background: var(--green-soft);
-  color: var(--green);
-}
-.drawer-tone-slate {
-  background: #e6ebf1;
-  color: #334155;
-}
-:root[data-resolved='dark'] .drawer-tone-blue {
-  background: #1e2d5c;
-  color: #93c5fd;
-}
-:root[data-resolved='dark'] .drawer-tone-violet {
-  background: #2e2352;
-  color: #c4b5fd;
-}
-:root[data-resolved='dark'] .drawer-tone-amber {
-  background: #45300b;
-  color: #fcd34d;
-}
-:root[data-resolved='dark'] .drawer-tone-teal {
-  background: #113b36;
-  color: #5eead4;
-}
-:root[data-resolved='dark'] .drawer-tone-rose {
-  background: #4a1830;
-  color: #f9a8d4;
-}
-:root[data-resolved='dark'] .drawer-tone-orange {
-  background: #47270f;
-  color: #fdba74;
-}
-:root[data-resolved='dark'] .drawer-tone-green {
-  background: #113b2a;
-  color: #6ee7b7;
-}
-:root[data-resolved='dark'] .drawer-tone-slate {
-  background: #263241;
-  color: #cbd5e1;
+  color: var(--text);
 }
 .drawer-item-label {
   font-weight: 500;
@@ -836,10 +981,10 @@
   gap: 0.5rem;
   padding: 1.5rem 1.25rem 1.25rem;
   background: var(--surface);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
   text-align: center;
-  animation: confirm-in 0.28s var(--ease-spring);
+  animation: confirm-in var(--dur-gentle) var(--ease-out);
 }
 .backdrop-closing .confirm {
   animation: confirm-out 0.16s var(--ease-in) forwards;
@@ -847,16 +992,13 @@
 @keyframes confirm-in {
   from {
     opacity: 0;
-    transform: scale(0.8) translateY(16px);
-  }
-  30% {
-    opacity: 1;
+    transform: scale(0.94);
   }
 }
 @keyframes confirm-out {
   to {
     opacity: 0;
-    transform: scale(0.9);
+    transform: scale(0.96);
   }
 }
 .confirm-badge {
@@ -915,7 +1057,7 @@
   width: 48px;
   height: 36px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--green-soft);
   color: var(--green);
   flex: none;

@@ -51,13 +51,17 @@
   min-height: 32px;
   margin-right: 0.25rem;
   padding: 0 0.75rem;
-  border: 1px solid var(--green-line);
-  border-radius: 999px;
-  background: var(--green-soft);
-  color: var(--green);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
   font-size: 0.84rem;
   font-weight: 600;
   white-space: nowrap;
+  transition: background var(--hover);
+}
+.today-chip:hover {
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
 }
 .dates-strip {
   position: relative;
@@ -66,21 +70,31 @@
   padding: 2px;
   touch-action: pan-y;
 }
-/* The green pill: one element behind the seven days that slides to the
-   selected one (DateCarousel.tsx sets --date-i). The width is a seventh of the
-   strip minus its padding and the six gaps, and each step is one pill plus a
-   gap. The selected day's own background goes clear so the pill shows through. */
+/* The picked day, as Fluent's calendar marks it: a brand-tinted cell with a
+   short accent bar along its foot. It is one element behind the seven days
+   that slides to the selected one (DateCarousel.tsx sets --date-i). The width
+   is a seventh of the strip minus its padding and the six gaps, and each step
+   is one cell plus a gap. */
 .date-thumb {
   position: absolute;
   top: 2px;
   bottom: 2px;
   left: 2px;
   width: calc((100% - 4px - 6 * 0.3rem) / 7);
-  border-radius: 12px;
-  background: var(--green);
-  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--green) 70%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--green) 10%, transparent);
   transform: translateX(calc(var(--date-i, 0) * (100% + 0.3rem)));
-  transition: transform 0.25s var(--ease-out);
+  transition: transform var(--dur-gentle) var(--ease-out);
+}
+.date-thumb::after {
+  content: '';
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  bottom: 0;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--green);
 }
 .date {
   position: relative;
@@ -94,14 +108,14 @@
   min-height: 58px;
   padding: 0.45rem 0.1rem 0.35rem;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--text);
   transition: background var(--hover), border-color var(--hover), color var(--hover), box-shadow var(--hover),
     transform var(--hover);
 }
 .date:hover:not(.date-selected) {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 .date-wd {
   font-size: 0.74rem;
@@ -129,6 +143,7 @@
 }
 .date-today .date-md {
   color: var(--green);
+  font-weight: 700;
 }
 .date-past {
   color: var(--muted);
@@ -139,18 +154,17 @@
 .date-selected,
 .date-selected:hover {
   background: transparent;
-  color: #fff;
 }
-.date-selected .date-wd,
-.date-selected.date-today .date-wd,
-.date-selected.date-today .date-md {
-  color: rgba(255, 255, 255, 0.85);
+.date-selected .date-wd {
+  color: var(--green);
+  font-weight: 600;
 }
 .date-selected .date-md {
-  color: #fff;
+  color: var(--green);
+  font-weight: 700;
 }
 .date-selected .date-dot {
-  background: #fff;
+  visibility: hidden;
 }
 .week-nav {
   display: inline-flex;
@@ -163,20 +177,18 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: var(--surface);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text);
-  box-shadow: var(--shadow);
   flex: none;
-  transition: background var(--hover), border-color var(--hover), transform 0.12s var(--ease-smooth);
-}
-.week-btn:active {
-  transform: scale(0.92);
+  transition: background var(--hover);
 }
 .week-btn:hover {
-  border-color: var(--border-strong);
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.week-btn:active {
+  background: color-mix(in srgb, var(--text) 11%, transparent);
 }
 /* --- Car carousel -------------------------------------------------------- */
 .cars {
@@ -205,16 +217,16 @@
   gap: 0.15rem;
   min-height: 92px;
   padding: 0.8rem 0.5rem 0.65rem;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
   transition: background var(--hover), border-color var(--hover), opacity var(--hover), box-shadow var(--hover),
     transform var(--hover);
 }
 .car-tile:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
 }
 .car-tile svg {
   color: var(--muted);
@@ -250,9 +262,9 @@
 }
 .car-tile-selected,
 .car-tile-selected:hover {
-  border-color: var(--green);
-  background: color-mix(in srgb, var(--green-soft) 70%, var(--surface));
-  box-shadow: 0 0 0 1px var(--green);
+  border-color: var(--green-line);
+  background: color-mix(in srgb, var(--green) 6%, var(--surface));
+  box-shadow: var(--shadow-card);
 }
 .car-tile-selected svg,
 .car-tile-selected .car-tile-seats {

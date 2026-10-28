@@ -28,6 +28,7 @@ ACTIONS = (
     "admin_granted",
     "admin_revoked",
     "reset_link",
+    "photo_removed",  # someone's profile photo taken down
     "account_deleted",
 )
 

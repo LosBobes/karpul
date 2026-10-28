@@ -79,3 +79,68 @@ test('signed out, the API shows nothing', async ({ request }) => {
   expect((await request.get('/api/stats/me')).status()).toBe(401)
   expect((await request.get('/api/health')).status()).toBe(200)
 })
+
+/** A 600×400 picture, made by the browser itself, as the file a person picks. */
+async function picture(page: Page): Promise<Buffer> {
+  const data = await page.evaluate(() => {
+    const c = document.createElement('canvas')
+    c.width = 600
+    c.height = 400
+    const ctx = c.getContext('2d')!
+    ctx.fillStyle = '#c0392b'
+    ctx.fillRect(0, 0, 600, 400)
+    ctx.fillStyle = '#2980b9'
+    ctx.fillRect(200, 100, 200, 200)
+    return c.toDataURL('image/png').split(',')[1]
+  })
+  return Buffer.from(data, 'base64')
+}
+
+test('a profile photo replaces the initials, for everyone', async ({ browser }, info) => {
+  const options = info.project.use
+  const tag = info.project.name === 'phone' ? 'p' : 'd'
+  const nina = await register(browser, { username: `nina.${tag}`, first: 'Nina', last: `Photo ${tag.toUpperCase()}` }, options)
+  const ivan = await register(browser, { username: `ivan.${tag}`, first: 'Ivan', last: `Viewer ${tag.toUpperCase()}` }, options)
+
+  // Nina opens her account: through the ☰ on a phone, from the docked drawer on a desktop.
+  const menu = nina.getByRole('button', { name: 'Menu', exact: true })
+  if (await menu.isVisible()) await menu.click()
+  await nina.locator('.drawer-me').first().click()
+  const sheet = nina.getByRole('dialog', { name: 'Your account' })
+  await sheet.locator('input[type=file]').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: await picture(nina) })
+  // The picture opens in the cropper first (components/PhotoCropper.tsx); the middle square will do.
+  await sheet.getByRole('button', { name: 'Use this photo' }).click()
+  await expect(sheet.getByRole('button', { name: 'Change photo' })).toBeVisible()
+  const img = sheet.locator('.account-me .avatar img')
+  await expect(img).toBeVisible()
+  // Stored as the middle square, shrunk.
+  const src = await img.getAttribute('src')
+  const served = await nina.request.get(src!)
+  expect(served.status()).toBe(200)
+  expect(served.headers()['content-type']).toMatch(/^image\/(webp|jpeg)$/)
+
+  // Nina offers a ride; Ivan sees her face on its driver card, and sees it
+  // go when she removes it, without reloading.
+  await nina.keyboard.press('Escape')
+  await expect(sheet).toHaveCount(0)
+  await nina.getByRole('button', { name: 'Add ride' }).click()
+  const form = nina.getByRole('dialog', { name: 'Add ride' })
+  await form.getByRole('radio', { name: 'My own car' }).click()
+  await form.getByPlaceholder('e.g. grey Octavia').fill('Red Clio')
+  await form.getByLabel('Pickup location').fill('Novi Sad')
+  await form.getByLabel('Drop-off location').fill('HQ')
+  await form.getByRole('button', { name: 'Add ride' }).click()
+  const row = ivan.getByRole('button', { name: new RegExp(`Nina Photo ${tag.toUpperCase()} · Red Clio`) })
+  await expect(row).toBeVisible()
+  await row.click()
+  const face = ivan.locator(`.avatar img[src="${src}"]`).first()
+  await expect(face).toBeVisible()
+
+  if (await menu.isVisible()) await menu.click()
+  await nina.locator('.drawer-me').first().click()
+  // And back to the initials.
+  await sheet.getByRole('button', { name: 'Remove photo' }).click()
+  await expect(sheet.getByRole('button', { name: 'Add a photo' })).toBeVisible()
+  await expect(img).toHaveCount(0)
+  await expect(face).toHaveCount(0)
+})

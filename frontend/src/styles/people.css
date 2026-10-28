@@ -218,13 +218,9 @@
   display: grid;
   place-items: center;
   flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-}
-.notif-row-mark-bolt {
-  background: var(--green-soft);
-  color: var(--green);
+  width: 24px;
+  height: 24px;
+  color: var(--text);
 }
 .notif-row-text {
   display: flex;

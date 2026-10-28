@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import { api, ApiError } from '../lib/api'
 import { clearSession, setUser, type AuthUser } from '../lib/auth'
 import { intlTag } from '../lib/locale'
 import { messages, useT } from '../lib/i18n'
+import { loadPhotos, squarePhoto, usePhoto, type Crop } from '../lib/photos'
 import { forgetPushHere } from '../lib/push'
 import type { ProfilePatch } from '../lib/types'
 import { Avatar } from './Avatar'
+import { PhotoCropper } from './PhotoCropper'
 import { Sheet } from './Sheet'
 
 /** "June 2026": the month someone joined is as precise as this needs to be. */
@@ -40,6 +42,11 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const photo = usePhoto(user.display_name)
+  const [photoBusy, setPhotoBusy] = useState(false)
+  const picker = useRef<HTMLInputElement>(null)
+  /** A picked file waiting in the cropper. */
+  const [picked, setPicked] = useState<File | null>(null)
 
   const changed =
     firstName.trim() !== user.first_name ||
@@ -74,6 +81,53 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
       const m = messages()
       setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
       setBusy(false)
+    }
+  }
+
+  /** A picked photo opens in the cropper first; it is not part of the form's Save. */
+  function pickPhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // the same file picked again is a change too
+    if (!file) return
+    setError(null)
+    setPicked(file)
+  }
+
+  /** The crop is settled: the photo goes up straight away. */
+  async function savePhoto(file: File, crop: Crop) {
+    setPhotoBusy(true)
+    setError(null)
+    try {
+      let image: Blob
+      try {
+        image = await squarePhoto(file, crop)
+      } catch {
+        setError(messages().account.photoUnreadable)
+        setPicked(null)
+        return
+      }
+      await api.uploadPhoto(image)
+      await loadPhotos()
+      setPicked(null)
+    } catch (err) {
+      const m = messages()
+      setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
+  async function removePhoto() {
+    setPhotoBusy(true)
+    setError(null)
+    try {
+      await api.removeMyPhoto()
+      await loadPhotos()
+    } catch (err) {
+      const m = messages()
+      setError(err instanceof ApiError ? m.apiError(err.message) : m.common.somethingWrong)
+    } finally {
+      setPhotoBusy(false)
     }
   }
 
@@ -124,6 +178,32 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
           <span className="account-me-hint">{t.account.memberSince(joined(user.created_at))}</span>
         </span>
       </div>
+
+      <input ref={picker} type="file" accept="image/*" hidden onChange={pickPhoto} />
+      {picked ? (
+        <PhotoCropper
+          file={picked}
+          busy={photoBusy}
+          onDone={(crop) => void savePhoto(picked, crop)}
+          onCancel={() => setPicked(null)}
+          onUnreadable={() => {
+            setPicked(null)
+            setError(messages().account.photoUnreadable)
+          }}
+        />
+      ) : (
+        <div className="photo-row">
+          <button type="button" className="btn btn-soft" disabled={photoBusy} onClick={() => picker.current?.click()}>
+            {photoBusy ? t.account.photoSaving : photo ? t.account.changePhoto : t.account.addPhoto}
+          </button>
+          {photo && (
+            <button type="button" className="btn btn-soft" disabled={photoBusy} onClick={() => void removePhoto()}>
+              {t.account.removePhoto}
+            </button>
+          )}
+        </div>
+      )}
+      {!picked && <p className="hint">{t.account.photoHint}</p>}
 
       <div className="grid-2">
         <label className="field">

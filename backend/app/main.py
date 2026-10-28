@@ -25,7 +25,7 @@ from .models import Ride
 from .monitoring import init_sentry
 from .offices import fill_office_distances
 from .reminders import reminder_loop
-from .routers import admin, auth, cars, live, odometer, push, requests, rides, stats, thread, waitlist
+from .routers import admin, auth, cars, live, odometer, photos, push, requests, rides, stats, thread, waitlist
 from .seed import seed_corporate_cars
 
 # The app's own loggers (karpul.*) at INFO next to uvicorn's: push, reminders,
@@ -123,6 +123,7 @@ app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)
 app.include_router(requests.router)
+app.include_router(photos.router)
 
 
 @app.get("/api/health", tags=["meta"])

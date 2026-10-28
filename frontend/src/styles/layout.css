@@ -1,8 +1,11 @@
 /* --- Layout -------------------------------------------------------------- */
+:root {
+  --tabbar: 72px;
+}
 .app {
   max-width: 600px;
   margin: 0 auto;
-  padding: 0 1.1rem calc(6.5rem + env(safe-area-inset-bottom));
+  padding: 0 1.1rem calc(var(--tabbar) + 6.5rem + env(safe-area-inset-bottom));
 }
 main,
 .stack {
@@ -22,7 +25,6 @@ main,
   padding: calc(0.45rem + env(safe-area-inset-top)) 0.7rem 0.45rem;
   background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
-  -webkit-backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 }
 .topbar-menu {
@@ -87,12 +89,12 @@ main,
   left: 0;
   z-index: 40;
   max-width: calc(100vw - 16px);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
   /* transform-origin is set by Popover.tsx to the anchor's corner. */
-  animation: pop-in 0.18s var(--ease-out);
+  animation: pop-in var(--dur-fast) var(--ease-out);
 }
 .popover-up {
   animation-name: pop-in-up;
@@ -118,7 +120,7 @@ main,
   white-space: nowrap;
 }
 .menu-item:hover:not(:disabled) {
-  background: var(--surface-2);
+  background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 .menu-item:disabled {
   opacity: 0.45;
@@ -134,22 +136,17 @@ main,
 .menu-item-danger .menu-item-icon {
   color: inherit;
 }
+/* Fluent's flyout: in from the anchor's side by 10px as it fades up. */
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: translateY(-8px) scale(0.9);
-  }
-  35% {
-    opacity: 1;
+    transform: translateY(-10px);
   }
 }
 @keyframes pop-in-up {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.9);
-  }
-  35% {
-    opacity: 1;
+    transform: translateY(10px);
   }
 }
 
@@ -162,11 +159,14 @@ main,
   min-height: 44px;
   padding: 0.55rem 0.8rem;
   border: 1px solid var(--border-strong);
+  /* The same Fluent input as a text field: a darker bottom edge that turns
+     into the accent underline while open or focused. */
+  border-bottom-color: var(--muted);
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
   text-align: left;
-  transition: border-color 0.12s, box-shadow 0.12s;
+  transition: border-color var(--hover), box-shadow var(--hover);
 }
 .control:hover:not(:disabled) {
   border-color: var(--muted);
@@ -174,8 +174,8 @@ main,
 .control:focus-visible,
 .control[aria-expanded='true'] {
   outline: none;
-  border-color: var(--green);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
 }
 .control:disabled {
   background: var(--surface-2);
@@ -327,9 +327,9 @@ main,
 /* --- Cards & tags -------------------------------------------------------- */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-card);
 }
 .tag {
   display: inline-flex;
@@ -496,6 +496,13 @@ main,
   font-weight: 600;
   line-height: 1;
   user-select: none;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
 }
 .avatar-sm {
   width: 28px;

@@ -1,9 +1,10 @@
 /* ---------------------------------------------------------------------------
    Karpul — a light, card-based board.
 
-   One green accent for "selected / go", white cards on an off-white ground,
-   hairline borders and a soft shadow that deepens under the pointer, 14px
-   corners, Inter throughout. A phone gets one column; from 1024px wide the
+   Fluent 2 in Karpul green: one green accent for "selected / go" (step 80 of
+   the brand ramp below), white cards on a neutral ground, Fluent's two-part
+   elevation shadows, 4px controls, 8px cards and 12px sheets, Segoe UI
+   Variable where the system has it and Inter everywhere else. A phone gets one column; from 1024px wide the
    board opens into two panes (the list beside the open ride, see "Wide
    screens" at the end).
    Semantic class names (.card, .date, .car-tile, .pax-row, .panel, …) are
@@ -11,13 +12,13 @@
 --------------------------------------------------------------------------- */
 
 @theme {
-  --color-bg: #f4f5f7;
+  --color-bg: #f5f5f5;
   --color-surface: #ffffff;
-  --color-surface-2: #f2f4f6;
-  --color-text: #111418;
-  --color-muted: #687280;
-  --color-border: #e7e9ed;
-  --color-border-strong: #d2d7de;
+  --color-surface-2: #f0f0f0;
+  --color-text: #242424;
+  --color-muted: #616161;
+  --color-border: #e0e0e0;
+  --color-border-strong: #d1d1d1;
   --color-green: #0f7b4f;
   --color-green-dark: #0b613e;
   --color-green-soft: #e8f4ee;
@@ -27,7 +28,9 @@
   --color-blue: #2563eb;
   --color-blue-soft: #e8efff;
 
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Segoe UI Variable on Windows (Fluent's own face); the bundled Inter on
+     every other system, so Serbian letters never fall back to something odd. */
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, Roboto, sans-serif;
 }
 
 :root {
@@ -46,19 +49,31 @@
   --red-soft: var(--color-red-soft);
   --blue: var(--color-blue);
   --blue-soft: var(--color-blue-soft);
-  --radius: 14px;
-  --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 1px rgba(16, 24, 40, 0.02);
+  /* Fluent shapes: cards 8px, controls 4px, sheets and dialogs 12px. */
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-lg: 12px;
+  /* Fluent elevation: an ambient ring plus a key shadow (2, 8 and 28). */
+  --shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
   /* What a card the pointer is over rises to. */
-  --shadow-hover: 0 10px 24px -10px rgba(16, 24, 40, 0.18), 0 2px 6px -2px rgba(16, 24, 40, 0.06);
-  --shadow-pop: 0 12px 32px -6px rgba(16, 24, 40, 0.18), 0 2px 6px rgba(16, 24, 40, 0.06);
-  /* Motion: things slide and pop, they do not fade (see "Motion" below). */
-  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --ease-in: cubic-bezier(0.4, 0, 1, 1);
-  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
-  /* Hover and press: quick, and settling rather than snapping. */
-  --ease-smooth: cubic-bezier(0.22, 0.61, 0.36, 1);
-  --hover: 0.18s var(--ease-smooth);
+  --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
+  --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.14);
+  /* What a card rests at (Fluent's shadow 4). */
+  --shadow-card: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  /* Fluent's durations: hover 100ms, a popover 150ms, a dialog 250ms. */
+  --dur-fast: 0.15s;
+  --dur-normal: 0.2s;
+  --dur-gentle: 0.25s;
+  /* Motion: Fluent's patterns (see "Motion" below) on Fluent's curves:
+     decelerate in, accelerate out, no overshoot. */
+  --ease-out: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --ease-in: cubic-bezier(0.7, 0, 1, 0.5);
+  --ease-spring: cubic-bezier(0.1, 0.9, 0.2, 1);
+  /* The one overshoot left: the bolt on the update screen. */
+  --ease-bounce: cubic-bezier(0.34, 1.4, 0.64, 1);
+  /* Hover and press: Fluent's easyEase, fast. */
+  --ease-smooth: cubic-bezier(0.33, 0, 0.67, 1);
+  --hover: 0.1s var(--ease-smooth);
 
   color-scheme: light;
   font-family: var(--font-sans);

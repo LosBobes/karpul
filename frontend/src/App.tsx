@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
@@ -14,6 +14,7 @@ import { ConfirmDialog } from './components/ConfirmDialog'
 import { DateCarousel } from './components/DateCarousel'
 import { DayPlan, type Slot } from './components/DayPlan'
 import { FeedbackSheet } from './components/FeedbackSheet'
+import { FluentIcon, type FluentName } from './components/FluentIcon'
 import { ArrowRightIcon, CalendarIcon, ClockIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
@@ -46,6 +47,8 @@ import { useOverlays } from './lib/useOverlays'
 import { usePassengerDrag } from './lib/usePassengerDrag'
 import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
+import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
+import { InstallCard } from './components/InstallCard'
 
 type FormState = { mode: 'create'; template?: Ride; request?: RideRequest; slot?: Slot } | { mode: 'edit'; ride: Ride } | null
 
@@ -599,6 +602,13 @@ function Board({ session }: { session: Session }) {
   const wide = useWide()
   const selection = daySelection(carSel, dayRides, me)
   const openRide = selection !== null ? (dayRides.find((r) => r.id === selection) ?? null) : null
+  // The home-screen install offer (lib/install.ts): a card once, the drawer item after.
+  const installMode = useInstallMode()
+  const installDismissed = useInstallDismissed()
+  const installDone = () => notice(messages().install.done)
+  const installCard = installMode && !installDismissed && (
+    <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
+  )
   const openUpcomingId = upcoming ? upcomingSelection(carSel, rides, me, wide) : null
   const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
 
@@ -710,6 +720,25 @@ function Board({ session }: { session: Session }) {
     week: <CalendarIcon size={16} />,
     day: <ClockIcon size={16} />,
   }
+  // On a phone the views are a Fluent bottom tab bar instead: the same radio
+  // group, the active tab's mark filled. One green pill glides under the marks
+  // to the picked tab, and the mark it lands on pops (keyed, so it replays).
+  const tabMarks: Record<View, FluentName> = { upcoming: 'list', week: 'calendar', day: 'clock' }
+  const tabBar = (
+    <nav className="tabbar" role="radiogroup" aria-label={t.view.label}>
+      <div className="tabbar-track" style={{ '--tab': VIEWS.indexOf(view) } as CSSProperties}>
+        <span className="tab-glider" aria-hidden="true" />
+        {VIEWS.map((v) => (
+          <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'tab tab-on' : 'tab'} onClick={() => setView(v)}>
+            <span className="tab-pill" aria-hidden="true">
+              <FluentIcon key={view === v ? 'on' : 'off'} className="tab-icon" name={tabMarks[v]} variant={view === v ? 'filled' : 'regular'} size={26} />
+            </span>
+            <span className="tab-label">{t.view[v]}</span>
+          </button>
+        ))}
+      </div>
+    </nav>
+  )
   const viewSwitch = (
     <div className="segmented view-switch" role="radiogroup" aria-label={t.view.label}>
       <SegThumb count={VIEWS.length} index={VIEWS.indexOf(view)} />
@@ -759,6 +788,12 @@ function Board({ session }: { session: Session }) {
     onMyRides: () => show('myRides'),
     onNotifications: () => show('notif'),
     onCarState: () => show('carState'),
+    onInstall: installMode
+      ? () => {
+          if (installMode === 'prompt') void promptInstall().then((ok) => ok && installDone())
+          else setInstallDismissed(false)
+        }
+      : undefined,
   }
   // On a wide screen each pane scrolls on its own (index.css, "Wide screens").
   const wrapSide = (node: ReactNode) =>
@@ -808,7 +843,7 @@ function Board({ session }: { session: Session }) {
           </header>
 
           <main>
-            {!wide && viewSwitch}
+            {!wide && installCard}
 
             {/* One switch for the three views, so the one leaving slides out as the next comes in. */}
             <SlideSwitch id={view} dir={viewDir}>
@@ -893,6 +928,10 @@ function Board({ session }: { session: Session }) {
         </div>
 
         {!wide && canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
+
+        {!wide && tabBar}
+
+        {wide && installCard}
 
         {is('sidebar') && !wide && <Sidebar {...menu} onClose={closer('sidebar')} />}
 

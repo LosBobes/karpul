@@ -15,6 +15,10 @@ import '@fontsource/inter/latin-ext-700.css'
 import './index.css'
 import App from './App.tsx'
 import { startServiceWorker } from './lib/pwa'
+import { listenForInstall } from './lib/install'
+
+// Before React: Chrome's install event may fire before the first render.
+listenForInstall()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

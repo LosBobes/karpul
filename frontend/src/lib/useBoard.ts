@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, isNetworkError } from './api'
 import { useLiveBoard, type LiveEvent, type LiveStatus } from './live'
+import { loadPhotos } from './photos'
 import type { CarState, CorporateCar, Ride, RideRequest } from './types'
 
 export interface Range {
@@ -155,10 +156,6 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
   const reloadCarStates = useCallback(async () => {
     setCarStates(await api.carStates())
   }, [])
-  useEffect(() => {
-    // oxlint-disable-next-line react/set-state-in-effect
-    reloadCarStates().catch(() => undefined)
-  }, [reloadCarStates])
 
   /** An edit can move a ride into or out of the loaded range. */
   const upsertRide = useCallback(
@@ -203,18 +200,30 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
         case 'cars.state':
           reloadCarStates().catch(() => undefined)
           break
+        case 'photos.changed':
+          loadPhotos().catch(() => undefined)
+          break
         default:
           break
       }
     },
     [upsertRide, removeRides, upsertRequest, removeRequest, reloadCars, reloadCarStates, load],
   )
-  // A reconnect reloads the board and the cars' state: both may have moved while the socket was down.
+  // Whatever happened while the socket was down was never delivered: the
+  // board, the photos and the cars' state are all fetched again on every (re)connect.
   const onConnect = useCallback(() => {
+    loadPhotos().catch(() => undefined)
     reloadCarStates().catch(() => undefined)
     return load()
   }, [load, reloadCarStates])
   const liveStatus = useLiveBoard({ onEvent, onConnect })
+  // Also without a socket (a proxy that refuses WebSockets falls back to polling).
+  useEffect(() => {
+    loadPhotos().catch(() => undefined)
+    // Data fetching: the state update happens after the await, not synchronously.
+    // oxlint-disable-next-line react/set-state-in-effect
+    reloadCarStates().catch(() => undefined)
+  }, [reloadCarStates])
 
   // Keep the board fresh for people who leave the tab open. Polling is the
   // fallback for when the socket is down; a focus always re-syncs.

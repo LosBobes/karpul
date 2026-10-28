@@ -18,6 +18,7 @@ Event shapes (JSON):
     {"type": "cars.changed"}      # pool edited; rides may have been relabelled
     {"type": "request.saved", "request": <RideRequestRead>}
     {"type": "request.deleted", "request_id": 4}
+    {"type": "photos.changed"}    # a profile photo came, went or changed name
     {"type": "ping"}              # keepalive, sent when nothing else happened
 
 If the app is ever run with several workers this hub has to be replaced by a
@@ -126,3 +127,7 @@ def request_saved(request: RideRequest) -> None:
 
 def request_deleted(request_id: int) -> None:
     hub.publish({"type": "request.deleted", "request_id": request_id})
+
+
+def photos_changed() -> None:
+    hub.publish({"type": "photos.changed"})

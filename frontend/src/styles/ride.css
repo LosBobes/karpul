@@ -34,7 +34,7 @@
   transition: border-color var(--hover), box-shadow var(--hover), transform var(--hover), background var(--hover);
 }
 .session:hover {
-  border-color: var(--border-strong);
+  box-shadow: var(--shadow-hover);
 }
 /* Yours (you drive or sit in it): a green edge, not a green card. */
 .session-mine::before {
@@ -49,8 +49,8 @@
 }
 .session-open,
 .session-open:hover {
-  border-color: var(--green);
-  box-shadow: 0 0 0 1px var(--green);
+  border-color: var(--green-line);
+  background: color-mix(in srgb, var(--green) 6%, var(--surface));
 }
 /* Line one: the clock and its return on the left, your place on the right. */
 .session-top {

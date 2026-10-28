@@ -1,6 +1,7 @@
 [
   "3 passengers already joined; seats cannot go below that",
   "3 to 32 characters: lowercase letters, digits, dot, dash or underscore, starting and ending with a letter or digit",
+  "A photo has to be a JPEG, PNG or WebP image",
   "Account not found",
   "An admin has to approve this ride first",
   "Ana Petrović already joined this ride",
@@ -39,6 +40,7 @@
   "Only the passenger, the driver or another passenger in this car can remove this booking",
   "Only the person waiting or the driver can do that",
   "Only the person who asked can withdraw a request",
+  "Photo not found",
   "Pickup must be the ride's origin or one of its stops",
   "Push notifications are not configured on this server",
   "Range may not exceed 3 days",
@@ -58,6 +60,7 @@
   "The car is already back; undo that to carry on",
   "The odometer cannot read less than Ana Petrović km here",
   "The odometer is noted from the day of the ride",
+  "The photo is too big",
   "The ride has to be on the requested day",
   "There are free seats; get in instead",
   "There has to be at least one admin",

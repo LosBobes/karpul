@@ -41,6 +41,8 @@ export default defineConfig({
       CORPORATE_CARS: '',
       KARPUL_VAPID_PRIVATE_KEY: '',
       KARPUL_ADMINS: 'ana',
+      // Every test registers its own people, all from one address.
+      KARPUL_REGISTRATIONS_PER_HOUR: '100',
     },
   },
 })

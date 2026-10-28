@@ -5,13 +5,13 @@
    as data-resolved; the tokens are also under the media query so a dark phone
    never paints light before the script runs. */
 :root[data-theme='dark'] {
-  --bg: #15171b;
-  --surface: #1f2227;
-  --surface-2: #2a2e35;
-  --text: #eceef1;
-  --muted: #9aa3ad;
-  --border: #2f343c;
-  --border-strong: #444b55;
+  --bg: #1a1a1a;
+  --surface: #292929;
+  --surface-2: #333333;
+  --text: #ffffff;
+  --muted: #adadad;
+  --border: #3d3d3d;
+  --border-strong: #525252;
   --green: #3ecf8e;
   --green-dark: #2fb377;
   --green-soft: #17332a;
@@ -20,20 +20,21 @@
   --red-soft: #3a2022;
   --blue: #7ca6ff;
   --blue-soft: #1c2a44;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-hover: 0 12px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
+  --shadow-card: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #15171b;
-    --surface: #1f2227;
-    --surface-2: #2a2e35;
-    --text: #eceef1;
-    --muted: #9aa3ad;
-    --border: #2f343c;
-    --border-strong: #444b55;
+    --bg: #1a1a1a;
+    --surface: #292929;
+    --surface-2: #333333;
+    --text: #ffffff;
+    --muted: #adadad;
+    --border: #3d3d3d;
+    --border-strong: #525252;
     --green: #3ecf8e;
     --green-dark: #2fb377;
     --green-soft: #17332a;
@@ -42,9 +43,10 @@
     --red-soft: #3a2022;
     --blue: #7ca6ff;
     --blue-soft: #1c2a44;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-    --shadow-hover: 0 12px 28px -10px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.4);
-    --shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+    --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
+    --shadow-card: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
     color-scheme: dark;
   }
 }
@@ -58,8 +60,11 @@
 }
 :root[data-resolved='dark'] .btn-primary,
 :root[data-resolved='dark'] .btn-danger,
-:root[data-resolved='dark'] .chip-on,
 :root[data-resolved='dark'] .update-toast-go {
+  color: #10141a;
+}
+/* The bright dark-theme green carries dark ink, like the primary button. */
+:root[data-resolved='dark'] span.plus-circle svg {
   color: #10141a;
 }
 :root[data-resolved='dark'] .toast {
@@ -165,7 +170,7 @@
   .panel-sheet {
     max-width: none;
     max-height: calc(100dvh - 1.5rem);
-    border-radius: 16px 16px 0 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     animation: sheet-up 0.3s var(--ease-out);
   }
   .backdrop-closing .panel-sheet {
@@ -254,6 +259,10 @@
    ride in a column on the right. The open ride is the big piece: once its
    pane is wide enough it splits into the driver card and the passengers. */
 @media (min-width: 1024px) {
+  /* No tab bar here: the toolbar carries the view switch. */
+  :root {
+    --tabbar: 0px;
+  }
   .app-wide {
     --dock: 264px;
     --toolbar: 60px;
@@ -270,6 +279,7 @@
   .dock {
     width: auto;
     height: 100dvh;
+    border-radius: 0;
     background: color-mix(in srgb, var(--surface) 70%, var(--bg));
     box-shadow: none;
     animation: none;
@@ -287,15 +297,6 @@
     min-height: 44px;
     padding-block: 0.4rem;
   }
-  .dock .drawer-item-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-  }
-  .dock .drawer-item-icon svg {
-    width: 18px;
-    height: 18px;
-  }
   .workspace {
     display: flex;
     flex-direction: column;
@@ -312,7 +313,6 @@
     padding: 0 1.5rem 0 2rem;
     background: var(--surface);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
   .toolbar-title {
     font-size: 1.3rem;
@@ -555,14 +555,14 @@
     min-height: min(560px, calc(100dvh - 9rem));
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-hover);
   }
   .split-pane .detail > .driver-card {
     align-self: stretch;
     border: none;
     border-right: 1px solid var(--border);
-    border-radius: 20px 0 0 20px;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
     box-shadow: none;
   }
   .split-pane .detail > .pax {

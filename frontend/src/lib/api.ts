@@ -9,6 +9,7 @@ import type {
   CorporateCar,
   CorporateCarInput,
   PersonStats,
+  Photo,
   ProfilePatch,
   PushConfig,
   PushPreferences,
@@ -20,6 +21,9 @@ import type {
 } from './types'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
+
+/** A path the API serves, as the browser has to ask for it (an `<img src>`). */
+export const apiUrl = (path: string) => `${BASE}${path}`
 
 /** POST /api/auth/register */
 export interface RegisterInput {
@@ -80,7 +84,7 @@ interface Opts {
 
 async function send(path: string, init: RequestInit = {}, opts: Opts = {}): Promise<Response> {
   const headers: Record<string, string> = { ...(init.headers as Record<string, string>) }
-  if (init.body) headers['Content-Type'] = 'application/json'
+  if (init.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json'
   const token = opts.anonymous ? '' : authToken()
   if (token) headers.Authorization = `Bearer ${token}`
   let res: Response
@@ -157,6 +161,15 @@ export const api = {
 
   /** A new secret for your calendar feed; the old address stops working. */
   rotateCalendarToken: () => request<AuthUser>('/api/auth/me/calendar-token', { method: 'POST' }),
+
+  /** Everyone who has a profile photo, by name (lib/photos.ts). */
+  photos: () => request<Photo[]>('/api/avatars'),
+
+  /** Your photo, already cropped and shrunk (lib/photos.ts `squarePhoto`); replaces any older one. */
+  uploadPhoto: (image: Blob) =>
+    request<Photo>('/api/auth/me/photo', { method: 'PUT', body: image, headers: { 'Content-Type': image.type || 'application/octet-stream' } }),
+
+  removeMyPhoto: () => request<void>('/api/auth/me/photo', { method: 'DELETE' }),
 
   /** Whose reset link this is (404 when it has expired or was used). */
   resetInfo: (token: string) =>
@@ -285,6 +298,9 @@ export const api = {
 
   /** Delete an account: its coming rides, seats and requests go, its past stays. */
   deleteUser: (userId: number) => request<void>(`/api/admin/users/${userId}`, { method: 'DELETE' }),
+
+  /** Admin: take someone's profile photo down. */
+  removePhoto: (userId: number) => request<void>(`/api/admin/users/${userId}/photo`, { method: 'DELETE' }),
 
   /** Every ride from `from` to `to`, past ones included (the admin's table, components/RideLog.tsx). */
   rideLog: (from: string, to: string) => request<Ride[]>(`/api/admin/rides?from=${from}&to=${to}`),

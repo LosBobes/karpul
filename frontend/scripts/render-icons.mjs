@@ -18,7 +18,7 @@ const [tile, mark] = rest.split('<!-- mark -->')
 /** The mark on a full-bleed tile, scaled about the centre for a platform mask. */
 function fullBleed(scale) {
   const g = `<g transform="translate(32 32) scale(${scale}) translate(-32 -32)">${mark.replace('</svg>', '')}</g></svg>`
-  return head + tile.replace('rx="14"', 'rx="0"') + g
+  return head + tile.replaceAll('rx="14"', 'rx="0"') + g
 }
 
 const variants = [

@@ -2,7 +2,7 @@
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--tabbar) + 1.25rem + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   z-index: 20;
   /* Anchored by its left edge, a fixed box gets half the viewport to lay out
@@ -11,17 +11,19 @@
   width: max-content;
   max-width: calc(100vw - 2rem);
   padding: 0.6rem 1rem;
-  border-radius: 999px;
+  border-radius: var(--radius);
   background: var(--text);
   color: #fff;
   font-size: 0.9rem;
   font-weight: 500;
   box-shadow: var(--shadow-pop);
-  animation: toast-in 0.32s var(--ease-spring);
+  animation: toast-in var(--dur-gentle) var(--ease-out);
 }
+/* Fluent's toast: up from below by a little, fading in. */
 @keyframes toast-in {
   from {
-    transform: translate(-50%, calc(100% + 3rem));
+    opacity: 0;
+    transform: translate(-50%, 16px);
   }
 }
 .toast-error {
@@ -40,7 +42,7 @@
   gap: 0.7rem;
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--green-line);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   color: var(--text);
   font: inherit;
@@ -375,7 +377,7 @@
 }
 /* A finger that left the line: the bolt shrugs and waits to be started again. */
 .bolt-pad-slip {
-  animation: bolt-slip 0.38s var(--ease-spring);
+  animation: bolt-slip 0.38s var(--ease-bounce);
 }
 @keyframes bolt-slip {
   0%,
@@ -392,7 +394,7 @@
 /* The moment it closes: the pad pops, the whole lane goes white-hot and cools
    back to green, the current speeds up and the glow swells behind it. */
 .bolt-pad-charged {
-  animation: bolt-charge 0.5s var(--ease-spring);
+  animation: bolt-charge 0.5s var(--ease-bounce);
   filter: drop-shadow(0 0 26px color-mix(in srgb, var(--bolt) 65%, transparent));
 }
 @keyframes bolt-charge {
@@ -493,23 +495,27 @@
 }
 
 /* --- Motion -------------------------------------------------------------- */
-/* Nothing on this board fades in. A view or a day board that replaces
-   another slides in from the side it came from (App.tsx keys the wrapper and
+/* Fluent's motion. A view or a day board that replaces another steps in 20px
+   from the side it came from as it fades up (App.tsx keys the wrapper and
    picks the direction with useSlideDir in lib/motion.ts); sheets rise from
-   the bottom edge, the drawer comes in from the left, confirmations and
-   popovers pop, and the segmented controls and the date pills slide their
-   marker. The short opacity ramp on the slides only covers the first frames,
-   so content entering from inside the frame does not blink into place. */
+   the bottom edge on a phone, the drawer comes in from the left, dialogs grow
+   a little out of the middle as they fade in, flyouts come 10px out of their
+   anchor, and the tab lists and the date pills slide their marker. Everything
+   decelerates in and accelerates out, with no overshoot. */
 .swap-left {
-  animation: swap-from-left 0.34s var(--ease-out) both;
+  animation: swap-from-left var(--dur-gentle) var(--ease-out) both;
 }
 .swap-right {
-  animation: swap-from-right 0.34s var(--ease-out) both;
+  animation: swap-from-right var(--dur-gentle) var(--ease-out) both;
 }
+/* Fluent's page step, both ways: the new content comes in from its side as
+   the old goes out the other (components/SlideSwitch.tsx lays a snapshot of
+   the leaving content over the host). The entering one fades up only over
+   its first frames, so it never blinks into place. */
 @keyframes swap-from-left {
   from {
     opacity: 0.35;
-    transform: translateX(-56px);
+    transform: translateX(-40px);
   }
   45% {
     opacity: 1;
@@ -518,16 +524,12 @@
 @keyframes swap-from-right {
   from {
     opacity: 0.35;
-    transform: translateX(56px);
+    transform: translateX(40px);
   }
   45% {
     opacity: 1;
   }
 }
-/* The content on its way out (components/SlideSwitch.tsx, a snapshot laid
-   over the host) slides the same distance the other way and fades as it
-   goes, so the two pass each other instead of one blinking into the other's
-   place. The snapshot is out of the flow: the height is the new content's. */
 .swap-host {
   position: relative;
   display: flex;
@@ -540,9 +542,9 @@
   min-height: 0;
   will-change: transform, opacity;
 }
-/* Under the entering content (its cards are opaque, so it covers what it
-   passes), and gone by halfway: what shows through is the ground, not two
-   boards on top of each other. */
+/* The leaving snapshot: under the entering content (its cards are opaque, so
+   it covers what it passes), out of the flow (the height is the new
+   content's), and gone by halfway, so what shows through is the ground. */
 .swap-leave {
   position: absolute;
   z-index: 0;
@@ -553,10 +555,10 @@
   will-change: transform, opacity;
 }
 .swap-leave-left {
-  animation: swap-to-left 0.3s var(--ease-in) both;
+  animation: swap-to-left var(--dur-gentle) var(--ease-in) both;
 }
 .swap-leave-right {
-  animation: swap-to-right 0.3s var(--ease-in) both;
+  animation: swap-to-right var(--dur-gentle) var(--ease-in) both;
 }
 @keyframes swap-to-left {
   55% {
@@ -564,7 +566,7 @@
   }
   to {
     opacity: 0;
-    transform: translateX(-56px);
+    transform: translateX(-40px);
   }
 }
 @keyframes swap-to-right {
@@ -573,6 +575,6 @@
   }
   to {
     opacity: 0;
-    transform: translateX(56px);
+    transform: translateX(40px);
   }
 }
