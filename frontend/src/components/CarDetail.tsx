@@ -79,8 +79,9 @@ interface Props {
   /** How the shared car stands (components/CarStatus.tsx), for the line under its name. */
   carState?: CarState | null
   onCarState?: () => void
-  /** Queue for a seat in this full car, getting in at `pickup` once one frees up. */
-  onWait: (ride: Ride, pickup: string) => void
+  /** Queue for a seat in this full car, getting in at `pickup` once one frees up
+   * (a new place, with `newStop`, goes on the route when the seat is yours). */
+  onWait: (ride: Ride, pickup: string, newStop?: NewStop | null) => void
   /** Leave the queue (yourself), or take someone off it (the driver). */
   onLeaveLine: (ride: Ride, entryId: number) => void
   /** A shared car's odometer: runs the call and puts the ride it returns on the board. */
@@ -440,19 +441,26 @@ export function CarDetail({
           )}
         </h3>
 
-        {((canJoin && !choosingPlace) || (canWait && hasStops)) && (
+        {(canJoin || (canWait && (hasStops || mayAddStop))) && !choosingPlace && (
           <div className="pickup-pick">
-            <Select
-              label={t.detail.pickup}
-              icon={<PinIcon size={16} />}
-              value={pickup}
-              options={canJoin ? withElsewhere : pickupOptions}
-              onChange={setPickup}
-            />
+            <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={withElsewhere} onChange={setPickup} />
           </div>
         )}
-        {canJoin && choosingPlace && (
-          <AddStop ride={ride} submitLabel={getInLabel} busy={busy} onCancel={() => setPickup('')} onSubmit={getInAt} />
+        {(canJoin || canWait) && choosingPlace && (
+          <AddStop
+            ride={ride}
+            submitLabel={canJoin ? getInLabel : t.detail.waitFor}
+            busy={busy}
+            onCancel={() => setPickup('')}
+            onSubmit={
+              canJoin
+                ? getInAt
+                : (place, where) => {
+                    setPickup('')
+                    onWait(ride, place, where)
+                  }
+            }
+          />
         )}
 
         {ride.bookings.length === 0 && !canJoin ? (
@@ -613,7 +621,7 @@ export function CarDetail({
 
         {full && !myBooking && !isDriver && ride.bookings.length > 0 && !myEntry && <p className="hint">{t.detail.full}</p>}
 
-        {canWait && (
+        {canWait && !choosingPlace && (
           <>
             <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => onWait(ride, pickup)}>
               <HourglassIcon size={18} />
@@ -643,7 +651,12 @@ export function CarDetail({
                   <span className="waitline-name">
                     {w.name}
                     {w.user_id === me.id && <span className="tag">{t.detail.you}</span>}
-                    {hasStops && w.pickup && <small>{t.detail.getsInAt(w.pickup)}</small>}
+                    {w.pickup && (
+                      <small>
+                        {t.detail.getsInAt(w.pickup)}
+                        {w.new_stop_before != null && ` · ${t.detail.newPlace}`}
+                      </small>
+                    )}
                   </span>
                   {isDriver && !isPast && (
                     <button

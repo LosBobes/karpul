@@ -319,6 +319,8 @@ class WaitlistRead(BaseModel):
     user_id: int
     name: str
     pickup: str
+    # Set while `pickup` is a place that goes on the route only once they get the seat.
+    new_stop_before: bool | None = None
     created_at: datetime
 
 
@@ -416,9 +418,20 @@ class CarStateRead(BaseModel):
     recent: list[CarReportRead]
 
 
+class NewStop(BaseModel):
+    """Where a pickup point that is not on the route yet goes: into the list
+    before the origin (`before`) or the one after it, at `index` (None: at the
+    end, so last before the origin or last before the destination)."""
+
+    before: bool = False
+    index: int | None = Field(default=None, ge=0)
+
+
 class WaitlistJoin(BaseModel):
     # Where to get in once a seat frees up: "" is the origin, else one of the stops.
     pickup: str = Field(default="", max_length=120)
+    # A place not on the route yet, put there when the seat comes through.
+    new_stop: NewStop | None = None
 
     @field_validator("pickup")
     @classmethod
@@ -455,15 +468,6 @@ class MessageRead(BaseModel):
     author_name: str
     body: str
     created_at: datetime
-
-
-class NewStop(BaseModel):
-    """Where a pickup point that is not on the route yet goes: into the list
-    before the origin (`before`) or the one after it, at `index` (None: at the
-    end, so last before the origin or last before the destination)."""
-
-    before: bool = False
-    index: int | None = Field(default=None, ge=0)
 
 
 class BookingCreate(BaseModel):

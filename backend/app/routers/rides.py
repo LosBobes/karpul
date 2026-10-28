@@ -604,7 +604,8 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
-    promoted = promote_waitlist(session, ride)
+    new_stops: list[Booking] = []
+    promoted = promote_waitlist(session, ride, new_stops)
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
@@ -614,5 +615,8 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         notify(session, [passenger_id], "taken_out", ride, driver=ride.driver_name)
     if promoted:
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
+    # The queue's new places reach the route without the driver doing anything.
+    for b in new_stops:
+        notify(session, [ride.driver_id], "stop_added", ride, name=b.passenger_name, place=b.pickup)
     return to_ride_read_dict(ride)
 

@@ -281,9 +281,9 @@ function Board({ session }: { session: Session }) {
     })
 
   /** Queue for a seat in a full car. */
-  const onWait = (ride: Ride, pickup: string) =>
+  const onWait = (ride: Ride, pickup: string, newStop: NewStop | null = null) =>
     withBusy(ride.id, async () => {
-      const updated = await api.joinWaitlist(ride.id, pickup)
+      const updated = await api.joinWaitlist(ride.id, pickup, newStop)
       upsertRide(updated)
       setToast({ kind: 'ok', text: t.toasts.waiting(placeInLine(updated, me)) })
     })

@@ -229,6 +229,11 @@ class WaitlistEntry(SQLModel, table=True):
     name: str
     # Where they want to get in, as for a booking: "" is the origin.
     pickup: str = ""
+    # A `pickup` that is not on the route yet: where it goes once they get the
+    # seat (services.add_stop), before the origin or after it, at that index.
+    # None while the pickup is the origin or one of the stops.
+    new_stop_before: bool | None = None
+    new_stop_index: int | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="waitlist")

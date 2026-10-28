@@ -168,13 +168,9 @@ def pickup_or_422(ride: Ride, pickup: str) -> str:
     raise HTTPException(422, "Pickup must be the ride's origin or one of its stops")
 
 
-def add_stop(ride: Ride, place: str, before: bool, index: int | None) -> str:
-    """Put `place` on the ride's route as a pickup point and return the pickup
-    to book (`pickup_or_422`'s answer). A place already on the route is just
-    that place: the origin or the stop where it already is.
-
-    `before` puts it into the stops before the origin, else into the ones
-    after it, at `index` in that list (None or past the end: last)."""
+def on_route(ride: Ride, place: str) -> str | None:
+    """The pickup `place` is on the ride's route ("" the origin, else the stop
+    as written), or None when it is somewhere new. The destination is a 422."""
     if not place or norm_name(place) == norm_name(ride.origin):
         return ""
     for stop in all_stops(ride):
@@ -182,6 +178,19 @@ def add_stop(ride: Ride, place: str, before: bool, index: int | None) -> str:
             return stop
     if norm_name(place) == norm_name(ride.destination):
         raise HTTPException(422, "A pickup point cannot be the destination")
+    return None
+
+
+def add_stop(ride: Ride, place: str, before: bool, index: int | None) -> str:
+    """Put `place` on the ride's route as a pickup point and return the pickup
+    to book (`pickup_or_422`'s answer). A place already on the route is just
+    that place: the origin or the stop where it already is.
+
+    `before` puts it into the stops before the origin, else into the ones
+    after it, at `index` in that list (None or past the end: last)."""
+    known = on_route(ride, place)
+    if known is not None:
+        return known
     if len(all_stops(ride)) >= MAX_STOPS:
         raise HTTPException(409, f"This ride already has {MAX_STOPS} pickup points")
     field = "stops_before" if before else "stops"
@@ -357,17 +366,19 @@ def leave_waitlists_that_day(session: Session, user_id: int, ride_date: date) ->
     return rides
 
 
-def promote_waitlist(session: Session, ride: Ride) -> list[Booking]:
+def promote_waitlist(session: Session, ride: Ride, new_stops: list[Booking] | None = None) -> list[Booking]:
     """Fill the ride's free seats from its queue, first come first served.
 
     Someone at the head of the queue who meanwhile drives, or sits in, this
     ride or another car that day has found their way and is dropped instead.
-    A pickup point the driver has since removed falls back to the origin.
+    A pickup point the driver has since removed falls back to the origin. A
+    new place someone asked for goes on the route now, while the driver still
+    takes passengers' places and there is room; else they get in at the origin
+    too. Those bookings are also added to `new_stops`, for telling the driver.
     Returns the new bookings (flushed, so they have ids); the caller commits
     and tells the people in them.
     """
     promoted: list[Booking] = []
-    stops = {norm_name(s): s for s in all_stops(ride)}
     while ride.waitlist and len(ride.bookings) < ride.seats:
         entry = ride.waitlist[0]
         ride.waitlist.remove(entry)
@@ -376,14 +387,23 @@ def promote_waitlist(session: Session, ride: Ride) -> list[Booking]:
             continue
         if seated_elsewhere(session, entry.user_id, ride.ride_date, ride.id):
             continue
+        pickup = on_route(ride, entry.pickup) if norm_name(entry.pickup) != norm_name(ride.destination) else ""
+        added = False
+        if pickup is None:
+            pickup = ""
+            if entry.new_stop_before is not None and ride.passengers_add_stops and len(all_stops(ride)) < MAX_STOPS:
+                pickup = add_stop(ride, entry.pickup, entry.new_stop_before, entry.new_stop_index)
+                added = True
         booking = Booking(
             ride_id=ride.id,  # type: ignore[arg-type]
             passenger_id=entry.user_id,
             passenger_name=entry.name,
-            pickup=stops.get(norm_name(entry.pickup), "") if entry.pickup else "",
+            pickup=pickup,
         )
         ride.bookings.append(booking)
         promoted.append(booking)
+        if added and new_stops is not None:
+            new_stops.append(booking)
     session.flush()
     return promoted
 

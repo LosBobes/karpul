@@ -75,3 +75,48 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   await expect(goran.getByRole('option', { name: 'Liman' })).toBeVisible()
   await expect(goran.getByRole('option', { name: 'Somewhere else…' })).toHaveCount(0)
 })
+
+test('a new pickup point from the waiting list goes on the route with the seat', async ({ browser }, info) => {
+  const options = info.project.use
+  const tag = info.project.name === 'phone' ? 'P' : 'D'
+  const dara = await register(browser, `dara.${tag.toLowerCase()}`, 'Dara', `Driver ${tag}`, options)
+  const ema = await register(browser, `ema.${tag.toLowerCase()}`, 'Ema', `First ${tag}`, options)
+  const filip = await register(browser, `filip.${tag.toLowerCase()}`, 'Filip', `Waiting ${tag}`, options)
+
+  // One seat only.
+  await dara.getByRole('button', { name: 'Add ride' }).click()
+  const form = dara.getByRole('dialog', { name: 'Add ride' })
+  await form.getByRole('radio', { name: 'My own car' }).click()
+  await form.getByPlaceholder('e.g. grey Octavia').fill('White Up')
+  await form.getByRole('button', { name: 'Fewer seats' }).click()
+  await form.getByRole('button', { name: 'Fewer seats' }).click()
+  await form.getByLabel('Pickup location').fill('Novi Sad')
+  await form.getByLabel('Drop-off location').fill('HQ')
+  await form.getByRole('button', { name: 'Add ride' }).click()
+  await expect(toast(dara, 'Ride added.')).toBeAttached()
+
+  const rowName = new RegExp(`Dara Driver ${tag} · White Up`)
+  await ema.getByRole('button', { name: rowName }).click()
+  await ema.getByRole('button', { name: 'Get in this car' }).first().click()
+  await expect(toast(ema, `You're in with Dara Driver ${tag}.`)).toBeAttached()
+
+  // Filip queues to get in at Kać, before the start; the route does not change yet.
+  const filipRow = filip.getByRole('button', { name: rowName })
+  await expect(filipRow).toBeVisible()
+  if ((await filipRow.getAttribute('aria-expanded')) !== 'true') await filipRow.click()
+  await expect(filip.getByRole('button', { name: 'Wait for a seat' })).toBeVisible()
+  await filip.getByRole('button', { name: 'Pickup', exact: true }).first().click()
+  await filip.getByRole('option', { name: 'Somewhere else…' }).click()
+  await filip.getByLabel('New pickup point').fill('Kać')
+  await filip.getByRole('button', { name: 'Where on the way' }).click()
+  await filip.getByRole('option', { name: /Before Novi Sad/ }).click()
+  await filip.locator('.add-stop').getByRole('button', { name: 'Wait for a seat' }).click()
+  await expect(filip.getByText('Gets in at Kać · new pickup point').first()).toBeVisible()
+  const trip = filip.locator('.trip').first().locator('.trip-place')
+  await expect(trip).toHaveText(['Novi Sad', 'HQ'])
+
+  // Ema leaves: the seat is Filip's, and Kać is on the route.
+  await ema.getByRole('button', { name: 'Leave' }).first().click()
+  await expect(trip).toHaveText(['Kać', 'Novi Sad', 'HQ'])
+  await expect(filip.getByText('Gets in at Kać').first()).toBeVisible()
+})

@@ -87,6 +87,8 @@ export interface WaitlistEntry {
   name: string
   /** Where they want to get in once a seat frees up: "" is the origin. */
   pickup: string
+  /** Set while `pickup` is a new place, put on the route once the seat is theirs. */
+  new_stop_before?: boolean | null
   created_at: string
 }
 

@@ -5,13 +5,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
-from ..access import booking_of, get_ride_or_404, is_driver
+from ..access import booking_of, get_ride_or_404, is_driver, may_run
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..events import ride_saved
 from ..models import WaitlistEntry
-from ..schemas import RideRead, WaitlistJoin
-from ..services import pickup_or_422, to_ride_read_dict
+from ..schemas import MAX_STOPS, RideRead, WaitlistJoin
+from ..services import all_stops, on_route, pickup_or_422, to_ride_read_dict
 
 router = APIRouter(prefix="/api/rides", tags=["rides"])
 
@@ -37,8 +37,17 @@ def join_waitlist(ride_id: int, payload: WaitlistJoin, session: WriteSessionDep,
         raise HTTPException(status.HTTP_409_CONFLICT, "You are already waiting for this car")
     if len(ride.bookings) < ride.seats:
         raise HTTPException(status.HTTP_409_CONFLICT, "There are free seats; get in instead")
-    pickup = pickup_or_422(ride, payload.pickup)
-    ride.waitlist.append(WaitlistEntry(ride_id=ride.id, user_id=user.id, name=user.display_name, pickup=pickup))  # type: ignore[arg-type]
+    where = payload.new_stop
+    known = on_route(ride, payload.pickup) if where is not None else pickup_or_422(ride, payload.pickup)
+    entry = WaitlistEntry(ride_id=ride.id, user_id=user.id, name=user.display_name, pickup=known or "")  # type: ignore[arg-type]
+    if known is None and where is not None:
+        # Somewhere new: it goes on the route only once the seat is theirs.
+        if not ride.passengers_add_stops and not may_run(user, ride):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "The driver does not take new pickup points on this ride")
+        if len(all_stops(ride)) >= MAX_STOPS:
+            raise HTTPException(status.HTTP_409_CONFLICT, f"This ride already has {MAX_STOPS} pickup points")
+        entry.pickup, entry.new_stop_before, entry.new_stop_index = payload.pickup, where.before, where.index
+    ride.waitlist.append(entry)
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)

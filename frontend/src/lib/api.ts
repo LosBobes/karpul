@@ -238,7 +238,8 @@ export const api = {
   undoLeg: (rideId: number) => request<Ride>(`/api/rides/${rideId}/legs/last`, { method: 'DELETE' }),
 
   /** Queue for a seat in a full car; the first seat that frees up is yours. */
-  joinWaitlist: (rideId: number, pickup = '') => request<Ride>(`/api/rides/${rideId}/waitlist`, json('POST', { pickup })),
+  joinWaitlist: (rideId: number, pickup = '', newStop: NewStop | null = null) =>
+    request<Ride>(`/api/rides/${rideId}/waitlist`, json('POST', { pickup, new_stop: newStop })),
 
   leaveWaitlist: (rideId: number, entryId: number) =>
     request<Ride>(`/api/rides/${rideId}/waitlist/${entryId}`, { method: 'DELETE' }),
