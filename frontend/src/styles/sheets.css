@@ -465,6 +465,81 @@
   font-size: 0.82rem;
 }
 
+/* --- How to use Karpul (components/HowTo.tsx) ---------------------------- */
+/* Topics as Fluent accordion rows (the drawer's chevron well), each opening
+   to numbered steps on a green disc. */
+.howto-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.howto-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.4rem 0.5rem 0.4rem 0.35rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  transition: background var(--hover);
+}
+.howto-head::-webkit-details-marker {
+  display: none;
+}
+.howto-head:active {
+  background: color-mix(in srgb, var(--text) 11%, transparent);
+}
+.howto-head:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+}
+.howto-topic[open] .howto-chevron {
+  transform: rotate(90deg);
+}
+.howto-steps {
+  counter-reset: howto;
+  list-style: none;
+  margin: 0.15rem 0 0.75rem 1.1rem;
+  padding: 0 0 0 1.05rem;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.howto-steps li {
+  counter-increment: howto;
+  position: relative;
+  padding-left: 1.85rem;
+}
+.howto-steps li::before {
+  content: counter(howto);
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.howto-steps b {
+  color: var(--text);
+  font-weight: 600;
+}
+@media (hover: hover) and (pointer: fine) {
+  .howto-head:hover {
+    background: color-mix(in srgb, var(--text) 6%, transparent);
+  }
+}
+
 /* --- Language switch (components/LanguageSwitch.tsx) --------------------- */
 /* English / Srpski as a segmented control: at the foot of the app menu and,
    for a newcomer, on the first-run name sheet. */
