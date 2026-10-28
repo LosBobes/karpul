@@ -544,8 +544,11 @@
 }
 /* The leaving snapshot: under the entering content (its cards are opaque, so
    it covers what it passes), out of the flow (the height is the new
-   content's), and gone by halfway, so what shows through is the ground. */
-.swap-leave {
+   content's), and gone by halfway, so what shows through is the ground.
+   Scoped to the host like the rule above, or that rule's `position: relative`
+   wins and the snapshot pushes the new content down by its own height (and a
+   tile's scrollIntoView then scrolls the page to chase it). */
+.swap-host > .swap-leave {
   position: absolute;
   z-index: 0;
   top: 0;
