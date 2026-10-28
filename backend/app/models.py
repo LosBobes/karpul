@@ -93,6 +93,8 @@ class CorporateCar(SQLModel, table=True):
     plate: str = Field(unique=True)
     passenger_seats: int = Field(ge=1, le=8)
     active: bool = Field(default=True)
+    # Where the car is kept: a new ride in it starts here unless the driver says otherwise.
+    home: str = Field(default="", sa_column_kwargs={"server_default": ""})
 
     rides: list["Ride"] = Relationship(back_populates="corporate_car")
 
