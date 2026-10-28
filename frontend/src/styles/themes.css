@@ -210,6 +210,12 @@
 /* --- Fingers, not cursors ------------------------------------------------ */
 /* A touch "hover" sticks until the next tap, so lifted chips would stay lifted. */
 @media (pointer: coarse) {
+  /* The pickup pill stays small to the eye; its target grows to 44px. */
+  .pick-chip::before {
+    content: '';
+    position: absolute;
+    inset: -7px -2px;
+  }
   .icon-btn {
     width: 44px;
     height: 44px;
