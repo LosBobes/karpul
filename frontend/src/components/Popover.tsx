@@ -18,8 +18,10 @@ interface Props {
 /**
  * A floating panel rendered on <body> and positioned against its anchor, so
  * it is never clipped by a scrolling sheet body. Sits below the anchor and
- * flips above when the viewport runs out; closes on an outside tap, Escape,
- * or when the anchor scrolls away. It grows out of the anchor's edge (the
+ * flips above when the viewport runs out, but never leaves the viewport; it
+ * follows the anchor every frame, because the board can reflow under it (a
+ * live update) without anything scrolling. Closes on an outside tap or
+ * Escape. It grows out of the anchor's edge (the
  * `popover-up` class and `transform-origin` say which), so placement reads
  * the layout size (`offsetWidth`) rather than the scaled bounding box.
  */
@@ -32,8 +34,7 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
   useLayoutEffect(() => {
     const el = ref.current
     if (!el || !anchor) return
-    const place = () => {
-      const a = anchor.getBoundingClientRect()
+    const place = (a: DOMRect) => {
       if (align === 'stretch') el.style.minWidth = `${a.width}px`
       const width = el.offsetWidth
       const height = el.offsetHeight
@@ -44,21 +45,27 @@ export function Popover({ anchor, onClose, children, align = 'left', className, 
       left = Math.max(pad, Math.min(left, vw - pad - width))
       let top = a.bottom + 4
       const up = top + height > vh - pad
-      if (up) top = Math.max(pad, a.top - 4 - height)
+      if (up) top = Math.max(pad, Math.min(a.top - 4 - height, vh - pad - height))
       el.style.top = `${top}px`
       el.style.left = `${left}px`
       el.style.transformOrigin = `${up ? 'bottom' : 'top'} ${align === 'right' ? 'right' : 'left'}`
       el.classList.toggle('popover-up', up)
       el.style.visibility = 'visible'
     }
-    place()
-    window.addEventListener('resize', place)
-    // Scrolling the page or a sheet body moves the anchor; follow it.
-    window.addEventListener('scroll', place, true)
-    return () => {
-      window.removeEventListener('resize', place)
-      window.removeEventListener('scroll', place, true)
+    // Scrolling, a resize or a reflow moves the anchor; place again only when it moved.
+    let last = ''
+    let frame = 0
+    const follow = () => {
+      const a = anchor.getBoundingClientRect()
+      const key = `${a.left} ${a.top} ${a.width} ${a.height} ${window.innerWidth} ${window.innerHeight}`
+      if (key !== last) {
+        last = key
+        place(a)
+      }
+      frame = requestAnimationFrame(follow)
     }
+    follow()
+    return () => cancelAnimationFrame(frame)
   }, [anchor, align])
 
   useEffect(() => {

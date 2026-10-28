@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test'
 
 /**
  * Pickup points that are not on the route yet: a passenger gets in at a place
@@ -8,6 +8,16 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 
 function toast(page: Page, text: string) {
   return page.getByRole('status').filter({ hasText: text })
+}
+
+/**
+ * A tag for this project and attempt, in the usernames and the surnames: a
+ * retry (or `--repeat-each`) runs on the same database, where the first
+ * attempt's people and rides are still there.
+ */
+function attempt(info: TestInfo) {
+  const n = info.retry + info.repeatEachIndex
+  return (info.project.name === 'phone' ? 'P' : 'D') + (n ? String(n + 1) : '')
 }
 
 async function register(browser: Browser, username: string, first: string, last: string, options: object): Promise<Page> {
@@ -26,7 +36,7 @@ async function register(browser: Browser, username: string, first: string, last:
 
 test('a passenger and the driver put new pickup points on the route', async ({ browser }, info) => {
   const options = info.project.use
-  const tag = info.project.name === 'phone' ? 'P' : 'D'
+  const tag = attempt(info)
   const vesna = await register(browser, `vesna.${tag.toLowerCase()}`, 'Vesna', `Driver ${tag}`, options)
   const goran = await register(browser, `goran.${tag.toLowerCase()}`, 'Goran', `Rider ${tag}`, options)
 
@@ -78,7 +88,7 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
 
 test('a new pickup point from the waiting list goes on the route with the seat', async ({ browser }, info) => {
   const options = info.project.use
-  const tag = info.project.name === 'phone' ? 'P' : 'D'
+  const tag = attempt(info)
   const dara = await register(browser, `dara.${tag.toLowerCase()}`, 'Dara', `Driver ${tag}`, options)
   const ema = await register(browser, `ema.${tag.toLowerCase()}`, 'Ema', `First ${tag}`, options)
   const filip = await register(browser, `filip.${tag.toLowerCase()}`, 'Filip', `Waiting ${tag}`, options)
