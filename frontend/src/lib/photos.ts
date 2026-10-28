@@ -55,28 +55,70 @@ export function usePhoto(name: string | null | undefined): string | null {
 /** The side of the square a photo is stored at: twice the biggest avatar, for sharp screens. */
 export const PHOTO_PX = 256
 
+/** A square of the picture in its own pixels: what ends up as the photo. */
+export interface Crop {
+  x: number
+  y: number
+  side: number
+}
+
+/** How far in the cropper zooms: a quarter of the short side across. */
+export const MAX_ZOOM = 4
+
 /**
- * A picked file as the server takes it: the middle square of the picture,
- * PHOTO_PX across, as WebP (JPEG where the browser cannot write WebP, which
- * older Safari answers by handing back a PNG). Drawing through an `<img>`
- * applies the camera's EXIF rotation, so a phone portrait stays upright.
+ * The square kept inside the picture: no wider than the short side, no
+ * narrower than MAX_ZOOM allows, and moved back in from any edge it overhangs.
+ */
+export function fitCrop(width: number, height: number, c: Crop): Crop {
+  const short = Math.min(width, height)
+  const side = Math.min(short, Math.max(short / MAX_ZOOM, c.side))
+  const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max)
+  return { x: clamp(c.x, width - side), y: clamp(c.y, height - side), side }
+}
+
+/** The middle square, all of the short side: where the cropper starts. */
+export function middleSquare(width: number, height: number): Crop {
+  const side = Math.min(width, height)
+  return { x: (width - side) / 2, y: (height - side) / 2, side }
+}
+
+/** The square at `zoom` (1 is the whole short side), around the same centre. */
+export function zoomCrop(width: number, height: number, c: Crop, zoom: number): Crop {
+  const side = Math.min(width, height) / Math.min(MAX_ZOOM, Math.max(1, zoom))
+  const cx = c.x + c.side / 2
+  const cy = c.y + c.side / 2
+  return fitCrop(width, height, { x: cx - side / 2, y: cy - side / 2, side })
+}
+
+/** How far in a crop is: 1 for the whole short side, up to MAX_ZOOM. */
+export function cropZoom(width: number, height: number, c: Crop): number {
+  return Math.min(width, height) / c.side
+}
+
+/**
+ * A picked file as the server takes it: the square `crop` of the picture (the
+ * middle one when none is given), PHOTO_PX across, as WebP (JPEG where the
+ * browser cannot write WebP, which older Safari answers by handing back a
+ * PNG). Drawing through an `<img>` applies the camera's EXIF rotation, so a
+ * phone portrait stays upright, and the crop is in those upright pixels.
  * Rejects when the file is not a picture the browser can read.
  */
-export async function squarePhoto(file: Blob): Promise<Blob> {
+export async function squarePhoto(file: Blob, crop?: Crop): Promise<Blob> {
   const url = URL.createObjectURL(file)
   try {
     const img = new Image()
     img.decoding = 'async'
     img.src = url
     await img.decode()
-    const side = Math.min(img.naturalWidth, img.naturalHeight)
-    if (!side) throw new Error('empty image')
+    const { naturalWidth: w, naturalHeight: h } = img
+    if (!w || !h) throw new Error('empty image')
+    const c = fitCrop(w, h, crop ?? middleSquare(w, h))
     const canvas = document.createElement('canvas')
     canvas.width = canvas.height = PHOTO_PX
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('no canvas')
     ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, PHOTO_PX, PHOTO_PX)
+    ctx.drawImage(img, c.x, c.y, c.side, c.side, 0, 0, PHOTO_PX, PHOTO_PX)
     const encode = (type: string) =>
       new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85))
     const webp = await encode('image/webp')

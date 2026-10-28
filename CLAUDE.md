@@ -99,9 +99,11 @@ bearer token to every call and clears the store on a 401. `App.tsx` is the door:
 session it renders `AuthGate` and nothing else, so the board never loads signed out; it
 refreshes the account from `/api/auth/me` on start (an admin may have been made one).
 
-**Profile photos** (`routers/photos.py`, table `ProfilePhoto`). `components/AccountSheet.tsx` picks a file, and
-`squarePhoto` in `lib/photos.ts` crops the middle square to 256 px WebP (JPEG where the browser cannot write
-WebP) before `PUT /api/auth/me/photo` (raw body, no multipart). The server only sniffs the first bytes
+**Profile photos** (`routers/photos.py`, table `ProfilePhoto`). `components/AccountSheet.tsx` picks a file and opens it in
+`PhotoCropper` (inline in the sheet, not a second overlay): the picture dimmed round a square outline (what is saved)
+with the avatar's circle inside it, dragged, pinched, wheeled or arrow-keyed, with a zoom slider up to `MAX_ZOOM`
+(the geometry is `fitCrop` / `zoomCrop` in `lib/photos.ts`, tested in `photos.test.ts`). `squarePhoto` then draws that
+square at 256 px as WebP (JPEG where the browser cannot write WebP) before `PUT /api/auth/me/photo` (raw body, no multipart). The server only sniffs the first bytes
 (JPEG/PNG/WebP) and caps the size (`MAX_PHOTO_BYTES`). The bytes live in the database, so the backup carries
 them. An `<img>` cannot send a bearer token, so a photo is served openly at `/api/avatars/<key>` with a random
 key that changes on every upload (the old address 404s), `immutable` and `nosniff`; the service worker caches
