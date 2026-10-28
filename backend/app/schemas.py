@@ -319,6 +319,8 @@ class WaitlistRead(BaseModel):
     user_id: int
     name: str
     pickup: str
+    # Set while `pickup` is a place that goes on the route only once they get the seat.
+    new_stop_before: bool | None = None
     created_at: datetime
 
 
@@ -416,9 +418,20 @@ class CarStateRead(BaseModel):
     recent: list[CarReportRead]
 
 
+class NewStop(BaseModel):
+    """Where a pickup point that is not on the route yet goes: into the list
+    before the origin (`before`) or the one after it, at `index` (None: at the
+    end, so last before the origin or last before the destination)."""
+
+    before: bool = False
+    index: int | None = Field(default=None, ge=0)
+
+
 class WaitlistJoin(BaseModel):
     # Where to get in once a seat frees up: "" is the origin, else one of the stops.
     pickup: str = Field(default="", max_length=120)
+    # A place not on the route yet, put there when the seat comes through.
+    new_stop: NewStop | None = None
 
     @field_validator("pickup")
     @classmethod
@@ -461,6 +474,8 @@ class BookingCreate(BaseModel):
     passenger_name: str = Field(min_length=1, max_length=80)
     # "" is the ride's origin; otherwise one of the ride's stops, verbatim.
     pickup: str = Field(default="", max_length=120)
+    # A place that is not on the route yet: added as a pickup point there.
+    new_stop: NewStop | None = None
 
     @field_validator("passenger_name")
     @classmethod
@@ -477,6 +492,7 @@ class BookingUpdate(BaseModel):
     """A passenger moving to another of the ride's pickup points."""
 
     pickup: str = Field(max_length=120)
+    new_stop: NewStop | None = None
 
     @field_validator("pickup")
     @classmethod
@@ -484,7 +500,22 @@ class BookingUpdate(BaseModel):
         return " ".join(v.split())
 
 
-MAX_STOPS = 3
+class StopCreate(NewStop):
+    """The driver (or an admin) adding a pickup point to a ride."""
+
+    stop: str = Field(min_length=1, max_length=120)
+
+    @field_validator("stop")
+    @classmethod
+    def clean_stop(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if not v:
+            raise ValueError("must not be empty")
+        return v
+
+
+# Pickup points on one ride, before the origin and after it together.
+MAX_STOPS = 6
 MAX_REPEAT_WEEKS = 26
 
 
@@ -519,7 +550,9 @@ class RideBase(BaseModel):
     seats: int = Field(ge=0, le=8)
     notes: str = Field(default="", max_length=500)
     passengers_manage: bool = False
+    passengers_add_stops: bool = True
     stops: list[str] = Field(default_factory=list)
+    stops_before: list[str] = Field(default_factory=list)
     distance_km: float | None = Field(default=None, ge=0, le=2000)
     chip_in: str = Field(default="", max_length=40)
 
@@ -528,7 +561,7 @@ class RideBase(BaseModel):
     def strip_text(cls, v: str) -> str:
         return " ".join(v.split())
 
-    @field_validator("stops")
+    @field_validator("stops", "stops_before")
     @classmethod
     def clean_stops(cls, v: list[str]) -> list[str]:
         return _clean_stops(v)
@@ -543,7 +576,12 @@ class RideBase(BaseModel):
                 raise ValueError("car_name is required for an own car")
         if self.return_time is not None and self.return_time <= self.departure_time:
             raise ValueError("return_time must be after departure_time")
-        self.stops = [s for s in self.stops if s.casefold() != self.origin.casefold()]
+        origin = self.origin.casefold()
+        self.stops_before = [s for s in self.stops_before if s.casefold() != origin]
+        before = {s.casefold() for s in self.stops_before}
+        self.stops = [s for s in self.stops if s.casefold() != origin and s.casefold() not in before]
+        if len(self.stops) + len(self.stops_before) > MAX_STOPS:
+            raise ValueError(f"at most {MAX_STOPS} extra pickup points")
         return self
 
 
@@ -586,7 +624,9 @@ class RideUpdate(BaseModel):
     seats: int | None = Field(default=None, ge=0, le=8)
     notes: str | None = Field(default=None, max_length=500)
     passengers_manage: bool | None = None
+    passengers_add_stops: bool | None = None
     stops: list[str] | None = None
+    stops_before: list[str] | None = None
     distance_km: float | None = Field(default=None, ge=0, le=2000)
     chip_in: str | None = Field(default=None, max_length=40)
 
@@ -607,7 +647,10 @@ class RideRead(BaseModel):
     seats: int
     notes: str
     passengers_manage: bool
+    passengers_add_stops: bool = True
     stops: list[str]
+    # Pickup points before `origin`, in the order the car reaches them.
+    stops_before: list[str] = []
     distance_km: float | None
     chip_in: str
     series_id: str | None

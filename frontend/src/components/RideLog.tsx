@@ -11,6 +11,7 @@ import { CarIcon, DownloadIcon, SearchIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
 import { Select } from './Select'
 import { Sheet } from './Sheet'
+import { allStops } from '../lib/stops'
 
 type Period = 'upcoming' | 'past'
 
@@ -217,9 +218,9 @@ export function RideLog({ onClose }: Props) {
                   </td>
                   <td>
                     {r.origin}
-                    {r.stops.length > 0 && (
+                    {allStops(r).length > 0 && (
                       <span className="log-sub">
-                        {c.stops}: {r.stops.join(', ')}
+                        {c.stops}: {allStops(r).join(', ')}
                       </span>
                     )}
                   </td>

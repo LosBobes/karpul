@@ -6,6 +6,7 @@ import type { Ride, RideRequest } from '../lib/types'
 import { PowertrainMark } from './CarArt'
 import { ArrowRightIcon, HandIcon, SearchIcon, XIcon } from './icons'
 import { RequestList } from './RequestList'
+import { allStops } from '../lib/stops'
 
 type Filter = 'all' | 'free' | 'mine' | 'joined'
 const FILTERS: Filter[] = ['all', 'free', 'mine', 'joined']
@@ -47,7 +48,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
     if (filter === 'free' && r.free_seats <= 0) return false
     if (filter === 'mine' && !drives(r, me)) return false
     if (filter === 'joined' && !seatedIn(r, me)) return false
-    if (q && !fold(`${r.origin} ${r.destination} ${r.driver_name} ${r.car_name} ${r.stops.join(' ')}`).includes(q)) return false
+    if (q && !fold(`${r.origin} ${r.destination} ${r.driver_name} ${r.car_name} ${allStops(r).join(' ')}`).includes(q)) return false
     return true
   }
   const shown = rides.filter(matches)
@@ -165,7 +166,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
                           {r.driver_name} · {shortCarName(r.car_name)}
                         </span>
                         <PowertrainMark carName={r.car_name} />
-                        {r.stops.length > 0 && <span className="session-stops">{t.upcoming.stops(r.stops.length)}</span>}
+                        {allStops(r).length > 0 && <span className="session-stops">{t.upcoming.stops(allStops(r).length)}</span>}
                       </span>
                     </button>
                     {open && renderDetail && (

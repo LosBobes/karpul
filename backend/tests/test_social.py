@@ -91,6 +91,41 @@ def test_more_seats_move_the_queue_up_with_their_pickup(client, sent):
     assert r.json()["waitlist"] == []
 
 
+def test_a_new_pickup_point_from_the_queue_waits_for_the_seat(client, sent):
+    ride = client.post("/api/rides", json=own_ride(stops=["Liman"])).json()
+    url = f"/api/rides/{ride['id']}"
+    marko = client.post(f"{url}/bookings", json={"passenger_name": "Marko"}).json()["bookings"][0]["id"]
+    r = client.post(f"{url}/waitlist", json={"pickup": "Futog", "new_stop": {"before": True}}, headers=as_("Bojan"))
+    assert r.status_code == 201, r.text
+    # Not on the route while he only waits.
+    assert r.json()["stops_before"] == []
+    assert r.json()["waitlist"][0]["pickup"] == "Futog" and r.json()["waitlist"][0]["new_stop_before"] is True
+    # A place already on the route is just that place.
+    r = client.post(f"{url}/waitlist", json={"pickup": "liman", "new_stop": {}}, headers=as_("Mila"))
+    assert r.json()["waitlist"][1]["pickup"] == "Liman" and r.json()["waitlist"][1]["new_stop_before"] is None
+    assert client.post(f"{url}/waitlist", json={"pickup": "HQ", "new_stop": {}}, headers=as_("Vuk")).status_code == 422
+
+    # Marko leaves: Bojan gets the seat and Futog goes on the route, and the driver hears of it.
+    r = client.delete(f"{url}/bookings/{marko}", headers=as_("Marko"))
+    assert r.json()["stops_before"] == ["Futog"]
+    assert {b["passenger_name"]: b["pickup"] for b in r.json()["bookings"]} == {"Bojan": "Futog"}
+    assert ("stop_added", [user_id(client, "Ana")], {"name": "Bojan", "place": "Futog"}) in sent
+
+
+def test_the_queue_respects_the_drivers_switch(client):
+    ride = client.post("/api/rides", json=own_ride(passengers_add_stops=False)).json()
+    url = f"/api/rides/{ride['id']}"
+    marko = client.post(f"{url}/bookings", json={"passenger_name": "Marko"}).json()["bookings"][0]["id"]
+    r = client.post(f"{url}/waitlist", json={"pickup": "Futog", "new_stop": {}}, headers=as_("Bojan"))
+    assert r.status_code == 403
+    # Closed after he queued: he gets in at the start instead.
+    client.patch(url, json={"passengers_add_stops": True}, headers=as_("Ana"))
+    client.post(f"{url}/waitlist", json={"pickup": "Futog", "new_stop": {}}, headers=as_("Bojan"))
+    client.patch(url, json={"passengers_add_stops": False}, headers=as_("Ana"))
+    r = client.delete(f"{url}/bookings/{marko}", headers=as_("Marko"))
+    assert r.json()["stops"] == [] and r.json()["bookings"][0]["pickup"] == ""
+
+
 def test_whoever_found_another_car_drops_out_of_the_queue(client):
     full = client.post("/api/rides", json=own_ride()).json()
     other = client.post("/api/rides", json=own_ride(driver_name="Vuk", car_name="Red Clio", seats=3)).json()

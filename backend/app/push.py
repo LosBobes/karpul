@@ -66,7 +66,7 @@ class Target:
 # Notifications sheet). Every `kind` notify() sends belongs to exactly one.
 CATEGORIES: dict[str, tuple[str, ...]] = {
     "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
-    "changes": ("ride_changed", "ride_removed", "ride_assigned"),
+    "changes": ("ride_changed", "ride_removed", "ride_assigned", "stop_added"),
     "reminders": ("leaving_soon", "note_km"),
     "messages": ("message",),
     "requests": ("request_answered",),
@@ -102,6 +102,7 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver, alternatives=0: f"{driver} removed the ride"
         + ("" if not alternatives else f". {alternatives} other car{'s' if alternatives > 1 else ''} with free seats that day"),
         "ride_changed": lambda driver: f"{driver} changed the ride",
+        "stop_added": lambda name, place: f"{name} gets in at {place}, a new pickup point",
         "leaving_soon": lambda minutes: f"Leaving in {minutes} min",
         "note_km": lambda car: f"{car} back? Note the odometer",
         "car_issue": lambda name, car: f"{name} reports a problem with {car}",
@@ -121,6 +122,7 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver, alternatives=0: f"{driver} je uklonio/la vožnju"
         + ("" if not alternatives else f". Tog dana ima mesta u još {_sr_cars(alternatives)}"),
         "ride_changed": lambda driver: f"{driver} je izmenio/la vožnju",
+        "stop_added": lambda name, place: f"{name} ulazi kod: {place}, novo mesto ulaska",
         "leaving_soon": lambda minutes: f"Polazak za {minutes} min",
         "note_km": lambda car: f"{car} je vraćen? Upiši kilometražu",
         "car_issue": lambda name, car: f"{name} prijavljuje problem sa autom {car}",

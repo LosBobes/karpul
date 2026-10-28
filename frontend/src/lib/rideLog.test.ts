@@ -16,6 +16,8 @@ const ride = (id: number, over: Partial<Ride> = {}): Ride =>
     origin: 'Novi Sad',
     destination: 'HQ',
     stops: [],
+    stops_before: [],
+    passengers_add_stops: true,
     seats: 3,
     bookings: [],
     waitlist: [],

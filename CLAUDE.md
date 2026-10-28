@@ -34,7 +34,7 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) and `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
@@ -310,11 +310,26 @@ the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak
 
 `PATCH /api/rides/{id}` deliberately merges the partial payload onto the stored ride and re-validates the result through `RideCreate`, so a partial edit is held to the full creation rules. New invariants belong in `RideCreate`/`services.py` so both paths inherit them automatically.
 
-**More on a ride.** `Ride.stops` is the extra pickup points as one-per-line text (the API shows a
-list; `stops_from_text` / `stops_to_text` in `services.py`; at most `MAX_STOPS`, the origin and
-duplicates are dropped), and each `Booking.pickup` is `""` for the origin or one stop verbatim
-(`pickup_or_422`; an edit that removes a stop moves its passengers back to the origin with
-`drop_orphaned_pickups`). `distance_km` and `chip_in` are the driver's own words and only ever
+**More on a ride.** `Ride.stops` is the extra pickup points after the origin and `Ride.stops_before`
+the ones before it (collected on the way to the start), each as one-per-line text (the API shows
+lists; `stops_from_text` / `stops_to_text`, `all_stops` for both in route order, mirrored by
+`allStops` in `lib/stops.ts`; at most `MAX_STOPS` (6) together, the origin and duplicates are
+dropped, a place in both lists stays before the origin), and each `Booking.pickup` is `""` for the
+origin or one stop verbatim (`pickup_or_422`; an edit that removes a stop moves its passengers back
+to the origin with `drop_orphaned_pickups`). **New pickup points after the fact**: a passenger
+getting in or moving (`BookingCreate` / `BookingUpdate` with `new_stop: {before, index}`) at a place
+not on the route puts it there (`add_stop`; a place already on it is just that place, the
+destination is a 422) and the driver is pushed `stop_added`; the driver or an admin adds one with
+`POST /api/rides/{id}/stops`. The driver's switch `Ride.passengers_add_stops` (on by default, in
+`RideUpdate` like `passengers_manage`; the ⋮ menu and the form's Advanced route) closes the route to
+passengers' new places (a 403; picking a place already on it still works, and whoever runs the ride
+may still add one for a passenger); off, the pickup `Select` drops *Somewhere else…*. The waiting list takes a
+new place too (`WaitlistJoin.new_stop`), but keeps it on the entry (`WaitlistEntry.new_stop_before`
+/ `new_stop_index`) instead of the route: `promote_waitlist` puts it on the route with the seat
+(and the driver is pushed `stop_added`), or seats them at the origin when the switch is off or the
+route is full by then. On screen the pickup `Select` ends in *Somewhere else…*, which opens
+`components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`),
+and the driver card has *Add a pickup point* under the route for whoever runs the ride. `distance_km` and `chip_in` are the driver's own words and only ever
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per
 week (`weekly_dates`, at most `MAX_REPEAT_WEEKS`) under one `series_id`, all or nothing, and a
 409 on a later week names the date in parentheses (the Serbian `apiError` regex knows that

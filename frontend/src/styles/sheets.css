@@ -273,6 +273,10 @@
 .route-add:hover {
   background: var(--green-soft);
 }
+.route-add-top {
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+}
 /* The foot of the simple form: what it is carrying out of sight, and the way
    to go and look at it. */
 .form-extras {

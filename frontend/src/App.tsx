@@ -42,6 +42,7 @@ import { resubscribePush } from './lib/push'
 import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
 import { boardRange, daySelection, upcomingSelection, VIEWS, type View } from './lib/selection'
+import type { NewStop } from './lib/stops'
 import { useBoard } from './lib/useBoard'
 import { useOverlays } from './lib/useOverlays'
 import { usePassengerDrag } from './lib/usePassengerDrag'
@@ -241,9 +242,9 @@ function Board({ session }: { session: Session }) {
     }
   }
 
-  const onJoin = (ride: Ride, pickup = '') =>
+  const onJoin = (ride: Ride, pickup = '', newStop: NewStop | null = null) =>
     withBusy(ride.id, async () => {
-      upsertRide(await api.join(ride.id, userName, pickup))
+      upsertRide(await api.join(ride.id, userName, pickup, newStop))
       setToast({ kind: 'ok', text: t.toasts.youreIn(ride.driver_name) })
     })
 
@@ -253,17 +254,24 @@ function Board({ session }: { session: Session }) {
     })
 
   /** The keyboard's way of dragging the chip to another car: leave one, join the other. */
-  const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '') =>
+  const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '', newStop: NewStop | null = null) =>
     withBusy(target.id, async () => {
       upsertRide(await api.leave(from.ride.id, from.bookingId))
-      upsertRide(await api.join(target.id, userName, pickup))
+      upsertRide(await api.join(target.id, userName, pickup, newStop))
       setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
     })
 
-  const onMovePickup = (ride: Ride, bookingId: number, pickup: string) =>
+  const onMovePickup = (ride: Ride, bookingId: number, pickup: string, newStop: NewStop | null = null) =>
     withBusy(ride.id, async () => {
-      upsertRide(await api.movePickup(ride.id, bookingId, pickup))
+      upsertRide(await api.movePickup(ride.id, bookingId, pickup, newStop))
       setToast({ kind: 'ok', text: t.toasts.pickupChanged(pickup || ride.origin) })
+    })
+
+  /** The driver (or an admin) puts another pickup point on the route. */
+  const onAddStop = (ride: Ride, stop: string, where: NewStop) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.addStop(ride.id, stop, where))
+      setToast({ kind: 'ok', text: t.toasts.stopAdded(stop) })
     })
 
   /** A shared car's odometer (components/Odometer.tsx): the call returns the ride. */
@@ -273,9 +281,9 @@ function Board({ session }: { session: Session }) {
     })
 
   /** Queue for a seat in a full car. */
-  const onWait = (ride: Ride, pickup: string) =>
+  const onWait = (ride: Ride, pickup: string, newStop: NewStop | null = null) =>
     withBusy(ride.id, async () => {
-      const updated = await api.joinWaitlist(ride.id, pickup)
+      const updated = await api.joinWaitlist(ride.id, pickup, newStop)
       upsertRide(updated)
       setToast({ kind: 'ok', text: t.toasts.waiting(placeInLine(updated, me)) })
     })
@@ -326,6 +334,14 @@ function Board({ session }: { session: Session }) {
       const on = !ride.passengers_manage
       upsertRide(await api.updateRide(ride.id, { passengers_manage: on }))
       setToast({ kind: 'ok', text: on ? t.toasts.manageOn : drives(ride, me) ? t.toasts.manageOff : t.toasts.manageOffFor(ride.driver_name) })
+    })
+
+  /** The driver's switch: may the passengers put new pickup points on the route? */
+  const onTogglePassengersAddStops = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      const on = !ride.passengers_add_stops
+      upsertRide(await api.updateRide(ride.id, { passengers_add_stops: on }))
+      setToast({ kind: 'ok', text: on ? t.toasts.addStopsOn : t.toasts.addStopsOff })
     })
 
   const onCancel = (ride: Ride) => {
@@ -652,6 +668,7 @@ function Board({ session }: { session: Session }) {
       switchFrom={seatElsewhere(ride)}
       onSwitch={onSwitch}
       onMovePickup={onMovePickup}
+      onAddStop={onAddStop}
       onShare={(r) => void onShare(r)}
       onDownloadCalendar={onDownloadCalendar}
       onCancelFollowing={onCancelFollowing}
@@ -660,6 +677,7 @@ function Board({ session }: { session: Session }) {
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
       onDuplicate={(r) => setForm({ mode: 'create', template: r })}
       onTogglePassengersManage={onTogglePassengersManage}
+      onTogglePassengersAddStops={onTogglePassengersAddStops}
       onApprove={onApprove}
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}

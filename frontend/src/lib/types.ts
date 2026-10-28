@@ -40,8 +40,12 @@ export interface Ride {
   notes: string
   /** Driver's switch: passengers may add and remove each other. */
   passengers_manage: boolean
-  /** Extra pickup points besides `origin`, in the driver's order. */
+  /** Driver's switch: passengers may put new pickup points on the route. */
+  passengers_add_stops: boolean
+  /** Extra pickup points after `origin`, in the order the car reaches them. */
   stops: string[]
+  /** Pickup points before `origin`: passengers collected on the way to the start. */
+  stops_before: string[]
   /** One-way distance, the driver's estimate; feeds the "km shared" figures. */
   distance_km: number | null
   /** Free-text "chip in" note per seat ("300 din"); nothing is charged. */
@@ -83,6 +87,8 @@ export interface WaitlistEntry {
   name: string
   /** Where they want to get in once a seat frees up: "" is the origin. */
   pickup: string
+  /** Set while `pickup` is a new place, put on the route once the seat is theirs. */
+  new_stop_before?: boolean | null
   created_at: string
 }
 
@@ -171,7 +177,9 @@ export interface RideInput {
   seats: number
   notes: string
   passengers_manage: boolean
+  passengers_add_stops: boolean
   stops: string[]
+  stops_before: string[]
   distance_km: number | null
   chip_in: string
   /** Create only: one ride per week up to this date (inclusive). */

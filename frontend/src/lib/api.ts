@@ -1,4 +1,5 @@
 import { authToken, clearSession, type AuthUser, type Session } from './auth'
+import type { NewStop } from './stops'
 import type {
   AdminAction,
   AdminUser,
@@ -211,14 +212,19 @@ export const api = {
    * which the server allows the driver, and the passengers while the ride's
    * `passengers_manage` is on.
    */
-  join: (rideId: number, passengerName: string, pickup = '') =>
-    request<Ride>(`/api/rides/${rideId}/bookings`, json('POST', { passenger_name: passengerName, pickup })),
+  join: (rideId: number, passengerName: string, pickup = '', newStop: NewStop | null = null) =>
+    request<Ride>(`/api/rides/${rideId}/bookings`, json('POST', { passenger_name: passengerName, pickup, new_stop: newStop })),
 
   leave: (rideId: number, bookingId: number) => request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }),
 
-  /** Move a passenger to another of the ride's pickup points ("" = the origin). */
-  movePickup: (rideId: number, bookingId: number, pickup: string) =>
-    request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, json('PATCH', { pickup })),
+  /** Move a passenger to another of the ride's pickup points ("" = the origin),
+   * or to a new one put on the route at `newStop`. */
+  movePickup: (rideId: number, bookingId: number, pickup: string, newStop: NewStop | null = null) =>
+    request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, json('PATCH', { pickup, new_stop: newStop })),
+
+  /** The driver (or an admin) puts another pickup point on the route. */
+  addStop: (rideId: number, stop: string, where: NewStop) =>
+    request<Ride>(`/api/rides/${rideId}/stops`, json('POST', { stop, ...where })),
 
   /** Take the wheel of a shared car at `km`: the ride's driver (`bookingId` null) or a passenger; a handover while someone drives. */
   takeWheel: (rideId: number, km: number, bookingId: number | null) =>
@@ -232,7 +238,8 @@ export const api = {
   undoLeg: (rideId: number) => request<Ride>(`/api/rides/${rideId}/legs/last`, { method: 'DELETE' }),
 
   /** Queue for a seat in a full car; the first seat that frees up is yours. */
-  joinWaitlist: (rideId: number, pickup = '') => request<Ride>(`/api/rides/${rideId}/waitlist`, json('POST', { pickup })),
+  joinWaitlist: (rideId: number, pickup = '', newStop: NewStop | null = null) =>
+    request<Ride>(`/api/rides/${rideId}/waitlist`, json('POST', { pickup, new_stop: newStop })),
 
   leaveWaitlist: (rideId: number, entryId: number) =>
     request<Ride>(`/api/rides/${rideId}/waitlist/${entryId}`, { method: 'DELETE' }),

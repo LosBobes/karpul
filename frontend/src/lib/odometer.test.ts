@@ -27,6 +27,8 @@ const ride = (legs: DriveLeg[], over: Partial<Ride> = {}): Ride =>
     origin: 'Beograd',
     destination: 'Novi Sad',
     stops: [],
+    stops_before: [],
+    passengers_add_stops: true,
     seats: 3,
     bookings: [],
     waitlist: [],

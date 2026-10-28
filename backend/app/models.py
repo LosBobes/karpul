@@ -121,6 +121,12 @@ class Ride(SQLModel, table=True):
     # (the API shows them as a list; see services.stops_from_text). A passenger
     # picks one of them, or the origin, in `Booking.pickup`.
     stops: str = ""
+    # Pickup points before the origin, in the order the car reaches them: a
+    # passenger collected on the way to the start. Same one-per-line text.
+    stops_before: str = ""
+    # Driver's choice: may a passenger put a new pickup point on the route
+    # when getting in or moving? Off, only the driver (and an admin) adds them.
+    passengers_add_stops: bool = Field(default=True)
     # One-way distance, for the "km shared" figures. Optional; the driver's estimate.
     distance_km: float | None = None
     # A free-text "chip in" note per seat ("300 din", "2 EUR"). No payments here,
@@ -223,6 +229,11 @@ class WaitlistEntry(SQLModel, table=True):
     name: str
     # Where they want to get in, as for a booking: "" is the origin.
     pickup: str = ""
+    # A `pickup` that is not on the route yet: where it goes once they get the
+    # seat (services.add_stop), before the origin or after it, at that index.
+    # None while the pickup is the origin or one of the stops.
+    new_stop_before: bool | None = None
+    new_stop_index: int | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="waitlist")

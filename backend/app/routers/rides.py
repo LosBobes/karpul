@@ -17,9 +17,10 @@ from ..events import request_saved, ride_deleted, ride_saved
 from ..models import Booking, CarType, Ride, RideRequest, User
 from ..offices import office_distance
 from ..push import notify
-from ..schemas import BookingCreate, BookingRead, BookingUpdate, RideCreate, RideRead, RideUpdate
+from ..schemas import BookingCreate, BookingRead, BookingUpdate, NewStop, RideCreate, RideRead, RideUpdate, StopCreate
 from ..services import (
     account_for_name,
+    add_stop,
     board_extras,
     claim_driver_rides,
     corporate_car_label,
@@ -116,6 +117,7 @@ def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_
     """The column values for a validated ride, with the corporate-car rules applied."""
     data = validated.model_dump(exclude={"repeat_until", "request_id", "driver_id", "request_approval"})
     data["stops"] = stops_to_text(validated.stops)  # type: ignore[arg-type]
+    data["stops_before"] = stops_to_text(validated.stops_before)  # type: ignore[arg-type]
     # The road between the offices is a known length (app/offices.py): a blank
     # distance on that route is filled in, so the figures never miss it.
     if data["distance_km"] is None:
@@ -488,7 +490,8 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
         raise HTTPException(status.HTTP_409_CONFLICT, f"{name} already joined this ride")
     if len(ride.bookings) >= ride.seats:
         raise HTTPException(status.HTTP_409_CONFLICT, "No free seats left")
-    pickup = pickup_or_422(ride, payload.pickup)
+    added = _new_stop(ride, user, payload.pickup, payload.new_stop)
+    pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     passenger_id = passenger.id if passenger is not None else None
     ride.bookings.append(Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup))  # type: ignore[arg-type]
     queues = _seated(session, ride, passenger_id)
@@ -506,6 +509,8 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
         request_saved(request)
     if not is_driver(user, ride):
         notify(session, [ride.driver_id], "got_in", ride, name=name)
+        if added:
+            notify(session, [ride.driver_id], "stop_added", ride, name=name, place=added)
     return to_ride_read_dict(ride)
 
 
@@ -528,12 +533,53 @@ def move_booking(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
     if not is_person(user, booking.passenger_id, booking.passenger_name) and not may_manage_seats(ride, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the passenger or the driver can change this booking")
-    booking.pickup = pickup_or_422(ride, payload.pickup)
+    added = _new_stop(ride, user, payload.pickup, payload.new_stop)
+    booking.pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     session.add(booking)
+    session.add(ride)
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
+    if added and not is_driver(user, ride):
+        notify(session, [ride.driver_id], "stop_added", ride, name=booking.passenger_name, place=added)
     return to_ride_read_dict(ride)
+
+
+@router.post("/{ride_id}/stops", response_model=RideRead, status_code=status.HTTP_201_CREATED)
+def create_stop(ride_id: int, payload: StopCreate, session: WriteSessionDep, creds: CredsDep):
+    """The driver (or an admin) puts another pickup point on the route, before
+    the origin or after it, without opening the whole edit form."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    if not may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can edit this ride")
+    before = (ride.stops_before, ride.stops)
+    add_stop(ride, payload.stop, payload.before, payload.index)
+    if (ride.stops_before, ride.stops) == before:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{payload.stop} is already on this ride's route")
+    if on_behalf(user, ride):
+        audit.record(session, user, "ride_edited", ride.driver_name, ride=ride, changes=[("stops", None, payload.stop)])
+    session.add(ride)
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+    if not is_driver(user, ride):
+        notify(session, [ride.driver_id], "ride_changed", ride, driver=user.display_name)
+    return to_ride_read_dict(ride)
+
+
+def _new_stop(ride: Ride, user: User, pickup: str, where: NewStop | None) -> str | None:
+    """A passenger getting in (or moving) at a place that is not on the route
+    yet adds it there, unless the driver switched that off; None when they did
+    not ask for a new place."""
+    if where is None:
+        return None
+    route = (ride.stops_before, ride.stops)
+    place = add_stop(ride, pickup, where.before, where.index)
+    # A place already on the route is just a pickup, switch or no switch.
+    if (ride.stops_before, ride.stops) != route and not ride.passengers_add_stops and not may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "The driver does not take new pickup points on this ride")
+    return place
 
 
 @router.delete("/{ride_id}/bookings/{booking_id}", response_model=RideRead)
@@ -558,7 +604,8 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
-    promoted = promote_waitlist(session, ride)
+    new_stops: list[Booking] = []
+    promoted = promote_waitlist(session, ride, new_stops)
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
@@ -568,5 +615,8 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         notify(session, [passenger_id], "taken_out", ride, driver=ride.driver_name)
     if promoted:
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
+    # The queue's new places reach the route without the driver doing anything.
+    for b in new_stops:
+        notify(session, [ride.driver_id], "stop_added", ride, name=b.passenger_name, place=b.pickup)
     return to_ride_read_dict(ride)
 
