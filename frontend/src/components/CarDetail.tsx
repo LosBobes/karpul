@@ -189,6 +189,13 @@ export function CarDetail({
     if (switching) onSwitch!(ride, switchFrom!, place, where)
     else onJoin(ride, place, where)
   }
+  // Where you get in hangs off the button that takes the seat, so it never reads as the route.
+  const pickupLine = (
+    <div className="join-at">
+      <span className="join-at-label">{t.detail.getInAt}</span>
+      <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={withElsewhere} onChange={setPickup} />
+    </div>
+  )
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
@@ -441,11 +448,6 @@ export function CarDetail({
           )}
         </h3>
 
-        {(canJoin || (canWait && (hasStops || mayAddStop))) && !choosingPlace && (
-          <div className="pickup-pick">
-            <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={withElsewhere} onChange={setPickup} />
-          </div>
-        )}
         {(canJoin || canWait) && choosingPlace && (
           <AddStop
             ride={ride}
@@ -471,6 +473,7 @@ export function CarDetail({
         ) : null}
 
         {ride.bookings.length === 0 && canJoin && !choosingPlace ? (
+          <div className="join-box">
           <button type="button" className="dropzone" onClick={getIn}>
             <UsersIcon size={28} />
             <strong>{getInLabel}</strong>
@@ -484,6 +487,8 @@ export function CarDetail({
                   : t.detail.tapSeat}
             </span>
           </button>
+          {pickupLine}
+          </div>
         ) : null}
 
         {ride.bookings.length > 0 && (
@@ -586,6 +591,7 @@ export function CarDetail({
                   <PlusIcon size={18} />
                   {getInLabel}
                 </button>
+                {pickupLine}
                 {switching && <p className="hint hint-tight">{t.detail.switchHint(firstName(switchFrom!.ride.driver_name))}</p>}
               </li>
             )}
@@ -627,6 +633,7 @@ export function CarDetail({
               <HourglassIcon size={18} />
               {t.detail.waitFor}
             </button>
+            {(hasStops || mayAddStop) && pickupLine}
             <p className="hint hint-tight">{t.detail.waitHint}</p>
           </>
         )}

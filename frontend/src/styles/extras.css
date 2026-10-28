@@ -94,8 +94,49 @@
 .pax-pickup-pick .control {
   flex: 1;
 }
-.pickup-pick {
-  margin-bottom: 0.5rem;
+/* Where you get in, hung off the button that takes the seat: the dashed tile
+   wraps both, so the place reads as part of getting in, not as the route. */
+.join-box {
+  border: 1.5px dashed var(--green-line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--green-soft) 45%, var(--surface));
+  transition: background 0.12s, border-color 0.12s;
+}
+.join-box:has(> .dropzone:hover:not(:disabled)) {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+.join-box > .dropzone,
+.join-box > .dropzone:hover:not(:disabled) {
+  border: none;
+  background: none;
+  min-height: 112px;
+}
+.join-at {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem 0.75rem;
+}
+.join-box > .join-at {
+  justify-content: center;
+}
+.join-at-label {
+  flex: none;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.join-at .control {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.pax-list .join-at {
+  padding: 0 0.9rem 0.6rem calc(0.9rem + 30px + 0.8rem);
+}
+.add-row-quiet + .join-at {
+  padding-left: 0;
+  padding-right: 0;
 }
 /* A pickup point not on the route yet: the place, then which stretch it is on. */
 .add-stop {
