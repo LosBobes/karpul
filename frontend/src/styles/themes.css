@@ -400,8 +400,12 @@
     padding: 1.75rem 1.5rem 3rem;
     border-left: 1px solid var(--border);
   }
-  /* However wide the window, the ride stays a comfortable read. */
+  /* However wide the window, the ride stays a comfortable read. The width is
+     spelled out: auto margins on a flex item stop it stretching, and the ride
+     would shrink to its content and sit centred, narrower than the snapshot
+     that leaves at the pane's full width (SlideSwitch). */
   .split-pane > .swap-host > .stack {
+    width: 100%;
     max-width: 1320px;
     margin-inline: auto;
   }
