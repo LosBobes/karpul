@@ -49,6 +49,20 @@ def test_create_car_normalises_plate_and_appears_in_pool(client, admin):
     assert body["id"] in [c["id"] for c in pool]
 
 
+def test_a_car_has_a_home_it_departs_from(client, admin):
+    r = client.post("/api/cars/corporate", json=new_car(home="  Novi Sad   office "), headers=admin)
+    assert r.status_code == 201, r.text
+    car = r.json()
+    assert car["home"] == "Novi Sad office"
+    assert next(c for c in client.get("/api/cars/corporate").json() if c["id"] == car["id"])["home"] == "Novi Sad office"
+    # Without one it is blank, and an edit can clear or move it.
+    assert client.post("/api/cars/corporate", json=new_car(plate="firm-010"), headers=admin).json()["home"] == ""
+    r = client.patch(f"/api/cars/corporate/{car['id']}", json={"home": "Beograd office"}, headers=admin)
+    assert r.json()["home"] == "Beograd office"
+    log = client.get("/api/admin/log", headers=admin).json()
+    assert any(change[0] == "home" for line in log if line["action"] == "car_edited" for change in line["changes"])
+
+
 def test_duplicate_plate_rejected(client, admin):
     seeded = client.get("/api/cars/corporate").json()[0]
     r = client.post("/api/cars/corporate", json=new_car(plate=seeded["plate"]), headers=admin)

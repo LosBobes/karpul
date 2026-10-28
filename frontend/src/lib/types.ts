@@ -7,12 +7,15 @@ export interface CorporateCar {
   passenger_seats: number
   /** Retired cars stay in the DB (rides reference them) but leave the ride form. */
   active: boolean
+  /** Where the car is kept: a new ride in it starts here. Blank is nowhere in particular. */
+  home: string
 }
 
 export interface CorporateCarInput {
   name: string
   plate: string
   passenger_seats: number
+  home: string
 }
 
 export interface Booking {

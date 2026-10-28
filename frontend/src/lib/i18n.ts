@@ -529,6 +529,8 @@ const en = {
     namePlaceholder: 'e.g. Skoda Octavia',
     plate: 'Plate',
     platePlaceholder: 'FIRM-004',
+    home: 'Departs from',
+    homePlaceholder: 'e.g. Novi Sad office',
   },
 
   usage: {
@@ -645,6 +647,7 @@ const en = {
       plate: 'Plate',
       passenger_seats: 'Passenger seats',
       active: 'In the pool',
+      home: 'Departs from',
     } as Record<string, string>,
   },
 
@@ -1722,6 +1725,8 @@ const sr: Messages = {
     namePlaceholder: 'npr. Škoda Octavia',
     plate: 'Tablice',
     platePlaceholder: 'FIRM-004',
+    home: 'Polazi iz',
+    homePlaceholder: 'npr. Kancelarija Novi Sad',
   },
 
   usage: {
@@ -1815,6 +1820,7 @@ const sr: Messages = {
       plate: 'Tablice',
       passenger_seats: 'Mesta za putnike',
       active: 'U voznom parku',
+      home: 'Polazi iz',
     },
   },
 

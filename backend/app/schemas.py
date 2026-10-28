@@ -24,6 +24,10 @@ def _clean_plate(value: str) -> str:
     return value
 
 
+def _clean_home(value: str) -> str:
+    return " ".join(value.split())
+
+
 class CorporateCarRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -32,6 +36,7 @@ class CorporateCarRead(BaseModel):
     plate: str
     passenger_seats: int
     active: bool
+    home: str
 
 
 class CorporateCarCreate(BaseModel):
@@ -41,6 +46,8 @@ class CorporateCarCreate(BaseModel):
     plate: str = Field(min_length=1, max_length=20)
     passenger_seats: int = Field(ge=1, le=8)
     active: bool = True
+    # The car's default departure point ("Novi Sad office"); blank is none.
+    home: str = Field(default="", max_length=120)
 
     @field_validator("name")
     @classmethod
@@ -52,6 +59,11 @@ class CorporateCarCreate(BaseModel):
     def clean_plate(cls, v: str) -> str:
         return _clean_plate(v)
 
+    @field_validator("home")
+    @classmethod
+    def clean_home(cls, v: str) -> str:
+        return _clean_home(v)
+
 
 class CorporateCarUpdate(BaseModel):
     """Admin-only partial update; `active=False` retires a car without deleting it."""
@@ -60,6 +72,7 @@ class CorporateCarUpdate(BaseModel):
     plate: str | None = Field(default=None, min_length=1, max_length=20)
     passenger_seats: int | None = Field(default=None, ge=1, le=8)
     active: bool | None = None
+    home: str | None = Field(default=None, max_length=120)
 
     @field_validator("name")
     @classmethod
@@ -70,6 +83,11 @@ class CorporateCarUpdate(BaseModel):
     @classmethod
     def clean_plate(cls, v: str | None) -> str | None:
         return _clean_plate(v) if v is not None else None
+
+    @field_validator("home")
+    @classmethod
+    def clean_home(cls, v: str | None) -> str | None:
+        return _clean_home(v) if v is not None else None
 
 
 # --- accounts (app/auth.py) --------------------------------------------------

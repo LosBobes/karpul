@@ -641,7 +641,7 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
         days_used = len({r.ride_date for r in rides})
         rows.append(
             {
-                "car": {"id": car.id, "name": car.name, "plate": car.plate, "passenger_seats": car.passenger_seats, "active": car.active},
+                "car": {"id": car.id, "name": car.name, "plate": car.plate, "passenger_seats": car.passenger_seats, "active": car.active, "home": car.home},
                 "rides": len(rides),
                 "days_used": days_used,
                 "use_rate": round(days_used / working, 3),

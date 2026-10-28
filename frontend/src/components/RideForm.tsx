@@ -121,7 +121,9 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const [carType, setCarType] = useState<CarType>(slot ? 'corporate' : (seed?.car_type ?? (cars.length ? 'corporate' : 'own')))
   const [carId, setCarId] = useState<number | ''>(slot?.carId ?? seed?.corporate_car_id ?? cars[0]?.id ?? '')
   const [carName, setCarName] = useState(seed?.car_type === 'own' ? seed.car_name : last.car_name)
-  const [origin, setOrigin] = useState(seed?.origin ?? request?.origin ?? last.origin)
+  // A shared car kept somewhere (CorporateCar.home) starts a new ride there.
+  const homeOf = (type: CarType, id: number | '') => (type === 'corporate' ? (cars.find((c) => c.id === id)?.home ?? '') : '')
+  const [origin, setOrigin] = useState(seed?.origin ?? request?.origin ?? (homeOf(carType, carId) || last.origin))
   const [destination, setDestination] = useState(seed?.destination ?? request?.destination ?? last.destination)
   const [departure, setDeparture] = useState(slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
   const [ret, setRet] = useState(slot?.ret ?? seed?.return_time?.slice(0, 5) ?? '17:00')
@@ -162,6 +164,16 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     } catch {
       /* ignore */
     }
+  }
+
+  // Another car moves the start along with it, unless the start is one the driver typed.
+  function pickCar(type: CarType, id: number | '') {
+    const from = homeOf(carType, carId)
+    const to = homeOf(type, id)
+    setCarType(type)
+    setCarId(id)
+    if (seed || request || from === to) return
+    if (origin.trim() === '' || origin === (from || last.origin)) setOrigin(to || last.origin)
   }
 
   const selectedCar = cars.find((c) => c.id === carId)
@@ -335,7 +347,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             aria-checked={carType === 'corporate'}
             className={carType === 'corporate' ? 'seg seg-on' : 'seg'}
             disabled={!cars.length}
-            onClick={() => setCarType('corporate')}
+            onClick={() => pickCar('corporate', carId)}
           >
             {t.form.companyCar}
           </button>
@@ -344,7 +356,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             role="radio"
             aria-checked={carType === 'own'}
             className={carType === 'own' ? 'seg seg-on' : 'seg'}
-            onClick={() => setCarType('own')}
+            onClick={() => pickCar('own', carId)}
           >
             {t.form.myOwnCar}
           </button>
@@ -354,8 +366,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             label={t.form.whichCar}
             icon={<CarIcon size={16} />}
             value={carId === '' ? null : carId}
-            options={cars.map((c) => ({ value: c.id, label: c.name, hint: t.form.carHint(c.plate, c.passenger_seats) }))}
-            onChange={setCarId}
+            options={cars.map((c) => ({ value: c.id, label: c.name, hint: [t.form.carHint(c.plate, c.passenger_seats), c.home].filter(Boolean).join(' · ') }))}
+            onChange={(id) => pickCar('corporate', id)}
           />
         ) : (
           <input

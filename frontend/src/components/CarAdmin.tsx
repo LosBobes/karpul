@@ -78,6 +78,7 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
               </strong>
               <span>
                 <span className="mono">{car.plate}</span> · {t.admin.seats(car.passenger_seats)}
+                {car.home && <> · {car.home}</>}
                 {!car.active && <span className="tag">{t.admin.retired}</span>}
               </span>
             </span>
@@ -97,8 +98,8 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
             />
             {editing === car.id && (
               <CarEditor
-                key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}`}
-                initial={{ name: car.name, plate: car.plate, passenger_seats: car.passenger_seats }}
+                key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}:${car.home}`}
+                initial={{ name: car.name, plate: car.plate, passenger_seats: car.passenger_seats, home: car.home }}
                 busy={busyId === car.id}
                 submitLabel={t.common.save}
                 onSubmit={(input) => {
@@ -114,7 +115,7 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
 
       {editing === 'new' ? (
         <CarEditor
-          initial={{ name: '', plate: '', passenger_seats: 4 }}
+          initial={{ name: '', plate: '', passenger_seats: 4, home: '' }}
           busy={busyId === NEW_CAR_BUSY_ID}
           submitLabel={t.admin.addCar}
           onSubmit={(input) => {
@@ -316,9 +317,10 @@ function CarEditor({
   const [name, setName] = useState(initial.name)
   const [plate, setPlate] = useState(initial.plate)
   const [seats, setSeats] = useState(initial.passenger_seats)
+  const [home, setHome] = useState(initial.home)
 
   const valid = !!name.trim() && !!plate.trim() && seats >= 1 && seats <= 8
-  const dirty = name.trim() !== initial.name || plate.trim() !== initial.plate || seats !== initial.passenger_seats
+  const dirty = name.trim() !== initial.name || plate.trim() !== initial.plate || seats !== initial.passenger_seats || home.trim() !== initial.home
 
   return (
     // Not a <form>: the editor sits inside the admin sheet, which is not a form
@@ -348,6 +350,10 @@ function CarEditor({
           </div>
         </div>
       </div>
+      <label className="field">
+        <span className="field-label">{t.admin.home}</span>
+        <input maxLength={120} placeholder={t.admin.homePlaceholder} value={home} onChange={(e) => setHome(e.target.value)} />
+      </label>
       <div className="row-end">
         <button type="button" className="btn btn-soft" onClick={onCancel}>
           {t.common.cancel}
@@ -356,7 +362,7 @@ function CarEditor({
           type="button"
           className="btn btn-primary"
           disabled={busy || !valid || !dirty}
-          onClick={() => onSubmit({ name: name.trim(), plate: plate.trim(), passenger_seats: seats })}
+          onClick={() => onSubmit({ name: name.trim(), plate: plate.trim(), passenger_seats: seats, home: home.trim() })}
         >
           {busy ? t.common.saving : submitLabel}
         </button>

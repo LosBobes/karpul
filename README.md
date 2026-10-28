@@ -181,7 +181,7 @@ See [docs/deployment-hetzner.md](docs/deployment-hetzner.md).
 | `DATABASE_URL` | backend | `sqlite:///backend/data/karpul.db` | Any SQLAlchemy URL |
 | `KARPUL_FRONTEND_DIST` | backend | `frontend/dist` | Built frontend to serve from `/` |
 | `CORS_ORIGINS` | backend | `http://localhost:5173` | Comma-separated allowed origins |
-| `CORPORATE_CARS` | backend | 3 sample cars | Seed for the car pool on first start: `Name\|PLATE\|seats;Name\|PLATE\|seats` |
+| `CORPORATE_CARS` | backend | 3 sample cars | Seed for the car pool on first start: `Name\|PLATE\|seats;Name\|PLATE\|seats\|home` (the optional home is where the car's rides start) |
 | `KARPUL_ADMINS` | backend | *(unset)* | Comma-separated usernames that are always admins (the first admin comes from here) |
 | `KARPUL_ALLOWED_COUNTRIES` | backend | *(unset)* | ISO country codes (`DE,RS`) the app answers; unset answers everyone |
 | `KARPUL_GEOIP_DB` | backend | `/app/geoip/country.mmdb` | The IP-to-country database (the image has one) |

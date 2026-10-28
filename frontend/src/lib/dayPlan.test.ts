@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { captionRoom, DAY_AXIS, freeGaps, fromMinutes, planRows, rowStatus, scrollToCentre, slotTimes, toMinutes, visibleSpan } from './dayPlan'
 import type { CorporateCar, Ride } from './types'
 
-const car = (id: number, name: string, active = true): CorporateCar => ({ id, name, plate: `P-${id}`, passenger_seats: 4, active })
+const car = (id: number, name: string, active = true): CorporateCar => ({ id, name, plate: `P-${id}`, passenger_seats: 4, active, home: '' })
 
 let nextId = 1
 function ride(over: Partial<Ride>): Ride {
