@@ -403,9 +403,6 @@
     --plan-pad: 1.25rem;
     --plan-hour: 3.75rem;
   }
-  .split-day .plan-car + .plan-car {
-    margin-top: 0.75rem;
-  }
   /* The dial takes the height the pane has (the toolbar, the day's head and
      the card's padding come off the window), up to a size a glance takes in:
      past that a big monitor only made it shout. */
