@@ -148,8 +148,8 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
     const scale = el?.querySelector<HTMLElement>('.plan-hours')
     // Only when the day or the board itself changes, never under the reader's finger.
     const key = `${date}|${loading}|${empty}|${shape}`
-    // No board (the clock is showing): forget the placing, so the timeline
-    // drawn afresh when it comes back opens on the focus again, not at 00:00.
+    // No board on screen (the clock, a skeleton): forget the place, so the
+    // timeline mounting again opens on the focus rather than at 00:00.
     if (!el || !scale) {
       placed.current = ''
       return
