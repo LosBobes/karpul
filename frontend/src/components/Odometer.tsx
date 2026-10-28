@@ -4,9 +4,10 @@ import { useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import { isMe, runs, useMe } from '../lib/me'
 import { canNoteKm, isBack, kmDriven, openLeg } from '../lib/odometer'
-import type { Ride } from '../lib/types'
+import type { CarReportInput, Ride } from '../lib/types'
 import { Avatar } from './Avatar'
 import { ArrowRightIcon, RoadIcon, SteeringIcon } from './icons'
+import { SegThumb } from './Segmented'
 import { Select } from './Select'
 
 interface Props {
@@ -25,8 +26,13 @@ const km = (n: number) => n.toLocaleString(intlTag())
  * taken, at every change of driver and when it is back, so the office knows
  * who drove it and how far (lib/odometer.ts; backend: the `/legs` routes).
  * "Hand over" is how the wheel changes hands: the one driving becomes a
- * passenger in the log and whoever takes it drives the next stretch.
+ * passenger in the log and whoever takes it drives the next stretch. "Car is
+ * back" also asks how the car is left (the battery, whether it is clean,
+ * anything wrong), which becomes the car's state (components/CarStatus.tsx).
  */
+type Cleanness = '' | 'clean' | 'dirty'
+const CLEANNESS: Cleanness[] = ['', 'clean', 'dirty']
+
 export function Odometer({ ride, busy, coming, onOdometer }: Props) {
   const t = useT()
   const me = useMe()
@@ -47,9 +53,20 @@ export function Odometer({ ride, busy, coming, onOdometer }: Props) {
   const others = people.filter((p) => !current || !(current.driver_id !== null ? p.id === current.driver_id : p.name === current.driver_name))
   const [who, setWho] = useState('')
   const pick = others.some((p) => p.value === who) ? who : (others[0]?.value ?? '')
+  // How the car is left, asked with "Car is back".
+  const [soc, setSoc] = useState('')
+  const [cleanness, setCleanness] = useState<Cleanness>('')
+  const [issues, setIssues] = useState('')
+  const socNum = soc.trim() === '' ? null : Number(soc)
+  const socBad = socNum !== null && (!Number.isInteger(socNum) || socNum < 0 || socNum > 100)
+  const report = (): CarReportInput => ({
+    soc: socNum,
+    clean: cleanness === '' ? null : cleanness === 'clean',
+    issues: issues.trim() === '' ? null : issues.trim(),
+  })
 
   const value = Number(reading)
-  const valid = reading.trim() !== '' && Number.isInteger(value) && value >= 0 && (floor === null || value >= floor)
+  const valid = reading.trim() !== '' && Number.isInteger(value) && value >= 0 && (floor === null || value >= floor) && !socBad
 
   function run(call: () => Promise<Ride>) {
     onOdometer(ride, call)
@@ -59,7 +76,7 @@ export function Odometer({ ride, busy, coming, onOdometer }: Props) {
   function submit(e: FormEvent<HTMLFormElement>, action: 'take' | 'back') {
     e.preventDefault()
     if (!valid) return
-    if (action === 'back') run(() => api.bringBack(ride.id, value))
+    if (action === 'back') run(() => api.bringBack(ride.id, value, report()))
     else run(() => api.takeWheel(ride.id, value, pick === '' ? null : Number(pick)))
   }
 
@@ -118,6 +135,40 @@ export function Odometer({ ride, busy, coming, onOdometer }: Props) {
                 options={others.map((p) => ({ value: p.value, label: p.label }))}
                 onChange={setWho}
               />
+            </div>
+          )}
+          {current && (
+            <div className="odo-left">
+              <span className="subfield-label">{t.odo.howLeft}</span>
+              <div className="odo-left-grid">
+                <label className="odo-soc">
+                  <span className="subfield-label">{t.odo.soc}</span>
+                  <input
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={3}
+                    placeholder="80"
+                    aria-invalid={socBad || undefined}
+                    value={soc}
+                    onChange={(e) => setSoc(e.target.value.replace(/\D/g, ''))}
+                  />
+                </label>
+                <div className="odo-clean">
+                  <span className="subfield-label">{t.odo.cleanness}</span>
+                  <div className="segmented segmented-sm" role="radiogroup" aria-label={t.odo.cleanness}>
+                    <SegThumb count={CLEANNESS.length} index={CLEANNESS.indexOf(cleanness)} />
+                    {CLEANNESS.map((c) => (
+                      <button key={c} type="button" role="radio" aria-checked={cleanness === c} className={cleanness === c ? 'seg seg-on' : 'seg'} onClick={() => setCleanness(c)}>
+                        {c === '' ? t.odo.notChecked : c === 'clean' ? t.odo.clean : t.odo.dirty}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <label className="odo-issues">
+                <span className="subfield-label">{t.odo.issues}</span>
+                <input maxLength={300} placeholder={t.odo.issuesPlaceholder} value={issues} onChange={(e) => setIssues(e.target.value)} />
+              </label>
             </div>
           )}
           <div className="odo-actions">

@@ -111,6 +111,7 @@ const en = {
 
   sidebar: {
     cars: 'Shared cars',
+    carState: 'Car status',
     people: 'People',
     guide: 'Shared car guide',
     closeMenu: 'Close menu',
@@ -154,11 +155,14 @@ const en = {
     category: {
       seats: ['Seats', 'Someone gets in or out, or a seat frees up for you'],
       changes: ['Ride changes', 'A ride you are in moves or is removed, or you are put down to drive'],
-      reminders: ['Departure reminder', '30 minutes before you leave'],
+      reminders: ['Reminders', 'Before you leave, and to note the odometer when a shared car is back'],
       messages: ['Messages', 'Someone writes in the thread of your ride'],
       requests: ['Ride requests', 'A driver offers you a ride you asked for'],
       approvals: ['Shared-car approvals', 'An ask past the share, and the answer to yours'],
+      cars: ['Shared-car reports', 'Someone reports a problem with a shared car'],
     } as Record<PushCategory, [string, string]>,
+    lead: 'Before you leave',
+    leadChoice: (minutes: number) => `${minutes} min`,
     device: 'On this device',
     updates: 'New version notice',
     updatesHint: 'The card and the bolt when an update is ready. Off, the app updates itself the next time you open it.',
@@ -447,6 +451,13 @@ const en = {
     chipInHint: 'Per seat, and only the agreement: nothing is charged here. Both optional.',
     /** Pre-filled destination on the very first ride in this browser. */
     defaultDestination: 'Office',
+    /** The road between the offices is a known length (lib/offices.ts). */
+    knownRoad: (km: number) => `${km} km, the road between the offices. Filled in for you.`,
+    /** A one-way ride: offer its mirror image. */
+    wayBack: 'Add the way back too',
+    wayBackHint: 'A second one-way ride with the route reversed.',
+    wayBackDay: 'Day back',
+    wayBackLeaves: 'Leaves at',
   },
 
   admin: {
@@ -637,6 +648,41 @@ const en = {
     hint: 'Note the odometer when you take the car, at every change of driver and when it is back.',
     notNoted: 'Not noted yet.',
     tooLow: (km: string) => `The odometer read ${km} km before this.`,
+    /** Bringing the car back: how it was left. */
+    howLeft: 'How you leave it',
+    soc: 'Battery (%)',
+    cleanness: 'Clean?',
+    clean: 'Clean',
+    dirty: 'Needs a wash',
+    notChecked: 'Not checked',
+    issues: 'Anything wrong?',
+    issuesPlaceholder: 'e.g. warning light, scratch on the left door',
+  },
+
+  /** The state of each shared car: components/CarStatus.tsx (backend: app/carstate.py). */
+  carState: {
+    title: 'Car status',
+    odometer: 'Odometer',
+    battery: 'Battery',
+    cleanTitle: 'Clean',
+    unknown: 'Not known',
+    km: (km: string) => `${km} km`,
+    pct: (n: number) => `${n} %`,
+    about: (text: string) => `about ${text}`,
+    estimated: 'Guessed from the rides since the last reading.',
+    cleanYes: 'Clean',
+    cleanNo: 'Needs a wash',
+    issues: 'Reported',
+    noIssues: 'Nothing wrong reported.',
+    noted: (name: string, when: string) => `${name}, ${when}`,
+    report: 'Report on this car',
+    reportTitle: (car: string) => `Report on ${car}`,
+    reportSent: 'Noted. Thanks.',
+    odometerField: 'Odometer (km)',
+    noCars: 'No shared cars.',
+    recent: 'Recent reports',
+    fromRide: 'with the return',
+    nothingSaid: 'Say at least one thing.',
   },
 
   upcoming: {
@@ -726,6 +772,8 @@ const en = {
     updateReady: 'A new version is ready',
     updateHint: 'Trace the bolt to take it.',
     updateAction: 'Update',
+    bothAdded: 'Both rides added, there and back.',
+    wayBackFailed: (msg: string) => `The ride is added, but not the way back: ${msg}`,
   },
 
   /** Taking a waiting build: components/UpdateScreen.tsx and the bolt you trace. */
@@ -865,6 +913,8 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Kilometres are only kept for the shared cars$/, () => 'Kilometraža se vodi samo za zajedničke automobile'],
   [/^Nobody is at the wheel of this car$/, () => 'Niko nije za volanom ovog auta'],
   [/^Nothing has been noted on the odometer$/, () => 'Kilometraža još nije upisana'],
+  [/^Say at least one thing about the car$/, () => 'Napiši bar nešto o autu'],
+  [/^That car is retired$/, () => 'Taj auto je povučen'],
   [/^Only the driver or an admin can note the odometer at the start$/, () => 'Početnu kilometražu može da upiše samo vozač ili administrator'],
   [/^Only the driver or an admin can undo the odometer$/, () => 'Unos kilometraže može da poništi samo vozač ili administrator'],
   [/^Only the driver, whoever is at the wheel or an admin can note the odometer$/, () => 'Kilometražu može da upiše samo vozač, onaj ko je za volanom ili administrator'],
@@ -1096,6 +1146,7 @@ const sr: Messages = {
 
   sidebar: {
     cars: 'Zajednički automobili',
+    carState: 'Stanje auta',
     people: 'Ljudi',
     guide: 'Vodič za zajednički auto',
     closeMenu: 'Zatvori meni',
@@ -1139,11 +1190,14 @@ const sr: Messages = {
     category: {
       seats: ['Mesta', 'Neko uđe ili izađe, ili se oslobodi mesto za tebe'],
       changes: ['Izmene vožnji', 'Vožnja u kojoj si se pomeri ili ukloni, ili te upišu kao vozača'],
-      reminders: ['Podsetnik za polazak', '30 minuta pre polaska'],
+      reminders: ['Podsetnici', 'Pre polaska, i da upišeš kilometražu kad se zajednički auto vrati'],
       messages: ['Poruke', 'Neko napiše nešto u razgovoru tvoje vožnje'],
       requests: ['Zahtevi za prevoz', 'Vozač ti ponudi prevoz koji si tražio/la'],
       approvals: ['Odobrenja zajedničkog auta', 'Zahtev preko dozvoljenog i odgovor na tvoj'],
+      cars: ['Prijave o zajedničkom autu', 'Neko prijavi problem sa zajedničkim autom'],
     },
+    lead: 'Pre polaska',
+    leadChoice: (minutes) => `${minutes} min`,
     device: 'Na ovom uređaju',
     updates: 'Obaveštenje o novoj verziji',
     updatesHint: 'Kartica i munja kada je spremno ažuriranje. Kad je isključeno, aplikacija se ažurira sama sledeći put kada je otvoriš.',
@@ -1422,6 +1476,11 @@ const sr: Messages = {
     chipInPlaceholder: 'npr. 300 din',
     chipInHint: 'Po mestu, i samo dogovor: ovde se ništa ne naplaćuje. Oboje nije obavezno.',
     defaultDestination: 'Kancelarija',
+    knownRoad: (km) => `${km} km, put između kancelarija. Upisano umesto tebe.`,
+    wayBack: 'Dodaj i povratak',
+    wayBackHint: 'Druga vožnja u jednom smeru, sa obrnutom rutom.',
+    wayBackDay: 'Dan povratka',
+    wayBackLeaves: 'Polazak u',
   },
 
   admin: {
@@ -1589,6 +1648,39 @@ const sr: Messages = {
     hint: 'Upiši kilometražu kada preuzmeš auto, pri svakoj promeni vozača i kada se auto vrati.',
     notNoted: 'Još nije upisana.',
     tooLow: (km) => `Kilometar-sat je pre ovoga pokazivao ${km} km.`,
+    howLeft: 'Kako ostavljaš auto',
+    soc: 'Baterija (%)',
+    cleanness: 'Čist?',
+    clean: 'Čist',
+    dirty: 'Treba pranje',
+    notChecked: 'Nisam proverio/la',
+    issues: 'Nešto nije u redu?',
+    issuesPlaceholder: 'npr. upaljena lampica, ogrebotina na levim vratima',
+  },
+
+  carState: {
+    title: 'Stanje auta',
+    odometer: 'Kilometar-sat',
+    battery: 'Baterija',
+    cleanTitle: 'Čistoća',
+    unknown: 'Nepoznato',
+    km: (km) => `${km} km`,
+    pct: (n) => `${n} %`,
+    about: (text) => `oko ${text}`,
+    estimated: 'Procena na osnovu vožnji od poslednjeg očitavanja.',
+    cleanYes: 'Čist',
+    cleanNo: 'Treba pranje',
+    issues: 'Prijavljeno',
+    noIssues: 'Ništa nije prijavljeno.',
+    noted: (name, when) => `${name}, ${when}`,
+    report: 'Prijavi stanje auta',
+    reportTitle: (car) => `Prijava za ${car}`,
+    reportSent: 'Zabeleženo. Hvala.',
+    odometerField: 'Kilometar-sat (km)',
+    noCars: 'Nema zajedničkih automobila.',
+    recent: 'Poslednje prijave',
+    fromRide: 'uz povratak',
+    nothingSaid: 'Napiši bar nešto.',
   },
 
   people: {
@@ -1697,6 +1789,8 @@ const sr: Messages = {
     updateReady: 'Nova verzija je spremna',
     updateHint: 'Prevuci munju da je preuzmeš.',
     updateAction: 'Ažuriraj',
+    bothAdded: 'Dodate obe vožnje, tamo i nazad.',
+    wayBackFailed: (msg) => `Vožnja je dodata, ali ne i povratak: ${msg}`,
   },
 
   update: {

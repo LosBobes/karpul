@@ -1,0 +1,581 @@
+/* --- Date carousel ------------------------------------------------------- */
+/* One line for the week (its name opens the calendar; Today and the arrows
+   on the right), then all seven days, which always fit the column, so nothing
+   scrolls off-screen and there is nothing to hunt for. The days are bare text
+   on the ground rather than seven boxed buttons: the green pill alone says
+   which one is picked. Swiping the strip sideways also steps the week. */
+.dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.dates-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 40px;
+}
+.date-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  min-height: 40px;
+  margin-left: -0.45rem;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: background var(--hover);
+}
+.date-title > svg {
+  flex: none;
+  color: var(--muted);
+}
+.date-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.date-title:hover,
+.date-title[aria-expanded='true'] {
+  background: var(--surface-2);
+}
+.today-chip {
+  min-height: 32px;
+  margin-right: 0.25rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--green-line);
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 0.84rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dates-strip {
+  position: relative;
+  display: flex;
+  gap: 0.3rem;
+  padding: 2px;
+  touch-action: pan-y;
+}
+/* The green pill: one element behind the seven days that slides to the
+   selected one (DateCarousel.tsx sets --date-i). The width is a seventh of the
+   strip minus its padding and the six gaps, and each step is one pill plus a
+   gap. The selected day's own background goes clear so the pill shows through. */
+.date-thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc((100% - 4px - 6 * 0.3rem) / 7);
+  border-radius: 12px;
+  background: var(--green);
+  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--green) 70%, transparent);
+  transform: translateX(calc(var(--date-i, 0) * (100% + 0.3rem)));
+  transition: transform 0.25s var(--ease-out);
+}
+.date {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  min-height: 58px;
+  padding: 0.45rem 0.1rem 0.35rem;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  transition: background var(--hover), border-color var(--hover), color var(--hover), box-shadow var(--hover),
+    transform var(--hover);
+}
+.date:hover:not(.date-selected) {
+  background: var(--surface-2);
+}
+.date-wd {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.date-md {
+  font-size: 0.98rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.date-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+  margin-top: 2px;
+}
+.date-dot-off {
+  visibility: hidden;
+}
+.date-today .date-wd {
+  color: var(--green);
+}
+.date-today .date-md {
+  color: var(--green);
+}
+.date-past {
+  color: var(--muted);
+}
+.date-past .date-dot {
+  background: var(--border-strong);
+}
+.date-selected,
+.date-selected:hover {
+  background: transparent;
+  color: #fff;
+}
+.date-selected .date-wd,
+.date-selected.date-today .date-wd,
+.date-selected.date-today .date-md {
+  color: rgba(255, 255, 255, 0.85);
+}
+.date-selected .date-md {
+  color: #fff;
+}
+.date-selected .date-dot {
+  background: #fff;
+}
+.week-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: none;
+}
+.week-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  flex: none;
+  transition: background var(--hover), border-color var(--hover), transform 0.12s var(--ease-smooth);
+}
+.week-btn:active {
+  transform: scale(0.92);
+}
+.week-btn:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+/* --- Car carousel -------------------------------------------------------- */
+.cars {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+}
+.cars-strip {
+  flex: 1;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  padding: 4px 2px 8px;
+}
+.cars-strip::-webkit-scrollbar {
+  display: none;
+}
+.car-tile {
+  flex: 0 0 88px;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 92px;
+  padding: 0.8rem 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  transition: background var(--hover), border-color var(--hover), opacity var(--hover), box-shadow var(--hover),
+    transform var(--hover);
+}
+.car-tile:hover {
+  border-color: var(--border-strong);
+}
+.car-tile svg {
+  color: var(--muted);
+}
+.car-tile-art {
+  display: grid;
+  place-items: center;
+  height: 28px;
+  max-width: 100%;
+}
+.car-tile-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.car-tile-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.car-tile-seats {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.car-tile-full .car-tile-seats {
+  color: var(--red);
+}
+.car-tile-selected,
+.car-tile-selected:hover {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green-soft) 70%, var(--surface));
+  box-shadow: 0 0 0 1px var(--green);
+}
+.car-tile-selected svg,
+.car-tile-selected .car-tile-seats {
+  color: var(--green);
+}
+.car-tile-droppable {
+  border-style: dashed;
+  border-color: var(--green);
+}
+.car-tile-nodrop {
+  opacity: 0.45;
+}
+.car-tile-over {
+  border-style: solid;
+  background: var(--green-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent);
+}
+.skeleton {
+  border-style: dashed;
+  box-shadow: none;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+/* --- Driver card --------------------------------------------------------- */
+/* Who drives, then when (two big clocks on one quiet band), then the way
+   (a line with a dot per place), then the car and the figures. Plain words
+   in muted ink do the work the coloured tags used to. */
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.driver-card {
+  padding: 1.15rem 1.2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+.driver-head {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.driver-head .menu {
+  margin-left: auto;
+  margin-right: -0.5rem;
+}
+.driver-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.driver-id strong {
+  font-size: 1.06rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.driver-role {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+/* "Call the driver": a plain tel: link dressed as a button, the number beside
+   the words so you can see whom you are ringing. */
+.driver-call {
+  justify-content: flex-start;
+}
+.driver-call-number {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.driver-weekly {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.driver-weekly::before {
+  content: '·';
+  margin-right: 0.25rem;
+}
+.driver-times {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.when {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.when-sep {
+  flex: none;
+  display: inline-grid;
+  color: var(--muted);
+}
+.when-sep + .when {
+  align-items: flex-end;
+  text-align: right;
+}
+.when-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.when-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.driver-times .when-value {
+  font-size: 1.4rem;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+/* The way, as a line: a ring at the start, a small dot per pickup point, a
+   filled dot at the end, and the rule between them drawn by each stop. */
+.trip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.trip-stop {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.trip-stop:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: calc(50% + 7px);
+  width: 2px;
+  height: calc(100% + 0.7rem - 14px);
+  border-radius: 1px;
+  background: var(--border-strong);
+}
+.trip-dot {
+  justify-self: center;
+  width: 12px;
+  height: 12px;
+  border: 2.5px solid var(--green);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.trip-end .trip-dot {
+  background: var(--green);
+}
+.trip-via .trip-dot {
+  width: 8px;
+  height: 8px;
+  border-width: 2px;
+  border-color: var(--border-strong);
+}
+.trip-via {
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.trip-place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trip-note {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.driver-car {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+}
+.driver-car-art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  padding: 0.3rem 0.45rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, #f4f8f6 0%, var(--green-soft) 100%);
+  color: var(--green-dark);
+}
+/* No drawing of the model: its make's logo, or the plain car, in the slot. */
+.driver-car-logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 52px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.driver-car-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.driver-car-name {
+  font-size: 0.94rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.driver-car-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.driver-car-pt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.driver-car-pt::before {
+  content: '·';
+  margin-right: 0.3rem;
+  color: var(--muted);
+}
+.driver-car-pt-electric,
+.driver-car-pt-hybrid {
+  color: var(--green);
+  font-weight: 500;
+}
+.driver-car-guide {
+  align-self: flex-start;
+  margin: 0.2rem 0 0 -0.3rem;
+  font-size: 0.84rem;
+}
+/* Distance and chip-in: two small figures with their labels above. */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 0;
+}
+.fact dt {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-bottom: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.fact dd {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+.driver-notes {
+  margin: 0;
+  padding: 0.15rem 0 0.15rem 0.85rem;
+  border-left: 2px solid var(--green-line);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* --- Section headings ---------------------------------------------------- */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 0.15rem;
+}
+.section-count {
+  color: var(--muted);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.section-tag {
+  margin-left: auto;
+}
+.section-meta {
+  margin-left: auto;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* --- View switch ---------------------------------------------------------- */
+.view-switch .seg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}

@@ -2,13 +2,16 @@ import { authToken, clearSession, type AuthUser, type Session } from './auth'
 import type {
   AdminAction,
   AdminUser,
+  CarReport,
+  CarReportInput,
+  CarState,
   CarUsage,
   CorporateCar,
   CorporateCarInput,
   PersonStats,
   ProfilePatch,
-  PushCategory,
   PushConfig,
+  PushPreferences,
   Ride,
   RideInput,
   RideMessage,
@@ -167,6 +170,12 @@ export const api = {
 
   corporateCars: () => request<CorporateCar[]>('/api/cars/corporate'),
 
+  /** Every shared car as it stands: odometer, battery, cleanliness, issues (backend: app/carstate.py). */
+  carStates: () => request<CarState[]>('/api/cars/corporate/state'),
+
+  /** Say how a shared car is, with or without a ride. */
+  reportCar: (carId: number, report: CarReportInput) => request<CarReport>(`/api/cars/corporate/${carId}/reports`, json('POST', report)),
+
   rides: (from: string, to: string) => request<Ride[]>(`/api/rides?from=${from}&to=${to}`),
 
   ride: (id: number) => request<Ride>(`/api/rides/${id}`),
@@ -202,8 +211,9 @@ export const api = {
   takeWheel: (rideId: number, km: number, bookingId: number | null) =>
     request<Ride>(`/api/rides/${rideId}/legs`, json('POST', { km, booking_id: bookingId })),
 
-  /** The shared car is back, at `km`. */
-  bringBack: (rideId: number, km: number) => request<Ride>(`/api/rides/${rideId}/legs/end`, json('POST', { km })),
+  /** The shared car is back, at `km`, and how it was left (its battery, whether it is clean, what is wrong). */
+  bringBack: (rideId: number, km: number, report: CarReportInput = {}) =>
+    request<Ride>(`/api/rides/${rideId}/legs/end`, json('POST', { km, ...report })),
 
   /** Take back the last odometer entry (driver or admin). */
   undoLeg: (rideId: number) => request<Ride>(`/api/rides/${rideId}/legs/last`, { method: 'DELETE' }),
@@ -240,9 +250,9 @@ export const api = {
   // --- push notifications (see backend/app/push.py) ---
 
   pushConfig: () => request<PushConfig>('/api/push/config'),
-  /** The kinds of push this account switched off (backend: app/push.py CATEGORIES). */
-  pushPreferences: () => request<{ muted: PushCategory[] }>('/api/push/preferences'),
-  setPushPreferences: (muted: PushCategory[]) => request<{ muted: PushCategory[] }>('/api/push/preferences', json('PUT', { muted })),
+  /** The kinds of push this account switched off and its reminder lead (backend: app/push.py, app/reminders.py). */
+  pushPreferences: () => request<PushPreferences>('/api/push/preferences'),
+  setPushPreferences: (prefs: PushPreferences) => request<PushPreferences>('/api/push/preferences', json('PUT', prefs)),
 
   subscribePush: (subscription: PushSubscriptionJSON, locale: string) =>
     request<{ ok: boolean }>('/api/push/subscriptions', json('POST', { ...subscription, locale })),

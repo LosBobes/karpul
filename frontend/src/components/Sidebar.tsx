@@ -3,7 +3,7 @@ import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
 import { Avatar } from './Avatar'
-import { AdminLogIcon, ApprovalIcon, BellDotIcon, BugIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, LifebuoyIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
+import { AdminLogIcon, ApprovalIcon, BellDotIcon, BugIcon, CarIcon, ChevronDownIcon, ChevronRightIcon, GarageIcon, LifebuoyIcon, PeopleIcon, PlugIcon, RouteIcon, TableIcon, XIcon } from './icons'
 import { Logo } from './Logo'
 import { LanguageSwitch } from './LanguageSwitch'
 import { ThemeSwitch } from './ThemeSwitch'
@@ -27,6 +27,8 @@ interface Content {
   onFeedback: () => void
   onMyRides: () => void
   onNotifications: () => void
+  /** How the shared cars stand (components/CarStatus.tsx), for everyone. */
+  onCarState: () => void
 }
 
 interface Props extends Content {
@@ -64,7 +66,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * collapsible groups, the settings at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -84,6 +86,12 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       icon: <RouteIcon size={20} />,
       tone: 'violet',
       onSelect: pick(onMyRides),
+    },
+    {
+      label: t.sidebar.carState,
+      icon: <CarIcon size={20} />,
+      tone: 'green',
+      onSelect: pick(onCarState),
     },
     {
       label: t.notif.title,

@@ -21,6 +21,9 @@ export default defineConfig({
     baseURL: `http://127.0.0.1:${PORT}`,
     locale: 'en-US',
     trace: 'retain-on-failure',
+    // A checkout with another Chromium than this Playwright's (a container
+    // with one pre-installed) points at it here; CI leaves it unset.
+    launchOptions: process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : undefined,
   },
   projects: [
     { name: 'phone', use: { ...devices['Pixel 7'] } },

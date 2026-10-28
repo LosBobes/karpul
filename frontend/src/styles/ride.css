@@ -1,0 +1,951 @@
+/* --- Upcoming sessions ---------------------------------------------------- */
+/* One heading per day, one row per ride: the time on the left, the way as
+   the headline, who drives what underneath, and one word on the right for
+   your place in it. On a phone a tapped row unfolds the full ride under it,
+   hung off a green rule; on a wide screen it opens in the pane beside. */
+.upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+.upcoming-day {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.session {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.85rem 1rem 0.9rem 1.1rem;
+  text-align: left;
+  color: var(--text);
+  transition: border-color var(--hover), box-shadow var(--hover), transform var(--hover), background var(--hover);
+}
+.session:hover {
+  border-color: var(--border-strong);
+}
+/* Yours (you drive or sit in it): a green edge, not a green card. */
+.session-mine::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--green);
+}
+.session-open,
+.session-open:hover {
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+}
+/* Line one: the clock and its return on the left, your place on the right. */
+.session-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 24px;
+}
+.session-time {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.session-time .when-value {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.session-time small {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* Line two: the way, at full width, wrapping before it is ever clipped. */
+.session-route {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+.session-arrow {
+  display: inline-block;
+  margin: 0 0.35rem;
+  vertical-align: -2px;
+  color: var(--muted);
+}
+/* Line three: who drives what, quietly. */
+.session-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.session-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.session-stops {
+  flex: none;
+  white-space: nowrap;
+}
+.session-stops::before {
+  content: '·';
+  margin-right: 0.35rem;
+}
+.session-seats {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--green);
+  white-space: nowrap;
+}
+/* The unfolded card grows out of the row (a grid row from 0fr to 1fr, so the
+   list below slides down with it). The clip wrapper hides the overflow while
+   it grows; its negative margin and matching padding leave room for the
+   cards' shadows so they are not cut off once open. */
+.session-detail {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin: 0.6rem 0 0.5rem 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid var(--green-line);
+  animation: unfold 0.28s var(--ease-out);
+}
+.session-detail-clip {
+  min-height: 0;
+  overflow: hidden;
+  margin: -8px;
+  padding: 8px;
+}
+@keyframes unfold {
+  from {
+    grid-template-rows: 0fr;
+  }
+}
+.session-skeleton .session {
+  min-height: 96px;
+}
+
+/* --- Passengers in the car ------------------------------------------------ */
+.pax {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.35rem;
+  margin: -0.35rem;
+  border-radius: var(--radius);
+  border: 2px dashed transparent;
+  transition: border-color 0.12s, background 0.12s, opacity 0.12s;
+}
+.pax-droppable {
+  border-color: var(--green-line);
+}
+.pax-over {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+.pax-nodrop {
+  opacity: 0.45;
+}
+.pax-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.pax-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.pax-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 60px;
+  padding: 0.6rem 0.9rem;
+  background: var(--surface);
+  transition: background var(--hover);
+}
+.pax-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pax-row-me {
+  background: color-mix(in srgb, var(--green-soft) 50%, var(--surface));
+}
+.pax-leave {
+  font-size: 0.84rem;
+}
+.grip {
+  display: inline-grid;
+  place-items: center;
+  color: var(--border-strong);
+  margin-right: -0.2rem;
+}
+/* Anything you can pick up. `touch-action: none` (lib/dnd.ts) is what makes a
+   finger drag possible at all; without it the browser takes the gesture for
+   scrolling and cancels our pointer part-way. */
+.grabbable {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: box-shadow var(--hover), transform var(--hover), border-color var(--hover), background var(--hover);
+}
+.grabbable:hover {
+  border-color: var(--green);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-1px);
+}
+/* A row inside the passenger list does not leave the list; it warms instead. */
+.pax-row.grabbable:hover {
+  box-shadow: none;
+  transform: none;
+  background: color-mix(in srgb, var(--green-soft) 80%, var(--surface));
+}
+.grabbable:hover .grip {
+  color: var(--green);
+}
+.grabbable:active {
+  cursor: grabbing;
+  transform: none;
+}
+/* While the chip is in flight the original stays put but goes ghosted. */
+.lifting {
+  opacity: 0.4;
+  box-shadow: none;
+  transform: none;
+}
+.add-row,
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 46px;
+  padding: 0.6rem 0.8rem;
+  border: 1.5px dashed var(--green-line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--green-soft) 45%, var(--surface));
+  color: var(--green);
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: background 0.12s, border-color 0.12s;
+}
+.add-row:hover:not(:disabled),
+.dropzone:hover:not(:disabled) {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+/* The quieter add row: an action, not the "go" one. */
+.add-row-quiet {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 500;
+}
+.add-row-quiet:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--surface);
+}
+/* "Add a passenger by name": the row turns into an inline form. */
+.pax-add {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.pax-add input {
+  flex: 1;
+  min-width: 0;
+}
+.pax-add .btn {
+  flex: none;
+}
+.dropzone {
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 132px;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-align: center;
+}
+.dropzone > svg {
+  color: var(--green);
+  margin-bottom: 0.25rem;
+}
+.dropzone > span {
+  font-size: 0.84rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.dropzone-still {
+  cursor: default;
+  border-color: var(--border-strong);
+  background: var(--surface-2);
+}
+.dropzone-still > svg {
+  color: var(--muted);
+}
+/* The "get in" row inside the passenger list is a row of the list. */
+.pax-list .add-row {
+  justify-content: flex-start;
+  gap: 0.8rem;
+  min-height: 56px;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+.pax-list .add-row svg {
+  display: inline-grid;
+  box-sizing: content-box;
+  padding: 6px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  transition: transform var(--hover);
+}
+.pax-list .add-row:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--green-soft) 60%, var(--surface));
+}
+.pax-list .add-row:hover:not(:disabled) svg {
+  transform: rotate(90deg);
+}
+.pax-over .dropzone,
+.pax-over .add-row {
+  border-color: var(--green);
+  border-style: solid;
+  background: var(--green-soft);
+}
+
+/* --- Waiting list (components/CarDetail.tsx) ------------------------------
+   Under a full car's passengers: your place in line as a banner, and the
+   queue itself as a quiet list in the same rows as the passengers, smaller,
+   because nobody in it is in the car yet. */
+.waitline-me {
+  align-items: center;
+}
+.waitline-me > span {
+  flex: 1;
+}
+.waitline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.waitline-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.waitline-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.waitline-list > li + li {
+  border-top: 1px dashed var(--border);
+}
+.waitline-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.35rem 0.5rem 0.35rem 0.7rem;
+}
+.waitline-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.waitline-name small {
+  flex-basis: 100%;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* --- A shared car's odometer (components/Odometer.tsx) ----------------------
+   Who drove the car and how far: one row per stretch at the wheel, the one
+   being driven tinted green, and under it the reading to note next. */
+.odo {
+  padding: 1rem 1.1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.odo .section-title {
+  margin: 0;
+}
+.odo-legs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.odo-legs > li + li {
+  border-top: 1px solid var(--border);
+}
+.odo-leg {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.9rem;
+}
+.odo-leg-open {
+  background: var(--green-soft);
+}
+.odo-who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.odo-name {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 500;
+}
+.odo-span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.odo-km {
+  min-width: 4.5rem;
+  text-align: right;
+  font-weight: 600;
+}
+.odo-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+.odo-reading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1 1 9rem;
+}
+.odo-reading input {
+  font-variant-numeric: tabular-nums;
+}
+.odo-who-pick {
+  flex: 1 1 12rem;
+}
+.odo-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex: 1 1 100%;
+  justify-content: flex-end;
+}
+.odo-form .error {
+  flex-basis: 100%;
+  margin: 0;
+}
+.odo-undo {
+  align-self: flex-start;
+}
+
+/* "Car is back" also asks how the car is left: the battery, whether it is
+   clean, anything wrong. The same three fields make a report on the status
+   sheet (components/CarStatus.tsx), so they share these classes. */
+.odo-left {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.75rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.odo-left > .subfield-label {
+  font-weight: 600;
+  color: var(--text);
+}
+.odo-left-grid {
+  display: grid;
+  grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr);
+  gap: 0.6rem;
+  align-items: end;
+}
+.odo-soc,
+.odo-clean,
+.odo-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.odo-soc input {
+  font-variant-numeric: tabular-nums;
+}
+.segmented-sm .seg {
+  min-height: 32px;
+  font-size: 0.82rem;
+  padding: 0 0.4rem;
+}
+
+/* --- The shared cars' state (components/CarStatus.tsx) ----------------------
+   One card per car: three facts in a row (a guessed one in italics, a car
+   that needs a wash in amber), the reported problem on a tinted line, the
+   recent reports folded away, and the report form inline at the foot. */
+.car-states {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+.car-state {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 0.95rem 1.05rem 1rem;
+}
+.car-state-issue {
+  border-left: 3px solid #fcd34d;
+}
+.car-state-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+.car-state-glyph {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--green-soft);
+  color: var(--green);
+}
+.car-state-name {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.car-state-name strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 1rem;
+}
+.car-state-name .mono {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.car-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin: 0;
+}
+.car-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.car-fact dt {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.car-fact dd {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.car-fact small {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  color: var(--muted);
+}
+.car-fact-guess dd {
+  font-style: italic;
+  color: var(--muted);
+}
+.car-fact-warn {
+  background: #fef3c7;
+}
+.car-fact-warn dd {
+  color: #b45309;
+}
+.car-issues {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.car-issues svg {
+  flex: none;
+  margin-top: 0.15rem;
+}
+.car-issues > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.car-issues strong {
+  font-weight: 500;
+}
+.car-issues small {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.car-issues-on {
+  background: #fef3c7;
+  color: #b45309;
+}
+.car-issues-on strong {
+  font-weight: 600;
+}
+.car-recent summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.car-recent ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.car-recent li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.84rem;
+}
+.car-recent-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+.car-recent-text small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.car-report {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--border);
+}
+.car-report .odo-actions {
+  flex-basis: auto;
+}
+/* On the driver card: one line under the car's name, with the problem in amber. */
+.driver-car-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.45rem;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: left;
+}
+.driver-car-state svg {
+  flex: none;
+}
+.driver-car-state > span + span::before {
+  content: '·';
+  margin-right: 0.45rem;
+}
+.driver-car-issue {
+  color: #b45309;
+  font-weight: 600;
+}
+
+/* --- A ride's thread (components/RideThread.tsx) ---------------------------
+   One quiet line under the passengers ("Messages (3)") that unfolds into the
+   thread: oldest at the top, yours tinted green like your seat, and a box at
+   the foot that grows with what you type. */
+.thread {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.thread-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.92rem;
+  text-align: left;
+  transition: background var(--hover);
+}
+.thread-toggle > svg:first-child {
+  color: var(--green);
+}
+.thread-toggle > span {
+  flex: 1;
+}
+.thread-chevron {
+  color: var(--muted);
+  transition: transform 0.2s var(--ease-out);
+}
+.thread-open .thread-chevron {
+  transform: rotate(180deg);
+}
+.thread-open .thread-toggle {
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.thread-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  animation: unfold 0.28s var(--ease-out);
+}
+.thread-body {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem 0.9rem 0.85rem;
+}
+.thread-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 320px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.thread-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+.thread-msg-main {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.65rem 0.5rem;
+  border-radius: 4px 12px 12px 12px;
+  background: var(--surface-2);
+}
+.thread-msg-me .thread-msg-main {
+  background: color-mix(in srgb, var(--green-soft) 75%, var(--surface));
+}
+.thread-msg-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+.thread-msg-head time {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.thread-msg-body {
+  margin: 0.1rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.thread-msg-remove {
+  margin-top: 0.1rem;
+}
+.thread-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+.thread-form textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 140px;
+  resize: none;
+  field-sizing: content;
+  line-height: 1.4;
+}
+.thread-send {
+  flex: none;
+  width: 44px;
+  padding: 0;
+}
+
+/* --- Looking for a ride (components/RequestList.tsx) -----------------------
+   The passengers' side of a day, under its rides: one row per person asking,
+   with a hand on the heading so it never reads as one more car. */
+.requests {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.requests-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.requests-title svg {
+  color: var(--blue);
+}
+.requests-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.requests-list > li + li {
+  border-top: 1px solid var(--border);
+}
+.request-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 56px;
+  padding: 0.55rem 0.75rem 0.55rem 0.9rem;
+}
+.request-row-me {
+  background: color-mix(in srgb, var(--blue-soft) 55%, var(--surface));
+}
+.request-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.request-text strong {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+.request-text strong small {
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.request-text > span {
+  font-size: 0.84rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.request-text .request-note {
+  font-style: italic;
+  white-space: normal;
+}
+.btn-sm {
+  min-height: 36px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.86rem;
+}
+.upcoming-ask {
+  margin-bottom: 0.25rem;
+}
+.form-answering {
+  margin-bottom: 0.25rem;
+}

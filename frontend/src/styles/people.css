@@ -1,0 +1,383 @@
+/* --- People (components/PeopleAdmin.tsx) ---------------------------------- */
+.people-count {
+  margin: 0;
+}
+.reset-link {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.reset-link .feed-row {
+  margin-top: 0;
+  min-width: 0;
+}
+.reset-link .feed-url {
+  flex: 1;
+  min-width: 0;
+}
+.feed-new {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+}
+.auth-forgot {
+  text-align: center;
+}
+
+/* --- You ------------------------------------------------------------------ */
+.you {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.35rem;
+  margin: -0.35rem;
+  border-radius: var(--radius);
+  border: 2px dashed transparent;
+  transition: border-color 0.12s, background 0.12s;
+}
+.you-armed {
+  border-color: color-mix(in srgb, var(--red) 45%, transparent);
+}
+.you-over {
+  border-color: var(--red);
+  background: var(--red-soft);
+}
+.you-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 60px;
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  width: 100%;
+}
+.you-row-btn {
+  color: var(--text);
+}
+.you-row-btn:hover {
+  border-color: var(--border-strong);
+}
+.you-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  line-height: 1.3;
+}
+.you-text strong {
+  font-weight: 600;
+}
+.you-text > span {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.you-row-out {
+  justify-content: center;
+  border-style: dashed;
+  border-color: var(--red);
+  color: var(--red);
+}
+.you-row-out .you-text {
+  flex: none;
+}
+.you-out-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--red-soft);
+  color: var(--red);
+}
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.banner strong {
+  color: var(--text);
+}
+.banner svg {
+  flex: none;
+  color: var(--muted);
+}
+.banner-ok {
+  border-color: var(--green-line);
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+.banner-ok strong,
+.banner-ok svg {
+  color: var(--green);
+}
+
+/* --- Notification centre (components/NotificationsSheet.tsx) ------------- */
+/* The push switch on a card of its own, the bell on a tile that turns green
+   when it is on; then the kinds as one grouped list, a tinted tile, the words
+   and a switch per row, the way the drawer reads. */
+.notif-hero {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transition: border-color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+.notif-hero-on {
+  border-color: var(--green-line);
+  background: var(--green-soft);
+}
+.notif-hero-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--muted);
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+.notif-hero-on .notif-hero-mark {
+  background: var(--green);
+  color: #fff;
+  animation: notif-ring 0.6s var(--ease-out);
+}
+@keyframes notif-ring {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(14deg); }
+  40% { transform: rotate(-10deg); }
+  60% { transform: rotate(6deg); }
+  80% { transform: rotate(-3deg); }
+  100% { transform: rotate(0); }
+}
+.notif-hero-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.notif-hero-text strong {
+  font-size: 0.98rem;
+}
+.notif-hero-text span {
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.notif-hero-on .notif-hero-text span {
+  color: var(--green-dark);
+}
+.notif-section {
+  margin-top: 1.4rem;
+}
+.notif-section-title {
+  margin: 0 0 0.5rem 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.notif-list {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.notif-list li + li {
+  border-top: 1px solid var(--border);
+}
+/* Push is off: the choices still save, they just wait. */
+.notif-list-idle .notif-row-mark,
+.notif-list-idle .notif-row-text {
+  opacity: 0.55;
+}
+.notif-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 56px;
+  padding: 0.7rem 0.9rem;
+  cursor: pointer;
+}
+.notif-row-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+.notif-row-mark-bolt {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.notif-row-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.notif-row-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.notif-row-desc {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--muted);
+}
+.notif-switch {
+  display: inline-flex;
+  flex: none;
+  cursor: pointer;
+}
+.notif-switch input[type='checkbox'] {
+  appearance: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--border-strong);
+  cursor: pointer;
+  transition: background 0.18s var(--ease-out);
+}
+.notif-switch input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.3);
+  transition: transform 0.22s var(--ease-spring, var(--ease-out));
+}
+.notif-switch input[type='checkbox']:checked {
+  background: var(--green);
+}
+.notif-switch input[type='checkbox']:checked::after {
+  transform: translateX(18px);
+}
+.notif-switch input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.notif-switch input[type='checkbox']:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .notif-row:hover {
+    background: var(--surface-2);
+  }
+}
+
+/* Under the reminders row: how long before departure, as a small segmented control. */
+.notif-lead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0 0.9rem 0.7rem 3.9rem;
+}
+.notif-lead-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.notif-lead .segmented {
+  flex: 0 0 auto;
+  min-width: 11rem;
+}
+
+/* --- Empty card ---------------------------------------------------------- */
+/* No picture: a small car on a tinted disc, the line, the hint. The card is
+   dashed and sits on the ground, a space for a ride rather than a ride. */
+.empty-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 1.4rem 1.1rem 1.3rem;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+  color: var(--text);
+}
+.empty-card strong {
+  margin-top: 0.6rem;
+  font-weight: 600;
+}
+.empty-card > span:last-child {
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.empty-badge {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green);
+}
+.empty-badge-muted {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.empty-card-btn:hover {
+  border-color: var(--green-line);
+}
+/* --- Drag ghost ---------------------------------------------------------- */
+/* The chip that follows the pointer. A plain DOM node created by lib/dnd.ts,
+   drawn over everything and transparent to hit-testing so elementFromPoint
+   sees the car underneath it. It is placed by transform alone (see dnd.ts),
+   so no margin, inset or width may be set here. */
+.drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  pointer-events: none;
+  will-change: transform;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.9rem 0.45rem 0.55rem;
+  border: 1px solid var(--green-line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  box-shadow: var(--shadow-pop);
+  transform: translate(-1000px, -1000px);
+}
+.drag-ghost .grip {
+  color: var(--green);
+}
+body.dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}

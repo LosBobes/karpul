@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { addDays, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
+import { officeDistance } from '../lib/offices'
 import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
 import { Avatar } from './Avatar'
@@ -28,7 +29,8 @@ interface Props {
   error: string | null
   /** The error is the shared-car share (one a week): offer to add the ride for an admin to approve. */
   canAskApproval?: boolean
-  onSubmit: (input: RideInput) => void
+  /** `wayBack` is the mirror ride a one-way ride asked for with it (a second create). */
+  onSubmit: (input: RideInput, wayBack?: RideInput) => void
   onDelete?: () => void
   onClose: () => void
 }
@@ -122,6 +124,11 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const [departure, setDeparture] = useState(slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
   const [ret, setRet] = useState(slot?.ret ?? seed?.return_time?.slice(0, 5) ?? '17:00')
   const [oneWay, setOneWay] = useState(seed && !slot ? seed.return_time === null : false)
+  // A one-way ride's mirror image, offered with it: the route reversed, on its own day and time.
+  const [wayBack, setWayBack] = useState(false)
+  const [backDate, setBackDate] = useState(existing?.ride_date ?? request?.request_date ?? date)
+  const [backDeparture, setBackDeparture] = useState('17:00')
+  const offersWayBack = oneWay && !existing && !request
   const [rawSeats, setSeats] = useState(seed?.seats ?? last.seats ?? 3)
   const [notes, setNotes] = useState(seed?.notes ?? '')
   const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
@@ -158,6 +165,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const seats = Math.min(Math.max(rawSeats, minSeats), maxSeats)
 
   const distanceNum = distance.trim() === '' ? null : Number(distance.replace(',', '.'))
+  // The road between the offices is a known length (lib/offices.ts); the server fills a blank in with it.
+  const knownKm = officeDistance(origin, destination)
   const distanceBad = distanceNum !== null && (!Number.isFinite(distanceNum) || distanceNum < 0 || distanceNum > 2000)
   // An answer to a request has to be on the day that was asked for, with a
   // seat for whoever asked (the server says the same, in the same words).
@@ -183,7 +192,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     !existing && repeat && repeatCount > 1 ? t.form.sumRepeat : null,
     stopCount ? t.form.sumStops(stopCount) : null,
     passengersManage ? t.form.sumManage : null,
-    distance.trim() ? t.form.sumDistance : null,
+    distance.trim() || knownKm !== null ? t.form.sumDistance : null,
     chipIn.trim() ? t.form.sumChipIn : null,
     notes.trim() ? t.form.sumNotes : null,
   ].filter((x): x is string => x !== null)
@@ -228,7 +237,21 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       repeat_until: !existing && repeat && repeatCount > 1 ? repeatUntil : null,
       request_id: request?.id ?? null,
     }
-    onSubmit(lastInput.current)
+    const back: RideInput | undefined =
+      offersWayBack && wayBack
+        ? {
+            ...lastInput.current,
+            ride_date: backDate,
+            origin: destination,
+            destination: origin,
+            departure_time: backDeparture,
+            return_time: null,
+            stops: [],
+            distance_km: distanceNum !== null && knownKm === null ? distanceNum : null,
+            request_id: null,
+          }
+        : undefined
+    onSubmit(lastInput.current, back)
   }
 
   return (
@@ -389,6 +412,30 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         </div>
       </div>
 
+      {offersWayBack && (
+        <div className="field">
+          <label className="switch-row">
+            <span className="switch-row-text">
+              <span className="switch-row-title">{t.form.wayBack}</span>
+              <span className="switch-row-desc">{t.form.wayBackHint}</span>
+            </span>
+            <input type="checkbox" checked={wayBack} onChange={(e) => setWayBack(e.target.checked)} />
+          </label>
+          {wayBack && (
+            <div className="when-grid when-grid-one">
+              <div className="subfield">
+                <span className="subfield-label">{t.form.wayBackDay}</span>
+                <DatePicker label={t.form.wayBackDay} value={backDate} onChange={setBackDate} />
+              </div>
+              <div className="subfield">
+                <span className="subfield-label">{t.form.wayBackLeaves}</span>
+                <TimePicker label={t.form.wayBackLeaves} value={backDeparture} onChange={setBackDeparture} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {advanced && !existing && (
         <div className="field">
           <label className="switch-row">
@@ -480,7 +527,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
                   inputMode="decimal"
                   pattern="[0-9]*[.,]?[0-9]*"
                   maxLength={7}
-                  placeholder="0"
+                  placeholder={knownKm !== null ? String(knownKm) : '0'}
                   aria-invalid={distanceBad || undefined}
                   value={distance}
                   onChange={(e) => setDistance(e.target.value)}
@@ -494,7 +541,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             </label>
           </div>
           <p className="hint hint-tight">
-            {t.form.distanceHint} {t.form.chipInHint}
+            {knownKm !== null && distance.trim() === '' ? t.form.knownRoad(knownKm) : t.form.distanceHint} {t.form.chipInHint}
           </p>
 
           <label className="field">

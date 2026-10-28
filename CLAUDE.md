@@ -26,7 +26,7 @@ npm run dev      # :5173, proxies /api to VITE_API_PROXY (default localhost:8000
 npm run lint     # oxlint (not ESLint)
 npm test         # vitest: src/**/*.test.ts (the lib code, and Serbian for every API error)
 npm run build    # tsc -b && vite build -> frontend/dist
-npm run e2e      # Playwright smoke test against the built app (build first; PYTHON=... picks the interpreter)
+npm run e2e      # Playwright against the built app (build first; PYTHON=... picks the interpreter, PW_CHROMIUM=... another Chromium)
 ```
 
 Whole app in one process: `npm run build`, then `uvicorn app.main:app` serves API + SPA on :8000.
@@ -34,11 +34,11 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file. There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) and `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
-Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`, and `make backfill` (the shared Mazda's 2026 paper log as rides, `app/backfill.py`; a dry run unless `APPLY=1`, safe to repeat). Nobody needs to run it: the lifespan calls `backfill.run_once` on every start, which applies it once and records `mazda-log-2026` in the `DataMigration` table so it never runs again (with no single Mazda in the pool it logs a warning, writes nothing and tries again on the next start; a failure is logged and never stops the app). The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits.
+Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`, `make backups` (the app's own nightly snapshots, below), and `make backfill` (the shared Mazda's 2026 paper log as rides, `app/backfill.py`; a dry run unless `APPLY=1`, safe to repeat). Nobody needs to run it: the lifespan calls `backfill.run_once` on every start, which applies it once and records `mazda-log-2026` in the `DataMigration` table so it never runs again (with no single Mazda in the pool it logs a warning, writes nothing and tries again on the next start; a failure is logged and never stops the app). The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits. **The app also backs itself up** (`app/housekeeping.py`, started in the lifespan): once a day the same snapshot goes to `KARPUL_BACKUP_DIR` (default `backups/` beside the database file, in production the volume) as `karpul-<date>-<time>.db`, written under a `.part` name and renamed, the newest `KARPUL_BACKUP_KEEP` (14) kept; the same hourly pass purges expired sessions and spent reset links (`auth.purge_expired`). Nothing runs on an in-memory database. Tests: `tests/test_housekeeping.py`.
 
 ## Architecture
 
@@ -55,7 +55,11 @@ library in a `pbkdf2_sha256$rounds$salt$hash` string (no new dependency, for the
 Every endpoint that shows or changes the board needs a session, reads included (the board
 carries names, routes and phone numbers): `require_user` in `app/auth.py` is the one answer to
 "who is this", and there is no anonymous or name-header path any more (the honour-based
-`X-User-Name` and `KARPUL_REQUIRE_LOGIN` are gone). Open without a token: `/api/health`,
+`X-User-Name` and `KARPUL_REQUIRE_LOGIN` are gone). **A session in use slides**: it is issued
+for `SESSION_DAYS` (30) and `renew_session` pushes the expiry out to a full 30 days again once
+`SESSION_RENEW_AFTER` (a day) of it has gone, from `GET /api/auth/me`, which the app calls on
+every start and which is a write route for that reason (a read route must never turn into a
+writer, below); only a browser left alone for a month sees the door. Open without a token: `/api/health`,
 `/api/push/config`, register/login/reset, the calendar feed (its own secret, below) and the
 `/ride/{id}` share preview. A token that is *present but dead* is a 401 with its own wording,
 so the browser drops it and shows the door again. The lookup deliberately happens in the
@@ -105,7 +109,12 @@ the whole board in `GET /api/rides`, next to the thread's message counts), and `
 for everyone but the driver. Email is optional too; the production `appuser.email` started out
 NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
 
-**Admins run every ride.** `_may_run` in `routers/rides.py` lets the driver *or an admin* edit and
+**The ride routers.** `routers/rides.py` is the rides and their seats; the odometer (`/legs`) is
+`routers/odometer.py`, the queue `routers/waitlist.py`, the thread `routers/thread.py`, and the
+checks they share (`get_ride_or_404`, `is_driver`, `may_run`, `on_behalf`, `booking_of`,
+`may_manage_seats`) live in `app/access.py`.
+
+**Admins run every ride.** `may_run` in `app/access.py` lets the driver *or an admin* edit and
 remove a ride (and its following weeks) and manage its seats; the frontend twin is `runs()` in
 `lib/me.ts` (`Me.admin`), which `CarDetail` uses for the ⋮ menu and the seat controls. An admin can
 also add a ride in someone else's name: `RideCreate.driver_id` (create only; anyone else naming
@@ -138,7 +147,10 @@ holds no slot**: `ensure_car_available` skips it, so the car stays bookable over
 overlap), and `POST /api/rides/{id}/approve` (admin, 409 unless pending) re-runs that check before it
 sets `"approved"` and pushes `ride_approved`, so an approval that would double-book is the usual 409;
 `/decline` removes the ride through `_remove_rides` with `ride_declined` to the driver and
-`ride_removed` to the passengers; both are in the admin's log. On screen: the share's refusal in
+`ride_removed` to the passengers; both are in the admin's log. **A removed ride points on**: a
+passenger's `ride_removed` push also says how many other cars that day still have a seat
+(`_alternatives`, nearest departure first) and opens the nearest one (`notify(..., url=)`), so a
+cancellation the evening before is not a dead end. On screen: the share's refusal in
 `RideForm` grows an *Ask an admin to approve it* button (`canAskApproval`, matched on the text's
 tail in `App.tsx`), a pending ride wears an amber *Awaiting approval* tag on the card, the Upcoming
 row and as a hollow stretch on the day plan (`.plan-ride-pending`, drawn *under* `.plan-free`, and
@@ -157,14 +169,42 @@ rows on the ride (`Ride.legs`, in `RideRead`): one stretch at the wheel each, `s
 pickup (the driver or an admin only), later ones are handovers that end the current stretch at the
 same reading (the driver, an admin or whoever is at the wheel); `POST .../legs/end {km}` is the car
 back; `DELETE .../legs/last` (driver or admin) steps back one entry. Readings only go up, only on a
-shared car that is not pending, from its day on. On screen `components/Odometer.tsx` (the logic in
-`lib/odometer.ts`, tested in `odometer.test.ts`) sits on the ride card for the people in the car and
-for admins; *Hand over* is how the wheel changes hands, so the one who drove becomes a passenger in
-the log. *All rides* shows the odometer out and back, the km driven and who drove how much, and the
+shared car that is not pending, from its day on. `LegEnd` also takes how the car was left (`soc`,
+`clean`, `issues`, a `CarReportIn`), which `bring_back` writes as a `CarReport` (below). On screen
+`components/Odometer.tsx` (the logic in `lib/odometer.ts`, tested in `odometer.test.ts`) sits on the
+ride card for the people in the car and for admins; *Hand over* is how the wheel changes hands, so
+the one who drove becomes a passenger in the log, and *Car is back* asks for the battery, whether
+it is clean and anything wrong. Once a shared-car ride's return time is `KM_GRACE_MIN` behind and
+its odometer is still open, `app/reminders.py` pushes `note_km` to the driver (and whoever is at the
+wheel) once, `Ride.km_reminder_sent`. *All rides* shows the odometer out and back, the km driven and who drove how much, and the
 spreadsheet carries the same four columns. Account deletion nulls `DriveLeg.driver_id` and keeps the
 name. Tests: `tests/test_odometer.py`.
 
-**Who may touch the passenger list** (`_may_manage_seats` in `routers/rides.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
+**The state of a shared car** (`app/carstate.py`, table `CarReport`, `routers/cars.py`). Every
+signed-in person can see how each pool car stands: `GET /api/cars/corporate/state` gives, per active
+car, four facts (`odometer`, `soc`, `clean`, `issues`, each `{value, at, by, estimated}`) and its
+`recent` reports. A report is how a car was found or left (odometer, battery %, clean or needs a
+wash, what is wrong; every field optional, absent is "not said", `issues` `""` is "nothing wrong");
+it is written with a car's return (`bring_back`) or on its own at `POST
+/api/cars/corporate/{id}/reports` (anyone signed in, a retired car is a 409, an empty report a 422).
+The newest reading or report is the fact; **the guess**: a ride the car went on after the last
+odometer reading with no closed reading of its own is assumed driven its length
+(`offices.ride_km`, below), and the battery is assumed down `SOC_PER_KM` (0.24 %) for every such
+kilometre; a guessed figure is `estimated` and the screen says *about*. A report naming a problem
+is pushed to the admins (`car_issue`, category `cars`, `notify` with no ride: `body` and `url`).
+Every report publishes `cars.state`, on which `useBoard` fetches the state again (also on every
+connect). On screen: *Car status* in the drawer for everyone (`components/CarStatus.tsx`: a card per
+car, the report form inline on it; the text helpers in `lib/carState.ts`), and one line under the
+car's name on the driver card of a shared-car ride (`.driver-car-state`). Tests:
+`tests/test_car_state.py`.
+
+**The road between the offices** (`app/offices.py`, `lib/offices.ts`, keep in step): Beograd to
+Novi Sad is 90 km, Novi Sad to Beograd 92 (`OFFICES` holds the names people write, folded).
+`_prepare` fills a blank `distance_km` in on that route, `fill_office_distances` does it for old
+rides on every start, the form shows the known figure as the placeholder and says so
+(`form.knownRoad`), and the car state's guess uses it. Tests: `tests/test_offices.py`.
+
+**Who may touch the passenger list** (`may_manage_seats` in `app/access.py`): the driver (or an admin) always; a passenger already in the car only while the ride's `passengers_manage` flag is on (the driver's switch, in `RideUpdate` like any other field); everyone may always add or remove *themself*. The frontend mirrors it as `canManage` in `CarDetail.tsx`.
 
 **Waiting list, thread, requests.** A full car has a queue (`WaitlistEntry`, `POST/DELETE
 /api/rides/{id}/waitlist`): only for yourself, refused while seats are free. When a seat frees
@@ -275,11 +315,15 @@ admin password. Pushes are addressed by account (`notify(session, user_ids, ...)
 a seat with no account is skipped). Who is told: the driver when someone gets in or out on their own, a passenger
 when the driver takes them out, the passengers when the ride moves (date, times or route, not a
 note) or is removed, the first in line when a seat frees up, the car when someone writes in its
-thread, a requester when a driver answers, and everyone in the car 30 minutes before departure (`app/reminders.py`,
-a minute-by-minute task started in the lifespan; `Ride.reminder_sent` makes it once). The
+thread, a requester when a driver answers, and everyone in the car before departure (`app/reminders.py`,
+a minute-by-minute task started in the lifespan): **each person picks the lead**, 15, 30 or 60
+minutes (`User.remind_before`, `LEAD_CHOICES`, in `GET/PUT /api/push/preferences` as
+`remind_before`, the segmented control under the reminders row in `NotificationsSheet`), so one
+ride's reminders go out at different minutes; `ReminderSent` is who has had theirs and
+`Ride.reminder_sent` is set once everyone has or the ride has left. The
 browser side is `lib/push.ts` plus `public/push-sw.js`, which Workbox pulls into `sw.js`
 through `importScripts`; every sign-in re-files the browser's subscription under the account (`resubscribePush` in `App.tsx`). Each `kind` belongs to one of `CATEGORIES` in `app/push.py`
-(seats, changes, reminders, messages, requests, approvals); a person switches categories off per account
+(seats, changes, reminders, messages, requests, approvals, cars); a person switches categories off per account
 (`User.push_muted`, `GET/PUT /api/push/preferences`) and `notify` skips them. `NotificationsSheet` is the
 notification centre: the push switch on its own card, a row per category, and *New version notice* for this
 device (`useUpdateNotices` / `setUpdateNotices` in `lib/pwa.ts`, `karpul.updateNotices`): off, the update
@@ -299,7 +343,10 @@ claim, and a car's use rate is days out over working days in the window.
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings`, `waitlist`, `message_count`, `driver_phone` and the computed `free_seats`. Every ride-returning endpoint goes through it (pass `board_extras` for a list).
 
 **Styling.** The frontend is Tailwind v4 (via `@tailwindcss/vite`) plus a hand-written design
-system in `src/index.css`: a light, phone-first, card-based UI — off-white ground, white cards with
+system in `src/index.css`, one stylesheet in parts (it `@import`s `src/styles/*.css`: tokens,
+controls, layout, board, plan, admin-log, ride, people, sheets, feedback, extras, themes, each a
+run of sections in the order they always were, Tailwind inlining them at build; the media blocks,
+phones, wide screens, dark and hover, are in the last two and must stay last): a light, phone-first, card-based UI — off-white ground, white cards with
 hairline borders and a faint shadow that deepens under a mouse (`--shadow-hover`, in the *Hover* block,
 `hover: hover and pointer: fine` only), 14px corners, one green accent for "selected / go", red only for
 removal, Inter throughout (bundled from `@fontsource/inter` in `main.tsx`, because the app ships as
@@ -354,13 +401,17 @@ its mark from the `simple-icons` package in `currentColor`. Only the brands list
 are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo and Lexus are
 not in that package, so they keep the generic icon.
 
-**Motion.** Nothing fades in; things slide or pop, and go back the way they came. The
+**Motion.** Nothing fades in; things slide or pop, and go back the way they came. A view slides
+in from its side as the one it replaces slides out the other way (`components/SlideSwitch.tsx`: the
+keyed content's wrapper hands its DOM to the host as it unmounts, and a `cloneNode` snapshot laid
+over the host plays `.swap-leave-*` under the entering `.swap-*` while the real content is long
+gone, so nothing in it runs or fetches again). The
 keyframes are in the *Motion* and *Sheets & dialogs* sections of `index.css`, the two hooks in
 `lib/motion.ts`. `useSlideDir(value, rank)` says which side freshly keyed content enters from
 (a higher rank enters from the right, a lower one from the left, NaN means no slide) and
 `App.tsx` wraps the view (Upcoming sits left of Week), the day board (the way the calendar
-moved, only while the Week view shows) and the driver card (from the tile you tapped) in keyed
-`.stack` wrappers carrying `slideClass(dir)`; `DateCarousel` does the same for a week step.
+moved, only while the Week view shows) and the driver card (from the tile you tapped) in
+`SlideSwitch` (the keyed `.stack` inside carries `slideClass(dir)`); `DateCarousel` does the same for a week step.
 `useClosing(onClose)` lets `Sheet`, `Sidebar` and `ConfirmDialog` play their exit before the
 parent unmounts them: every close from inside the overlay goes through `requestClose`, which
 adds `backdrop-closing`, and `onClose` runs on the panel's `animationend` (with a fallback
@@ -498,7 +549,10 @@ values and still submits them, so the foot of the simple form names the ones car
 on Advanced for the same reason. The driver is a line that states who it is (`.form-driver`),
 not a field, because `driver_name` can never change. The day, departure and return sit in one
 `.when-grid` row: rides are same-day, so the return has a time and no date of its own, and
-turning on *One way* removes the return clock instead of grey-ing it out. The start, the stops
+turning on *One way* removes the return clock instead of grey-ing it out and, on a new ride,
+offers *Add the way back too*: a switch with its own day and departure that makes a second
+one-way ride with the route reversed (`onSubmit(input, wayBack)`; `App.tsx` creates it after the
+first and toasts its failure, the shared car's share included, rather than failing the form). The start, the stops
 and the destination are one `.route` box with one focus ring and one `.route-tag` column, the
 way `CarDetail` draws the same journey. Every boolean here is a switch (`.toggle`, and
 `.switch-row` for one that is boxed on its own line with its explanation beside it).
@@ -508,7 +562,12 @@ in `App.tsx`; the visible pill is `aria-hidden`. Every drag has a button equival
 *Switch to this car*, *Leave*). The dark avatars pair a deep tint with a light ink so the
 initials keep their contrast.
 
-**Frontend data flow.** `App.tsx` holds the UI state; the board's data lives in `lib/useBoard.ts`: rides and requests for the range on screen (a Mon–Sun week, or the Upcoming 90 days), both car lists, the sequence-guarded `load`, the live-event reducer and the 30 s fallback poll. Mutating endpoints return the updated `Ride` so `upsertRide()` can patch state without a full reload. The rest of the components are presentational, plus a few sheets that fetch their own data (`MyRides`, `PeopleAdmin`, `RideThread`). On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
+**Frontend data flow.** `App.tsx` holds the UI state, with its pieces in hooks: which sheets
+are open (`lib/useOverlays.ts`, one open set, `is`/`show`/`hide` and a stable `closer(name)`),
+the toast (`lib/useToast.ts`), the passenger chip in flight (`lib/usePassengerDrag.ts`), and
+the pure rules for which ride is open and which days are loaded (`lib/selection.ts`:
+`daySelection`, `upcomingSelection`, `boardRange`, tested in `selection.test.ts`). The board's
+data lives in `lib/useBoard.ts` (the shared cars' state too, `carStates`): rides and requests for the range on screen (a Mon–Sun week, or the Upcoming 90 days), both car lists, the sequence-guarded `load`, the live-event reducer and the 30 s fallback poll. Mutating endpoints return the updated `Ride` so `upsertRide()` can patch state without a full reload. The rest of the components are presentational, plus a few sheets that fetch their own data (`MyRides`, `PeopleAdmin`, `RideThread`). On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
 
 **Installable (PWA).** `vite-plugin-pwa` in `vite.config.ts` writes the web app manifest
@@ -571,7 +630,7 @@ manifest cannot express (`apple-touch-icon`, standalone mode, the app title).
 A browser cannot put a header on a WebSocket, so the first message is `{"type": "auth", "token": ...}`;
 the server answers `hello` (the client's cue that it is live) or closes with 4401, which drops the session.
 The server pushes `ride.created` / `ride.updated` (carrying the full `RideRead`), `ride.deleted`,
-`request.saved` / `request.deleted` and `cars.changed`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
+`request.saved` / `request.deleted`, `cars.changed` and `cars.state`; `App.tsx` upserts or removes the ride if it falls inside the loaded week
 (re-sorting with the API's order: date, departure, id) and treats `cars.changed` as "reload
 both car lists and the board", because a pool edit can relabel rides. The hook reconnects with
 exponential backoff and immediately on `visibilitychange`/`online`/`focus`, and calls
