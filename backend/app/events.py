@@ -116,6 +116,11 @@ def cars_changed() -> None:
     hub.publish({"type": "cars.changed"})
 
 
+def cars_state_changed() -> None:
+    """A shared car was reported on or brought back: the state card fetches again."""
+    hub.publish({"type": "cars.state"})
+
+
 def request_saved(request: RideRequest) -> None:
     hub.publish({"type": "request.saved", "request": RideRequestRead.model_validate(request).model_dump(mode="json")})
 

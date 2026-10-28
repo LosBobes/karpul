@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { AccountSheet } from './components/AccountSheet'
 import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
@@ -7,6 +7,7 @@ import { Approvals } from './components/Approvals'
 import { AuthGate } from './components/AuthGate'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
+import { CarStatus } from './components/CarStatus'
 import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -25,6 +26,7 @@ import { RequestList } from './components/RequestList'
 import { UpdateScreen } from './components/UpdateScreen'
 import { RideForm } from './components/RideForm'
 import { Dock, Sidebar } from './components/Sidebar'
+import { SlideSwitch } from './components/SlideSwitch'
 import { SupportSheet } from './components/SupportSheet'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
@@ -32,14 +34,18 @@ import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
 import { setUser, useSession, type Session } from './lib/auth'
 import { messages, useT } from './lib/i18n'
-import { addDays, fmtShortDate, fmtTime, parseISODate, startOfWeek, toISODate, todayISO } from './lib/dates'
-import { slideClass, useSlideDir } from './lib/motion'
-import { grabPassenger, type DropTarget, type PassengerDrag } from './lib/dnd'
-import { drives, inRide, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
+import { fmtShortDate, fmtTime, parseISODate, todayISO } from './lib/dates'
+import { useSlideDir } from './lib/motion'
+import type { PassengerDrag } from './lib/dnd'
+import { drives, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
+import { boardRange, daySelection, upcomingSelection, VIEWS, type View } from './lib/selection'
 import { useBoard } from './lib/useBoard'
+import { useOverlays } from './lib/useOverlays'
+import { usePassengerDrag } from './lib/usePassengerDrag'
+import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
 import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
 import { InstallCard } from './components/InstallCard'
@@ -51,11 +57,24 @@ type FormState = { mode: 'create'; template?: Ride; request?: RideRequest; slot?
  * the date strip; "Day" is one day as a timeline of who has which car when
  * (components/DayPlan.tsx). The choice is remembered per browser.
  */
-type View = 'upcoming' | 'week' | 'day'
-const VIEWS: View[] = ['upcoming', 'week', 'day']
 const VIEW_KEY = 'karpul.view'
-/** How far ahead the upcoming list looks. The API caps a range at 92 days. */
-const UPCOMING_DAYS = 90
+
+/** The sheets and drawers, by name (lib/useOverlays.ts); each renders at the foot of the board. */
+type Overlay =
+  | 'sidebar'
+  | 'account'
+  | 'guide'
+  | 'carState'
+  | 'myRides'
+  | 'notif'
+  | 'support'
+  | 'feedback'
+  | 'update'
+  | 'cars'
+  | 'people'
+  | 'rideLog'
+  | 'adminLog'
+  | 'approvals'
 
 function loadView(): View {
   try {
@@ -98,7 +117,7 @@ function Board({ session }: { session: Session }) {
   const [view, setViewState] = useState<View>(loadView)
   const [selected, setSelectedDate] = useState(todayISO)
   const [busyId, setBusyId] = useState<number | null>(null)
-  const [toast, setToast] = useState<{ kind: 'error' | 'ok'; text: string } | null>(null)
+  const { toast, setToast, notice, failure } = useToast()
   const [form, setForm] = useState<FormState>(null)
   const [formError, setFormError] = useState<string | null>(null)
   // The error is the shared-car share: the form offers to ask an admin instead.
@@ -110,37 +129,20 @@ function Board({ session }: { session: Session }) {
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useState<number | null>(null)
-  // Your account (components/AccountSheet.tsx), from the drawer or your name.
-  const [accountOpen, setAccountOpen] = useState(false)
-  // The app menu (components/Sidebar.tsx), a drawer under the ☰ in the top bar.
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  // The company-car help (components/CarGuide.tsx): from the sidebar or a ride's driver card.
-  const [guideOpen, setGuideOpen] = useState(false)
-  // Your history and figures (components/MyRides.tsx) and the push switch (NotificationsSheet.tsx).
-  const [myRidesOpen, setMyRidesOpen] = useState(false)
-  const [notifOpen, setNotifOpen] = useState(false)
-  // Who to ask (components/SupportSheet.tsx), from the drawer or the guide's foot,
-  // and the bug / idea form (FeedbackSheet.tsx), from the drawer or the support sheet.
-  const [supportOpen, setSupportOpen] = useState(false)
-  const [feedbackOpen, setFeedbackOpen] = useState(false)
-  // Taking a waiting build (components/UpdateScreen.tsx): the bolt you trace.
-  const [updateOpen, setUpdateOpen] = useState(false)
-  // The passenger chip in flight and what it is hovering over (lib/dnd.ts).
-  const [drag, setDrag] = useState<PassengerDrag | null>(null)
-  const [dragOver, setDragOver] = useState<DropTarget | null>(null)
+  // The sheets and drawers: your account (AccountSheet), the app menu
+  // (Sidebar, under the ☰), the company-car help (CarGuide, from the drawer
+  // or a ride's driver card), how the shared cars stand (CarStatus), your
+  // figures (MyRides), the push switch (NotificationsSheet), who to ask
+  // (SupportSheet) and the bug form (FeedbackSheet), the update screen, and
+  // the admin's sheets (CarAdmin, PeopleAdmin, RideLog, AdminLog, Approvals).
+  const { is, show, hide, closer } = useOverlays<Overlay>()
 
   // Admin (backend: app/admin.py): the company-car pool and the people. The
   // drawer offers them to admins only; the server checks every call anyway.
   const isAdmin = user.is_admin
-  const [adminOpen, setAdminOpen] = useState(false)
-  const [peopleOpen, setPeopleOpen] = useState(false)
-  const [rideLogOpen, setRideLogOpen] = useState(false)
-  // What the admins did (components/AdminLog.tsx, backend app/audit.py).
-  const [adminLogOpen, setAdminLogOpen] = useState(false)
-  // The shared-car rides waiting for an admin (components/Approvals.tsx): the
-  // sheet, how many wait (a count in the drawer and a dot on the ☰), and a
-  // tick that tells the open sheet to reload after a decision.
-  const [approvalsOpen, setApprovalsOpen] = useState(false)
+  // The shared-car rides waiting for an admin (components/Approvals.tsx):
+  // how many wait (a count in the drawer and a dot on the ☰), and a tick
+  // that tells the open sheet to reload after a decision.
   const [waiting, setWaiting] = useState(0)
   const [approvalsTick, setApprovalsTick] = useState(0)
   const [adminError, setAdminError] = useState<string | null>(null)
@@ -180,12 +182,12 @@ function Board({ session }: { session: Session }) {
         setCarSel(ride.id)
       })
       .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
-  }, [])
+  }, [setToast])
 
   /** A line of the admin's log opens its ride on the day plan, where it sits among that day's cars. */
   const openLoggedRide = (rideId: number) => {
-    setAdminLogOpen(false)
-    setApprovalsOpen(false)
+    hide('adminLog')
+    hide('approvals')
     api
       .ride(rideId)
       .then((ride) => {
@@ -213,36 +215,19 @@ function Board({ session }: { session: Session }) {
     }
   }, [])
 
-  // What is loaded: the next UPCOMING_DAYS from today, the selected day for
-  // the day plan, or the Mon-Sun week around the selected day.
-  const range = useMemo(() => {
-    if (view === 'upcoming') {
-      const today = parseISODate(todayISO())
-      return { from: toISODate(today), to: toISODate(addDays(today, UPCOMING_DAYS)) }
-    }
-    if (view === 'day') return { from: selected, to: selected }
-    const monday = startOfWeek(parseISODate(selected))
-    return { from: toISODate(monday), to: toISODate(addDays(monday, 6)) }
-  }, [view, selected])
+  // What is loaded: the days ahead, the selected day for the day plan, or
+  // the Mon-Sun week around the selected day (lib/selection.ts).
+  const range = useMemo(() => boardRange(view, selected), [view, selected])
 
-  const onLoadError = useCallback((e: unknown) => setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) }), [])
+  const onLoadError = useCallback((e: unknown) => setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) }), [setToast])
   const board = useBoard(range, { isAdmin, onLoadError })
-  const { rides, requests, cars, adminCars, loading, liveStatus, load, upsertRide, removeRides, upsertRequest, removeRequest, reloadCars } = board
+  const { rides, requests, cars, adminCars, carStates, reloadCarStates, loading, liveStatus, load, upsertRide, removeRides, upsertRequest, removeRequest, reloadCars } = board
   const openRequests = useMemo(() => requests.filter((r) => r.ride_id === null), [requests])
 
   // A newer build is installed and waiting (lib/pwa.ts); offered as a toast when no other shows.
   // ... unless this browser switched the notice off (the Notifications sheet).
   const updateNotices = useUpdateNotices()
   const updateReady = useUpdateReady() && updateNotices
-
-  useEffect(() => {
-    if (!toast) return
-    const id = setTimeout(() => setToast(null), toast.kind === 'ok' ? 2500 : 6000)
-    return () => clearTimeout(id)
-  }, [toast])
-
-  const notice = useCallback((text: string) => setToast({ kind: 'ok', text }), [])
-  const failure = useCallback((text: string) => setToast({ kind: 'error', text }), [])
 
   async function withBusy(id: number, fn: () => Promise<void>) {
     setBusyId(id)
@@ -388,40 +373,18 @@ function Board({ session }: { session: Session }) {
     })
   }
 
-  /** Where the chip landed. Looked up against the *current* rides: the board
-   *  can change under a drag (live updates), so this is read at drop time. */
-  const dropPassenger = (drag: PassengerDrag, target: DropTarget) => {
-    if (target.kind === 'tray') {
-      const from = drag.fromRideId !== null ? rides.find((r) => r.id === drag.fromRideId) : undefined
-      if (from && drag.bookingId !== null) void onLeave(from, drag.bookingId)
-      return
-    }
-    const ride = rides.find((r) => r.id === target.rideId)
-    if (ride) onDropPassenger(ride, drag)
-  }
-  const dropRef = useRef(dropPassenger)
-  useEffect(() => {
-    dropRef.current = dropPassenger
+  // Where the chip lands is looked up against the *current* rides: the board
+  // can change under a drag (live updates), so the hook reads them at drop time.
+  const { drag, dragOver, onGrab } = usePassengerDrag({
+    onDropOnRide: (rideId, dragged) => {
+      const ride = rides.find((r) => r.id === rideId)
+      if (ride) onDropPassenger(ride, dragged)
+    },
+    onDropOnTray: (dragged) => {
+      const from = dragged.fromRideId !== null ? rides.find((r) => r.id === dragged.fromRideId) : undefined
+      if (from && dragged.bookingId !== null) void onLeave(from, dragged.bookingId)
+    },
   })
-
-  const onGrab = (e: React.PointerEvent<HTMLElement>, d: PassengerDrag) =>
-    grabPassenger(e, d, {
-      onStart: setDrag,
-      onOver: setDragOver,
-      onEnd: (dropped, target) => {
-        setDrag(null)
-        setDragOver(null)
-        if (target) dropRef.current(dropped, target)
-      },
-    })
-
-  const closeSidebar = useCallback(() => setSidebarOpen(false), [])
-  const closeGuide = useCallback(() => setGuideOpen(false), [])
-  const closeMyRides = useCallback(() => setMyRidesOpen(false), [])
-  const closeNotif = useCallback(() => setNotifOpen(false), [])
-  const closeSupport = useCallback(() => setSupportOpen(false), [])
-  const closeFeedback = useCallback(() => setFeedbackOpen(false), [])
-  const closePeople = useCallback(() => setPeopleOpen(false), [])
 
   const closeForm = useCallback(() => {
     setForm(null)
@@ -429,7 +392,7 @@ function Board({ session }: { session: Session }) {
     setFormAsk(false)
   }, [])
 
-  async function onSubmitForm(input: RideInput) {
+  async function onSubmitForm(input: RideInput, wayBack?: RideInput) {
     setSubmitting(true)
     setFormError(null)
     setFormAsk(false)
@@ -447,11 +410,23 @@ function Board({ session }: { session: Session }) {
         const created = await api.createRide(input)
         upsertRide(created)
         const answered = form?.mode === 'create' ? form.request : undefined
+        // The way back is a second ride; the first is in by now, so its
+        // failure (the shared car's share, a clash) is a toast, not the form's error.
+        let backFailed: string | null = null
+        if (wayBack) {
+          try {
+            upsertRide(await api.createRide(wayBack))
+          } catch (e) {
+            backFailed = errMsg(e)
+          }
+        }
         if (input.repeat_until) {
           // The other weeks reach this tab over the socket; a reload catches up if it is down.
           void load()
           const weeks = Math.floor((parseISODate(input.repeat_until).getTime() - parseISODate(input.ride_date).getTime()) / (7 * 86_400_000)) + 1
           setToast({ kind: 'ok', text: t.toasts.ridesAdded(weeks) })
+        } else if (wayBack) {
+          setToast(backFailed ? { kind: 'error', text: t.toasts.wayBackFailed(backFailed) } : { kind: 'ok', text: t.toasts.bothAdded })
         } else {
           setToast({
             kind: 'ok',
@@ -566,7 +541,7 @@ function Board({ session }: { session: Session }) {
   // --- admin: the car pool ---
 
   function openAdmin() {
-    setAdminOpen(true)
+    show('cars')
     setAdminError(null)
     reloadCars().catch((e) => setAdminError(errMsg(e)))
   }
@@ -623,16 +598,10 @@ function Board({ session }: { session: Session }) {
   const askedToday = dayRequests.some((r) => isMyRequest(r, me))
   const canAdd = !isPast
 
-  // Resolve the open tile: an explicit pick that still exists, else your own
-  // car, else the first one; with no rides that day nothing is open and the
-  // empty card shows instead.
-  const selection: number | null =
-    carSel !== null && dayRides.some((r) => r.id === carSel) ? carSel : (myRideToday?.id ?? dayRides[0]?.id ?? null)
-  const openRide = selection !== null ? (dayRides.find((r) => r.id === selection) ?? null) : null
-  // In the upcoming list only an explicit tap unfolds a car. Side by side on
-  // a wide screen the pane beside the list is never empty: with nothing
-  // picked it shows your next ride, else the first one.
+  // Which tile is open on the day, and which row in the upcoming list (lib/selection.ts).
   const wide = useWide()
+  const selection = daySelection(carSel, dayRides, me)
+  const openRide = selection !== null ? (dayRides.find((r) => r.id === selection) ?? null) : null
   // The home-screen install offer (lib/install.ts): a card once, the drawer item after.
   const installMode = useInstallMode()
   const installDismissed = useInstallDismissed()
@@ -640,8 +609,7 @@ function Board({ session }: { session: Session }) {
   const installCard = installMode && !installDismissed && (
     <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
   )
-  const pickedUpcoming = upcoming && carSel !== null && rides.some((r) => r.id === carSel) ? carSel : null
-  const openUpcomingId = pickedUpcoming ?? (upcoming && wide ? (rides.find((r) => inRide(r, me))?.id ?? rides[0]?.id ?? null) : null)
+  const openUpcomingId = upcoming ? upcomingSelection(carSel, rides, me, wide) : null
   const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
 
   const openNewCar = () => setForm({ mode: 'create' })
@@ -695,7 +663,9 @@ function Board({ session }: { session: Session }) {
       onApprove={onApprove}
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}
-      onGuide={() => setGuideOpen(true)}
+      onGuide={() => show('guide')}
+      carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}
+      onCarState={() => show('carState')}
       onWait={onWait}
       onLeaveLine={onLeaveLine}
       onOdometer={onOdometer}
@@ -721,9 +691,9 @@ function Board({ session }: { session: Session }) {
     <CarCarousel rides={dayRides} selected={selection} dragActive={drag !== null} over={dragOver} onSelect={setCarSel} vertical={wide} />
   )
   const dayDetail = loading ? null : openRide ? (
-    <div key={openRide.id} className={['stack', slideClass(tileDir)].filter(Boolean).join(' ')}>
+    <SlideSwitch id={String(openRide.id)} dir={tileDir}>
       {detailFor(openRide, false)}
-    </div>
+    </SlideSwitch>
   ) : (
     <AddCarCard isPast={isPast} />
   )
@@ -797,11 +767,7 @@ function Board({ session }: { session: Session }) {
     />
   )
   const planPicked = carSel !== null ? (dayRides.find((r) => r.id === carSel) ?? null) : null
-  const planDetail = planPicked && (
-    <div key={planPicked.id} className="stack swap-right">
-      {detailFor(planPicked, true)}
-    </div>
-  )
+  const planDetail = planPicked && <SlideSwitch id={String(planPicked.id)} dir="right">{detailFor(planPicked, true)}</SlideSwitch>
 
   // The app menu's items: a drawer under the ☰ on a phone, docked down the
   // left edge on a wide screen.
@@ -809,18 +775,19 @@ function Board({ session }: { session: Session }) {
     userName,
     handle: user.username,
     isAdmin,
-    onAccount: () => setAccountOpen(true),
+    onAccount: () => show('account'),
     onCompanyCars: openAdmin,
-    onPeople: () => setPeopleOpen(true),
-    onRideLog: () => setRideLogOpen(true),
-    onAdminLog: () => setAdminLogOpen(true),
-    onApprovals: () => setApprovalsOpen(true),
+    onPeople: () => show('people'),
+    onRideLog: () => show('rideLog'),
+    onAdminLog: () => show('adminLog'),
+    onApprovals: () => show('approvals'),
     approvals: waiting,
-    onGuide: () => setGuideOpen(true),
-    onSupport: () => setSupportOpen(true),
-    onFeedback: () => setFeedbackOpen(true),
-    onMyRides: () => setMyRidesOpen(true),
-    onNotifications: () => setNotifOpen(true),
+    onGuide: () => show('guide'),
+    onSupport: () => show('support'),
+    onFeedback: () => show('feedback'),
+    onMyRides: () => show('myRides'),
+    onNotifications: () => show('notif'),
+    onCarState: () => show('carState'),
     onInstall: installMode
       ? () => {
           if (installMode === 'prompt') void promptInstall().then((ok) => ok && installDone())
@@ -853,9 +820,9 @@ function Board({ session }: { session: Session }) {
                   className="icon-btn topbar-menu"
                   aria-label={t.common.menu}
                   aria-haspopup="dialog"
-                  aria-expanded={sidebarOpen}
-                  aria-controls={sidebarOpen ? 'app-sidebar' : undefined}
-                  onClick={() => setSidebarOpen(true)}
+                  aria-expanded={is('sidebar')}
+                  aria-controls={is('sidebar') ? 'app-sidebar' : undefined}
+                  onClick={() => show('sidebar')}
                 >
                   <MenuIcon size={22} />
                   {isAdmin && waiting > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting)} />}
@@ -878,9 +845,10 @@ function Board({ session }: { session: Session }) {
           <main>
             {!wide && installCard}
 
-            {upcoming && (
-              <div key="upcoming" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-                {loading ? (
+            {/* One switch for the three views, so the one leaving slides out as the next comes in. */}
+            <SlideSwitch id={view} dir={viewDir}>
+              {upcoming &&
+                (loading ? (
                   <div className="session-list session-skeleton" aria-busy="true">
                     <span className="card session skeleton" />
                     <span className="card session skeleton" />
@@ -910,19 +878,14 @@ function Board({ session }: { session: Session }) {
                     )}
                     {wide && openUpcomingRide && (
                       <aside className="split-pane" data-scroll-pane="" aria-label={openUpcomingRide.car_name}>
-                        <div key={openUpcomingRide.id} className="stack swap-right">
-                          {detailFor(openUpcomingRide, true)}
-                        </div>
+                        <SlideSwitch id={String(openUpcomingRide.id)} dir="right">{detailFor(openUpcomingRide, true)}</SlideSwitch>
                       </aside>
                     )}
                   </div>
-                )}
-              </div>
-            )}
+                ))}
 
-            {view === 'day' && (
-              <div key="day" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-                {wide ? (
+              {view === 'day' &&
+                (wide ? (
                   <div className="split split-day">
                     <div className="split-side" data-scroll-pane="">{dayPlan}</div>
                     <aside className="split-pane" data-scroll-pane="" aria-label={planPicked?.car_name ?? t.plan.label}>
@@ -934,39 +897,33 @@ function Board({ session }: { session: Session }) {
                     {dayPlan}
                     {planDetail}
                   </>
-                )}
-              </div>
-            )}
+                ))}
 
-            {view === 'week' && (
-              <div key="week" className={['stack', slideClass(viewDir)].filter(Boolean).join(' ')}>
-                {wide ? (
+              {view === 'week' &&
+                (wide ? (
                   <div className="split split-week">
                     <div className="split-side" data-scroll-pane="">
                       <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
-                      <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                      <SlideSwitch id={selected} dir={dayDir}>
                         {dayTiles}
                         {dayYou}
-                      </div>
+                      </SlideSwitch>
                     </div>
                     <div className="split-pane" data-scroll-pane="">
-                      <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
-                        {dayDetail}
-                      </div>
+                      <SlideSwitch id={selected} dir={dayDir}>{dayDetail}</SlideSwitch>
                     </div>
                   </div>
                 ) : (
                   <>
                     <DateCarousel selected={selected} rides={rides} onSelect={setSelected} />
-                    <div key={selected} className={['stack', slideClass(dayDir)].filter(Boolean).join(' ')}>
+                    <SlideSwitch id={selected} dir={dayDir}>
                       {dayTiles}
                       {dayDetail}
                       {dayYou}
-                    </div>
+                    </SlideSwitch>
                   </>
-                )}
-              </div>
-            )}
+                ))}
+            </SlideSwitch>
           </main>
         </div>
 
@@ -976,23 +933,25 @@ function Board({ session }: { session: Session }) {
 
         {wide && installCard}
 
-        {sidebarOpen && !wide && <Sidebar {...menu} onClose={closeSidebar} />}
+        {is('sidebar') && !wide && <Sidebar {...menu} onClose={closer('sidebar')} />}
 
-        {guideOpen && <CarGuide onSupport={() => setSupportOpen(true)} onClose={closeGuide} />}
+        {is('guide') && <CarGuide onSupport={() => show('support')} onClose={closer('guide')} />}
 
-        {supportOpen && <SupportSheet onFeedback={() => setFeedbackOpen(true)} onClose={closeSupport} />}
+        {is('carState') && <CarStatus states={carStates} onNotice={notice} onReported={() => reloadCarStates().catch(() => undefined)} onClose={closer('carState')} />}
 
-        {feedbackOpen && <FeedbackSheet user={`${userName} (@${user.username})`} view={view} onClose={closeFeedback} />}
+        {is('support') && <SupportSheet onFeedback={() => show('feedback')} onClose={closer('support')} />}
 
-        {myRidesOpen && <MyRides user={user} onNotice={notice} onClose={closeMyRides} />}
+        {is('feedback') && <FeedbackSheet user={`${userName} (@${user.username})`} view={view} onClose={closer('feedback')} />}
 
-        {notifOpen && (
-          <NotificationsSheet onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })} onClose={closeNotif} />
+        {is('myRides') && <MyRides user={user} onNotice={notice} onClose={closer('myRides')} />}
+
+        {is('notif') && (
+          <NotificationsSheet onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })} onClose={closer('notif')} />
         )}
 
-        {updateOpen && <UpdateScreen onClose={() => setUpdateOpen(false)} />}
+        {is('update') && <UpdateScreen onClose={closer('update')} />}
 
-        {accountOpen && (
+        {is('account') && (
           <AccountSheet
             user={user}
             // A rename rewrites the name on every ride the person is in
@@ -1001,7 +960,7 @@ function Board({ session }: { session: Session }) {
             onRenamed={() => void load()}
             onSaved={() => setToast({ kind: 'ok', text: t.account.saved })}
             onNotice={notice}
-            onClose={() => setAccountOpen(false)}
+            onClose={closer('account')}
           />
         )}
 
@@ -1034,7 +993,7 @@ function Board({ session }: { session: Session }) {
 
         {askDate !== null && <RequestForm date={askDate} submitting={submitting} error={askError} onSubmit={onSubmitAsk} onClose={closeAsk} />}
 
-        {adminOpen && isAdmin && (
+        {is('cars') && isAdmin && (
           <CarAdmin
             cars={adminCars}
             loading={adminCars.length === 0}
@@ -1045,24 +1004,24 @@ function Board({ session }: { session: Session }) {
             onDelete={onDeleteCar}
             onLoadUsage={loadUsage}
             onDownloadUsage={downloadUsage}
-            onClose={() => setAdminOpen(false)}
+            onClose={closer('cars')}
           />
         )}
 
-        {peopleOpen && isAdmin && <PeopleAdmin onNotice={notice} onClose={closePeople} />}
+        {is('people') && isAdmin && <PeopleAdmin onNotice={notice} onClose={closer('people')} />}
 
-        {rideLogOpen && isAdmin && <RideLog onClose={() => setRideLogOpen(false)} />}
+        {is('rideLog') && isAdmin && <RideLog onClose={closer('rideLog')} />}
 
-        {adminLogOpen && isAdmin && <AdminLog onOpenRide={openLoggedRide} onClose={() => setAdminLogOpen(false)} />}
+        {is('adminLog') && isAdmin && <AdminLog onOpenRide={openLoggedRide} onClose={closer('adminLog')} />}
 
-        {approvalsOpen && isAdmin && (
+        {is('approvals') && isAdmin && (
           <Approvals
             version={approvalsTick + waiting}
             busyId={busyId}
             onApprove={(r) => void onApprove(r)}
             onDecline={onDecline}
             onOpen={(r) => openLoggedRide(r.id)}
-            onClose={() => setApprovalsOpen(false)}
+            onClose={closer('approvals')}
           />
         )}
 
@@ -1087,7 +1046,7 @@ function Board({ session }: { session: Session }) {
           </div>
         ) : (
           updateReady && (
-            <button type="button" className="toast toast-update" onClick={() => setUpdateOpen(true)}>
+            <button type="button" className="toast toast-update" onClick={() => show('update')}>
               <span className="update-toast-mark" aria-hidden="true">
                 <Logo size={38} />
               </span>

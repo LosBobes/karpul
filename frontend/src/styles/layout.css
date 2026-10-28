@@ -1,0 +1,558 @@
+/* --- Layout -------------------------------------------------------------- */
+:root {
+  --tabbar: 72px;
+}
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 1.1rem calc(var(--tabbar) + 6.5rem + env(safe-area-inset-bottom));
+}
+main,
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  min-height: 3.5rem;
+  margin: 0 -1.1rem 1rem;
+  padding: calc(0.45rem + env(safe-area-inset-top)) 0.7rem 0.45rem;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+.topbar-menu {
+  justify-self: start;
+}
+.topbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.08rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+.topbar-title svg {
+  color: var(--green);
+}
+.topbar-right {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Live indicator: a small lamp next to the day menu. */
+.live {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: var(--muted);
+  cursor: default;
+}
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.live-live {
+  color: var(--green);
+}
+.live-live .live-dot {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);
+  animation: live-pulse 2.4s ease-in-out infinite;
+}
+.live-offline {
+  color: var(--red);
+}
+.live-connecting .live-dot {
+  animation: live-pulse 0.9s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* --- Popovers (components/Popover.tsx): menus, dropdowns, pickers --------- */
+.popover {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  max-width: calc(100vw - 16px);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
+  /* transform-origin is set by Popover.tsx to the anchor's corner. */
+  animation: pop-in var(--dur-fast) var(--ease-out);
+}
+.popover-up {
+  animation-name: pop-in-up;
+}
+.menu-pop {
+  min-width: 190px;
+  padding: 0.3rem;
+  display: flex;
+  flex-direction: column;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+.menu-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.menu-item:disabled {
+  opacity: 0.45;
+}
+.menu-item-danger {
+  color: var(--red);
+}
+.menu-item-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+}
+.menu-item-danger .menu-item-icon {
+  color: inherit;
+}
+/* Fluent's flyout: in from the anchor's side by 10px as it fades up. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+@keyframes pop-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* A button that looks like an input: the trigger for Select / DatePicker / TimePicker. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  /* The same Fluent input as a text field: a darker bottom edge that turns
+     into the accent underline while open or focused. */
+  border-bottom-color: var(--muted);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  transition: border-color var(--hover), box-shadow var(--hover);
+}
+.control:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.control:focus-visible,
+.control[aria-expanded='true'] {
+  outline: none;
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
+}
+.control:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.control-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  flex: none;
+}
+.control-value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.control-placeholder {
+  color: var(--muted);
+}
+.control-hint {
+  margin-left: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.control-chevron {
+  color: var(--muted);
+  flex: none;
+}
+.listbox {
+  padding: 0.3rem;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  min-height: 40px;
+  padding: 0.5rem 0.7rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: left;
+  font-weight: 500;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.option:hover {
+  background: var(--surface-2);
+}
+.option-on {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.option-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.popover-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.4rem 0.5rem 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Calendar */
+.cal {
+  width: 300px;
+  padding: 0.5rem 0.6rem 0.4rem;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-wd {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+.cal-day {
+  aspect-ratio: 1;
+  min-height: 36px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.cal-day:hover {
+  background: var(--surface-2);
+}
+.cal-day-out {
+  color: var(--border-strong);
+}
+.cal-day-today {
+  border-color: var(--green);
+  color: var(--green);
+}
+.cal-day-selected,
+.cal-day-selected:hover {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.cal-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.25rem;
+}
+
+/* Time picker */
+.timepick {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.4rem;
+}
+.timepick-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 72px;
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.timepick-col .option {
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Cards & tags -------------------------------------------------------- */
+.card {
+  background: var(--surface);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tag-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.tag-green {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.tag-blue {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+/* Waiting on an admin: the one amber in the app, so it reads as "not yet". */
+.tag-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+/* The admin's decision on a shared car past the driver's share, under the
+   driver's name on the ride card. */
+.approval-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-sm);
+  background: #fffbeb;
+}
+.approval-ask {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.approval-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.approval-actions .btn {
+  flex: 1;
+  min-height: 40px;
+}
+/* "Is this you?": a ride whose driver is a name with no account, offered to
+   the one signed in under a name like it (lib/me.ts, mayClaim). */
+.claim-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--green-line);
+  border-radius: var(--radius-sm);
+  background: var(--green-soft);
+}
+.claim-ask {
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.claim-row .btn {
+  min-height: 40px;
+}
+/* The admin's queue (components/Approvals.tsx): one card per ask, the ride
+   on top (a tap opens it on the day plan), the two answers under it. */
+.approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.approval-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 0.8rem 0.9rem;
+}
+.approval-ride {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: -0.3rem;
+  padding: 0.3rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  transition: background var(--hover);
+}
+.approval-ride:hover {
+  background: var(--surface-2);
+}
+.approval-what {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.approval-when {
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.approval-car,
+.approval-route {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+/* Under the share's refusal in the ride form: the way to ask instead. */
+.form-ask {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.form-ask .hint {
+  margin: 0;
+}
+
+/* --- Powertrain mark ------------------------------------------------------ */
+/* A 12px glyph after the car's name (tile, list row, admin list): bolt for
+   electric, leaf for a hybrid, drop for diesel, pump for petrol. It sits in
+   the text line, never over the picture, which is why it can stay small. The
+   colour is set on the span and the glyph inherits it, over the tile's own
+   svg colouring. */
+.pt-mark {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  color: var(--green);
+}
+.pt-mark-diesel,
+.pt-mark-petrol {
+  color: var(--muted);
+}
+.pt-mark svg,
+.car-tile .pt-mark svg,
+.car-tile-selected .pt-mark svg {
+  color: inherit;
+}
+
+/* --- Avatars ------------------------------------------------------------- */
+.avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
+}
+.avatar-sm {
+  width: 28px;
+  height: 28px;
+  font-size: 0.72rem;
+}
+.avatar-md {
+  width: 34px;
+  height: 34px;
+  font-size: 0.82rem;
+}
+.avatar-lg {
+  width: 42px;
+  height: 42px;
+  font-size: 0.95rem;
+}
+.avatar-violet {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.avatar-rose {
+  background: #ffe4e6;
+  color: #be123c;
+}
+.avatar-amber {
+  background: #fef3c7;
+  color: #b45309;
+}
+.avatar-orange {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.avatar-blue {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.avatar-teal {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+.avatar-green {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.avatar-pink {
+  background: #fce7f3;
+  color: #be185d;
+}
+.avatar-empty {
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1px dashed var(--border-strong);
+}

@@ -108,6 +108,8 @@ test('a profile photo replaces the initials, for everyone', async ({ browser }, 
   await nina.locator('.drawer-me').first().click()
   const sheet = nina.getByRole('dialog', { name: 'Your account' })
   await sheet.locator('input[type=file]').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: await picture(nina) })
+  // The picture opens in the cropper first (components/PhotoCropper.tsx); the middle square will do.
+  await sheet.getByRole('button', { name: 'Use this photo' }).click()
   await expect(sheet.getByRole('button', { name: 'Change photo' })).toBeVisible()
   const img = sheet.locator('.account-me .avatar img')
   await expect(img).toBeVisible()

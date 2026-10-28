@@ -221,6 +221,21 @@ takes a consistent single-file snapshot through SQLite's backup API while the
 app keeps running; a restore is that file dropped in as `/data/karpul.db` with
 the `-wal` / `-shm` files removed and the container restarted.
 
+### Nightly backups
+
+The app also backs itself up (`backend/app/housekeeping.py`): once a day it
+writes the same kind of snapshot to `/data/backups/karpul-<date>-<time>.db`
+inside the volume and keeps the newest 14 (`KARPUL_BACKUP_DIR`,
+`KARPUL_BACKUP_KEEP` in `.env`). That covers a bad deploy, a wrong
+`docker compose down -v` is survived only by a copy elsewhere, so copy the
+newest snapshot off the box as well. From a laptop, `make backups` pulls the
+whole folder into `./backups/`. On the host, a cron line does it unattended
+(rsync to wherever the other apps' backups go):
+
+```
+17 4 * * * docker compose -f /opt/karpul/docker-compose.prod.yml cp app:/data/backups /var/backups/karpul >/dev/null 2>&1
+```
+
 ---
 
 ## Logs and debugging

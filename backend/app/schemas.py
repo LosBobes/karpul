@@ -347,10 +347,73 @@ class LegStart(BaseModel):
     booking_id: int | None = None
 
 
-class LegEnd(BaseModel):
-    """The car is back: the reading that ends the current stretch."""
+# Battery or fuel, in percent.
+Soc = Annotated[int, Field(ge=0, le=100)]
+MAX_ISSUES = 300
+
+
+def _clean_issues(v: str | None) -> str | None:
+    return " ".join(v.split()) if v is not None else None
+
+
+class CarReportIn(BaseModel):
+    """How a shared car was found or left (models.CarReport): each field is
+    optional, and left out means "not read" rather than "fine"."""
+
+    odometer_km: Km | None = None
+    soc: Soc | None = None
+    # True clean, False needs a wash.
+    clean: bool | None = None
+    # What is wrong; "" says nothing is.
+    issues: str | None = Field(default=None, max_length=MAX_ISSUES)
+
+    @field_validator("issues")
+    @classmethod
+    def clean_issues(cls, v: str | None) -> str | None:
+        return _clean_issues(v)
+
+
+class LegEnd(CarReportIn):
+    """The car is back: the reading that ends the current stretch, and how
+    the car was left (its battery, whether it is clean, anything wrong)."""
 
     km: Km
+
+
+class CarReportRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    car_id: int
+    ride_id: int | None
+    user_id: int | None
+    user_name: str
+    odometer_km: int | None
+    soc: int | None
+    clean: bool | None
+    issues: str | None
+    created_at: datetime
+
+
+class FactRead(BaseModel):
+    """One thing known about a shared car (app/carstate.py): the value, when
+    and by whom it was noted, and whether it is a guess from the rides since."""
+
+    value: int | bool | str | None
+    at: datetime | None
+    by: str | None
+    estimated: bool
+
+
+class CarStateRead(BaseModel):
+    """A shared car as it stands (GET /api/cars/corporate/state)."""
+
+    car: CorporateCarRead
+    odometer: FactRead
+    soc: FactRead
+    clean: FactRead
+    issues: FactRead
+    recent: list[CarReportRead]
 
 
 class WaitlistJoin(BaseModel):

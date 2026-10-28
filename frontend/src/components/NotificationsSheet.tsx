@@ -3,8 +3,9 @@ import { api } from '../lib/api'
 import { messages, useT } from '../lib/i18n'
 import { usePush } from '../lib/push'
 import { setUpdateNotices, useUpdateNotices } from '../lib/pwa'
-import { PUSH_CATEGORIES, type PushCategory } from '../lib/types'
-import { ApprovalIcon, BellIcon, BoltIcon, ClockIcon, HandIcon, MessageIcon, RouteIcon, UsersIcon } from './icons'
+import { PUSH_CATEGORIES, REMIND_CHOICES, type PushCategory, type PushPreferences, type RemindBefore } from '../lib/types'
+import { ApprovalIcon, BellIcon, BoltIcon, CarIcon, ClockIcon, HandIcon, MessageIcon, RouteIcon, UsersIcon } from './icons'
+import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
 
 interface Props {
@@ -20,6 +21,7 @@ const KIND_LOOK: Record<PushCategory, { icon: ReactNode }> = {
   messages: { icon: <MessageIcon size={18} /> },
   requests: { icon: <HandIcon size={18} /> },
   approvals: { icon: <ApprovalIcon size={18} /> },
+  cars: { icon: <CarIcon size={18} /> },
 }
 
 const errMsg = (e: unknown) => messages().apiError(e instanceof Error ? e.message : String(e))
@@ -30,8 +32,9 @@ const errMsg = (e: unknown) => messages().apiError(e instanceof Error ? e.messag
  * (a VAPID key) and the person (the permission); `usePush` works that out and
  * the card says it in words. Under it, the kinds of push, each its own switch,
  * kept per account on the server (`/api/push/preferences`), so they hold in
- * every browser. Last, this device's "a new version is ready" card, which is
- * a local matter (`lib/pwa.ts`).
+ * every browser; under the reminders, how long before departure it comes
+ * (15, 30 or 60 minutes, backend: app/reminders.py). Last, this device's "a
+ * new version is ready" card, which is a local matter (`lib/pwa.ts`).
  */
 export function NotificationsSheet({ onChanged, onClose }: Props) {
   const t = useT()
@@ -39,34 +42,37 @@ export function NotificationsSheet({ onChanged, onClose }: Props) {
   const canToggle = state === 'on' || state === 'off'
   const on = state === 'on'
   const updateNotices = useUpdateNotices()
-  const [muted, setMuted] = useState<PushCategory[] | null>(null)
+  const [prefs, setPrefs] = useState<PushPreferences | null>(null)
   const [prefError, setPrefError] = useState<string | null>(null)
+  const muted = prefs?.muted ?? null
 
   useEffect(() => {
     let live = true
     api
       .pushPreferences()
-      .then((p) => live && setMuted(p.muted))
+      .then((p) => live && setPrefs(p))
       .catch((e) => live && setPrefError(errMsg(e)))
     return () => {
       live = false
     }
   }, [])
 
-  const toggleKind = (kind: PushCategory, wanted: boolean) => {
-    if (muted === null) return
-    const before = muted
-    const next = wanted ? muted.filter((k) => k !== kind) : [...muted, kind]
-    setMuted(next)
+  /** Save a change, keeping the one before should it fail. */
+  const save = (next: PushPreferences) => {
+    const before = prefs
+    setPrefs(next)
     setPrefError(null)
-    api.setPushPreferences(next).then(
-      (p) => setMuted(p.muted),
-      (e) => {
-        setMuted(before)
-        setPrefError(errMsg(e))
-      },
-    )
+    api.setPushPreferences(next).then(setPrefs, (e) => {
+      setPrefs(before)
+      setPrefError(errMsg(e))
+    })
   }
+
+  const toggleKind = (kind: PushCategory, wanted: boolean) => {
+    if (prefs === null) return
+    save({ ...prefs, muted: wanted ? prefs.muted.filter((k) => k !== kind) : [...prefs.muted, kind] })
+  }
+  const setLead = (minutes: RemindBefore) => prefs !== null && save({ ...prefs, remind_before: minutes })
 
   const status =
     state === 'unsupported'
@@ -131,6 +137,26 @@ export function NotificationsSheet({ onChanged, onClose }: Props) {
                     />
                   </span>
                 </label>
+                {kind === 'reminders' && prefs !== null && !prefs.muted.includes('reminders') && (
+                  <div className="notif-lead">
+                    <span className="notif-lead-label">{t.notif.lead}</span>
+                    <div className="segmented segmented-sm" role="radiogroup" aria-label={t.notif.lead}>
+                      <SegThumb count={REMIND_CHOICES.length} index={REMIND_CHOICES.indexOf(prefs.remind_before)} />
+                      {REMIND_CHOICES.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          role="radio"
+                          aria-checked={prefs.remind_before === m}
+                          className={prefs.remind_before === m ? 'seg seg-on' : 'seg'}
+                          onClick={() => setLead(m)}
+                        >
+                          {t.notif.leadChoice(m)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </li>
             )
           })}

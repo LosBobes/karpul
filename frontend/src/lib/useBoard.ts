@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, isNetworkError } from './api'
 import { useLiveBoard, type LiveEvent, type LiveStatus } from './live'
 import { loadPhotos } from './photos'
-import type { CorporateCar, Ride, RideRequest } from './types'
+import type { CarState, CorporateCar, Ride, RideRequest } from './types'
 
 export interface Range {
   from: string
@@ -45,6 +45,9 @@ export interface Board {
   cars: CorporateCar[]
   /** Every car, retired ones too: the admin's list. Empty until an admin loads it. */
   adminCars: CorporateCar[]
+  /** How each shared car stands (backend: app/carstate.py); null until loaded. */
+  carStates: CarState[] | null
+  reloadCarStates: () => Promise<void>
   /** The range on screen has not been loaded yet. */
   loading: boolean
   liveStatus: LiveStatus
@@ -96,6 +99,7 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
   const [requests, setRequests] = useState<RideRequest[]>([])
   const [cars, setCars] = useState<CorporateCar[]>([])
   const [adminCars, setAdminCars] = useState<CorporateCar[]>([])
+  const [carStates, setCarStates] = useState<CarState[] | null>(null)
   const [loadedRange, setLoadedRange] = useState<string | null>(null)
   const rangeKey = `${range.from}:${range.to}`
 
@@ -149,6 +153,10 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
     reloadCars().catch(() => setCars([]))
   }, [reloadCars])
 
+  const reloadCarStates = useCallback(async () => {
+    setCarStates(await api.carStates())
+  }, [])
+
   /** An edit can move a ride into or out of the loaded range. */
   const upsertRide = useCallback(
     (ride: Ride) => setRides((rs) => upsertInRange(rs, ride, inRange(ride.ride_date, range), sortRides)),
@@ -186,7 +194,11 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
           // A pool edit can relabel rides (backend: relabel_rides_for_car), so
           // both lists are reloaded rather than patched.
           reloadCars().catch(() => undefined)
+          reloadCarStates().catch(() => undefined)
           void load()
+          break
+        case 'cars.state':
+          reloadCarStates().catch(() => undefined)
           break
         case 'photos.changed':
           loadPhotos().catch(() => undefined)
@@ -195,19 +207,23 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
           break
       }
     },
-    [upsertRide, removeRides, upsertRequest, removeRequest, reloadCars, load],
+    [upsertRide, removeRides, upsertRequest, removeRequest, reloadCars, reloadCarStates, load],
   )
   // Whatever happened while the socket was down was never delivered: the
-  // board and the photos are both fetched again on every (re)connect.
+  // board, the photos and the cars' state are all fetched again on every (re)connect.
   const onConnect = useCallback(() => {
     loadPhotos().catch(() => undefined)
+    reloadCarStates().catch(() => undefined)
     return load()
-  }, [load])
+  }, [load, reloadCarStates])
   const liveStatus = useLiveBoard({ onEvent, onConnect })
   // Also without a socket (a proxy that refuses WebSockets falls back to polling).
   useEffect(() => {
     loadPhotos().catch(() => undefined)
-  }, [])
+    // Data fetching: the state update happens after the await, not synchronously.
+    // oxlint-disable-next-line react/set-state-in-effect
+    reloadCarStates().catch(() => undefined)
+  }, [reloadCarStates])
 
   // Keep the board fresh for people who leave the tab open. Polling is the
   // fallback for when the socket is down; a focus always re-syncs.
@@ -226,6 +242,8 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
     requests,
     cars,
     adminCars,
+    carStates,
+    reloadCarStates,
     loading: loadedRange !== rangeKey,
     liveStatus,
     load,

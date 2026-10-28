@@ -7,12 +7,14 @@ from fastapi.responses import Response
 from sqlmodel import Session, col, func, select
 
 from .. import audit
-from ..admin import require_admin
+from ..admin import admin_ids, require_admin
 from ..auth import CredsDep, require_user
+from ..carstate import car_states
 from ..database import get_session, get_write_session
-from ..events import cars_changed
-from ..models import CarType, CorporateCar, Ride
-from ..schemas import CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
+from ..events import cars_changed, cars_state_changed
+from ..models import CarReport, CarType, CorporateCar, Ride, User
+from ..push import notify
+from ..schemas import CarReportIn, CarReportRead, CarStateRead, CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
 from ..services import corporate_car_label, corporate_usage, relabel_rides_for_car
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
@@ -72,6 +74,50 @@ def list_corporate_cars(session: SessionDep, creds: CredsDep, include_inactive: 
     if not include_inactive:
         stmt = stmt.where(col(CorporateCar.active).is_(True))
     return session.exec(stmt.order_by(col(CorporateCar.active).desc(), CorporateCar.name)).all()
+
+
+@router.get("/corporate/state", response_model=list[CarStateRead])
+def corporate_car_state(session: SessionDep, creds: CredsDep):
+    """Every active shared car as it stands: the odometer, the battery,
+    whether it is clean and what is wrong, from the newest reading and
+    report, with a guess for the rides since (app/carstate.py). For
+    everyone signed in: the next driver wants to know before they go."""
+    require_user(session, creds)
+    return car_states(session)
+
+
+def file_report(session: Session, user: User, car: CorporateCar, payload: CarReportIn, ride_id: int | None = None) -> CarReport:
+    """Write a report on `car` as `user`; the caller commits and then calls
+    `report_filed`. A report that names a problem is pushed to the admins."""
+    report = CarReport(car_id=car.id, ride_id=ride_id, user_id=user.id, user_name=user.display_name, **payload.model_dump())  # type: ignore[arg-type]
+    session.add(report)
+    return report
+
+
+def report_filed(session: Session, user: User, car: CorporateCar, report: CarReport) -> None:
+    """After the commit: every tab's state card, and the admins when something is wrong."""
+    cars_state_changed()
+    if report.issues:
+        notify(session, admin_ids(session), "car_issue", name=user.display_name, car=car.name, body=report.issues)
+
+
+@router.post("/corporate/{car_id}/reports", response_model=CarReportRead, status_code=status.HTTP_201_CREATED)
+def report_corporate_car(car_id: int, payload: CarReportIn, session: WriteSessionDep, creds: CredsDep):
+    """Say how a shared car is: a reading, the battery, whether it needs a
+    wash, what is wrong with it. Anyone signed in may (the person who finds
+    it dirty is not the one who left it so); the newest report is the car's
+    state. Nothing at all in the report is a 422."""
+    user = require_user(session, creds)
+    car = _get_car_or_404(session, car_id)
+    if not car.active:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That car is retired")
+    if payload.odometer_km is None and payload.soc is None and payload.clean is None and payload.issues is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Say at least one thing about the car")
+    report = file_report(session, user, car, payload)
+    session.commit()
+    session.refresh(report)
+    report_filed(session, user, car, report)
+    return report
 
 
 @router.get("/corporate/usage")

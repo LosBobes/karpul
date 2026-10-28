@@ -16,6 +16,7 @@ matters against guessing a password, and it does not depend on that.
 from __future__ import annotations
 
 import math
+import os
 import threading
 import time
 from collections import deque
@@ -80,7 +81,9 @@ def client_ip(request: Request) -> str:
 login_failures_by_account = Limiter(10, 15 * 60)
 login_failures_by_ip = Limiter(30, 15 * 60)
 # New accounts: 10 an hour from one address is a whole team signing up at once.
-registrations = Limiter(10, 60 * 60)
+# The end-to-end tests register more than that from one address in a minute,
+# so the figure is an environment knob (frontend/playwright.config.ts).
+registrations = Limiter(int(os.getenv("KARPUL_REGISTRATIONS_PER_HOUR", "10")), 60 * 60)
 # Reset-link attempts (a wrong or dead token), per address.
 reset_attempts = Limiter(20, 15 * 60)
 

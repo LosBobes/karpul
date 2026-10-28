@@ -1,0 +1,698 @@
+/* --- Dark theme --------------------------------------------------------------
+   The same tokens, darker: the ground nearly black, cards a step up, the green
+   brightened so it still reads as the accent. lib/theme.ts puts the person's
+   choice on the root as data-theme (nothing for "Auto") and what is on screen
+   as data-resolved; the tokens are also under the media query so a dark phone
+   never paints light before the script runs. */
+:root[data-theme='dark'] {
+  --bg: #1a1a1a;
+  --surface: #292929;
+  --surface-2: #333333;
+  --text: #ffffff;
+  --muted: #adadad;
+  --border: #3d3d3d;
+  --border-strong: #525252;
+  --green: #3ecf8e;
+  --green-dark: #2fb377;
+  --green-soft: #17332a;
+  --green-line: #245c46;
+  --red: #f0656a;
+  --red-soft: #3a2022;
+  --blue: #7ca6ff;
+  --blue-soft: #1c2a44;
+  --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+  --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
+  --shadow-card: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #1a1a1a;
+    --surface: #292929;
+    --surface-2: #333333;
+    --text: #ffffff;
+    --muted: #adadad;
+    --border: #3d3d3d;
+    --border-strong: #525252;
+    --green: #3ecf8e;
+    --green-dark: #2fb377;
+    --green-soft: #17332a;
+    --green-line: #245c46;
+    --red: #f0656a;
+    --red-soft: #3a2022;
+    --blue: #7ca6ff;
+    --blue-soft: #1c2a44;
+    --shadow: 0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.24), 0 4px 8px rgba(0, 0, 0, 0.28);
+    --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.24), 0 14px 28px rgba(0, 0, 0, 0.28);
+    --shadow-card: 0 0 2px rgba(0, 0, 0, 0.24), 0 2px 4px rgba(0, 0, 0, 0.28);
+    color-scheme: dark;
+  }
+}
+/* The places that were not tokens: fixed colours, the pastel avatars, the
+   illustrations, the toast (dark text on a light pill, the inverse of light). */
+:root[data-resolved='dark'] .error {
+  color: #ff9a9e;
+}
+:root[data-resolved='dark'] .btn-soft:hover:not(:disabled) {
+  background: var(--border-strong);
+}
+:root[data-resolved='dark'] .btn-primary,
+:root[data-resolved='dark'] .btn-danger,
+:root[data-resolved='dark'] .update-toast-go {
+  color: #10141a;
+}
+/* The bright dark-theme green carries dark ink, like the primary button. */
+:root[data-resolved='dark'] span.plus-circle svg {
+  color: #10141a;
+}
+:root[data-resolved='dark'] .toast {
+  background: #eceef1;
+  color: #15171b;
+}
+:root[data-resolved='dark'] .toast-error {
+  color: #10141a;
+}
+/* The light pill above carries a message; the update button is the one toast
+   you are meant to press, so it stays a card here rather than flipping to ink,
+   with the green line and the green chip doing the calling. */
+:root[data-resolved='dark'] .toast-update {
+  background: var(--surface);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--green) 55%, transparent);
+}
+:root[data-resolved='dark'] .avatar-violet {
+  background: #2e2352;
+  color: #c4b5fd;
+}
+:root[data-resolved='dark'] .avatar-rose {
+  background: #4a1d27;
+  color: #fda4af;
+}
+:root[data-resolved='dark'] .avatar-amber {
+  background: #45300b;
+  color: #fcd34d;
+}
+:root[data-resolved='dark'] .avatar-orange {
+  background: #47270f;
+  color: #fdba74;
+}
+:root[data-resolved='dark'] .avatar-blue {
+  background: #1e2d5c;
+  color: #93c5fd;
+}
+:root[data-resolved='dark'] .avatar-teal {
+  background: #113b36;
+  color: #5eead4;
+}
+:root[data-resolved='dark'] .avatar-pink {
+  background: #4a1b38;
+  color: #f9a8d4;
+}
+:root[data-resolved='dark'] .tone-violet { --tone: #c4b5fd; --tone-soft: #2e2352; }
+:root[data-resolved='dark'] .tone-rose { --tone: #fda4af; --tone-soft: #4a1d27; }
+:root[data-resolved='dark'] .tone-amber { --tone: #fcd34d; --tone-soft: #45300b; }
+:root[data-resolved='dark'] .tone-orange { --tone: #fdba74; --tone-soft: #47270f; }
+:root[data-resolved='dark'] .tone-blue { --tone: #93c5fd; --tone-soft: #1e2d5c; }
+:root[data-resolved='dark'] .tone-teal { --tone: #5eead4; --tone-soft: #113b36; }
+:root[data-resolved='dark'] .tone-pink { --tone: #f9a8d4; --tone-soft: #4a1b38; }
+:root[data-resolved='dark'] .tag-amber {
+  background: #45300b;
+  color: #fcd34d;
+}
+:root[data-resolved='dark'] .approval-row {
+  border-color: #6b4a0f;
+  background: #2b2211;
+}
+:root[data-resolved='dark'] .car-state-issue {
+  border-left-color: #6b4a0f;
+}
+:root[data-resolved='dark'] .car-fact-warn,
+:root[data-resolved='dark'] .car-issues-on {
+  background: #45300b;
+  color: #fcd34d;
+}
+:root[data-resolved='dark'] .car-fact-warn dd,
+:root[data-resolved='dark'] .driver-car-issue {
+  color: #fcd34d;
+}
+:root[data-resolved='dark'] .driver-car-art {
+  background: linear-gradient(180deg, var(--surface-2) 0%, var(--green-soft) 100%);
+}
+:root[data-resolved='dark'] .backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 600px) {
+  .app {
+    padding-inline: 0.85rem;
+  }
+  .stat-grid {
+    gap: 0.35rem;
+  }
+  .feed-row {
+    flex-wrap: wrap;
+  }
+  .feed-row .btn {
+    margin-left: auto;
+  }
+  .topbar {
+    margin-inline: -0.85rem;
+  }
+  .fab {
+    right: 1rem;
+  }
+  .backdrop-sheet {
+    padding: 0;
+    align-items: end;
+  }
+  .panel-sheet {
+    max-width: none;
+    max-height: calc(100dvh - 1.5rem);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: sheet-up 0.3s var(--ease-out);
+  }
+  .backdrop-closing .panel-sheet {
+    animation: sheet-down 0.22s var(--ease-in) forwards;
+  }
+  .panel-sheet .panel-grab {
+    display: block;
+  }
+  .when-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .when-grid > :first-child {
+    grid-column: 1 / -1;
+  }
+  .when-grid-one > * {
+    grid-column: 1 / -1;
+  }
+  .driver-card {
+    padding: 1rem 1rem 1.1rem;
+  }
+  .session-detail {
+    margin-left: 0.4rem;
+    padding-left: 0.5rem;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes sheet-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* --- Fingers, not cursors ------------------------------------------------ */
+/* A touch "hover" sticks until the next tap, so lifted chips would stay lifted. */
+@media (pointer: coarse) {
+  .icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+  .grabbable:hover {
+    border-color: var(--border);
+    box-shadow: var(--shadow);
+    transform: none;
+  }
+  .grabbable:hover .grip {
+    color: var(--border-strong);
+  }
+  .pax-row-me.grabbable:hover {
+    border-color: var(--green-line);
+  }
+  .cars-arrow {
+    display: none;
+  }
+  .week-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .car-tile-droppable {
+    /* The dashed outline is the only affordance on a phone (no cursor, no
+       hover), so make it a touch louder than on desktop. */
+    box-shadow: 0 0 0 2px var(--green-line);
+  }
+  .fab:hover .plus-circle {
+    /* Hover sticks after a tap on a phone; without this the plus would spring
+       back to the hover size and stay there instead of returning to rest. */
+    transform: none;
+  }
+  .fab.fab-pressed .plus-circle {
+    transform: scale(0.88);
+  }
+}
+
+/* --- Wide screens ------------------------------------------------------------
+   From 1024px (lib/useWide.ts) Karpul stops being a phone in the middle of a
+   monitor and becomes a desktop app that fills the window. The page itself
+   never scrolls: the menu is docked down the left edge (Dock in Sidebar.tsx),
+   a toolbar runs across the top with the view's name, the view switch and
+   the add button, and under it each view is two panes side by side that
+   scroll on their own, divided by a hairline the way a mail client divides
+   its list from the message. Upcoming and Week are the list on the left and
+   the open ride filling the rest; Day is the plan filling the width and the
+   ride in a column on the right. The open ride is the big piece: once its
+   pane is wide enough it splits into the driver card and the passengers. */
+@media (min-width: 1024px) {
+  /* No tab bar here: the toolbar carries the view switch. */
+  :root {
+    --tabbar: 0px;
+  }
+  .app-wide {
+    --dock: 264px;
+    --toolbar: 60px;
+    --list: clamp(380px, 30vw, 520px);
+    display: grid;
+    grid-template-columns: var(--dock) minmax(0, 1fr);
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  /* The docked menu: the drawer's own content, standing in place. */
+  .dock {
+    width: auto;
+    height: 100dvh;
+    border-radius: 0;
+    background: color-mix(in srgb, var(--surface) 70%, var(--bg));
+    box-shadow: none;
+    animation: none;
+  }
+  .dock-head {
+    min-height: var(--toolbar);
+    padding: 0 1.25rem;
+    border-bottom-color: transparent;
+  }
+  .dock .drawer-me {
+    margin-top: 0.25rem;
+    background: var(--surface);
+  }
+  .dock .drawer-item {
+    min-height: 44px;
+    padding-block: 0.4rem;
+  }
+  .workspace {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  .app-wide .topbar {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 1rem;
+    min-height: var(--toolbar);
+    margin: 0;
+    padding: 0 1.5rem 0 2rem;
+    background: var(--surface);
+    backdrop-filter: none;
+  }
+  .toolbar-title {
+    font-size: 1.3rem;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+  }
+  .topbar-center {
+    width: 360px;
+  }
+  .topbar-center .seg {
+    min-height: 34px;
+    font-size: 0.88rem;
+  }
+  .app-wide .topbar-right {
+    gap: 0.9rem;
+  }
+  .toolbar-add {
+    min-height: 38px;
+    padding: 0.45rem 1rem 0.45rem 0.85rem;
+    font-size: 0.9rem;
+  }
+  .app-wide main {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  /* A view without panes (an empty board) still sits in from the edges. */
+  .app-wide main > .swap-host > .stack:not(:has(> .split)) {
+    width: min(100%, 720px);
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  .app-wide main > .swap-host,
+  .app-wide main > .swap-host > .stack:has(> .split) {
+    flex: 1;
+    min-height: 0;
+  }
+  /* A pane's switch fills it, so its leaving snapshot has the pane's width. */
+  .split-side > .swap-host,
+  .split-pane > .swap-host {
+    flex: none;
+  }
+  .split {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: var(--list) minmax(0, 1fr);
+  }
+  /* The day plan wants the width: the timeline on the left, the ride beside. */
+  .split-day {
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 26vw, 460px);
+  }
+  .split-side,
+  .split-pane {
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  .split-side {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem 1.5rem 3rem;
+    border-right: 1px solid var(--border);
+  }
+  .split-day .split-side {
+    padding: 1.75rem 2rem 3rem;
+    border-right: none;
+  }
+  .split-pane {
+    padding: 2rem clamp(1.5rem, 3vw, 3rem) 4rem;
+    container-type: inline-size;
+    background: color-mix(in srgb, var(--surface) 35%, var(--bg));
+  }
+  .split-day .split-pane {
+    padding: 1.75rem 1.5rem 3rem;
+    border-left: 1px solid var(--border);
+  }
+  /* However wide the window, the ride stays a comfortable read. */
+  .split-pane > .swap-host > .stack {
+    max-width: 1320px;
+    margin-inline: auto;
+  }
+  .split-day .plan-board {
+    --plan-pad: 1.25rem;
+    --plan-hour: 3.75rem;
+  }
+  .split-day .plan-car + .plan-car {
+    margin-top: 0.75rem;
+  }
+  /* The dial takes the height the pane has (the toolbar, the day's head and
+     the card's padding come off the window), up to a size a glance takes in:
+     past that a big monitor only made it shout. */
+  .split-day .clock-dial {
+    --dial-max: clamp(420px, calc(100dvh - var(--toolbar) - 10rem), 640px);
+  }
+  /* The list and the pane read as one: the open row is lifted toward it. */
+  .split .session-open {
+    box-shadow: 0 0 0 1px var(--green), var(--shadow-hover);
+  }
+  /* The day headings stick to the top of the list's own pane. */
+  .split .upcoming-head {
+    top: -1.5rem;
+    margin-inline: -1.5rem;
+    padding-inline: 1.65rem;
+  }
+  .split .filters {
+    position: relative;
+  }
+  .app-wide .toast {
+    left: calc(50% + var(--dock) / 2);
+  }
+
+  /* The day's rides down the side column instead of a strip to scroll. */
+  .cars-vertical .cars-strip {
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow: visible;
+    padding: 0;
+  }
+  .cars-vertical .car-tile {
+    flex: none;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'art name time'
+      'art route seats'
+      'art driver seats';
+    align-items: center;
+    column-gap: 0.85rem;
+    row-gap: 0.05rem;
+    min-height: 0;
+    padding: 0.75rem 1rem 0.75rem 0.75rem;
+    text-align: left;
+  }
+  .cars-vertical .car-tile-art {
+    grid-area: art;
+    width: 64px;
+    height: 46px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+  }
+  .cars-vertical .car-tile-selected .car-tile-art {
+    background: var(--surface);
+  }
+  .cars-vertical .car-tile-name {
+    grid-area: name;
+    justify-content: flex-start;
+    font-size: 0.92rem;
+  }
+  .cars-vertical .car-tile-route {
+    grid-area: route;
+    font-size: 0.8rem;
+  }
+  .cars-vertical .car-tile-driver {
+    grid-area: driver;
+    font-size: 0.8rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cars-vertical .car-tile-time {
+    grid-area: time;
+    justify-self: end;
+    font-size: 0.92rem;
+  }
+  .cars-vertical .car-tile-seats {
+    grid-area: seats;
+    justify-self: end;
+    align-self: start;
+    font-size: 0.8rem;
+  }
+}
+/* A laptop gives the panes a little more of the width. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .app-wide {
+    --dock: 232px;
+    --list: 360px;
+  }
+}
+/* A big screen gets a little more of everything. */
+@media (min-width: 1600px) {
+  :root {
+    font-size: 16px;
+  }
+  .app-wide {
+    --dock: 288px;
+    --toolbar: 64px;
+  }
+  .split-day .plan-board {
+    --plan-hour: 4.5rem;
+  }
+}
+/* The ride splits in two once its pane has the room, and takes it. */
+@container (min-width: 760px) {
+  .split-pane .detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    gap: 1.75rem;
+    align-items: start;
+  }
+  .split-pane .driver-card {
+    padding: 1.75rem 2rem 2rem;
+    gap: 1.4rem;
+    grid-row: 1 / -1;
+  }
+  /* The odometer heads the right half, above the passengers. */
+  .split-pane .detail > .odo {
+    grid-column: 2;
+    margin: 1.75rem 2rem 0 0;
+  }
+  .split-pane .detail > .odo + .pax {
+    margin-top: 1.25rem;
+  }
+  .split-pane .driver-times {
+    padding: 1rem 1.25rem;
+  }
+  .split-pane .driver-times .when-value {
+    font-size: 1.85rem;
+  }
+  .split-pane .trip-stop {
+    font-size: 1.05rem;
+  }
+  /* The passengers take the height they need and the thread sits right under
+     them; whatever the tall driver card leaves over goes below the thread. */
+  .split-pane .thread {
+    grid-column: 2;
+    align-self: start;
+    margin: 0 2rem 2rem 0;
+  }
+  /* One piece: the ride is a single big card, the driver's half and the
+     passengers' half divided by a hairline, instead of cards floating apart. */
+  .split-pane .detail {
+    gap: 0 2rem;
+    min-height: min(560px, calc(100dvh - 9rem));
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-hover);
+  }
+  .split-pane .detail > .driver-card {
+    align-self: stretch;
+    border: none;
+    border-right: 1px solid var(--border);
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    box-shadow: none;
+  }
+  .split-pane .detail > .pax {
+    grid-column: 2;
+    margin: 1.75rem 2rem 1.25rem 0;
+  }
+}
+
+/* --- Hover ---------------------------------------------------------------------
+   Under a mouse, the things you can open rise a little and their shadow
+   deepens; the press sets them back down. Touch never sees any of it: a
+   phone's hover sticks after the tap. */
+@media (hover: hover) and (pointer: fine) {
+  .session:hover:not(.session-open),
+  .car-tile:hover:not(.car-tile-selected):not(.car-tile-nodrop) {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-hover);
+  }
+  .session:active,
+  .car-tile:active {
+    transform: translateY(0) scale(0.99);
+    transition-duration: 0.08s;
+  }
+  .session-arrow {
+    transition: transform var(--hover), color var(--hover);
+  }
+  .session:hover .session-arrow {
+    transform: translateX(2px);
+    color: var(--green);
+  }
+  .menu-item {
+    transition: background var(--hover), padding var(--hover);
+  }
+  .menu-item:hover:not(:disabled) {
+    padding-left: 0.85rem;
+  }
+  .driver-car-guide svg {
+    transition: transform var(--hover);
+  }
+  .driver-car-guide:hover svg {
+    transform: scale(1.12);
+  }
+  .topbar-menu svg path {
+    transition: d var(--hover);
+  }
+  /* The drawer's two bars even out under the pointer. */
+  .topbar-menu:hover svg path {
+    d: path('M4 8.5h16M4 15.5h16');
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* The one delay in the file. It waits for an animation that no longer plays,
+     and the refresh behind it waits on this one ending. */
+  .update-flare {
+    animation-delay: 0.01ms !important;
+  }
+  /* The bolt's idle loops are decoration, and a loop collapsed to 0.01ms is a
+     repaint every frame for nothing. They stop here instead, each leaving the
+     still frame it starts on. */
+  .bolt-hint,
+  .bolt-current,
+  .bolt-current-aura,
+  .bolt-halo,
+  .bolt-start {
+    animation: none !important;
+  }
+}
+
+/* --- Support and feedback (components/SupportSheet.tsx, FeedbackSheet.tsx) - */
+.support .panel-body {
+  gap: 0.9rem;
+}
+.support-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.support-topic {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.support-what {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+.support-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+}
+.support-link {
+  justify-content: flex-start;
+  text-align: left;
+  min-width: 0;
+}
+.support-link-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.support-link-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  opacity: 0.85;
+}
+.guide-support {
+  text-wrap: balance;
+}
+.guide-support svg {
+  flex: none;
+}
+.feedback-hint {
+  margin: 0;
+  font-size: 0.82rem;
+}

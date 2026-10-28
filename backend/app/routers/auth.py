@@ -22,6 +22,7 @@ from ..auth import (
     end_other_sessions,
     end_session,
     hash_password,
+    renew_session,
     require_user,
     reset_for_token,
     start_session,
@@ -161,8 +162,15 @@ def logout_others(session: WriteSessionDep, creds: CredsDep):
 
 
 @router.get("/me", response_model=UserRead)
-def me(session: SessionDep, creds: CredsDep):
-    return user_read(require_user(session, creds))
+def me(session: WriteSessionDep, creds: CredsDep):
+    """Your account. A write route on purpose: the app calls it on every
+    start, and that is when a session in use is pushed on (`renew_session`),
+    so a phone opened now and then never sees the door again."""
+    user = require_user(session, creds)
+    if renew_session(session, creds.token):  # type: ignore[arg-type]
+        session.commit()
+        session.refresh(user)
+    return user_read(user)
 
 
 @router.post("/me/calendar-token", response_model=UserRead)

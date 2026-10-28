@@ -1,0 +1,103 @@
+/* --- Admin log -------------------------------------------------------------
+   What the admins did (components/AdminLog.tsx): a heading per day, then one
+   line each, the admin's avatar on the left like a message, the sentence, the
+   ride it was about, and the changes as before → after with the old value
+   struck through. A line about a ride that still exists opens it. */
+.log-day + .log-day {
+  margin-top: 1rem;
+}
+.log-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.55rem 0;
+}
+.log-item + .log-item {
+  border-top: 1px solid var(--border);
+}
+.log-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'what when';
+  column-gap: 0.6rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+.log-body-link {
+  margin: -0.3rem -0.4rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--hover);
+}
+.log-body-link:hover {
+  background: var(--surface-2);
+}
+.log-when {
+  grid-area: when;
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.log-what {
+  grid-area: what;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.log-line {
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+.log-ride {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.log-body-link .log-ride {
+  color: var(--green);
+}
+.log-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.2rem;
+}
+.log-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: 100%;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.log-change > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-change svg {
+  flex: none;
+  color: var(--muted);
+}
+.log-field {
+  color: var(--muted);
+}
+.log-change s {
+  color: var(--muted);
+}

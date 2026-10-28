@@ -91,7 +91,11 @@ def test_an_admin_edits_and_removes_someone_elses_ride(client, admin_auth, sent)
 
     sent.clear()
     assert client.delete(f"/api/rides/{made['id']}", headers=admin_auth).status_code == 204
-    assert sent == [("ride_removed", sorted([mila, ana]), {"driver": "Ada Admin"})]
+    # The passenger, told of the other cars that day (none here), and the driver.
+    assert sent == [
+        ("ride_removed", [mila], {"driver": "Ada Admin", "alternatives": 0, "url": "/"}),
+        ("ride_removed", [ana], {"driver": "Ada Admin", "url": "/"}),
+    ]
 
 
 def test_someone_else_still_cannot_edit_or_remove(client):

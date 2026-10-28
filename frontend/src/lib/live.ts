@@ -9,6 +9,7 @@ export type LiveEvent =
   | { type: 'ride.created' | 'ride.updated'; ride: Ride }
   | { type: 'ride.deleted'; ride_id: number; ride_date: string }
   | { type: 'cars.changed' }
+  | { type: 'cars.state' }
   | { type: 'request.saved'; request: RideRequest }
   | { type: 'request.deleted'; request_id: number }
   | { type: 'photos.changed' }

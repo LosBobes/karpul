@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Annotated, Literal
 from uuid import uuid4
 
@@ -8,26 +8,16 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, select
 
 from .. import audit
+from ..access import booking_of, driver_unless_actor, get_ride_or_404, is_driver, may_manage_seats, may_run, on_behalf
 from ..admin import admin_ids, is_admin, require_admin
 from ..auth import CredsDep, require_user
 from ..calendar import ride_ics
 from ..database import get_session, get_write_session
 from ..events import request_saved, ride_deleted, ride_saved
-from ..models import Booking, CarType, DriveLeg, Ride, RideMessage, RideRequest, User, WaitlistEntry
+from ..models import Booking, CarType, Ride, RideRequest, User
+from ..offices import office_distance
 from ..push import notify
-from ..schemas import (
-    BookingCreate,
-    BookingRead,
-    BookingUpdate,
-    LegEnd,
-    LegStart,
-    MessageIn,
-    MessageRead,
-    RideCreate,
-    RideRead,
-    RideUpdate,
-    WaitlistJoin,
-)
+from ..schemas import BookingCreate, BookingRead, BookingUpdate, RideCreate, RideRead, RideUpdate
 from ..services import (
     account_for_name,
     board_extras,
@@ -55,56 +45,6 @@ SessionDep = Annotated[Session, Depends(get_session)]
 # Every mutation is check-then-write (free seats, car availability, ownership),
 # so it runs under the write lock from the first statement (database.begin_write).
 WriteSessionDep = Annotated[Session, Depends(get_write_session)]
-
-# How much of a ride's thread GET returns: the latest messages, oldest first.
-MESSAGES_SHOWN = 200
-# How much of a message the push notification quotes.
-MESSAGE_PREVIEW = 80
-
-
-def _get_ride_or_404(session: Session, ride_id: int) -> Ride:
-    ride = session.get(Ride, ride_id)
-    if ride is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ride not found")
-    return ride
-
-
-def _is_driver(user: User, ride: Ride) -> bool:
-    return is_person(user, ride.driver_id, ride.driver_name)
-
-
-def _may_run(user: User, ride: Ride) -> bool:
-    """Who may edit or remove a ride: its driver, or an admin (who schedules
-    the company cars for people and fixes what they got wrong)."""
-    return _is_driver(user, ride) or is_admin(user)
-
-
-def _on_behalf(user: User, ride: Ride) -> bool:
-    """An admin acting on a ride that is not theirs: what the admin's log records."""
-    return not _is_driver(user, ride) and is_admin(user)
-
-
-def _driver_unless_actor(user: User, ride: Ride) -> list[int | None]:
-    """The driver, to be told what an admin did to their ride; nobody when the
-    driver did it themself."""
-    return [] if _is_driver(user, ride) else [ride.driver_id]
-
-
-def _booking_of(ride: Ride, user: User) -> Booking | None:
-    return next((b for b in ride.bookings if is_person(user, b.passenger_id, b.passenger_name)), None)
-
-
-def _may_manage_seats(ride: Ride, user: User) -> bool:
-    """Who may put other people in this car or take them out.
-
-    The driver always can, and so can an admin. Passengers can too, but only while the driver has
-    switched `passengers_manage` on for the ride; each passenger can always
-    leave on their own (that is not "managing", see `leave_ride`).
-    """
-    if _may_run(user, ride):
-        return True
-    return ride.passengers_manage and _booking_of(ride, user) is not None
-
 
 def _answer_requests(session: Session, user_id: int | None, ride: Ride) -> list[RideRequest]:
     """A seat answers the passenger's open requests for that day."""
@@ -176,6 +116,10 @@ def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_
     """The column values for a validated ride, with the corporate-car rules applied."""
     data = validated.model_dump(exclude={"repeat_until", "request_id", "driver_id", "request_approval"})
     data["stops"] = stops_to_text(validated.stops)  # type: ignore[arg-type]
+    # The road between the offices is a known length (app/offices.py): a blank
+    # distance on that route is filled in, so the figures never miss it.
+    if data["distance_km"] is None:
+        data["distance_km"] = office_distance(validated.origin, validated.destination)  # type: ignore[arg-type]
     if validated.car_type == CarType.corporate:
         car = resolve_corporate_car(session, validated.corporate_car_id)  # type: ignore[arg-type]
         ensure_car_available(
@@ -302,14 +246,14 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
 @router.get("/{ride_id}", response_model=RideRead)
 def get_ride(ride_id: int, session: SessionDep, creds: CredsDep):
     require_user(session, creds)
-    return to_ride_read_dict(_get_ride_or_404(session, ride_id))
+    return to_ride_read_dict(get_ride_or_404(session, ride_id))
 
 
 @router.get("/{ride_id}/calendar.ics", include_in_schema=True)
 def ride_calendar(ride_id: int, session: SessionDep, creds: CredsDep):
     """The ride as a calendar file, for "Add to calendar"."""
     require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     return Response(
         ride_ics(ride),
         media_type="text/calendar; charset=utf-8",
@@ -320,8 +264,8 @@ def ride_calendar(ride_id: int, session: SessionDep, creds: CredsDep):
 @router.patch("/{ride_id}", response_model=RideRead)
 def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, creds: CredsDep):
     user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    if not _may_run(user, ride):
+    ride = get_ride_or_404(session, ride_id)
+    if not may_run(user, ride):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can edit this ride")
 
     merged = ride_to_create_dict(ride)
@@ -352,7 +296,7 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
     moved = any(
         getattr(ride, key) != data[key] for key in ("ride_date", "departure_time", "return_time", "origin", "destination")
     )
-    changes = audit.diff(ride, data, skip=("corporate_car_id", "driver_name")) if _on_behalf(user, ride) else []
+    changes = audit.diff(ride, data, skip=("corporate_car_id", "driver_name")) if on_behalf(user, ride) else []
     for key, value in data.items():
         setattr(ride, key, value)
     if changes:
@@ -369,7 +313,7 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
         if told:
             notify(session, told, "ride_changed", ride, driver=user.display_name)
     # Any edit an admin makes to someone's ride is news to its driver.
-    if not _is_driver(user, ride):
+    if not is_driver(user, ride):
         notify(session, [ride.driver_id], "ride_changed", ride, driver=user.display_name)
     if promoted:
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
@@ -387,31 +331,54 @@ def delete_ride(
     same weekly series (the earlier ones, already gone or not, stay). A
     request the ride answered is open again."""
     user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    if not _may_run(user, ride):
+    ride = get_ride_or_404(session, ride_id)
+    if not may_run(user, ride):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can cancel this ride")
     doomed = [ride]
     if scope == "following" and ride.series_id:
         stmt = select(Ride).where(Ride.series_id == ride.series_id, Ride.ride_date > ride.ride_date, Ride.id != ride.id)
-        doomed += [r for r in session.exec(stmt) if _may_run(user, r)]
+        doomed += [r for r in session.exec(stmt) if may_run(user, r)]
     _remove_rides(session, user, doomed)
+
+
+def _alternatives(session: Session, ride: Ride) -> list[Ride]:
+    """The other cars that day with a seat free, the ones leaving nearest the
+    removed ride's time first: what a passenger left without a ride is told."""
+    stmt = select(Ride).where(Ride.ride_date == ride.ride_date, Ride.id != ride.id, Ride.approval != "pending")
+    others = [r for r in session.exec(stmt) if len(r.bookings) < r.seats]
+    others.sort(key=lambda r: abs(datetime.combine(r.ride_date, r.departure_time) - datetime.combine(ride.ride_date, ride.departure_time)))
+    return others
 
 
 def _remove_rides(session: Session, user: User, doomed: list[Ride], action: str = "ride_removed", tell_driver: bool = True) -> None:
     """Delete `doomed` as `user`: the passengers (and a driver who is not
     `user`) are told, the requests they answered are open again, and every
-    tab hears. Commits."""
+    tab hears. A passenger whose ride goes is pointed at the other cars with
+    seats that day, when there are any (the push opens the nearest one): a
+    cancellation the evening before is when a seat elsewhere matters.
+    Commits."""
     gone = []
     reopened: list[RideRequest] = []
     for r in doomed:
-        told = [b.passenger_id for b in r.bookings] + (_driver_unless_actor(user, r) if tell_driver else [])
-        if told:
-            notify(session, told, "ride_removed", r, driver=user.display_name)
+        passengers = [b.passenger_id for b in r.bookings]
+        alternatives = _alternatives(session, r) if passengers and r.ride_date >= date.today() else []
+        if passengers:
+            notify(
+                session,
+                passengers,
+                "ride_removed",
+                r,
+                driver=user.display_name,
+                alternatives=len(alternatives),
+                url=f"/ride/{alternatives[0].id}" if alternatives else "/",
+            )
+        if tell_driver:
+            notify(session, driver_unless_actor(user, r), "ride_removed", r, driver=user.display_name, url="/")
         for request in session.exec(select(RideRequest).where(RideRequest.ride_id == r.id)):
             request.ride_id = None
             session.add(request)
             reopened.append(request)
-        if _on_behalf(user, r):
+        if on_behalf(user, r):
             audit.record(session, user, action, r.driver_name, ride=r)
         gone.append((r.id, r.ride_date))
         session.delete(r)
@@ -429,7 +396,7 @@ def approve_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
     A pending ride holds no slot, so someone may have taken the car since it
     was asked for: the car must still be free then, or it is the usual 409."""
     admin = require_admin(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     if ride.approval != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, "This ride is not waiting for approval")
     if ride.corporate_car_id is not None:
@@ -451,7 +418,7 @@ def decline_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
     """Admin-only: refuse a shared-car ride waiting for approval. The ride
     goes, as if cancelled; the driver is told it was declined."""
     admin = require_admin(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     if ride.approval != "pending":
         raise HTTPException(status.HTTP_409_CONFLICT, "This ride is not waiting for approval")
     notify(session, [ride.driver_id], "ride_declined", ride, name=admin.display_name)
@@ -467,12 +434,12 @@ def claim_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
     names must be alike (`similar_names`), and it claims every ride that goes
     by that name at once. Returns the rides claimed, this one first."""
     user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     if ride.driver_id is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "This ride's driver already has an account")
     if not similar_names(ride.driver_name, user.display_name):
         raise HTTPException(status.HTTP_403_FORBIDDEN, f"{ride.driver_name} is not a name like yours")
-    if _booking_of(ride, user) is not None:
+    if booking_of(ride, user) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, f"{user.display_name} already joined this ride")
     claimed = claim_driver_rides(session, user, ride.driver_name)
     claimed.sort(key=lambda r: (r.id != ride.id, r.ride_date, r.departure_time, r.id))
@@ -497,12 +464,12 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     day and answers their request for it.
     """
     user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     name = payload.passenger_name
     if norm_name(name) == user.name_key:
         passenger: User | None = user
     else:
-        if not _may_manage_seats(ride, user):
+        if not may_manage_seats(ride, user):
             if ride.passengers_manage:
                 detail = "Only the driver or a passenger in this car can add someone"
             else:
@@ -511,7 +478,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
         passenger = account_for_name(session, name)
     if passenger is not None:
         name = passenger.display_name
-    if (passenger is not None and _is_driver(passenger, ride)) or norm_name(name) == norm_name(ride.driver_name):
+    if (passenger is not None and is_driver(passenger, ride)) or norm_name(name) == norm_name(ride.driver_name):
         raise HTTPException(status.HTTP_409_CONFLICT, f"{name} is the driver of this ride")
     if any(
         (passenger is not None and is_person(passenger, b.passenger_id, b.passenger_name))
@@ -526,7 +493,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     ride.bookings.append(Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup))  # type: ignore[arg-type]
     queues = _seated(session, ride, passenger_id)
     answered = _answer_requests(session, passenger_id, ride)
-    if passenger is not user and _on_behalf(user, ride):
+    if passenger is not user and on_behalf(user, ride):
         audit.record(session, user, "seat_added", ride.driver_name, ride=ride, changes=[("passenger", None, name)])
     session.commit()
     session.refresh(ride)
@@ -537,7 +504,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     for request in answered:
         session.refresh(request)
         request_saved(request)
-    if not _is_driver(user, ride):
+    if not is_driver(user, ride):
         notify(session, [ride.driver_id], "got_in", ride, name=name)
     return to_ride_read_dict(ride)
 
@@ -545,7 +512,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
 @router.get("/{ride_id}/bookings", response_model=list[BookingRead])
 def list_bookings(ride_id: int, session: SessionDep, creds: CredsDep):
     require_user(session, creds)
-    return _get_ride_or_404(session, ride_id).bookings
+    return get_ride_or_404(session, ride_id).bookings
 
 
 @router.patch("/{ride_id}/bookings/{booking_id}", response_model=RideRead)
@@ -555,11 +522,11 @@ def move_booking(
     """Change where a passenger gets in. The passenger themself, or whoever may
     manage the seats, can do it."""
     user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     booking = next((b for b in ride.bookings if b.id == booking_id), None)
     if booking is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
-    if not is_person(user, booking.passenger_id, booking.passenger_name) and not _may_manage_seats(ride, user):
+    if not is_person(user, booking.passenger_id, booking.passenger_name) and not may_manage_seats(ride, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the passenger or the driver can change this booking")
     booking.pickup = pickup_or_422(ride, payload.pickup)
     session.add(booking)
@@ -574,12 +541,12 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
     """Take a seat out of the car. The seat goes to the first in the queue,
     if anyone is waiting."""
     user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
+    ride = get_ride_or_404(session, ride_id)
     booking = next((b for b in ride.bookings if b.id == booking_id), None)
     if booking is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
     themself = is_person(user, booking.passenger_id, booking.passenger_name)
-    if not themself and not _may_manage_seats(ride, user):
+    if not themself and not may_manage_seats(ride, user):
         detail = (
             "Only the passenger, the driver or another passenger in this car can remove this booking"
             if ride.passengers_manage
@@ -587,7 +554,7 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         )
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail)
     passenger, passenger_id = booking.passenger_name, booking.passenger_id
-    if not themself and _on_behalf(user, ride):
+    if not themself and on_behalf(user, ride):
         audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
@@ -603,224 +570,3 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
     return to_ride_read_dict(ride)
 
-
-# --- the odometer -------------------------------------------------------------
-#
-# A shared car's kilometres are noted stretch by stretch (DriveLeg): the reading
-# when someone takes the wheel, and when they hand it on or bring the car back,
-# so the office knows who drove it and how far. Legs follow each other with no
-# gap: a handover ends one stretch at the reading the next one starts from.
-
-
-def _open_leg(ride: Ride) -> DriveLeg | None:
-    return ride.legs[-1] if ride.legs and ride.legs[-1].end_km is None else None
-
-
-def _odometer_ride(session: Session, ride_id: int) -> Ride:
-    """The ride, if its odometer can be noted at all: a shared car, let
-    through, on its day or after."""
-    ride = _get_ride_or_404(session, ride_id)
-    if ride.car_type != CarType.corporate:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Kilometres are only kept for the shared cars")
-    if ride.approval == "pending":
-        raise HTTPException(status.HTTP_409_CONFLICT, "An admin has to approve this ride first")
-    if ride.ride_date > date.today():
-        raise HTTPException(status.HTTP_409_CONFLICT, "The odometer is noted from the day of the ride")
-    return ride
-
-
-def _may_note_km(user: User, ride: Ride) -> bool:
-    """The ride's driver, an admin, or whoever is at the wheel right now."""
-    leg = _open_leg(ride)
-    return _may_run(user, ride) or (leg is not None and is_person(user, leg.driver_id, leg.driver_name))
-
-
-def _note_km_or_403(user: User, ride: Ride) -> None:
-    if not _may_note_km(user, ride):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver, whoever is at the wheel or an admin can note the odometer")
-
-
-def _km_at_least(km: int, floor: int) -> None:
-    if km < floor:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"The odometer cannot read less than {floor} km here")
-
-
-def _saved(session: Session, ride: Ride) -> dict:
-    session.commit()
-    session.refresh(ride)
-    ride_saved(ride, created=False)
-    return to_ride_read_dict(ride)
-
-
-@router.post("/{ride_id}/legs", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def take_wheel(ride_id: int, payload: LegStart, session: WriteSessionDep, creds: CredsDep):
-    """Someone takes the wheel at `km`: the ride's driver (`booking_id` None)
-    or a passenger in the car. The first time it is the reading the car was
-    picked up at; while someone is driving it is a handover, which ends their
-    stretch at the same reading."""
-    user = require_user(session, creds)
-    ride = _odometer_ride(session, ride_id)
-    current = _open_leg(ride)
-    if current is None:
-        if ride.legs:
-            raise HTTPException(status.HTTP_409_CONFLICT, "The car is already back; undo that to carry on")
-        if not _may_run(user, ride):
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can note the odometer at the start")
-    else:
-        _note_km_or_403(user, ride)
-        _km_at_least(payload.km, current.start_km)
-    if payload.booking_id is None:
-        driver_id, driver_name = ride.driver_id, ride.driver_name
-    else:
-        booking = next((b for b in ride.bookings if b.id == payload.booking_id), None)
-        if booking is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
-        driver_id, driver_name = booking.passenger_id, booking.passenger_name
-    if current is not None:
-        if (current.driver_id is not None and current.driver_id == driver_id) or (
-            current.driver_id is None and driver_id is None and norm_name(current.driver_name) == norm_name(driver_name)
-        ):
-            raise HTTPException(status.HTTP_409_CONFLICT, f"{driver_name} is already at the wheel")
-        current.end_km = payload.km
-        session.add(current)
-    ride.legs.append(DriveLeg(ride_id=ride.id, driver_id=driver_id, driver_name=driver_name, start_km=payload.km))  # type: ignore[arg-type]
-    return _saved(session, ride)
-
-
-@router.post("/{ride_id}/legs/end", response_model=RideRead)
-def bring_back(ride_id: int, payload: LegEnd, session: WriteSessionDep, creds: CredsDep):
-    """The car is back: the reading that ends the current stretch."""
-    user = require_user(session, creds)
-    ride = _odometer_ride(session, ride_id)
-    current = _open_leg(ride)
-    if current is None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Nobody is at the wheel of this car")
-    _note_km_or_403(user, ride)
-    _km_at_least(payload.km, current.start_km)
-    current.end_km = payload.km
-    session.add(current)
-    return _saved(session, ride)
-
-
-@router.delete("/{ride_id}/legs/last", response_model=RideRead)
-def undo_leg(ride_id: int, session: WriteSessionDep, creds: CredsDep):
-    """Take back the last thing noted, for a typo or the wrong person: a car
-    noted as back is out again, else the newest stretch goes and the one before
-    it (a handover) is being driven again."""
-    user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    if not _may_run(user, ride):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can undo the odometer")
-    if not ride.legs:
-        raise HTTPException(status.HTTP_409_CONFLICT, "Nothing has been noted on the odometer")
-    last = ride.legs[-1]
-    if last.end_km is not None:
-        last.end_km = None
-        session.add(last)
-    else:
-        ride.legs.remove(last)
-        session.delete(last)
-        if ride.legs:
-            ride.legs[-1].end_km = None
-            session.add(ride.legs[-1])
-    return _saved(session, ride)
-
-
-# --- waiting for a seat -------------------------------------------------------
-
-
-@router.post("/{ride_id}/waitlist", response_model=RideRead, status_code=status.HTTP_201_CREATED)
-def join_waitlist(ride_id: int, payload: WaitlistJoin, session: WriteSessionDep, creds: CredsDep):
-    """Queue for a seat in a full car. Only for yourself: the first seat that
-    frees up is yours without asking, so it is not something to sign anyone
-    else up for."""
-    user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    if _is_driver(user, ride):
-        raise HTTPException(status.HTTP_409_CONFLICT, "You drive this ride")
-    if _booking_of(ride, user) is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, "You are already in this car")
-    if any(e.user_id == user.id for e in ride.waitlist):
-        raise HTTPException(status.HTTP_409_CONFLICT, "You are already waiting for this car")
-    if len(ride.bookings) < ride.seats:
-        raise HTTPException(status.HTTP_409_CONFLICT, "There are free seats; get in instead")
-    pickup = pickup_or_422(ride, payload.pickup)
-    ride.waitlist.append(WaitlistEntry(ride_id=ride.id, user_id=user.id, name=user.display_name, pickup=pickup))  # type: ignore[arg-type]
-    session.commit()
-    session.refresh(ride)
-    ride_saved(ride, created=False)
-    return to_ride_read_dict(ride)
-
-
-@router.delete("/{ride_id}/waitlist/{entry_id}", response_model=RideRead)
-def leave_waitlist(ride_id: int, entry_id: int, session: WriteSessionDep, creds: CredsDep):
-    """Stop waiting; the driver may also take someone off the queue."""
-    user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    entry = next((e for e in ride.waitlist if e.id == entry_id), None)
-    if entry is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not on the waiting list")
-    if entry.user_id != user.id and not _is_driver(user, ride):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the person waiting or the driver can do that")
-    ride.waitlist.remove(entry)
-    session.delete(entry)
-    session.commit()
-    session.refresh(ride)
-    ride_saved(ride, created=False)
-    return to_ride_read_dict(ride)
-
-
-# --- the ride's thread --------------------------------------------------------
-
-
-@router.get("/{ride_id}/messages", response_model=list[MessageRead])
-def list_messages(ride_id: int, session: SessionDep, creds: CredsDep):
-    """The ride's thread, oldest first (the latest MESSAGES_SHOWN of it)."""
-    require_user(session, creds)
-    _get_ride_or_404(session, ride_id)
-    latest = session.exec(
-        select(RideMessage)
-        .where(RideMessage.ride_id == ride_id)
-        .order_by(col(RideMessage.id).desc())
-        .limit(MESSAGES_SHOWN)
-    ).all()
-    return list(reversed(latest))
-
-
-@router.post("/{ride_id}/messages", response_model=MessageRead, status_code=status.HTTP_201_CREATED)
-def post_message(ride_id: int, payload: MessageIn, session: WriteSessionDep, creds: CredsDep):
-    """Write in the ride's thread. Anyone signed in may (a question before
-    getting in is the point); the driver and the passengers are told, except
-    whoever wrote it. The ride goes out over the socket with its new
-    `message_count`, which is how open threads know to fetch again."""
-    user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    message = RideMessage(ride_id=ride.id, author_id=user.id, author_name=user.display_name, body=payload.body)  # type: ignore[arg-type]
-    session.add(message)
-    session.commit()
-    session.refresh(message)
-    session.refresh(ride)
-    ride_saved(ride, created=False)
-    people = [ride.driver_id] + [b.passenger_id for b in ride.bookings]
-    told = [uid for uid in people if uid is not None and uid != user.id]
-    preview = payload.body.replace("\n", " ")
-    if len(preview) > MESSAGE_PREVIEW:
-        preview = preview[: MESSAGE_PREVIEW - 1].rstrip() + "…"
-    notify(session, told, "message", ride, name=user.display_name, text=preview)
-    return message
-
-
-@router.delete("/{ride_id}/messages/{message_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_message(ride_id: int, message_id: int, session: WriteSessionDep, creds: CredsDep):
-    """Take a message back; the driver may remove any message on their ride."""
-    user = require_user(session, creds)
-    ride = _get_ride_or_404(session, ride_id)
-    message = session.get(RideMessage, message_id)
-    if message is None or message.ride_id != ride.id:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found")
-    if message.author_id != user.id and not _is_driver(user, ride):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or the driver can remove this message")
-    session.delete(message)
-    session.commit()
-    session.refresh(ride)
-    ride_saved(ride, created=False)

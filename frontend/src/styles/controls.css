@@ -1,0 +1,667 @@
+/* --- Form controls ------------------------------------------------------- */
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  /* Fluent: the bottom edge is the darker one, and turns into the accent. */
+  border-bottom-color: var(--muted);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color var(--hover), box-shadow var(--hover);
+}
+textarea {
+  resize: vertical;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-bottom-color: var(--green);
+  box-shadow: inset 0 -1px 0 var(--green);
+}
+input:disabled,
+select:disabled {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+input[type='checkbox'] {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--green);
+}
+::placeholder {
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.field-label {
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text);
+}
+/* "optional", after the label of a field that may stay empty. */
+.field-optional {
+  margin-left: 0.35rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+/* A label and its control on one line: for a control narrow enough that a
+   whole row to itself would be mostly empty (the seat stepper). */
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem;
+  min-height: 44px;
+}
+/* A control inside a group, with its own small caption above it. */
+.subfield {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+.subfield-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.field .muted {
+  color: var(--muted);
+  font-weight: 400;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.row-end {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+/* A text input with a small leading glyph. */
+.input-icon {
+  position: relative;
+  display: block;
+  color: var(--muted);
+}
+.input-icon > svg {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.input-icon > input {
+  padding-left: 2.3rem;
+}
+/* Every boolean in the ride form is a switch: a track that fills green and a
+   knob that slides across it. The checkbox itself is still there, only drawn
+   differently, so the label, the keyboard and the form all keep working. */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle input[type='checkbox'],
+.switch-row input[type='checkbox'] {
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 20px;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  background: transparent;
+  transition: background var(--hover), border-color var(--hover);
+}
+.toggle input[type='checkbox']::after,
+.switch-row input[type='checkbox']::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform var(--dur-normal) var(--ease-out), background var(--hover);
+}
+.toggle input[type='checkbox']:checked,
+.switch-row input[type='checkbox']:checked {
+  border-color: var(--green);
+  background: var(--green);
+}
+.toggle input[type='checkbox']:checked::after,
+.switch-row input[type='checkbox']:checked::after {
+  background: #fff;
+  transform: translateX(20px);
+}
+.toggle input[type='checkbox']:focus-visible,
+.switch-row input[type='checkbox']:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+/* A switch that stands on its own line, boxed like an input: the wording on
+   the left, the switch on the right, so a long explanation never pushes it
+   out of reach. */
+.switch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 44px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+}
+.switch-row-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.switch-row-title {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--text);
+}
+.switch-row-desc {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+/* Fluent's TabList: the choices sit on the page, the picked one semibold with
+   a short accent bar under it. The bar is one element (.seg-thumb, see
+   components/Segmented.tsx) that slides to the next choice; the buttons only
+   change colour and weight. */
+.segmented {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  padding-bottom: 3px;
+}
+.seg {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.9rem;
+  transition: color var(--hover), background var(--hover);
+}
+.seg:hover:not(:disabled):not(.seg-on) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 5%, transparent);
+}
+.seg-on {
+  color: var(--text);
+  font-weight: 600;
+}
+.seg-thumb {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: calc((100% - (var(--seg-n, 2) - 1) * 2px) / var(--seg-n, 2));
+  transform: translateX(calc(var(--seg-i, 0) * (100% + 2px)));
+  transition: transform var(--dur-gentle) var(--ease-out);
+}
+.seg-thumb::after {
+  content: '';
+  position: absolute;
+  inset: 0 max(14px, 34%);
+  border-radius: 2px;
+  background: var(--green);
+}
+.seg:disabled {
+  opacity: 0.5;
+}
+.stepper {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface);
+}
+.stepper button {
+  min-height: 44px;
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+}
+.stepper button:hover:not(:disabled) {
+  background: var(--surface-2);
+}
+.stepper button:disabled {
+  color: var(--border-strong);
+}
+.stepper output {
+  display: grid;
+  place-items: center;
+  border-inline: 1px solid var(--border-strong);
+  font-weight: 600;
+}
+/* Beside its own label rather than under it, so keep it thumb-sized, not
+   full-width. The buttons stay 44px wide for a finger. */
+.stepper-sm {
+  flex: none;
+  width: 142px;
+  grid-template-columns: 46px 1fr 46px;
+}
+.driver-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0.35rem 0.8rem 0.35rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-weight: 500;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.error {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--red-soft);
+  color: #b3261e;
+  font-size: 0.9rem;
+}
+
+/* --- Buttons ------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  transition: background var(--hover), border-color var(--hover), color var(--hover), opacity var(--hover),
+    box-shadow var(--hover);
+}
+/* Fluent presses by darkening, never by shrinking. */
+.btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
+}
+.btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 9%, var(--surface));
+}
+.btn:disabled {
+  opacity: 0.5;
+}
+.btn-block {
+  width: 100%;
+}
+.btn-primary {
+  border-color: transparent;
+  background: var(--green);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--green-dark);
+}
+.btn-primary:active:not(:disabled) {
+  background: color-mix(in srgb, #000 22%, var(--green));
+}
+.btn-soft:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 4%, var(--surface));
+}
+.btn-danger {
+  border-color: transparent;
+  background: var(--red);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  background: #d13a3f;
+}
+.btn-outline-danger {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--red) 55%, transparent);
+  color: var(--red);
+}
+.btn-outline-danger:hover:not(:disabled) {
+  background: var(--red-soft);
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.3rem;
+  border: none;
+  background: none;
+  color: var(--green);
+  font-weight: 500;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  transition: background var(--hover), color var(--hover);
+}
+.link:hover:not(:disabled) {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  flex: none;
+  transition: background var(--hover), color var(--hover), transform 0.12s var(--ease-smooth);
+}
+.icon-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+.icon-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+.icon-btn:disabled {
+  opacity: 0.35;
+}
+.icon-btn-sm {
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+}
+
+/* The one "add a ride" control (components/AddRideButton.tsx): a white plus
+   in a green circle, floating at the bottom right. */
+.plus-circle {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--green) 35%, transparent);
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+span.plus-circle svg {
+  color: #fff;
+}
+/* Pinned to the bottom right of the column, on both views, under every sheet
+   and drawer (their backdrops are z-index 10). */
+.fab {
+  position: fixed;
+  z-index: 8;
+  right: max(1rem, calc(50% - 300px + 1rem));
+  /* Above the tab bar (64px), with Fluent's 16px gap. */
+  bottom: calc(var(--tabbar) + 1rem + env(safe-area-inset-bottom));
+  padding: 0;
+  border: none;
+  background: none;
+  /* A tap must fire click at once (no double-tap zoom wait) and without the
+     platform's grey tap flash over the circle. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  animation: fab-in var(--dur-gentle) var(--ease-out);
+}
+@keyframes fab-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+.fab .plus-circle {
+  /* Fluent's FAB: a rounded square at elevation 16, not a circle. */
+  border-radius: 16px;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.14);
+  /* The press pulse: the circle contracts the moment it is pressed (the short
+     ease-in below) and springs back when the finger lifts, overshooting a
+     touch on the way, so the tap reads as a press even under a thumb.
+     `.fab-pressed` is set from pointer and key events (AddRideButton.tsx),
+     deliberately not `:active`: touch browsers apply that late and Chrome
+     holds it on after the finger lifts, which pinned the circle small. */
+  transition: background 0.12s, box-shadow 0.12s, transform 0.3s var(--ease-spring);
+}
+.fab:hover .plus-circle {
+  background: var(--green-dark);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.16);
+}
+.fab.fab-pressed .plus-circle {
+  transform: scale(0.88);
+  transition: background 0.12s, box-shadow 0.12s, transform 0.08s var(--ease-in);
+}
+.fab .plus-circle {
+  transform-origin: center;
+}
+.fab:focus-visible {
+  outline: none;
+}
+.fab:focus-visible .plus-circle {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 30%, transparent);
+}
+
+/* The phone's view switch: a Fluent bottom tab bar over a Mica-like blur.
+   The active tab's mark is filled; one green pill (.tab-glider) slides under
+   the marks to it, a little past and back, and the mark it lands on pops. */
+.tabbar {
+  position: fixed;
+  z-index: 8;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--tabbar) + env(safe-area-inset-bottom));
+  padding: 8px max(0.5rem, calc(50% - 300px)) env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border-top: 1px solid var(--border);
+}
+.tabbar-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: 100%;
+}
+.tab-glider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: calc(100% / 3);
+  height: 38px;
+  transform: translateX(calc(var(--tab, 0) * 100%));
+  transition: transform 0.42s var(--ease-bounce);
+  pointer-events: none;
+}
+.tab-glider::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 68px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--green-soft);
+}
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--dur-normal) var(--ease-smooth);
+}
+.tab-pill {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 38px;
+  border-radius: 999px;
+  --icon-knock: var(--green-soft);
+}
+.tab-label {
+  transition: transform var(--dur-gentle) var(--ease-out);
+}
+.tab-on {
+  color: var(--green);
+  font-weight: 600;
+}
+.tab-on .tab-label {
+  transform: translateY(-1px);
+}
+.tab-on .tab-icon {
+  animation: tab-pop 0.45s var(--ease-bounce);
+}
+.tab:not(.tab-on) .tab-icon {
+  animation: tab-settle var(--dur-normal) var(--ease-out);
+}
+.tab:focus-visible {
+  outline: none;
+}
+.tab:focus-visible .tab-pill {
+  box-shadow: 0 0 0 2px var(--green);
+}
+@media (hover: hover) and (pointer: fine) {
+  .tab:not(.tab-on):hover {
+    color: var(--text);
+  }
+}
+@keyframes tab-pop {
+  0% {
+    transform: scale(0.72) translateY(3px);
+  }
+  55% {
+    transform: scale(1.14) translateY(-2px);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes tab-settle {
+  from {
+    transform: scale(0.88);
+    opacity: 0.6;
+  }
+}
+
+/* The home-screen install offer (InstallCard.tsx): a card above the board on
+   a phone, floating in the bottom corner on a wide screen. */
+.install-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem;
+  animation: pop-in-up var(--dur-gentle) var(--ease-out);
+}
+.install-card-float {
+  position: fixed;
+  z-index: 8;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  width: min(380px, calc(100vw - 3rem));
+  box-shadow: var(--shadow-pop);
+}
+.install-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+.install-head > svg {
+  flex: none;
+}
+.install-text {
+  flex: 1;
+  min-width: 0;
+}
+.install-text h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.install-text p {
+  margin: 0.15rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.install-close {
+  flex: none;
+  margin: -0.4rem -0.4rem 0 0;
+}
+.install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+.install-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.install-step-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.install-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.install-actions .btn {
+  min-height: 36px;
+}

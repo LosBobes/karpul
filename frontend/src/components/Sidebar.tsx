@@ -30,6 +30,8 @@ interface Content {
   onNotifications: () => void
   /** Present while this browser can install the app (lib/install.ts). */
   onInstall?: () => void
+  /** How the shared cars stand (components/CarStatus.tsx), for everyone. */
+  onCarState: () => void
 }
 
 interface Props extends Content {
@@ -67,7 +69,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onInstall, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -87,6 +89,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       label: t.myRides.title,
       icon: 'route',
       onSelect: pick(onMyRides),
+    },
+    {
+      label: t.sidebar.carState,
+      icon: 'car',
+      onSelect: pick(onCarState),
     },
     {
       label: t.sidebar.guide,

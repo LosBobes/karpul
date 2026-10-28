@@ -1,0 +1,580 @@
+/* --- Toast --------------------------------------------------------------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar) + 1.25rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 20;
+  /* Anchored by its left edge, a fixed box gets half the viewport to lay out
+     in, so it would wrap at the middle of the screen; max-content is what lets
+     it use the whole width the cap below allows. */
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-pop);
+  animation: toast-in var(--dur-gentle) var(--ease-out);
+}
+/* Fluent's toast: up from below by a little, fading in. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+}
+.toast-error {
+  background: var(--red);
+}
+/* A waiting build (lib/pwa.ts). The other toasts are a line of ink that comes
+   and goes; this one is the only toast you are meant to press, and it sits
+   there until you do, so it is built like the cards above it instead: the app's
+   own mark on a green tile, the line and its hint, the verb as a chip. The mark
+   is lit by a charge running across it every few seconds, the same idea as the
+   trace filling the bolt on the screen it opens. It keeps its green line and
+   its glow in both themes, unlike the toasts above it. */
+.toast-update {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.55rem;
+  border: 1px solid var(--green-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    0 10px 30px color-mix(in srgb, var(--green) 24%, transparent),
+    var(--shadow-pop);
+}
+/* The mark, in its own tile: the Logo draws the tile in `currentColor`, so the
+   wrapper only has to say green, clip the corners and hold the charge. */
+.update-toast-mark {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  overflow: hidden;
+  color: var(--green);
+  line-height: 0;
+}
+.update-toast-mark::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.5) 50%, transparent 62%);
+  transform: translateX(-130%);
+  animation: update-charge 3.6s ease-in-out 1.2s infinite;
+}
+@keyframes update-charge {
+  0% {
+    transform: translateX(-130%);
+  }
+  32%,
+  100% {
+    transform: translateX(130%);
+  }
+}
+.update-toast-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.update-toast-text strong {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.update-toast-text span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.update-toast-go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.7rem 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+@media (hover: hover) {
+  .toast-update:hover {
+    /* The pill is centred by a transform, so a lift has to carry it along. */
+    transform: translateX(-50%) translateY(-2px);
+    border-color: var(--green);
+  }
+}
+
+/* --- Trace the bolt ------------------------------------------------------ */
+/* Taking a waiting build (components/UpdateScreen.tsx). The app's own
+   thunderbolt, drawn with a finger, and it takes the whole screen: the grey
+   track is the bolt waiting, the green trail is how far the finger has got,
+   and the whole thing flashes over and throws a flare across the screen when
+   it closes. `touch-action: none` is what keeps the browser from scrolling the
+   page instead, the same bargain the drag handles make in lib/dnd.ts.
+
+   It is its own screen rather than a sheet because the bolt is the screen: a
+   stroke that crosses a phone from edge to edge is the whole point, and a
+   pad in the middle of a panel gave the finger a lane the width of a thumb.
+   It still arrives and leaves like a sheet, rising from the bottom edge,
+   because it comes out of the toast down there. */
+/* The one screen in the app that is not the light board: a bolt is a thing you
+   see in the dark, and the ink is what lets the green throw light on it. It is
+   a moment, not a place, so it keeps its own colours in both themes and hands
+   them to the bolt below as `--bolt`; the light board comes back with the new
+   build a second later. */
+.update-screen {
+  --bolt: #3ecf8e;
+  --bolt-dark: #0f5c3d;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: radial-gradient(115% 70% at 50% 46%, #1b2b24, #0d1013 72%);
+  color: #f4f6f8;
+  animation: update-up 0.3s var(--ease-out);
+}
+.update-screen-closing {
+  animation: update-down 0.24s var(--ease-in) forwards;
+}
+@keyframes update-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes update-down {
+  to {
+    transform: translateY(100%);
+  }
+}
+/* The words and the way out float over the bolt and let the finger through;
+   only the two buttons take a tap of their own. */
+.update-chrome {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: calc(0.9rem + env(safe-area-inset-top)) 1rem calc(1.1rem + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+.update-chrome button {
+  pointer-events: auto;
+}
+.update-head {
+  position: relative;
+  text-align: center;
+}
+.update-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.update-close {
+  position: absolute;
+  top: -0.35rem;
+  right: 0;
+  color: rgba(255, 255, 255, 0.72);
+}
+.update-close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.update-lead {
+  margin: 0.3rem 0 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.95rem;
+  text-align: center;
+  min-height: 2.6em;
+}
+.update-foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}
+/* The bolt itself: the whole screen on a phone, which is what the stroke was
+   drawn for, and capped on a desktop, where a bolt as tall as a browser window
+   would be a lane four fingers thick. `inset: 0` with auto margins centres what
+   is left over, and the caps never kiss an edge. */
+.bolt-pad {
+  position: absolute;
+  /* The top and bottom insets are the bands the words and the button sit in:
+     the bolt is behind them, and on a short window it would otherwise run up
+     under the line telling you to trace it. */
+  inset: 5.2rem 1.1rem 4rem;
+  margin: auto;
+  max-width: 430px;
+  max-height: 700px;
+  touch-action: none;
+  cursor: grab;
+  overflow: visible;
+}
+.bolt-pad-live {
+  cursor: grabbing;
+}
+/* A thick lane rather than a line: the width is the margin for error a finger
+   gets, and it has to read at arm's length as well as under a fingertip. The
+   number is `LANE` in components/BoltTrace.tsx, which cuts the mask the lit
+   layers ride on; change the two together. */
+.bolt-track,
+.bolt-hint,
+.bolt-trail,
+.bolt-flash {
+  fill: none;
+  stroke-width: 26;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bolt-track {
+  stroke: rgba(255, 255, 255, 0.09);
+}
+/* Which way the bolt goes, said by a spark falling down the empty lane. It is
+   the only thing on this screen that moves before you do. It runs at an even
+   pace: an ease-in-out is fastest at the middle of the path, which is the jog
+   across, and there the spark skipped from left to right instead of moving. */
+.bolt-hint {
+  stroke: color-mix(in srgb, var(--bolt) 50%, transparent);
+  stroke-dasharray: 5 95;
+  filter: blur(1px);
+  animation: bolt-hint 3.2s linear infinite;
+}
+@keyframes bolt-hint {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: -5;
+  }
+}
+/* The haze the lit lane throws on the ink. It is the same dash as the trail,
+   drawn fatter and blurred, so the glow grows with the trace instead of
+   sitting under the whole bolt from the start. */
+.bolt-glow {
+  fill: none;
+  stroke: var(--bolt);
+  stroke-width: 44;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.45;
+  filter: blur(14px);
+  transition: stroke-dashoffset 0.09s linear;
+}
+.bolt-trail {
+  stroke: var(--bolt);
+  /* Fast enough to sit under the finger, slow enough to smooth a jump. */
+  transition: stroke-dashoffset 0.09s linear;
+}
+/* The current inside the lane: short pulses falling down it, clipped by the
+   mask to the part the finger has drawn. This is what makes a filled bolt look
+   live rather than painted. The softness is a second, wider pass at low
+   opacity rather than a blur: a blurred filter inside a mask leaks its own
+   rectangular filter region in Chrome, and round caps carry the shape anyway. */
+.bolt-current,
+.bolt-current-aura {
+  fill: none;
+  stroke: #fff;
+  stroke-linecap: round;
+  stroke-dasharray: 5 13;
+  animation: bolt-current 0.9s linear infinite;
+}
+.bolt-current {
+  stroke-width: 7;
+  opacity: 0.8;
+}
+.bolt-current-aura {
+  stroke-width: 17;
+  opacity: 0.2;
+}
+@keyframes bolt-current {
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+.bolt-flash {
+  stroke: #fff;
+  stroke-dasharray: 10 100;
+  animation: bolt-flash 0.5s ease-out forwards;
+}
+@keyframes bolt-flash {
+  from {
+    stroke-dashoffset: 12;
+  }
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+/* The bolt landing: a ring thrown off the tail, once. */
+.bolt-burst {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bolt-burst 0.75s var(--ease-out) forwards;
+}
+@keyframes bolt-burst {
+  from {
+    transform: scale(0.35);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(5);
+    opacity: 0;
+  }
+}
+.bolt-start {
+  fill: var(--bolt);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bolt-wait 1.7s ease-in-out infinite;
+}
+@keyframes bolt-wait {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.5;
+  }
+}
+/* What the finger is steering: a white-hot core in a halo of its own light.
+   It rides inside the lane, so both are sized against the stroke above, big
+   enough to find without hunting and to stay visible around a fingertip. */
+.bolt-halo {
+  fill: var(--bolt);
+  transform-box: fill-box;
+  transform-origin: center;
+  filter: blur(7px);
+  animation: bolt-halo 0.9s ease-in-out infinite;
+}
+@keyframes bolt-halo {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.45;
+  }
+}
+.bolt-head {
+  fill: #fff;
+  stroke: var(--bolt-dark);
+  stroke-width: 5;
+  filter: drop-shadow(0 0 10px #fff);
+}
+/* A finger that left the line: the bolt shrugs and waits to be started again. */
+.bolt-pad-slip {
+  animation: bolt-slip 0.38s var(--ease-bounce);
+}
+@keyframes bolt-slip {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-7px);
+  }
+  60% {
+    transform: translateX(5px);
+  }
+}
+/* The moment it closes: the pad pops, the whole lane goes white-hot and cools
+   back to green, the current speeds up and the glow swells behind it. */
+.bolt-pad-charged {
+  animation: bolt-charge 0.5s var(--ease-bounce);
+  filter: drop-shadow(0 0 26px color-mix(in srgb, var(--bolt) 65%, transparent));
+}
+@keyframes bolt-charge {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bolt-pad-charged .bolt-trail {
+  animation: bolt-whiteout 0.6s ease-out;
+}
+@keyframes bolt-whiteout {
+  0%,
+  35% {
+    stroke: #fff;
+  }
+  100% {
+    stroke: var(--bolt);
+  }
+}
+.bolt-pad-charged .bolt-glow {
+  animation: bolt-swell 0.6s ease-out;
+}
+@keyframes bolt-swell {
+  0% {
+    opacity: 0.45;
+  }
+  30% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0.45;
+  }
+}
+.bolt-pad-charged .bolt-current,
+.bolt-pad-charged .bolt-current-aura {
+  animation-duration: 0.35s;
+}
+.update-plain {
+  width: 100%;
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+.update-plain:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.16);
+}
+.update-plain:disabled {
+  opacity: 0.4;
+}
+/* The green wash the refresh happens behind. It ends opaque on purpose: the
+   reload's blank frame lands under it, and the new build paints over it.
+   It opens from the tail of the bolt, not the middle of the screen: the sheet
+   measures where the finger finished and sets the two properties below
+   (components/UpdateSheet.tsx), so the wash carries on from the trace instead
+   of starting somewhere else. The values here are what a flare with nothing
+   to go on gets. */
+.update-flare {
+  --flare-x: 50%;
+  --flare-y: 45%;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--flare-x) var(--flare-y),
+    color-mix(in srgb, var(--bolt) 55%, #fff),
+    var(--bolt) 38%,
+    transparent 72%
+  );
+  /* The scale has to grow out of the same point, or the gradient's centre
+     slides across the screen while the wash opens. */
+  transform-origin: var(--flare-x) var(--flare-y);
+  /* The delay is the bolt's moment: it pops and a spark runs down it before
+     the screen floods. Reduced motion collapses durations but not delays, so
+     the block at the end of this file zeroes this one too. */
+  animation: update-flare 0.8s ease-out 0.45s forwards;
+  opacity: 0;
+}
+@keyframes update-flare {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(3);
+  }
+}
+
+/* --- Motion -------------------------------------------------------------- */
+/* Fluent's motion. A view or a day board that replaces another steps in 20px
+   from the side it came from as it fades up (App.tsx keys the wrapper and
+   picks the direction with useSlideDir in lib/motion.ts); sheets rise from
+   the bottom edge on a phone, the drawer comes in from the left, dialogs grow
+   a little out of the middle as they fade in, flyouts come 10px out of their
+   anchor, and the tab lists and the date pills slide their marker. Everything
+   decelerates in and accelerates out, with no overshoot. */
+.swap-left {
+  animation: swap-from-left var(--dur-gentle) var(--ease-out) both;
+}
+.swap-right {
+  animation: swap-from-right var(--dur-gentle) var(--ease-out) both;
+}
+/* Fluent's page step, both ways: the new content comes in from its side as
+   the old goes out the other (components/SlideSwitch.tsx lays a snapshot of
+   the leaving content over the host). The entering one fades up only over
+   its first frames, so it never blinks into place. */
+@keyframes swap-from-left {
+  from {
+    opacity: 0.35;
+    transform: translateX(-40px);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+@keyframes swap-from-right {
+  from {
+    opacity: 0.35;
+    transform: translateX(40px);
+  }
+  45% {
+    opacity: 1;
+  }
+}
+.swap-host {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.swap-host > .stack {
+  position: relative;
+  z-index: 1;
+  min-height: 0;
+  will-change: transform, opacity;
+}
+/* The leaving snapshot: under the entering content (its cards are opaque, so
+   it covers what it passes), out of the flow (the height is the new
+   content's), and gone by halfway, so what shows through is the ground. */
+.swap-leave {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.swap-leave-left {
+  animation: swap-to-left var(--dur-gentle) var(--ease-in) both;
+}
+.swap-leave-right {
+  animation: swap-to-right var(--dur-gentle) var(--ease-in) both;
+}
+@keyframes swap-to-left {
+  55% {
+    opacity: 0;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+}
+@keyframes swap-to-right {
+  55% {
+    opacity: 0;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}

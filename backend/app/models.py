@@ -58,6 +58,9 @@ class User(SQLModel, table=True):
     # comma-separated; "" is everything on. Per account, so it holds in every
     # browser they turned notifications on in.
     push_muted: str = Field(default="", sa_column_kwargs={"server_default": ""})
+    # How many minutes before departure this person wants the reminder
+    # (app/reminders.py); one of reminders.LEAD_CHOICES.
+    remind_before: int = Field(default=30, sa_column_kwargs={"server_default": "30"})
     created_at: datetime = Field(default_factory=utcnow)
 
     sessions: list["AuthSession"] = Relationship(
@@ -126,8 +129,12 @@ class Ride(SQLModel, table=True):
     # Rides created together by "repeat weekly until" share a series id, so the
     # driver can remove this and the following ones in one go.
     series_id: str | None = None
-    # Set once the departure reminder has been pushed (app/reminders.py).
+    # Set once everyone in the car has had their departure reminder, or the
+    # ride has left (app/reminders.py; who was told is in ReminderSent).
     reminder_sent: bool = Field(default=False)
+    # Set once the driver was asked to note the odometer after a shared car's
+    # return (app/reminders.py), so it is asked once.
+    km_reminder_sent: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     # A shared car is rationed (services.SHARED_CAR_PER_WEEK / _PER_DAY): a
     # ride past the driver's share is "" when within it, "pending" while it
     # waits for an admin, "approved" once an admin let it through (or made
@@ -156,6 +163,8 @@ class Ride(SQLModel, table=True):
         back_populates="ride",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "DriveLeg.id"},
     )
+    # Who has had their departure reminder (app/reminders.py); goes with the ride.
+    reminders: list["ReminderSent"] = Relationship(sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 
 class Booking(SQLModel, table=True):
@@ -324,3 +333,37 @@ class ProfilePhoto(SQLModel, table=True):
     content_type: str
     data: bytes
     updated_at: datetime = Field(default_factory=utcnow)
+class ReminderSent(SQLModel, table=True):
+    """One person told that their ride leaves soon (app/reminders.py). Each
+    person picks how long before departure they want it (`User.remind_before`),
+    so a ride's reminders go out at different minutes; this is who has had theirs."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    ride_id: int = Field(foreign_key="ride.id", index=True)
+    user_id: int = Field(foreign_key="appuser.id", index=True)
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class CarReport(SQLModel, table=True):
+    """How a shared car was found or left: the odometer, the battery, whether
+    it is clean, and anything wrong with it (a scratch, a warning light, no
+    washer fluid). Written when a car is brought back (`routers/odometer.py`)
+    or on its own (`POST /api/cars/corporate/{id}/reports`); the newest one is
+    the car's state (`services.car_states`). Snapshots, like everything: the
+    name stays when the account goes."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    car_id: int = Field(foreign_key="corporatecar.id", index=True)
+    # The ride the car came back from, when the report came with its return.
+    ride_id: int | None = Field(default=None, foreign_key="ride.id")
+    user_id: int | None = Field(default=None, foreign_key="appuser.id")
+    user_name: str
+    # None when the reporter did not read it.
+    odometer_km: int | None = None
+    # Battery (or fuel) in percent; None when not read.
+    soc: int | None = None
+    # True clean, False needs a wash, None not said.
+    clean: bool | None = None
+    # What is wrong, in the reporter's words: "" for nothing wrong, None for not said.
+    issues: str | None = None
+    created_at: datetime = Field(default_factory=utcnow, index=True)

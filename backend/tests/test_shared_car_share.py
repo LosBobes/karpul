@@ -105,7 +105,7 @@ def test_asking_for_approval_adds_the_ride_as_pending_and_tells_the_admins(clien
     assert client.get(f"/api/rides/{other['id']}").status_code == 404
     assert sent == [
         ("ride_declined", [ana], {"name": "Ada Admin"}),
-        ("ride_removed", [mila], {"driver": "Ada Admin"}),
+        ("ride_removed", [mila], {"driver": "Ada Admin", "alternatives": 0, "url": "/"}),
     ]
 
     # Both decisions are in the admin's log.

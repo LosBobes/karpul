@@ -33,6 +33,9 @@ services:
       KARPUL_VAPID_SUBJECT: ${KARPUL_VAPID_SUBJECT:-}
       # Optional error tracking. Unset = nothing is sent anywhere.
       KARPUL_SENTRY_DSN: ${KARPUL_SENTRY_DSN:-}
+      # The nightly snapshots (app/housekeeping.py): where in the volume, how many to keep.
+      KARPUL_BACKUP_DIR: ${KARPUL_BACKUP_DIR:-/data/backups}
+      KARPUL_BACKUP_KEEP: ${KARPUL_BACKUP_KEEP:-14}
       # Caddy is the only thing that can reach the container (the port below is
       # loopback-only), so uvicorn may believe its X-Forwarded-For. That is what
       # gives the sign-in rate limit (app/ratelimit.py) the visitor's address

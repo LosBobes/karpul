@@ -1,0 +1,138 @@
+/* ---------------------------------------------------------------------------
+   Karpul — a light, card-based board.
+
+   Fluent 2 in Karpul green: one green accent for "selected / go" (step 80 of
+   the brand ramp below), white cards on a neutral ground, Fluent's two-part
+   elevation shadows, 4px controls, 8px cards and 12px sheets, Segoe UI
+   Variable where the system has it and Inter everywhere else. A phone gets one column; from 1024px wide the
+   board opens into two panes (the list beside the open ride, see "Wide
+   screens" at the end).
+   Semantic class names (.card, .date, .car-tile, .pax-row, .panel, …) are
+   the contract the components render against.
+--------------------------------------------------------------------------- */
+
+@theme {
+  --color-bg: #f5f5f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f0f0;
+  --color-text: #242424;
+  --color-muted: #616161;
+  --color-border: #e0e0e0;
+  --color-border-strong: #d1d1d1;
+  --color-green: #0f7b4f;
+  --color-green-dark: #0b613e;
+  --color-green-soft: #e8f4ee;
+  --color-green-line: #b5dcc7;
+  --color-red: #e5484d;
+  --color-red-soft: #fdecec;
+  --color-blue: #2563eb;
+  --color-blue-soft: #e8efff;
+
+  /* Segoe UI Variable on Windows (Fluent's own face); the bundled Inter on
+     every other system, so Serbian letters never fall back to something odd. */
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI Variable', 'Segoe UI', 'Inter', system-ui, -apple-system, Roboto, sans-serif;
+}
+
+:root {
+  --bg: var(--color-bg);
+  --surface: var(--color-surface);
+  --surface-2: var(--color-surface-2);
+  --text: var(--color-text);
+  --muted: var(--color-muted);
+  --border: var(--color-border);
+  --border-strong: var(--color-border-strong);
+  --green: var(--color-green);
+  --green-dark: var(--color-green-dark);
+  --green-soft: var(--color-green-soft);
+  --green-line: var(--color-green-line);
+  --red: var(--color-red);
+  --red-soft: var(--color-red-soft);
+  --blue: var(--color-blue);
+  --blue-soft: var(--color-blue-soft);
+  /* Fluent shapes: cards 8px, controls 4px, sheets and dialogs 12px. */
+  --radius: 8px;
+  --radius-sm: 4px;
+  --radius-lg: 12px;
+  /* Fluent elevation: an ambient ring plus a key shadow (2, 8 and 28). */
+  --shadow: 0 0 2px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.14);
+  /* What a card the pointer is over rises to. */
+  --shadow-hover: 0 0 2px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.14);
+  --shadow-pop: 0 0 8px rgba(0, 0, 0, 0.12), 0 14px 28px rgba(0, 0, 0, 0.14);
+  /* What a card rests at (Fluent's shadow 4). */
+  --shadow-card: 0 0 2px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.14);
+  /* Fluent's durations: hover 100ms, a popover 150ms, a dialog 250ms. */
+  --dur-fast: 0.15s;
+  --dur-normal: 0.2s;
+  --dur-gentle: 0.25s;
+  /* Motion: Fluent's patterns (see "Motion" below) on Fluent's curves:
+     decelerate in, accelerate out, no overshoot. */
+  --ease-out: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --ease-in: cubic-bezier(0.7, 0, 1, 0.5);
+  --ease-spring: cubic-bezier(0.1, 0.9, 0.2, 1);
+  /* The one overshoot left: the bolt on the update screen. */
+  --ease-bounce: cubic-bezier(0.34, 1.4, 0.64, 1);
+  /* Hover and press: Fluent's easyEase, fast. */
+  --ease-smooth: cubic-bezier(0.33, 0, 0.67, 1);
+  --hover: 0.1s var(--ease-smooth);
+
+  color-scheme: light;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+.mono,
+.when-value,
+.car-tile-seats,
+.section-count,
+.stepper output,
+input[type='date'],
+input[type='time'] {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

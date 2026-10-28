@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carModels'
+import { factText } from '../lib/carState'
 import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { keepsKm } from '../lib/odometer'
 import { telHref } from '../lib/support'
-import type { Ride } from '../lib/types'
+import type { CarState, Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
 import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
@@ -69,6 +70,9 @@ interface Props {
   onClaim: (ride: Ride) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
   onGuide?: () => void
+  /** How the shared car stands (components/CarStatus.tsx), for the line under its name. */
+  carState?: CarState | null
+  onCarState?: () => void
   /** Queue for a seat in this full car, getting in at `pickup` once one frees up. */
   onWait: (ride: Ride, pickup: string) => void
   /** Leave the queue (yourself), or take someone off it (the driver). */
@@ -114,6 +118,8 @@ export function CarDetail({
   onDecline,
   onClaim,
   onGuide,
+  carState = null,
+  onCarState,
   onWait,
   onLeaveLine,
   onOdometer,
@@ -310,6 +316,15 @@ export function CarDetail({
                 </span>
               )}
             </span>
+            {carState && (
+              <button type="button" className="link driver-car-state" onClick={onCarState}>
+                <RoadIcon size={13} />
+                <span>{factText(carState.odometer, (v) => t.carState.km(v.toLocaleString())).value}</span>
+                {carState.soc.value !== null && <span>{factText(carState.soc, (v) => t.carState.pct(v)).value}</span>}
+                {carState.clean.value === false && <span>{t.carState.cleanNo}</span>}
+                {carState.issues.value && <span className="driver-car-issue">{carState.issues.value}</span>}
+              </button>
+            )}
             {ride.car_type === 'corporate' && onGuide && (
               <button type="button" className="link driver-car-guide" onClick={onGuide}>
                 <PlugIcon size={15} /> {t.detail.howTo}

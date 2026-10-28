@@ -250,9 +250,60 @@ export interface UsageRide {
 }
 
 /** What a person can switch off, kind by kind (backend: CATEGORIES in app/push.py). */
-export type PushCategory = 'seats' | 'changes' | 'reminders' | 'messages' | 'requests' | 'approvals'
+export type PushCategory = 'seats' | 'changes' | 'reminders' | 'messages' | 'requests' | 'approvals' | 'cars'
 
-export const PUSH_CATEGORIES: PushCategory[] = ['seats', 'changes', 'reminders', 'messages', 'requests', 'approvals']
+export const PUSH_CATEGORIES: PushCategory[] = ['seats', 'changes', 'reminders', 'messages', 'requests', 'approvals', 'cars']
+
+/** How long before departure the reminder comes (backend: reminders.LEAD_CHOICES). */
+export type RemindBefore = 15 | 30 | 60
+export const REMIND_CHOICES: RemindBefore[] = [15, 30, 60]
+
+export interface PushPreferences {
+  muted: PushCategory[]
+  remind_before: RemindBefore
+}
+
+/** How a shared car was found or left (backend: models.CarReport); each field optional, absent means "not read". */
+export interface CarReportInput {
+  odometer_km?: number | null
+  soc?: number | null
+  /** true clean, false needs a wash. */
+  clean?: boolean | null
+  /** What is wrong; "" says nothing is. */
+  issues?: string | null
+}
+
+export interface CarReport {
+  id: number
+  car_id: number
+  ride_id: number | null
+  user_id: number | null
+  user_name: string
+  odometer_km: number | null
+  soc: number | null
+  clean: boolean | null
+  issues: string | null
+  created_at: string
+}
+
+/** One thing known about a shared car (backend: app/carstate.py Fact). */
+export interface Fact<T> {
+  value: T | null
+  at: string | null
+  by: string | null
+  /** A guess from the rides since the last reading, not a reading. */
+  estimated: boolean
+}
+
+/** A shared car as it stands (GET /api/cars/corporate/state). */
+export interface CarState {
+  car: CorporateCar
+  odometer: Fact<number>
+  soc: Fact<number>
+  clean: Fact<boolean>
+  issues: Fact<string>
+  recent: CarReport[]
+}
 
 export interface PushConfig {
   enabled: boolean

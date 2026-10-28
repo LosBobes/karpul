@@ -225,9 +225,9 @@ def test_departure_reminder_goes_out_once(client, configured, sent):
 
 def test_a_muted_category_is_not_sent_and_the_rest_still_is(client, configured, sent):
     client.post("/api/push/subscriptions", json=subscription(), headers={"X-User-Name": "Ana"})
-    assert client.get("/api/push/preferences", headers={"X-User-Name": "Ana"}).json() == {"muted": []}
+    assert client.get("/api/push/preferences", headers={"X-User-Name": "Ana"}).json() == {"muted": [], "remind_before": 30}
     r = client.put("/api/push/preferences", json={"muted": ["seats", "messages"]}, headers={"X-User-Name": "Ana"})
-    assert r.json() == {"muted": ["seats", "messages"]}
+    assert r.json() == {"muted": ["seats", "messages"], "remind_before": 30}
     assert client.put("/api/push/preferences", json={"muted": ["nonsense"]}, headers={"X-User-Name": "Ana"}).status_code == 422
     assert client.anon.get("/api/push/preferences").status_code == 401
 
@@ -250,3 +250,28 @@ def test_every_kind_belongs_to_a_category():
     from app.push import CATEGORY_OF, TEXTS
 
     assert set(TEXTS["en"]) - {"when"} == set(CATEGORY_OF)
+
+
+# --- A removed ride points at the other cars --------------------------------------
+
+
+def test_a_passenger_whose_ride_goes_is_pointed_at_a_car_with_seats(client, configured, sent):
+    client.post("/api/push/subscriptions", json=subscription("https://push.example/bojan"), headers={"X-User-Name": "Bojan"})
+    ride = client.post("/api/rides", json=own_ride()).json()
+    client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Bojan"})
+    # Mila's car at 08:00 has a seat, Dara's at 07:00 is full: Mila's is the one offered.
+    mila = client.post("/api/rides", json=own_ride(driver_name="Mila", departure_time="08:00", seats=1)).json()
+    dara = client.post("/api/rides", json=own_ride(driver_name="Dara", departure_time="07:00", seats=1)).json()
+    client.post(f"/api/rides/{dara['id']}/bookings", json={"passenger_name": "Ceca"})
+    sent.clear()
+    assert client.delete(f"/api/rides/{ride['id']}", headers={"X-User-Name": "Ana"}).status_code == 204
+    assert [t.endpoint for t, _ in sent] == ["https://push.example/bojan"]
+    assert sent[0][1]["title"] == "Ana removed the ride. 1 other car with free seats that day"
+    assert sent[0][1]["url"] == f"/ride/{mila['id']}"
+
+    # With nothing else that day the message is the plain one, and leads nowhere stale.
+    alone = client.post("/api/rides", json=own_ride(ride_date=(date.today() + timedelta(days=3)).isoformat())).json()
+    client.post(f"/api/rides/{alone['id']}/bookings", json={"passenger_name": "Bojan"})
+    sent.clear()
+    client.delete(f"/api/rides/{alone['id']}", headers={"X-User-Name": "Ana"})
+    assert sent[0][1]["title"] == "Ana removed the ride" and sent[0][1]["url"] == "/"
