@@ -4678,6 +4678,55 @@ body.dragging {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+/* The cropper (components/PhotoCropper.tsx): the picture dimmed round a square
+   outline (what is saved) with the avatar's circle drawn inside it. */
+.cropper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cropper-stage {
+  position: relative;
+  width: min(100%, 300px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #1b1b1b;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.cropper-stage:active {
+  cursor: grabbing;
+}
+.cropper-stage:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.cropper-img {
+  position: absolute;
+  max-width: none;
+  height: auto;
+  pointer-events: none;
+}
+.cropper-frame {
+  position: absolute;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 999px rgb(0 0 0 / 0.55);
+  pointer-events: none;
+}
+.cropper-circle {
+  position: absolute;
+  inset: 0;
+  border: 1.5px dashed rgb(255 255 255 / 0.9);
+  border-radius: 50%;
+}
+.cropper-zoom {
+  width: min(100%, 300px);
+  margin: 0 auto;
+  accent-color: var(--green);
+}
 .account-section {
   margin: 0.4rem 0 -0.2rem;
   font-size: 0.86rem;

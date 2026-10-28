@@ -264,6 +264,10 @@ const en = {
     photoHint: 'Everyone signed in to Karpul sees it next to your name.',
     photoUnreadable: 'That file could not be read as a picture.',
     photoSaving: 'Saving the photo…',
+    usePhoto: 'Use this photo',
+    cropArea: 'Photo crop. Drag or use the arrow keys to move it, + and − to zoom.',
+    cropZoom: 'Zoom',
+    cropHint: 'The square is what is saved; the circle is how it shows next to your name.',
   },
 
   you: {
@@ -1274,6 +1278,10 @@ const sr: Messages = {
     photoHint: 'Svi prijavljeni na Karpul je vide pored tvog imena.',
     photoUnreadable: 'Ta datoteka ne može da se pročita kao slika.',
     photoSaving: 'Čuvam fotografiju…',
+    usePhoto: 'Koristi ovu fotografiju',
+    cropArea: 'Isecanje fotografije. Pomeri je prevlačenjem ili strelicama, uvećaj sa + i −.',
+    cropZoom: 'Uvećanje',
+    cropHint: 'Kvadrat je ono što se čuva; krug je ono što se vidi pored tvog imena.',
   },
 
   you: {
