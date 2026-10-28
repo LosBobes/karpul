@@ -405,6 +405,14 @@ export const HandIcon = icon(
     <path d="M14.5 11V6.25a1.5 1.5 0 0 1 3 0v7.5a7 7 0 0 1-7 7h-.4a6 6 0 0 1-4.6-2.15L3.4 16.05a1.5 1.5 0 0 1 2.3-1.9L8.5 16.25" />
   </>,
 )
+/** A cup with steam over it: the driver would appreciate a coffee. */
+export const CoffeeIcon = icon(
+  <>
+    <path d="M4.75 10.75h11.5v4.5a5 5 0 0 1-5 5h-1.5a5 5 0 0 1-5-5v-4.5Z" />
+    <path d="M16.25 12h1a2.75 2.75 0 0 1 0 5.5h-1.6" />
+    <path d="M8.25 3.75c-.6.7-.6 1.55 0 2.25s.6 1.55 0 2.25M12 3.75c-.6.7-.6 1.55 0 2.25s.6 1.55 0 2.25" />
+  </>,
+)
 /** An hourglass: waiting for a seat. */
 export const HourglassIcon = icon(
   <>

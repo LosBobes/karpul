@@ -24,7 +24,9 @@ def get_ride_or_404(session: Session, ride_id: int) -> Ride:
 
 
 def is_driver(user: User, ride: Ride) -> bool:
-    return is_person(user, ride.driver_id, ride.driver_name)
+    """A driver who cancelled a shared car into `needs_driver` gave the ride
+    up: the name stays on it until someone takes over, the say does not."""
+    return not ride.needs_driver and is_person(user, ride.driver_id, ride.driver_name)
 
 
 def may_run(user: User, ride: Ride) -> bool:

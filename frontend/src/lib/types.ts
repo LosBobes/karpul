@@ -58,6 +58,11 @@ export interface Ride {
   /** A shared car is one ride a week per driver: "" within that, "pending" while
    * an admin has to approve one past it, "approved" once one did. */
   approval: '' | 'pending' | 'approved'
+  /** The driver cancelled a shared car with passengers in it: one of them may
+   *  take the wheel (`takeOver`); `driver_name` is still who cancelled. */
+  needs_driver: boolean
+  /** Driver's hint: they would appreciate a coffee. */
+  coffee_please: boolean
   /** The driver's mobile number, when their account has one. */
   driver_phone: string | null
   bookings: Booking[]
@@ -178,6 +183,7 @@ export interface RideInput {
   notes: string
   passengers_manage: boolean
   passengers_add_stops: boolean
+  coffee_please: boolean
   stops: string[]
   stops_before: string[]
   distance_km: number | null

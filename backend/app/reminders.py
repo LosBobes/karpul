@@ -2,7 +2,9 @@
 odometer once a shared car should be back.
 
 `send_due_reminders` is the whole rule, run once a minute by `reminder_loop`
-from the app's lifespan while push is configured.
+from the app's lifespan while push is configured. The same loop also removes,
+push or no push, a shared-car ride whose driver cancelled and that nobody
+took over by departure (`drop_driverless`).
 
 *Leaving soon.* Each person chooses how long before departure they want it
 (`User.remind_before`, one of LEAD_CHOICES), so one ride's reminders go out
@@ -47,7 +49,8 @@ def lead_of(user: User) -> int:
 
 
 def _people(session: Session, ride: Ride) -> dict[int, User]:
-    ids = {uid for uid in [ride.driver_id] + [b.passenger_id for b in ride.bookings] if uid is not None}
+    driver = [] if ride.needs_driver else [ride.driver_id]
+    ids = {uid for uid in driver + [b.passenger_id for b in ride.bookings] if uid is not None}
     if not ids:
         return {}
     return {u.id: u for u in session.exec(select(User).where(User.id.in_(ids)))}  # type: ignore[union-attr,misc]
@@ -124,6 +127,20 @@ def send_km_reminders(session: Session, now: datetime) -> int:
     return asked
 
 
+def drop_driverless(session: Session, now: datetime | None = None) -> int:
+    """Remove every ride whose driver cancelled (`needs_driver`) and that
+    nobody took over by its departure: the passengers are told it is off, and
+    the car is free again. Returns how many went. Commits."""
+    from .routers.rides import _remove_rides
+
+    now = now or datetime.now()
+    stmt = select(Ride).where(Ride.needs_driver.is_(True), Ride.ride_date <= now.date())  # type: ignore[attr-defined]
+    due = [r for r in session.exec(stmt) if datetime.combine(r.ride_date, r.departure_time) <= now]
+    if due:
+        _remove_rides(session, None, due, tell_driver=False)
+    return len(due)
+
+
 def send_due_reminders(session: Session, now: datetime | None = None) -> int:
     """Both reminders, once; returns how many rides had a departure reminder
     go out this tick. Commits."""
@@ -140,12 +157,13 @@ async def reminder_loop() -> None:
 
     def tick() -> None:
         with Session(engine) as session:
-            send_due_reminders(session)
+            drop_driverless(session)
+            if vapid() is not None:
+                send_due_reminders(session)
 
     while True:
         try:
-            if vapid() is not None:
-                await asyncio.to_thread(tick)
+            await asyncio.to_thread(tick)
         except Exception as exc:  # noqa: BLE001 - keep the loop alive whatever happened
             log.warning("reminder tick failed: %s", exc)
         await asyncio.sleep(CHECK_EVERY_S)

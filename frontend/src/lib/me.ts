@@ -31,7 +31,21 @@ export function isMe(me: Me, personId: number | null | undefined, name: string):
 }
 
 export function drives(ride: Ride, me: Me): boolean {
-  return isMe(me, ride.driver_id, ride.driver_name)
+  // A driver who cancelled into `needs_driver` gave the ride up (backend: is_driver).
+  return !ride.needs_driver && isMe(me, ride.driver_id, ride.driver_name)
+}
+
+/**
+ * Will removing this ride ask its passengers to drive instead of removing it?
+ * The driver's own shared car, not waiting for approval, not left yet, with
+ * someone with an account in it (backend: _hands_over in routers/rides.py).
+ */
+export function handsOver(ride: Ride, me: Me, now: Date = new Date()): boolean {
+  if (!drives(ride, me) || ride.car_type !== 'corporate' || ride.approval === 'pending') return false
+  if (!ride.bookings.some((b) => b.passenger_id !== null)) return false
+  const [y, m, d] = ride.ride_date.split('-').map(Number)
+  const [hh, mm] = ride.departure_time.split(':').map(Number)
+  return new Date(y, m - 1, d, hh, mm) > now
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { drives, inRide, isMe, mayClaim, myBooking, placeInLine, seatedIn, type Me } from './me'
+import { drives, handsOver, inRide, isMe, mayClaim, myBooking, placeInLine, seatedIn, type Me } from './me'
 import { similarName } from './dates'
 import type { Ride } from './types'
 
@@ -24,6 +24,8 @@ function ride(overrides: Partial<Ride> = {}): Ride {
     stops: [],
     stops_before: [],
     passengers_add_stops: true,
+    needs_driver: false,
+    coffee_please: false,
     distance_km: null,
     chip_in: '',
     series_id: null,
@@ -102,5 +104,32 @@ describe('mayClaim', () => {
     expect(similarName('Sandra Kozomara', 'Sandra Kozomarra')).toBe(true)
     expect(similarName('Milan Kolacek', 'Milan Katanic')).toBe(false)
     expect(similarName('', '')).toBe(false)
+  })
+})
+
+describe('a shared car the driver cancels', () => {
+  const now = new Date(2026, 8, 9, 12, 0)
+  const mine = (overrides: Partial<Ride> = {}) =>
+    ride({
+      car_type: 'corporate',
+      corporate_car_id: 3,
+      driver_id: 1,
+      driver_name: 'Ana Petrović',
+      bookings: [{ id: 5, passenger_id: 9, passenger_name: 'Mila', pickup: '', created_at: '' }],
+      ...overrides,
+    })
+
+  it('is offered to its passengers while it has somewhere to go', () => {
+    expect(handsOver(mine(), ana, now)).toBe(true)
+    expect(handsOver(mine({ ride_date: '2026-09-09', departure_time: '11:00:00' }), ana, now)).toBe(false)
+    expect(handsOver(mine({ car_type: 'own' }), ana, now)).toBe(false)
+    expect(handsOver(mine({ approval: 'pending' }), ana, now)).toBe(false)
+    expect(handsOver(mine({ bookings: [{ id: 5, passenger_id: null, passenger_name: 'Mila', pickup: '', created_at: '' }] }), ana, now)).toBe(false)
+    // Only the driver's own cancelling asks; an admin's removes it.
+    expect(handsOver(mine({ driver_id: 2 }), { ...ana, admin: true }, now)).toBe(false)
+  })
+
+  it('is no longer driven by whoever gave it up', () => {
+    expect(drives(mine({ needs_driver: true }), ana)).toBe(false)
   })
 })

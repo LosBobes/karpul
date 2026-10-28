@@ -18,6 +18,8 @@ const ride = (id: number, over: Partial<Ride> = {}): Ride =>
     stops: [],
     stops_before: [],
     passengers_add_stops: true,
+    needs_driver: false,
+    coffee_please: false,
     seats: 3,
     bookings: [],
     waitlist: [],

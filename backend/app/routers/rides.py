@@ -340,7 +340,64 @@ def delete_ride(
     if scope == "following" and ride.series_id:
         stmt = select(Ride).where(Ride.series_id == ride.series_id, Ride.ride_date > ride.ride_date, Ride.id != ride.id)
         doomed += [r for r in session.exec(stmt) if may_run(user, r)]
-    _remove_rides(session, user, doomed)
+    handed = [r for r in doomed if _hands_over(user, r)]
+    for r in handed:
+        r.needs_driver = True
+        session.add(r)
+    _remove_rides(session, user, [r for r in doomed if r not in handed])
+    for r in handed:
+        session.refresh(r)
+        ride_saved(r, created=False)
+        notify(session, [b.passenger_id for b in r.bookings], "driver_needed", r, driver=user.display_name)
+
+
+def _hands_over(user: User, ride: Ride) -> bool:
+    """A driver cancelling a shared car that still has somewhere to go and
+    people in it does not take the car away from them: the ride stays,
+    `needs_driver`, and the passengers are asked whether one of them drives
+    (`take_over`). An admin's removal, an own car, a ride waiting for approval
+    (it holds no car) or one with nobody to ask is removed as before. The
+    frontend's twin is `handsOver` in lib/me.ts."""
+    return (
+        is_driver(user, ride)
+        and ride.car_type == CarType.corporate
+        and ride.approval != "pending"
+        and any(b.passenger_id is not None for b in ride.bookings)
+        and datetime.combine(ride.ride_date, ride.departure_time) > datetime.now()
+    )
+
+
+@router.post("/{ride_id}/takeover", response_model=RideRead)
+def take_over(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """A passenger of a shared car whose driver cancelled (`needs_driver`)
+    drives it instead: they become its driver, their seat is free for the
+    queue, and the others in the car are told. The ride was already within
+    someone's share of the shared cars, so it is not counted against theirs
+    afresh: it is a rescue, not another booking."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    if not ride.needs_driver:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This ride already has a driver")
+    booking = booking_of(ride, user)
+    if booking is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a passenger in this car can take it over")
+    ride.bookings.remove(booking)
+    session.delete(booking)
+    ride.driver_id = user.id
+    ride.driver_name = user.display_name
+    ride.needs_driver = False
+    new_stops: list[Booking] = []
+    promoted = promote_waitlist(session, ride, new_stops)
+    session.add(ride)
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+    notify(session, [b.passenger_id for b in ride.bookings if b not in promoted], "driver_found", ride, name=user.display_name)
+    if promoted:
+        notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
+    for b in new_stops:
+        notify(session, [ride.driver_id], "stop_added", ride, name=b.passenger_name, place=b.pickup)
+    return to_ride_read_dict(ride)
 
 
 def _alternatives(session: Session, ride: Ride) -> list[Ride]:
@@ -352,35 +409,39 @@ def _alternatives(session: Session, ride: Ride) -> list[Ride]:
     return others
 
 
-def _remove_rides(session: Session, user: User, doomed: list[Ride], action: str = "ride_removed", tell_driver: bool = True) -> None:
+def _remove_rides(
+    session: Session, user: User | None, doomed: list[Ride], action: str = "ride_removed", tell_driver: bool = True
+) -> None:
     """Delete `doomed` as `user`: the passengers (and a driver who is not
     `user`) are told, the requests they answered are open again, and every
     tab hears. A passenger whose ride goes is pointed at the other cars with
     seats that day, when there are any (the push opens the nearest one): a
-    cancellation the evening before is when a seat elsewhere matters.
-    Commits."""
+    cancellation the evening before is when a seat elsewhere matters. With no
+    `user` it is a ride nobody took over (`needs_driver`, reminders.py) going
+    at departure, and the passengers are told that. Commits."""
     gone = []
     reopened: list[RideRequest] = []
     for r in doomed:
         passengers = [b.passenger_id for b in r.bookings]
         alternatives = _alternatives(session, r) if passengers and r.ride_date >= date.today() else []
         if passengers:
+            said = {"driver": user.display_name} if user is not None else {}
             notify(
                 session,
                 passengers,
-                "ride_removed",
+                "ride_removed" if user is not None else "no_driver",
                 r,
-                driver=user.display_name,
                 alternatives=len(alternatives),
                 url=f"/ride/{alternatives[0].id}" if alternatives else "/",
+                **said,
             )
-        if tell_driver:
+        if tell_driver and user is not None:
             notify(session, driver_unless_actor(user, r), "ride_removed", r, driver=user.display_name, url="/")
         for request in session.exec(select(RideRequest).where(RideRequest.ride_id == r.id)):
             request.ride_id = None
             session.add(request)
             reopened.append(request)
-        if on_behalf(user, r):
+        if user is not None and on_behalf(user, r):
             audit.record(session, user, action, r.driver_name, ride=r)
         gone.append((r.id, r.ride_date))
         session.delete(r)
@@ -604,6 +665,12 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
+    if ride.needs_driver and not any(b.passenger_id is not None for b in ride.bookings):
+        # The driver cancelled and nobody is left to ask: the car is free.
+        # The answer still describes the ride, so the frontend can drop it.
+        answer = to_ride_read_dict(ride)
+        _remove_rides(session, None, [ride], tell_driver=False)
+        return answer
     new_stops: list[Booking] = []
     promoted = promote_waitlist(session, ride, new_stops)
     session.commit()

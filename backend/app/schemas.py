@@ -551,6 +551,8 @@ class RideBase(BaseModel):
     notes: str = Field(default="", max_length=500)
     passengers_manage: bool = False
     passengers_add_stops: bool = True
+    # "I would appreciate a coffee": the driver's hint to the passengers.
+    coffee_please: bool = False
     stops: list[str] = Field(default_factory=list)
     stops_before: list[str] = Field(default_factory=list)
     distance_km: float | None = Field(default=None, ge=0, le=2000)
@@ -625,6 +627,7 @@ class RideUpdate(BaseModel):
     notes: str | None = Field(default=None, max_length=500)
     passengers_manage: bool | None = None
     passengers_add_stops: bool | None = None
+    coffee_please: bool | None = None
     stops: list[str] | None = None
     stops_before: list[str] | None = None
     distance_km: float | None = Field(default=None, ge=0, le=2000)
@@ -648,6 +651,7 @@ class RideRead(BaseModel):
     notes: str
     passengers_manage: bool
     passengers_add_stops: bool = True
+    coffee_please: bool = False
     stops: list[str]
     # Pickup points before `origin`, in the order the car reaches them.
     stops_before: list[str] = []
@@ -659,6 +663,9 @@ class RideRead(BaseModel):
     # "" within the driver's share of the shared cars, "pending" while an admin
     # has to approve it, "approved" once one did (services.shared_car_use).
     approval: str = ""
+    # The driver cancelled a shared car with passengers in it; one of them may
+    # take the wheel (POST /api/rides/{id}/takeover).
+    needs_driver: bool = False
     # The driver's mobile number when their account has one, for "Call the driver".
     driver_phone: str | None = None
     bookings: list[BookingRead]

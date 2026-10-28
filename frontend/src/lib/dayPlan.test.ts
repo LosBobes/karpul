@@ -23,6 +23,8 @@ function ride(over: Partial<Ride>): Ride {
     stops: [],
     stops_before: [],
     passengers_add_stops: true,
+    needs_driver: false,
+    coffee_please: false,
     distance_km: null,
     chip_in: '',
     series_id: null,

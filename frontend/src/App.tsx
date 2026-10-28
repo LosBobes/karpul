@@ -37,7 +37,7 @@ import { messages, useT } from './lib/i18n'
 import { fmtShortDate, fmtTime, parseISODate, todayISO } from './lib/dates'
 import { useSlideDir } from './lib/motion'
 import type { PassengerDrag } from './lib/dnd'
-import { drives, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
+import { drives, handsOver, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
@@ -248,15 +248,21 @@ function Board({ session }: { session: Session }) {
       setToast({ kind: 'ok', text: t.toasts.youreIn(ride.driver_name) })
     })
 
+  /** A ride waiting for a driver goes once nobody with an account is left to ask. */
+  const afterLeave = (r: Ride) => {
+    if (r.needs_driver && !r.bookings.some((b) => b.passenger_id !== null)) removeRides((x) => x.id === r.id)
+    else upsertRide(r)
+  }
+
   const onLeave = (ride: Ride, bookingId: number) =>
     withBusy(ride.id, async () => {
-      upsertRide(await api.leave(ride.id, bookingId))
+      afterLeave(await api.leave(ride.id, bookingId))
     })
 
   /** The keyboard's way of dragging the chip to another car: leave one, join the other. */
   const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '', newStop: NewStop | null = null) =>
     withBusy(target.id, async () => {
-      upsertRide(await api.leave(from.ride.id, from.bookingId))
+      afterLeave(await api.leave(from.ride.id, from.bookingId))
       upsertRide(await api.join(target.id, userName, pickup, newStop))
       setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
     })
@@ -346,16 +352,23 @@ function Board({ session }: { session: Session }) {
 
   const onCancel = (ride: Ride) => {
     const n = ride.bookings.length
+    // A shared car with people in it is offered to them rather than taken away.
+    const handed = handsOver(ride, me)
     setConfirm({
       title: t.confirm.removeRideTitle,
-      body: n > 0 ? t.confirm.removeRidePax(n) : t.confirm.removeRideBody(ride.driver_name, ride.car_name, fmtShortDate(ride.ride_date)),
+      body: handed
+        ? t.confirm.handOverPax(n)
+        : n > 0
+          ? t.confirm.removeRidePax(n)
+          : t.confirm.removeRideBody(ride.driver_name, ride.car_name, fmtShortDate(ride.ride_date)),
       label: t.common.remove,
       onConfirm: () => {
         setConfirm(null)
         void withBusy(ride.id, async () => {
           await api.deleteRide(ride.id)
-          removeRides((r) => r.id === ride.id)
-          setToast({ kind: 'ok', text: t.toasts.rideRemoved })
+          if (handed) upsertRide(await api.ride(ride.id))
+          else removeRides((r) => r.id === ride.id)
+          setToast({ kind: 'ok', text: handed ? t.toasts.handedOver : t.toasts.rideRemoved })
         })
       },
     })
@@ -370,8 +383,11 @@ function Board({ session }: { session: Session }) {
       onConfirm: () => {
         setConfirm(null)
         void withBusy(ride.id, async () => {
+          // The ones offered to their passengers stay; the live update marks them.
+          // Decided before the call, as that update may land first.
+          const kept = new Set(rides.filter((r) => handsOver(r, me)).map((r) => r.id))
           await api.deleteRide(ride.id, 'following')
-          removeRides((r) => r.series_id === ride.series_id && r.ride_date >= ride.ride_date)
+          removeRides((r) => r.series_id === ride.series_id && r.ride_date >= ride.ride_date && !kept.has(r.id))
           setToast({ kind: 'ok', text: t.toasts.ridesRemoved })
         })
       },
@@ -382,7 +398,7 @@ function Board({ session }: { session: Session }) {
     setCarSel(target.id)
     void withBusy(target.id, async () => {
       if (drag.fromRideId !== null && drag.bookingId !== null && drag.fromRideId !== target.id) {
-        upsertRide(await api.leave(drag.fromRideId, drag.bookingId))
+        afterLeave(await api.leave(drag.fromRideId, drag.bookingId))
       }
       upsertRide(await api.join(target.id, userName))
       setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
@@ -486,6 +502,14 @@ function Board({ session }: { session: Session }) {
     })
 
   // --- a ride under a name with no account: "this is me" ---
+
+  // --- a shared car whose driver cancelled: a passenger takes the wheel ---
+
+  const onTakeOver = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.takeOver(ride.id))
+      setToast({ kind: 'ok', text: t.toasts.tookOver })
+    })
 
   const onClaim = (ride: Ride) =>
     withBusy(ride.id, async () => {
@@ -681,6 +705,7 @@ function Board({ session }: { session: Session }) {
       onApprove={onApprove}
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}
+      onTakeOver={(r) => void onTakeOver(r)}
       onGuide={() => show('guide')}
       carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}
       onCarState={() => show('carState')}

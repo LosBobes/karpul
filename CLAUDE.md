@@ -166,7 +166,20 @@ sets `"approved"` and pushes `ride_approved`, so an approval that would double-b
 `ride_removed` to the passengers; both are in the admin's log. **A removed ride points on**: a
 passenger's `ride_removed` push also says how many other cars that day still have a seat
 (`_alternatives`, nearest departure first) and opens the nearest one (`notify(..., url=)`), so a
-cancellation the evening before is not a dead end. On screen: the share's refusal in
+cancellation the evening before is not a dead end. **A cancelled shared car asks its passengers
+first**: when the *driver* removes their own shared-car ride that has not left, is not pending and has
+someone with an account in it (`_hands_over` in `routers/rides.py`, mirrored by `handsOver` in
+`lib/me.ts`), the ride is not deleted but set `Ride.needs_driver` (an `ADDED_COLUMNS` column): it keeps
+the car, the passengers are pushed `driver_needed`, and `is_driver` / `drives()` stop treating the old
+driver as the driver (their name stays as the snapshot; the ride no longer counts in their share). A
+passenger's `POST /api/rides/{id}/takeover` makes them the driver (their seat goes to the queue, the
+others are pushed `driver_found`; the share is not checked again, it is a rescue). The last passenger
+with an account leaving removes it, and `reminders.drop_driverless` (every tick of the reminder loop,
+push or no push) removes one nobody took by departure, pushing `no_driver`. On screen: a *Needs a
+driver* tag and an *I'll drive* row on the card (`.approval-row`), the tag on the Upcoming row, and the
+removal confirmation says so. Tests: `tests/test_takeover.py`. A driver may also say they would
+appreciate a coffee (`Ride.coffee_please`, a switch in the form's Advanced part, a *Coffee* fact on the
+driver card); it is only ever shown. On screen: the share's refusal in
 `RideForm` grows an *Ask an admin to approve it* button (`canAskApproval`, matched on the text's
 tail in `App.tsx`), a pending ride wears an amber *Awaiting approval* tag on the card, the Upcoming
 row and as a hollow stretch on the day plan (`.plan-ride-pending`, drawn *under* `.plan-free`, and
