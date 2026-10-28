@@ -598,7 +598,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
 
           <label className="switch-row">
             <span className="switch-row-text">
-              <span className="switch-row-title">
+              <span className="switch-row-title switch-row-title-icon">
                 <CoffeeIcon size={16} /> {t.form.coffee}
               </span>
             </span>
