@@ -190,6 +190,12 @@ input[type='checkbox'] {
   font-weight: 500;
   color: var(--text);
 }
+/* A title led by a small icon, the two on one line. */
+.switch-row-title-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
 .switch-row-desc {
   font-size: 0.82rem;
   line-height: 1.4;
