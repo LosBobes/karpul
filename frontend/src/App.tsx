@@ -336,6 +336,14 @@ function Board({ session }: { session: Session }) {
       setToast({ kind: 'ok', text: on ? t.toasts.manageOn : drives(ride, me) ? t.toasts.manageOff : t.toasts.manageOffFor(ride.driver_name) })
     })
 
+  /** The driver's switch: may the passengers put new pickup points on the route? */
+  const onTogglePassengersAddStops = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      const on = !ride.passengers_add_stops
+      upsertRide(await api.updateRide(ride.id, { passengers_add_stops: on }))
+      setToast({ kind: 'ok', text: on ? t.toasts.addStopsOn : t.toasts.addStopsOff })
+    })
+
   const onCancel = (ride: Ride) => {
     const n = ride.bookings.length
     setConfirm({
@@ -669,6 +677,7 @@ function Board({ session }: { session: Session }) {
       onEdit={(r) => setForm({ mode: 'edit', ride: r })}
       onDuplicate={(r) => setForm({ mode: 'create', template: r })}
       onTogglePassengersManage={onTogglePassengersManage}
+      onTogglePassengersAddStops={onTogglePassengersAddStops}
       onApprove={onApprove}
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}

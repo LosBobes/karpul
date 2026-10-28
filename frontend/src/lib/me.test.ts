@@ -23,6 +23,7 @@ function ride(overrides: Partial<Ride> = {}): Ride {
     passengers_manage: false,
     stops: [],
     stops_before: [],
+    passengers_add_stops: true,
     distance_km: null,
     chip_in: '',
     series_id: null,

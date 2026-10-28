@@ -168,6 +168,31 @@ def test_a_passenger_adds_their_own_pickup_point(client, sent):
     assert r.status_code == 422 and "destination" in r.text
 
 
+def test_the_driver_can_close_the_route_to_new_pickup_points(client, sent):
+    rid = client.post("/api/rides", json=own_ride(stops=["Liman"], seats=3, passengers_add_stops=False)).json()["id"]
+    r = client.post(
+        f"/api/rides/{rid}/bookings", json={"passenger_name": "Bojan", "pickup": "Futog", "new_stop": {"before": True}}
+    )
+    assert r.status_code == 403 and "does not take new pickup points" in r.text
+    # A pickup point already on the route is still fine, and so is the start.
+    r = client.post(f"/api/rides/{rid}/bookings", json={"passenger_name": "Bojan", "pickup": "liman", "new_stop": {}})
+    assert r.status_code == 201 and r.json()["bookings"][0]["pickup"] == "Liman"
+    # The driver may still add one for a passenger, and open the route again.
+    r = client.post(
+        f"/api/rides/{rid}/bookings",
+        json={"passenger_name": "Mila", "pickup": "Futog", "new_stop": {"before": True}},
+        headers={"X-User-Name": "Ana"},
+    )
+    assert r.status_code == 201 and r.json()["stops_before"] == ["Futog"]
+    r = client.patch(f"/api/rides/{rid}", json={"passengers_add_stops": True}, headers={"X-User-Name": "Ana"})
+    assert r.json()["passengers_add_stops"] is True
+    bid = r.json()["bookings"][0]["id"]
+    r = client.patch(
+        f"/api/rides/{rid}/bookings/{bid}", json={"pickup": "Sajam", "new_stop": {}}, headers={"X-User-Name": "Bojan"}
+    )
+    assert r.status_code == 200 and r.json()["stops"] == ["Liman", "Sajam"]
+
+
 def test_the_driver_adds_a_pickup_point_after_the_fact(client, sent):
     rid = client.post("/api/rides", json=own_ride(stops=["Liman"])).json()["id"]
     url = f"/api/rides/{rid}/stops"

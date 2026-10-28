@@ -70,6 +70,7 @@ function isAdvancedRide(seed: Ride | null): boolean {
   if (!seed) return false
   return (
     seed.passengers_manage ||
+    !seed.passengers_add_stops ||
     seed.stops.length > 0 ||
     seed.stops_before.length > 0 ||
     seed.distance_km != null ||
@@ -132,6 +133,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const [rawSeats, setSeats] = useState(seed?.seats ?? last.seats ?? 3)
   const [notes, setNotes] = useState(seed?.notes ?? '')
   const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
+  const [passengersAddStops, setPassengersAddStops] = useState(seed?.passengers_add_stops ?? true)
   const [stops, setStops] = useState<string[]>(seed?.stops ?? [])
   const [stopsBefore, setStopsBefore] = useState<string[]>(seed?.stops_before ?? [])
   const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
@@ -194,6 +196,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     !existing && repeat && repeatCount > 1 ? t.form.sumRepeat : null,
     stopCount ? t.form.sumStops(stopCount) : null,
     passengersManage ? t.form.sumManage : null,
+    passengersAddStops ? null : t.form.sumNoNewStops,
     distance.trim() || knownKm !== null ? t.form.sumDistance : null,
     chipIn.trim() ? t.form.sumChipIn : null,
     notes.trim() ? t.form.sumNotes : null,
@@ -237,6 +240,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       seats,
       notes,
       passengers_manage: passengersManage,
+      passengers_add_stops: passengersAddStops,
       stops: stops.map((s) => s.trim()).filter(Boolean),
       stops_before: stopsBefore.map((s) => s.trim()).filter(Boolean),
       distance_km: distanceNum,
@@ -550,6 +554,15 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           )}
         </div>
         {advanced && <p className="hint">{t.form.stopsHint}</p>}
+        {advanced && (
+          <label className="switch-row">
+            <span className="switch-row-text">
+              <span className="switch-row-title">{t.form.canAddStops}</span>
+              <span className="switch-row-desc">{passengersAddStops ? t.form.addStopsOn : t.form.addStopsOff}</span>
+            </span>
+            <input type="checkbox" checked={passengersAddStops} onChange={(e) => setPassengersAddStops(e.target.checked)} />
+          </label>
+        )}
       </div>
 
       {advanced && (

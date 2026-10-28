@@ -34,7 +34,7 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
@@ -320,7 +320,10 @@ to the origin with `drop_orphaned_pickups`). **New pickup points after the fact*
 getting in or moving (`BookingCreate` / `BookingUpdate` with `new_stop: {before, index}`) at a place
 not on the route puts it there (`add_stop`; a place already on it is just that place, the
 destination is a 422) and the driver is pushed `stop_added`; the driver or an admin adds one with
-`POST /api/rides/{id}/stops`. On screen the pickup `Select` ends in *Somewhere else…*, which opens
+`POST /api/rides/{id}/stops`. The driver's switch `Ride.passengers_add_stops` (on by default, in
+`RideUpdate` like `passengers_manage`; the ⋮ menu and the form's Advanced route) closes the route to
+passengers' new places (a 403; picking a place already on it still works, and whoever runs the ride
+may still add one for a passenger); off, the pickup `Select` drops *Somewhere else…*. On screen the pickup `Select` ends in *Somewhere else…*, which opens
 `components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`),
 and the driver card has *Add a pickup point* under the route for whoever runs the ride. `distance_km` and `chip_in` are the driver's own words and only ever
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per

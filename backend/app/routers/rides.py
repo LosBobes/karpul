@@ -490,7 +490,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
         raise HTTPException(status.HTTP_409_CONFLICT, f"{name} already joined this ride")
     if len(ride.bookings) >= ride.seats:
         raise HTTPException(status.HTTP_409_CONFLICT, "No free seats left")
-    added = _new_stop(ride, payload.pickup, payload.new_stop)
+    added = _new_stop(ride, user, payload.pickup, payload.new_stop)
     pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     passenger_id = passenger.id if passenger is not None else None
     ride.bookings.append(Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup))  # type: ignore[arg-type]
@@ -533,7 +533,7 @@ def move_booking(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
     if not is_person(user, booking.passenger_id, booking.passenger_name) and not may_manage_seats(ride, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the passenger or the driver can change this booking")
-    added = _new_stop(ride, payload.pickup, payload.new_stop)
+    added = _new_stop(ride, user, payload.pickup, payload.new_stop)
     booking.pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     session.add(booking)
     session.add(ride)
@@ -568,12 +568,18 @@ def create_stop(ride_id: int, payload: StopCreate, session: WriteSessionDep, cre
     return to_ride_read_dict(ride)
 
 
-def _new_stop(ride: Ride, pickup: str, where: NewStop | None) -> str | None:
+def _new_stop(ride: Ride, user: User, pickup: str, where: NewStop | None) -> str | None:
     """A passenger getting in (or moving) at a place that is not on the route
-    yet adds it there; None when they did not ask for a new place."""
+    yet adds it there, unless the driver switched that off; None when they did
+    not ask for a new place."""
     if where is None:
         return None
-    return add_stop(ride, pickup, where.before, where.index)
+    route = (ride.stops_before, ride.stops)
+    place = add_stop(ride, pickup, where.before, where.index)
+    # A place already on the route is just a pickup, switch or no switch.
+    if (ride.stops_before, ride.stops) != route and not ride.passengers_add_stops and not may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "The driver does not take new pickup points on this ride")
+    return place
 
 
 @router.delete("/{ride_id}/bookings/{booking_id}", response_model=RideRead)

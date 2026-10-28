@@ -67,6 +67,8 @@ interface Props {
   onDuplicate: (ride: Ride) => void
   /** The driver's switch: may the passengers add and remove each other? */
   onTogglePassengersManage: (ride: Ride) => void
+  /** The driver's switch: may the passengers put new pickup points on the route? */
+  onTogglePassengersAddStops: (ride: Ride) => void
   /** Admin: a shared car past the driver's one a week, let through or refused. */
   onApprove: (ride: Ride) => void
   onDecline: (ride: Ride) => void
@@ -122,6 +124,7 @@ export function CarDetail({
   onEdit,
   onDuplicate,
   onTogglePassengersManage,
+  onTogglePassengersAddStops,
   onApprove,
   onDecline,
   onClaim,
@@ -169,12 +172,14 @@ export function CarDetail({
   const [addingStop, setAddingStop] = useState(false)
   const hasStops = allStops(ride).length > 0
   const roomForStop = allStops(ride).length < MAX_STOPS
+  // Off, a passenger picks from the route as it is; the driver still adds places.
+  const mayAddStop = roomForStop && (ride.passengers_add_stops || runsIt)
   const pickupOptions = [
     ...ride.stops_before.map((s) => ({ value: s, label: s, hint: t.detail.beforeStart })),
     { value: '', label: ride.origin, hint: t.detail.start },
     ...ride.stops.map((s) => ({ value: s, label: s })),
   ]
-  const withElsewhere = roomForStop ? [...pickupOptions, { value: ELSEWHERE, label: t.detail.elsewhere }] : pickupOptions
+  const withElsewhere = mayAddStop ? [...pickupOptions, { value: ELSEWHERE, label: t.detail.elsewhere }] : pickupOptions
   const choosingPlace = pickup === ELSEWHERE
   const switching = !!switchFrom && !!onSwitch
   const getIn = () => (switching ? onSwitch!(ride, switchFrom!, pickup) : onJoin(ride, pickup))
@@ -211,6 +216,12 @@ export function CarDetail({
           label: ride.passengers_manage ? t.detail.stopManage : t.detail.letManage,
           icon: <UsersIcon size={18} />,
           onSelect: () => onTogglePassengersManage(ride),
+          disabled: busy || isPast,
+        },
+        {
+          label: ride.passengers_add_stops ? t.detail.stopAddStops : t.detail.letAddStops,
+          icon: <PinIcon size={18} />,
+          onSelect: () => onTogglePassengersAddStops(ride),
           disabled: busy || isPast,
         },
         { label: t.detail.duplicate, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: busy },

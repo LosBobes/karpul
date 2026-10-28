@@ -40,6 +40,8 @@ export interface Ride {
   notes: string
   /** Driver's switch: passengers may add and remove each other. */
   passengers_manage: boolean
+  /** Driver's switch: passengers may put new pickup points on the route. */
+  passengers_add_stops: boolean
   /** Extra pickup points after `origin`, in the order the car reaches them. */
   stops: string[]
   /** Pickup points before `origin`: passengers collected on the way to the start. */
@@ -173,6 +175,7 @@ export interface RideInput {
   seats: number
   notes: string
   passengers_manage: boolean
+  passengers_add_stops: boolean
   stops: string[]
   stops_before: string[]
   distance_km: number | null

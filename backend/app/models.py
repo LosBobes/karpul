@@ -124,6 +124,9 @@ class Ride(SQLModel, table=True):
     # Pickup points before the origin, in the order the car reaches them: a
     # passenger collected on the way to the start. Same one-per-line text.
     stops_before: str = ""
+    # Driver's choice: may a passenger put a new pickup point on the route
+    # when getting in or moving? Off, only the driver (and an admin) adds them.
+    passengers_add_stops: bool = Field(default=True)
     # One-way distance, for the "km shared" figures. Optional; the driver's estimate.
     distance_km: float | None = None
     # A free-text "chip in" note per seat ("300 din", "2 EUR"). No payments here,

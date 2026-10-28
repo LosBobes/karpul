@@ -65,4 +65,13 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   await expect(toast(vesna, 'Liman is on the route.')).toBeAttached()
   await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ'])
   await expect(goran.locator('.trip').first().locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ'])
+
+  // She closes the route to new places: Goran can only pick from what is there.
+  await vesna.getByRole('button', { name: 'Ride options' }).first().click()
+  await vesna.getByRole('menuitem', { name: 'Stop passengers adding pickup points' }).click()
+  await expect(toast(vesna, 'Passengers can no longer add pickup points.')).toBeAttached()
+  await goran.getByRole('button', { name: 'Edit', exact: true }).first().click()
+  await goran.getByRole('button', { name: 'Change pickup' }).click()
+  await expect(goran.getByRole('option', { name: 'Liman' })).toBeVisible()
+  await expect(goran.getByRole('option', { name: 'Somewhere else…' })).toHaveCount(0)
 })

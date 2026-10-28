@@ -546,6 +546,7 @@ class RideBase(BaseModel):
     seats: int = Field(ge=0, le=8)
     notes: str = Field(default="", max_length=500)
     passengers_manage: bool = False
+    passengers_add_stops: bool = True
     stops: list[str] = Field(default_factory=list)
     stops_before: list[str] = Field(default_factory=list)
     distance_km: float | None = Field(default=None, ge=0, le=2000)
@@ -619,6 +620,7 @@ class RideUpdate(BaseModel):
     seats: int | None = Field(default=None, ge=0, le=8)
     notes: str | None = Field(default=None, max_length=500)
     passengers_manage: bool | None = None
+    passengers_add_stops: bool | None = None
     stops: list[str] | None = None
     stops_before: list[str] | None = None
     distance_km: float | None = Field(default=None, ge=0, le=2000)
@@ -641,6 +643,7 @@ class RideRead(BaseModel):
     seats: int
     notes: str
     passengers_manage: bool
+    passengers_add_stops: bool = True
     stops: list[str]
     # Pickup points before `origin`, in the order the car reaches them.
     stops_before: list[str] = []
