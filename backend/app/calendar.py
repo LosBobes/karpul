@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta
 from sqlmodel import Session
 
 from .models import Ride, User
-from .services import rides_of, stops_from_text
+from .services import all_stops, rides_of
 
 PRODID = "-//Karpul//Karpul rides//EN"
 
@@ -48,7 +48,7 @@ def ride_event(ride: Ride, now: datetime | None = None) -> list[str]:
         # A departure after 23:00 with no return: end the event at midnight.
         end = datetime.strptime("23:59:59", "%H:%M:%S").time()
     people = ", ".join(b.passenger_name for b in ride.bookings) or "nobody yet"
-    stops = stops_from_text(ride.stops)
+    stops = all_stops(ride)
     description = f"Driver: {ride.driver_name}\nCar: {ride.car_name}\nPassengers: {people}"
     if stops:
         description += "\nPickup points: " + ", ".join(stops)

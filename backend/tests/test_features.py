@@ -107,7 +107,82 @@ def test_stops_are_cleaned_and_capped(client):
     assert r.status_code == 201, r.text
     # Duplicates, blanks and the origin itself are dropped.
     assert r.json()["stops"] == ["Liman", "Detelinara"]
-    assert client.post("/api/rides", json=own_ride(stops=["a", "b", "c", "d"])).status_code == 422
+    six = ["a", "b", "c", "d", "e", "f"]
+    assert client.post("/api/rides", json=own_ride(stops=six)).status_code == 201
+    assert client.post("/api/rides", json=own_ride(stops=[*six, "g"])).status_code == 422
+    # The cap is on the route as a whole, before the start and after it.
+    r = client.post("/api/rides", json=own_ride(stops=six[:4], stops_before=["x", "y", "z"]))
+    assert r.status_code == 422 and "at most 6" in r.text
+
+
+def test_stops_before_the_start(client):
+    r = client.post("/api/rides", json=own_ride(stops=["Liman", "Petrovaradin"], stops_before=["Futog", " novi sad", "liman"]))
+    assert r.status_code == 201, r.text
+    # The origin is not a stop, and a place is on the route once: where it comes first.
+    assert r.json()["stops_before"] == ["Futog", "liman"] and r.json()["stops"] == ["Petrovaradin"]
+    rid = r.json()["id"]
+    r = client.post(f"/api/rides/{rid}/bookings", json={"passenger_name": "Bojan", "pickup": "futog"})
+    assert r.status_code == 201 and r.json()["bookings"][0]["pickup"] == "Futog"
+    # The driver drops the stop before the start: Bojan is back at the origin.
+    r = client.patch(f"/api/rides/{rid}", json={"stops_before": []}, headers={"X-User-Name": "Ana"})
+    assert r.json()["stops_before"] == [] and r.json()["bookings"][0]["pickup"] == ""
+
+
+@pytest.fixture
+def sent(monkeypatch):
+    out = []
+    monkeypatch.setattr(
+        "app.routers.rides.notify", lambda session, ids, kind, ride, **args: out.append((kind, args)) or 0
+    )
+    return out
+
+
+def test_a_passenger_adds_their_own_pickup_point(client, sent):
+    rid = client.post("/api/rides", json=own_ride(stops=["Liman"], seats=3)).json()["id"]
+    # Getting in somewhere new, before the start.
+    r = client.post(
+        f"/api/rides/{rid}/bookings",
+        json={"passenger_name": "Bojan", "pickup": " Futog ", "new_stop": {"before": True}},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["stops_before"] == ["Futog"] and r.json()["bookings"][0]["pickup"] == "Futog"
+    assert ("stop_added", {"name": "Bojan", "place": "Futog"}) in sent
+    # Moving to a new place along the way, ahead of the driver's own stop.
+    bid = r.json()["bookings"][0]["id"]
+    r = client.patch(
+        f"/api/rides/{rid}/bookings/{bid}",
+        json={"pickup": "Sajam", "new_stop": {"index": 0}},
+        headers={"X-User-Name": "Bojan"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["stops"] == ["Sajam", "Liman"] and r.json()["bookings"][0]["pickup"] == "Sajam"
+    # Futog stays on the route; the driver decides whether it goes.
+    assert r.json()["stops_before"] == ["Futog"]
+    # A place already on the route is that place, not a second copy of it.
+    r = client.post(
+        f"/api/rides/{rid}/bookings", json={"passenger_name": "Mila", "pickup": "liman", "new_stop": {"before": True}}
+    )
+    assert r.json()["stops_before"] == ["Futog"] and r.json()["bookings"][1]["pickup"] == "Liman"
+    # Nobody gets in at the destination.
+    r = client.post(f"/api/rides/{rid}/bookings", json={"passenger_name": "Vuk", "pickup": "HQ", "new_stop": {}})
+    assert r.status_code == 422 and "destination" in r.text
+
+
+def test_the_driver_adds_a_pickup_point_after_the_fact(client, sent):
+    rid = client.post("/api/rides", json=own_ride(stops=["Liman"])).json()["id"]
+    url = f"/api/rides/{rid}/stops"
+    r = client.post(url, json={"stop": "Futog", "before": True}, headers={"X-User-Name": "Ana"})
+    assert r.status_code == 201, r.text
+    assert r.json()["stops_before"] == ["Futog"]
+    r = client.post(url, json={"stop": "Sajam", "index": 0}, headers={"X-User-Name": "Ana"})
+    assert r.json()["stops"] == ["Sajam", "Liman"]
+    assert client.post(url, json={"stop": "liman"}, headers={"X-User-Name": "Ana"}).status_code == 409
+    # Only whoever runs the ride.
+    assert client.post(url, json={"stop": "Kać"}, headers={"X-User-Name": "Bojan"}).status_code == 403
+    for place in ("a", "b", "c"):
+        client.post(url, json={"stop": place}, headers={"X-User-Name": "Ana"})
+    r = client.post(url, json={"stop": "d"}, headers={"X-User-Name": "Ana"})
+    assert r.status_code == 409 and "already has 6" in r.text
 
 
 def test_join_with_a_pickup_point(client):

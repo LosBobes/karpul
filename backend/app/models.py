@@ -121,6 +121,9 @@ class Ride(SQLModel, table=True):
     # (the API shows them as a list; see services.stops_from_text). A passenger
     # picks one of them, or the origin, in `Booking.pickup`.
     stops: str = ""
+    # Pickup points before the origin, in the order the car reaches them: a
+    # passenger collected on the way to the start. Same one-per-line text.
+    stops_before: str = ""
     # One-way distance, for the "km shared" figures. Optional; the driver's estimate.
     distance_km: float | None = None
     # A free-text "chip in" note per seat ("300 din", "2 EUR"). No payments here,

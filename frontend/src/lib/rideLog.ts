@@ -1,6 +1,7 @@
 import type { Messages } from './i18n'
 import { kmByDriver, kmDriven, odometerSpan } from './odometer'
 import type { Ride } from './types'
+import { allStops } from './stops'
 
 /**
  * The admin's table of every ride (components/RideLog.tsx), without React:
@@ -30,7 +31,7 @@ export function filterLog(rides: Ride[], kind: LogKind, query: string): Ride[] {
     if (kind !== 'all' && r.car_type !== kind) return false
     if (!words.length) return true
     const text = fold(
-      [r.driver_name, r.car_name, r.origin, r.destination, ...r.stops, ...r.bookings.map((b) => b.passenger_name), ...r.legs.map((l) => l.driver_name), r.notes].join(' '),
+      [r.driver_name, r.car_name, r.origin, r.destination, ...allStops(r), ...r.bookings.map((b) => b.passenger_name), ...r.legs.map((l) => l.driver_name), r.notes].join(' '),
     )
     // Every word somewhere in the row: "ana octavia" is Ana's rides in the Octavia.
     return words.every((w) => text.includes(w))
@@ -109,7 +110,7 @@ export function logCsv(rides: Ride[], t: Messages): string {
     r.car_name,
     r.car_type === 'corporate' ? t.rideLog.company : t.rideLog.own,
     r.origin,
-    r.stops.join(', '),
+    allStops(r).join(', '),
     r.destination,
     String(r.seats),
     String(r.bookings.length),

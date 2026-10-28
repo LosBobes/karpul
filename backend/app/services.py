@@ -11,6 +11,7 @@ from sqlalchemy.orm import object_session, selectinload
 from sqlmodel import Session, func, or_, select
 
 from .models import Booking, CarType, CorporateCar, PushSubscription, Ride, RideMessage, RideRequest, User, WaitlistEntry
+from .schemas import MAX_STOPS
 
 
 def new_calendar_token() -> str:
@@ -71,6 +72,11 @@ def stops_to_text(stops: list[str]) -> str:
     return "\n".join(stops)
 
 
+def all_stops(ride: Ride) -> list[str]:
+    """Every pickup point besides the origin, in the order the car reaches them."""
+    return stops_from_text(ride.stops_before) + stops_from_text(ride.stops)
+
+
 def is_person(user: User, person_id: int | None, name: str) -> bool:
     """Is this row (a driver, a passenger) `user`? By account where the row has
     one; a row from before accounts that was never linked has only its name,
@@ -122,6 +128,7 @@ def to_ride_read_dict(ride: Ride, extras: BoardExtras | None = None) -> dict:
         extras = board_extras(session, [ride]) if session is not None else BoardExtras()  # type: ignore[arg-type]
     data = ride.model_dump()
     data["stops"] = stops_from_text(ride.stops)
+    data["stops_before"] = stops_from_text(ride.stops_before)
     data["driver_phone"] = extras.phones.get(ride.driver_id) if ride.driver_id is not None else None
     data["bookings"] = ride.bookings
     data["waitlist"] = ride.waitlist
@@ -135,6 +142,7 @@ def ride_to_create_dict(ride: Ride) -> dict:
     """The stored ride as a `RideCreate` payload, for PATCH to merge onto."""
     data = ride.model_dump()
     data["stops"] = stops_from_text(ride.stops)
+    data["stops_before"] = stops_from_text(ride.stops_before)
     return data
 
 
@@ -154,16 +162,39 @@ def pickup_or_422(ride: Ride, pickup: str) -> str:
     """"" is the origin; anything else has to be one of the ride's stops."""
     if not pickup or norm_name(pickup) == norm_name(ride.origin):
         return ""
-    for stop in stops_from_text(ride.stops):
+    for stop in all_stops(ride):
         if norm_name(stop) == norm_name(pickup):
             return stop
     raise HTTPException(422, "Pickup must be the ride's origin or one of its stops")
 
 
+def add_stop(ride: Ride, place: str, before: bool, index: int | None) -> str:
+    """Put `place` on the ride's route as a pickup point and return the pickup
+    to book (`pickup_or_422`'s answer). A place already on the route is just
+    that place: the origin or the stop where it already is.
+
+    `before` puts it into the stops before the origin, else into the ones
+    after it, at `index` in that list (None or past the end: last)."""
+    if not place or norm_name(place) == norm_name(ride.origin):
+        return ""
+    for stop in all_stops(ride):
+        if norm_name(stop) == norm_name(place):
+            return stop
+    if norm_name(place) == norm_name(ride.destination):
+        raise HTTPException(422, "A pickup point cannot be the destination")
+    if len(all_stops(ride)) >= MAX_STOPS:
+        raise HTTPException(409, f"This ride already has {MAX_STOPS} pickup points")
+    field = "stops_before" if before else "stops"
+    stops = stops_from_text(getattr(ride, field))
+    stops.insert(len(stops) if index is None else min(index, len(stops)), place)
+    setattr(ride, field, stops_to_text(stops))
+    return place
+
+
 def drop_orphaned_pickups(ride: Ride) -> None:
     """After the driver edits the stops, a passenger waiting at a stop that no
     longer exists is moved back to the origin."""
-    stops = {norm_name(s) for s in stops_from_text(ride.stops)}
+    stops = {norm_name(s) for s in all_stops(ride)}
     for b in ride.bookings:
         if b.pickup and norm_name(b.pickup) not in stops:
             b.pickup = ""
@@ -336,7 +367,7 @@ def promote_waitlist(session: Session, ride: Ride) -> list[Booking]:
     and tells the people in them.
     """
     promoted: list[Booking] = []
-    stops = {norm_name(s): s for s in stops_from_text(ride.stops)}
+    stops = {norm_name(s): s for s in all_stops(ride)}
     while ride.waitlist and len(ride.bookings) < ride.seats:
         entry = ride.waitlist[0]
         ride.waitlist.remove(entry)

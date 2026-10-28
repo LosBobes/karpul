@@ -4,6 +4,7 @@ import { messages, useT } from '../lib/i18n'
 import { officeDistance } from '../lib/offices'
 import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
+import { MAX_STOPS } from '../lib/stops'
 import { Avatar } from './Avatar'
 import { DriverPicker, type Driver } from './DriverPicker'
 import { DatePicker } from './DatePicker'
@@ -38,8 +39,6 @@ interface Props {
 const LAST_ROUTE_KEY = 'karpul.lastRoute'
 /** Simple or advanced, remembered per browser like the view and the theme. */
 const MODE_KEY = 'karpul.formMode'
-/** At most this many extra pickup points (backend: schemas.MAX_STOPS). */
-const MAX_STOPS = 3
 /** "Repeat weekly" may reach this far (backend: schemas.MAX_REPEAT_WEEKS). */
 const MAX_REPEAT_WEEKS = 26
 
@@ -72,6 +71,7 @@ function isAdvancedRide(seed: Ride | null): boolean {
   return (
     seed.passengers_manage ||
     seed.stops.length > 0 ||
+    seed.stops_before.length > 0 ||
     seed.distance_km != null ||
     seed.chip_in.trim() !== '' ||
     seed.notes.trim() !== ''
@@ -133,6 +133,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const [notes, setNotes] = useState(seed?.notes ?? '')
   const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
   const [stops, setStops] = useState<string[]>(seed?.stops ?? [])
+  const [stopsBefore, setStopsBefore] = useState<string[]>(seed?.stops_before ?? [])
+  const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
   const [distance, setDistance] = useState(seed?.distance_km != null ? String(seed.distance_km) : '')
   const [chipIn, setChipIn] = useState(seed?.chip_in ?? '')
   // New rides only: one ride a week up to a date. Editing touches one ride.
@@ -187,7 +189,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           : requestError
 
   // What the simple form is carrying out of sight, named so it is never a surprise.
-  const stopCount = stops.filter((s) => s.trim() !== '').length
+  const stopCount = [...stopsBefore, ...stops].filter((s) => s.trim() !== '').length
   const extras = [
     !existing && repeat && repeatCount > 1 ? t.form.sumRepeat : null,
     stopCount ? t.form.sumStops(stopCount) : null,
@@ -205,6 +207,10 @@ export function RideForm({ date, userName, cars, existing, template, request = n
 
   function setStop(i: number, value: string) {
     setStops((ss) => ss.map((s, j) => (j === i ? value : s)))
+  }
+
+  function setStopBefore(i: number, value: string) {
+    setStopsBefore((ss) => ss.map((s, j) => (j === i ? value : s)))
   }
 
   function submit(e: FormEvent<HTMLFormElement>) {
@@ -232,6 +238,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       notes,
       passengers_manage: passengersManage,
       stops: stops.map((s) => s.trim()).filter(Boolean),
+      stops_before: stopsBefore.map((s) => s.trim()).filter(Boolean),
       distance_km: distanceNum,
       chip_in: chipIn.trim(),
       repeat_until: !existing && repeat && repeatCount > 1 ? repeatUntil : null,
@@ -247,6 +254,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             departure_time: backDeparture,
             return_time: null,
             stops: [],
+            stops_before: [],
             distance_km: distanceNum !== null && knownKm === null ? distanceNum : null,
             request_id: null,
           }
@@ -462,6 +470,33 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       <div className="field">
         <span className="field-label">{t.form.route}</span>
         <div className="route">
+          {advanced && roomForStop && (
+            <button type="button" className="route-add route-add-top" onClick={() => setStopsBefore((ss) => [...ss, ''])}>
+              <PlusIcon size={16} /> {t.form.addStopBefore}
+            </button>
+          )}
+          {advanced &&
+            stopsBefore.map((stop, i) => (
+              <span key={i} className="route-row route-row-stop">
+                <PinIcon size={16} />
+                <span className="route-tag">{t.form.beforeTag}</span>
+                <input
+                  aria-label={`${t.detail.beforeStart} ${i + 1}`}
+                  maxLength={120}
+                  placeholder={t.form.stopPlaceholder}
+                  value={stop}
+                  onChange={(e) => setStopBefore(i, e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="icon-btn icon-btn-sm"
+                  aria-label={t.form.removeStop}
+                  onClick={() => setStopsBefore((ss) => ss.filter((_, j) => j !== i))}
+                >
+                  <XIcon size={16} />
+                </button>
+              </span>
+            ))}
           <span className="route-row">
             <PinIcon size={16} />
             <span className="route-tag">{t.form.from}</span>
@@ -508,7 +543,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
               onChange={(e) => setDestination(e.target.value)}
             />
           </span>
-          {advanced && stops.length < MAX_STOPS && (
+          {advanced && roomForStop && (
             <button type="button" className="route-add" onClick={() => setStops((ss) => [...ss, ''])}>
               <PlusIcon size={16} /> {t.form.addStop}
             </button>

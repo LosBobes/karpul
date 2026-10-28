@@ -6,9 +6,11 @@ import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { keepsKm } from '../lib/odometer'
+import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
 import type { CarState, Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
+import { AddStop } from './AddStop'
 import { Avatar } from './Avatar'
 import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
 import {
@@ -43,14 +45,16 @@ interface Props {
   ride: Ride
   busy: boolean
   isPast: boolean
-  /** Get in, at the origin ("") or one of the ride's stops. */
-  onJoin: (ride: Ride, pickup: string) => void
+  /** Get in, at the origin ("") or one of the ride's stops, or at a new one put on the route at `newStop`. */
+  onJoin: (ride: Ride, pickup: string, newStop?: NewStop | null) => void
   onLeave: (ride: Ride, bookingId: number) => void
   /** Your seat in another car that day; offered as "switch to this car". */
   switchFrom?: { ride: Ride; bookingId: number } | null
-  onSwitch?: (ride: Ride, from: { ride: Ride; bookingId: number }, pickup: string) => void
-  /** Move a passenger (yourself, or anyone if you may manage seats) to another pickup point. */
-  onMovePickup: (ride: Ride, bookingId: number, pickup: string) => void
+  onSwitch?: (ride: Ride, from: { ride: Ride; bookingId: number }, pickup: string, newStop?: NewStop | null) => void
+  /** Move a passenger (yourself, or anyone if you may manage seats) to another pickup point, or a new one. */
+  onMovePickup: (ride: Ride, bookingId: number, pickup: string, newStop?: NewStop | null) => void
+  /** The driver (or an admin) puts another pickup point on the route. */
+  onAddStop: (ride: Ride, stop: string, where: NewStop) => void
   onShare: (ride: Ride) => void
   /** "Add to calendar": the ride's .ics, as a download. */
   onDownloadCalendar: (ride: Ride) => void
@@ -93,6 +97,9 @@ interface Props {
   draggable?: boolean
 }
 
+/** The pickup choice that opens a field for a place not on the route yet. */
+const ELSEWHERE = '\u0000elsewhere'
+
 /**
  * The selected ride: who drives, when it leaves and comes back, where from and
  * to, and who is in the car. The passenger list doubles as the drop zone.
@@ -106,6 +113,7 @@ export function CarDetail({
   switchFrom = null,
   onSwitch,
   onMovePickup,
+  onAddStop,
   onShare,
   onDownloadCalendar,
   onCancelFollowing,
@@ -155,13 +163,26 @@ export function CarDetail({
 
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
-  // Where you get in, when the driver offers more than the start.
+  // Where you get in: the start, one of the stops, or somewhere new you put on the route.
   const [pickup, setPickup] = useState('')
-  const [movingPickup, setMovingPickup] = useState(false)
-  const hasStops = ride.stops.length > 0
-  const pickupOptions = [{ value: '', label: ride.origin, hint: t.detail.start }, ...ride.stops.map((s) => ({ value: s, label: s }))]
+  const [movingPickup, setMovingPickup] = useState<false | 'pick' | 'new'>(false)
+  const [addingStop, setAddingStop] = useState(false)
+  const hasStops = allStops(ride).length > 0
+  const roomForStop = allStops(ride).length < MAX_STOPS
+  const pickupOptions = [
+    ...ride.stops_before.map((s) => ({ value: s, label: s, hint: t.detail.beforeStart })),
+    { value: '', label: ride.origin, hint: t.detail.start },
+    ...ride.stops.map((s) => ({ value: s, label: s })),
+  ]
+  const withElsewhere = roomForStop ? [...pickupOptions, { value: ELSEWHERE, label: t.detail.elsewhere }] : pickupOptions
+  const choosingPlace = pickup === ELSEWHERE
   const switching = !!switchFrom && !!onSwitch
   const getIn = () => (switching ? onSwitch!(ride, switchFrom!, pickup) : onJoin(ride, pickup))
+  const getInAt = (place: string, where: NewStop) => {
+    setPickup('')
+    if (switching) onSwitch!(ride, switchFrom!, place, where)
+    else onJoin(ride, place, where)
+  }
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
@@ -273,6 +294,13 @@ export function CarDetail({
         </div>
 
         <ol className="trip" aria-label={`${ride.origin}, ${ride.destination}`}>
+          {ride.stops_before.map((stop) => (
+            <li key={stop} className="trip-stop trip-via">
+              <span className="trip-dot" aria-hidden="true" />
+              <span className="trip-place">{stop}</span>
+              <span className="trip-note">{t.detail.pickup}</span>
+            </li>
+          ))}
           <li className="trip-stop trip-start">
             <span className="trip-dot" aria-hidden="true" />
             <span className="trip-place">{ride.origin}</span>
@@ -289,6 +317,23 @@ export function CarDetail({
             <span className="trip-place">{ride.destination}</span>
           </li>
         </ol>
+        {runsIt && !isPast && roomForStop && !addingStop && (
+          <button type="button" className="link link-sm trip-add" disabled={busy} onClick={() => setAddingStop(true)}>
+            <PlusIcon size={14} /> {t.detail.addStop}
+          </button>
+        )}
+        {runsIt && !isPast && addingStop && (
+          <AddStop
+            ride={ride}
+            submitLabel={t.common.add}
+            busy={busy}
+            onCancel={() => setAddingStop(false)}
+            onSubmit={(place, where) => {
+              setAddingStop(false)
+              onAddStop(ride, place, where)
+            }}
+          />
+        )}
 
         <div className={model || brand ? 'driver-car driver-car-illustrated' : 'driver-car'}>
           {model && (
@@ -384,10 +429,19 @@ export function CarDetail({
           )}
         </h3>
 
-        {(canJoin || canWait) && hasStops && (
+        {((canJoin && !choosingPlace) || (canWait && hasStops)) && (
           <div className="pickup-pick">
-            <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={pickupOptions} onChange={setPickup} />
+            <Select
+              label={t.detail.pickup}
+              icon={<PinIcon size={16} />}
+              value={pickup}
+              options={canJoin ? withElsewhere : pickupOptions}
+              onChange={setPickup}
+            />
           </div>
+        )}
+        {canJoin && choosingPlace && (
+          <AddStop ride={ride} submitLabel={getInLabel} busy={busy} onCancel={() => setPickup('')} onSubmit={getInAt} />
         )}
 
         {ride.bookings.length === 0 && !canJoin ? (
@@ -397,7 +451,7 @@ export function CarDetail({
           </div>
         ) : null}
 
-        {ride.bookings.length === 0 && canJoin ? (
+        {ride.bookings.length === 0 && canJoin && !choosingPlace ? (
           <button type="button" className="dropzone" onClick={getIn}>
             <UsersIcon size={28} />
             <strong>{getInLabel}</strong>
@@ -436,24 +490,37 @@ export function CarDetail({
                       {b.passenger_name}
                       {mine && <span className="tag">{t.detail.you}</span>}
                     </span>
-                    {hasStops && (
+                    {(hasStops || (mine && !isPast)) && (
                       <span className="pax-pickup">
                         <PinIcon size={12} /> {t.detail.getsInAt(b.pickup || ride.origin)}
                         {mine && !isPast && !movingPickup && (
-                          <button type="button" className="link link-sm" disabled={busy} onClick={() => setMovingPickup(true)}>
+                          <button type="button" className="link link-sm" disabled={busy} onClick={() => setMovingPickup('pick')}>
                             {t.common.edit}
                           </button>
                         )}
                       </span>
                     )}
-                    {hasStops && mine && movingPickup && (
+                    {mine && movingPickup === 'new' && (
+                      <AddStop
+                        ride={ride}
+                        submitLabel={t.common.save}
+                        busy={busy}
+                        onCancel={() => setMovingPickup(false)}
+                        onSubmit={(place, where) => {
+                          setMovingPickup(false)
+                          onMovePickup(ride, b.id, place, where)
+                        }}
+                      />
+                    )}
+                    {mine && movingPickup === 'pick' && (
                       <span className="pax-pickup-pick">
                         <Select
                           label={t.detail.changePickup}
                           icon={<PinIcon size={16} />}
                           value={b.pickup}
-                          options={pickupOptions}
+                          options={withElsewhere}
                           onChange={(v) => {
+                            if (v === ELSEWHERE) return setMovingPickup('new')
                             setMovingPickup(false)
                             if (v !== b.pickup) onMovePickup(ride, b.id, v)
                           }}
@@ -494,7 +561,7 @@ export function CarDetail({
                 </li>
               )
             })}
-            {canJoin && (
+            {canJoin && !choosingPlace && (
               <li>
                 <button type="button" className="add-row" onClick={getIn}>
                   <PlusIcon size={18} />
