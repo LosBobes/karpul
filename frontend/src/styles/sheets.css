@@ -466,10 +466,20 @@
 }
 
 /* --- How to use Karpul (components/HowTo.tsx) ---------------------------- */
-/* Topics as Fluent accordion rows (the drawer's chevron well). A topic unfolds
-   as a grid row from 0fr to 1fr, like a drawer group, and its steps follow it
-   in one by one (`--i`, each a beat after the last), rising 6px as they fade
-   in; folding back they go together, faster, as Fluent's exits do. */
+/* Topics as Fluent accordion rows (the drawer's chevron well). The sheet has a
+   height of its own: sized to its content it grew with every frame of an
+   unfolding topic, its top edge climbing on a phone and the centred dialog
+   re-centring on a desktop, so the whole panel shook. Now only the list inside
+   moves. A topic unfolds as a grid row from 0fr to 1fr, like a drawer group,
+   and its steps rise 4px as they fade in, a beat apart; folding back, the row
+   and the steps go together on the same curve. */
+.howto.panel {
+  height: min(44rem, calc(100dvh - 2rem));
+}
+.howto .panel-body {
+  /* Unfolding a topic must not drag the one you tapped up or down. */
+  overflow-anchor: none;
+}
 .howto-list {
   display: flex;
   flex-direction: column;
@@ -506,11 +516,11 @@
 .howto-body {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows var(--dur-normal) var(--ease-in);
+  transition: grid-template-rows var(--dur-normal) var(--ease-out);
 }
 .howto-open .howto-body {
   grid-template-rows: 1fr;
-  transition: grid-template-rows var(--dur-gentle) var(--ease-out);
+  transition-duration: var(--dur-gentle);
 }
 .howto-clip {
   min-height: 0;
@@ -519,8 +529,8 @@
 .howto-steps {
   counter-reset: howto;
   list-style: none;
-  margin: 0.15rem 0 0.75rem 1.1rem;
-  padding: 0 0 0 1.05rem;
+  margin: 0 0 0 1.1rem;
+  padding: 0.15rem 0 0.75rem 1.05rem;
   border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
@@ -533,17 +543,16 @@
   position: relative;
   padding-left: 1.85rem;
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(4px);
   transition:
-    opacity var(--dur-fast) var(--ease-in),
-    transform var(--dur-fast) var(--ease-in);
+    opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
 .howto-open .howto-steps li {
   opacity: 1;
   transform: none;
-  transition:
-    opacity var(--dur-gentle) var(--ease-out) calc(60ms + var(--i, 0) * 45ms),
-    transform var(--dur-gentle) var(--ease-out) calc(60ms + var(--i, 0) * 45ms);
+  transition-duration: var(--dur-gentle);
+  transition-delay: calc(min(var(--i, 0), 5) * 30ms);
 }
 .howto-steps li::before {
   content: counter(howto);
@@ -559,12 +568,6 @@
   color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
-  transform: scale(0.4);
-  transition: transform var(--dur-fast) var(--ease-in);
-}
-.howto-open .howto-steps li::before {
-  transform: none;
-  transition: transform var(--dur-gentle) var(--ease-bounce) calc(90ms + var(--i, 0) * 45ms);
 }
 .howto-steps b {
   color: var(--text);
@@ -576,8 +579,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .howto-open .howto-steps li,
-  .howto-open .howto-steps li::before {
+  .howto-open .howto-steps li {
     transition-delay: 0s;
   }
 }
