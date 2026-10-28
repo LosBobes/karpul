@@ -4,6 +4,8 @@ A small internal tool for sharing rides between colleagues. You register once wi
 username, a password, your email and your name, and from then on the browser stays signed
 in; your name and surname are what colleagues see in a car.
 
+**Using the app?** Read the [user guide](docs/user-guide.md): a short tutorial and every feature, for drivers, passengers and admins.
+
 **Backend:** FastAPI + SQLModel (SQLite) · **Frontend:** React + Vite + TypeScript
 
 ## What it does
