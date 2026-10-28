@@ -26,7 +26,9 @@ const LEAVE_FALLBACK_MS = 600
  * The keyed wrapper (`Leaf`) takes the snapshot as it unmounts, while its
  * DOM is still attached, and leaves it in the host; the host's own layout
  * effect, in the same commit and before paint, gives it the direction and
- * the animation, so no frame ever shows the new content alone.
+ * the animation and marks the entering content (`data-after`), which then
+ * waits, invisible, for the snapshot to go before it steps in (the rules in
+ * index.css, "Motion"), so no frame ever shows the two stacked.
  */
 export function SlideSwitch({ id, dir, children, className }: Props) {
   const host = useRef<HTMLDivElement>(null)
@@ -37,6 +39,8 @@ export function SlideSwitch({ id, dir, children, className }: Props) {
     if (!where) return
     const snap = node.cloneNode(true) as HTMLElement
     snap.className = 'stack swap-leave'
+    // The clone carries the mark its original entered with, which would make it wait too.
+    snap.removeAttribute('data-after')
     snap.setAttribute('aria-hidden', 'true')
     snap.setAttribute('inert', '')
     where.appendChild(snap)
@@ -52,8 +56,11 @@ export function SlideSwitch({ id, dir, children, className }: Props) {
       snap.remove()
       return
     }
-    // The old content goes the way the new one is not coming from.
+    // The old content goes the way the new one is not coming from, and the
+    // new one holds back until it has gone.
     snap.classList.add(dir === 'right' ? 'swap-leave-left' : 'swap-leave-right')
+    const entering = Array.from(host.current?.children ?? []).find((el) => el !== snap)
+    entering?.setAttribute('data-after', '')
     const done = () => snap.remove()
     snap.addEventListener('animationend', done, { once: true })
     const timer = setTimeout(done, LEAVE_FALLBACK_MS)

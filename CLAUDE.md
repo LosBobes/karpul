@@ -439,10 +439,12 @@ are bundled (named imports tree-shake); Mercedes, Land Rover, Jaguar, Alfa Romeo
 not in that package, so they keep the generic icon.
 
 **Motion.** Fluent's patterns, and things go back the way they came: a view slides in 40px from
-its side as the one it replaces slides out the other way (`components/SlideSwitch.tsx`: the keyed
+its side after the one it replaces has slid out the other way (`components/SlideSwitch.tsx`: the keyed
 content's wrapper hands its DOM to the host as it unmounts, and a `cloneNode` snapshot laid over
-the host plays `.swap-leave-*` under the entering `.swap-*` while the real content is long gone,
-so nothing in it runs or fetches again), a flyout comes 10px out of its anchor, a dialog grows a little out of the
+the host plays `.swap-leave-*` while the real content is long gone, so nothing in it runs or
+fetches again; the entering `.swap-*` is marked `data-after` and holds, invisible, for the
+snapshot's `--swap-out` (100ms) before its own step, so the two are never on screen together:
+two layouts of text stacked at half opacity read as mud, not motion), a flyout comes 10px out of its anchor, a dialog grows a little out of the
 middle as it fades in, a toast rises 16px, on Fluent's curves (`--ease-out` decelerates in,
 `--ease-in` accelerates out, `--ease-spring` no longer overshoots; the one overshoot left is
 `--ease-bounce`, on the update screen's bolt and the phone tab bar's glide and pop) and durations (`--dur-fast` 150ms, `--dur-normal`
