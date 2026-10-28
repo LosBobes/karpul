@@ -94,8 +94,107 @@
 .pax-pickup-pick .control {
   flex: 1;
 }
-.pickup-pick {
-  margin-bottom: 0.5rem;
+/* Where you get in: a pill on the control that takes the seat (Select's
+   `chip` variant), so the place reads as part of getting in, never as the
+   route. In an empty car the dashed tile wraps the button and the pill. */
+.join-box {
+  border: 1.5px dashed var(--green-line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--green-soft) 45%, var(--surface));
+  transition: background 0.12s, border-color 0.12s;
+}
+.join-box:has(> .dropzone:hover:not(:disabled)) {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+.join-box > .dropzone,
+.join-box > .dropzone:hover:not(:disabled) {
+  min-height: 0;
+  padding: 1.4rem 1rem 0.6rem;
+  border: none;
+  background: none;
+}
+.join-box-foot {
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem 1.1rem;
+}
+/* In a row (the list's "get in", the queue) the pill trails the label. */
+.join-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.12s, border-color 0.12s;
+}
+.join-row > .add-row {
+  flex: 1;
+  min-width: 0;
+}
+.join-row > .pick-chip {
+  margin-right: 0.75rem;
+}
+.pax-list .join-row:has(> .add-row:hover:not(:disabled)) {
+  background: color-mix(in srgb, var(--green-soft) 60%, var(--surface));
+}
+.join-row-boxed {
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.join-row-boxed:has(> .add-row:hover:not(:disabled)) {
+  border-color: var(--green);
+}
+.join-row-boxed > .add-row,
+.join-row-boxed > .add-row:hover:not(:disabled) {
+  border: none;
+  background: none;
+}
+.join-row-boxed:has(> .pick-chip) > .add-row {
+  justify-content: flex-start;
+}
+.pick-chip {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.3rem;
+  max-width: min(100%, 15rem);
+  min-height: 30px;
+  padding: 0.2rem 0.55rem 0.2rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: border-color var(--hover), background var(--hover);
+}
+.pick-chip:hover:not(:disabled) {
+  border-color: var(--green-line);
+}
+.pick-chip:focus-visible,
+.pick-chip[aria-expanded='true'] {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+}
+.pick-chip-icon {
+  display: inline-flex;
+  color: var(--green);
+}
+.pick-chip-prefix {
+  color: var(--muted);
+  font-weight: 400;
+}
+.pick-chip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pick-chip-chevron {
+  flex: none;
+  color: var(--muted);
 }
 /* A pickup point not on the route yet: the place, then which stretch it is on. */
 .add-stop {

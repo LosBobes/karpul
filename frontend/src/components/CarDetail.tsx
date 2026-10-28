@@ -193,6 +193,18 @@ export function CarDetail({
     if (switching) onSwitch!(ride, switchFrom!, place, where)
     else onJoin(ride, place, where)
   }
+  // Where you get in is a pill on the button that takes the seat, so it never reads as the route.
+  const pickupChip = (prefix?: string) => (
+    <Select
+      variant="chip"
+      label={t.detail.pickup}
+      prefix={prefix}
+      icon={<PinIcon size={14} />}
+      value={pickup}
+      options={withElsewhere}
+      onChange={setPickup}
+    />
+  )
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
@@ -469,11 +481,6 @@ export function CarDetail({
           )}
         </h3>
 
-        {(canJoin || (canWait && (hasStops || mayAddStop))) && !choosingPlace && (
-          <div className="pickup-pick">
-            <Select label={t.detail.pickup} icon={<PinIcon size={16} />} value={pickup} options={withElsewhere} onChange={setPickup} />
-          </div>
-        )}
         {(canJoin || canWait) && choosingPlace && (
           <AddStop
             ride={ride}
@@ -499,19 +506,22 @@ export function CarDetail({
         ) : null}
 
         {ride.bookings.length === 0 && canJoin && !choosingPlace ? (
-          <button type="button" className="dropzone" onClick={getIn}>
-            <UsersIcon size={28} />
-            <strong>{getInLabel}</strong>
-            <span>
-              {switching
-                ? t.detail.switchHint(firstName(switchFrom!.ride.driver_name))
-                : draggable
-                  ? coarse
-                    ? t.detail.dragHintCoarse
-                    : t.detail.dragHint
-                  : t.detail.tapSeat}
-            </span>
-          </button>
+          <div className="join-box">
+            <button type="button" className="dropzone" onClick={getIn}>
+              <UsersIcon size={28} />
+              <strong>{getInLabel}</strong>
+              <span>
+                {switching
+                  ? t.detail.switchHint(firstName(switchFrom!.ride.driver_name))
+                  : draggable
+                    ? coarse
+                      ? t.detail.dragHintCoarse
+                      : t.detail.dragHint
+                    : t.detail.tapSeat}
+              </span>
+            </button>
+            <div className="join-box-foot">{pickupChip(t.detail.getInAt)}</div>
+          </div>
         ) : null}
 
         {ride.bookings.length > 0 && (
@@ -610,10 +620,13 @@ export function CarDetail({
             })}
             {canJoin && !choosingPlace && (
               <li>
-                <button type="button" className="add-row" onClick={getIn}>
-                  <PlusIcon size={18} />
-                  {getInLabel}
-                </button>
+                <div className="join-row">
+                  <button type="button" className="add-row" onClick={getIn}>
+                    <PlusIcon size={18} />
+                    {getInLabel}
+                  </button>
+                  {pickupChip()}
+                </div>
                 {switching && <p className="hint hint-tight">{t.detail.switchHint(firstName(switchFrom!.ride.driver_name))}</p>}
               </li>
             )}
@@ -651,10 +664,13 @@ export function CarDetail({
 
         {canWait && !choosingPlace && (
           <>
-            <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => onWait(ride, pickup)}>
-              <HourglassIcon size={18} />
-              {t.detail.waitFor}
-            </button>
+            <div className="join-row join-row-boxed">
+              <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => onWait(ride, pickup)}>
+                <HourglassIcon size={18} />
+                {t.detail.waitFor}
+              </button>
+              {(hasStops || mayAddStop) && pickupChip()}
+            </div>
             <p className="hint hint-tight">{t.detail.waitHint}</p>
           </>
         )}
