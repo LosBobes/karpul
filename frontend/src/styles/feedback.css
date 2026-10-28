@@ -210,7 +210,16 @@
   /* The top and bottom insets are the bands the words and the button sit in:
      the bolt is behind them, and on a short window it would otherwise run up
      under the line telling you to trace it. */
-  inset: 5.2rem 1.1rem 4rem;
+  /* The safe areas count: an installed app on an iPhone puts the home bar
+     under the button, which lifts it into the bolt's tail otherwise. */
+  --pad-top: calc(5.2rem + env(safe-area-inset-top));
+  --pad-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  inset: var(--pad-top) 1.1rem var(--pad-bottom);
+  /* An <svg> sizes itself from its viewBox and would spill over those bands
+     (an over-constrained replaced element centres by going past its insets),
+     so it is given the box outright and the bolt fits inside it ("meet"). */
+  width: calc(100% - 2.2rem);
+  height: calc(100% - var(--pad-top) - var(--pad-bottom));
   margin: auto;
   max-width: 430px;
   max-height: 700px;

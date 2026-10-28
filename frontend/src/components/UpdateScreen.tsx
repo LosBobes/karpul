@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
 import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { applyUpdate } from '../lib/pwa'
@@ -31,7 +31,8 @@ interface Props {
  * own manners with it (escape, the phone's back button, a locked body).
  *
  * The trace is the way in, not the only way: the button at the foot is the
- * same update for anyone who would rather not draw, or cannot.
+ * same update for anyone who would rather not draw, or cannot, and it lights
+ * the bolt and opens the flare from itself, so a tap is seen to take.
  */
 export function UpdateScreen({ onClose }: Props) {
   const t = useT()
@@ -65,6 +66,16 @@ export function UpdateScreen({ onClose }: Props) {
     if (fired.current) return
     fired.current = true
     applyUpdate()
+  }
+
+  // The plain way in charges the bolt too, with the flare opening out of the
+  // button: the refresh can take a few seconds to land, and a tap that changed
+  // nothing on screen read as a button that does not work.
+  const plain = (e: MouseEvent<HTMLButtonElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    setSlipped(false)
+    setFrom({ x: ((r.left + r.width / 2) / window.innerWidth) * 100, y: ((r.top + r.height / 2) / window.innerHeight) * 100 })
+    setCharged(true)
   }
 
   // The flare's own end is what starts the refresh (reduced motion collapses
@@ -105,7 +116,7 @@ export function UpdateScreen({ onClose }: Props) {
           {charged ? t.update.charged : slipped ? t.update.slip : t.update.lead}
         </p>
         <footer className="update-foot">
-          <button type="button" className="btn btn-soft update-plain" onClick={go} disabled={charged}>
+          <button type="button" className="btn btn-soft update-plain" onClick={plain} disabled={charged}>
             {t.update.plain}
           </button>
         </footer>
