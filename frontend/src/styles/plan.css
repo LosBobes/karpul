@@ -34,7 +34,8 @@
   box-sizing: content-box;
   width: calc(var(--plan-hours, 24) * var(--plan-hour) + var(--plan-in-l) + var(--plan-in-r));
   min-width: calc(100% - 2 * var(--plan-pad));
-  padding: 2rem var(--plan-pad) 0.85rem;
+  /* Room between the clock and the first car's name, so neither crowds the other. */
+  padding: 2.75rem var(--plan-pad) 1.1rem;
 }
 .plan-skeleton {
   height: 280px;
@@ -110,7 +111,7 @@
   color: var(--muted);
 }
 .plan-car + .plan-car {
-  margin-top: 0.3rem;
+  margin-top: 1rem;
 }
 .plan-car-head {
   position: sticky;
@@ -120,6 +121,7 @@
   align-items: baseline;
   gap: 0.45rem;
   min-width: 0;
+  margin-bottom: 0.55rem;
 }
 .plan-car-name {
   display: inline-flex;
@@ -154,7 +156,7 @@
 }
 .plan-road {
   position: relative;
-  height: 60px;
+  height: 64px;
   margin: 0 var(--plan-in-r) 0 var(--plan-in-l);
 }
 /* The road itself, and a tick per hour standing on it. */
@@ -327,7 +329,7 @@
 }
 .plan-ride-caption {
   position: absolute;
-  top: 39px;
+  top: 42px;
   left: 2px;
   width: var(--room, 100%);
   font-size: 0.74rem;
