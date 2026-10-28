@@ -6,6 +6,11 @@
   max-width: 600px;
   margin: 0 auto;
   padding: 0 1.1rem calc(var(--tabbar) + 6.5rem + env(safe-area-inset-bottom));
+  /* A view sliding out goes 40px past the edge (SlideSwitch). Unclipped, that
+     overflow widens a phone's layout viewport for the length of the slide, and
+     the fixed tab bar and plus jump with it. `clip`, not `hidden`: no scroll
+     container, so the sticky top bar and day headings still stick. */
+  overflow-x: clip;
 }
 main,
 .stack {
