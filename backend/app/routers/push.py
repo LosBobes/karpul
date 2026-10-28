@@ -10,6 +10,7 @@ from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..models import PushSubscription
 from ..push import CATEGORIES, muted, vapid
+from ..reminders import lead_of
 
 router = APIRouter(prefix="/api/push", tags=["push"])
 
@@ -30,13 +31,15 @@ class SubscriptionIn(BaseModel):
     locale: str = Field(default="en", max_length=8)
 
 
-Category = Literal["seats", "changes", "reminders", "messages", "requests", "approvals"]
+Category = Literal["seats", "changes", "reminders", "messages", "requests", "approvals", "cars"]
 
 
 class Preferences(BaseModel):
-    """The kinds of push the signed-in person switched off."""
+    """The kinds of push the signed-in person switched off, and how long
+    before departure they want the reminder (app/reminders.py LEAD_CHOICES)."""
 
     muted: list[Category] = []
+    remind_before: Literal[15, 30, 60] = 30
 
 
 class EndpointIn(BaseModel):
@@ -83,7 +86,8 @@ def unsubscribe(payload: EndpointIn, session: WriteSessionDep):
 
 @router.get("/preferences", response_model=Preferences)
 def get_preferences(session: SessionDep, creds: CredsDep):
-    return Preferences(muted=muted(require_user(session, creds)))
+    user = require_user(session, creds)
+    return Preferences(muted=muted(user), remind_before=lead_of(user))
 
 
 @router.put("/preferences", response_model=Preferences)
@@ -91,6 +95,7 @@ def set_preferences(payload: Preferences, session: WriteSessionDep, creds: Creds
     """Switch kinds of push off (or back on) for this account, in every browser."""
     user = require_user(session, creds)
     user.push_muted = ",".join(c for c in CATEGORIES if c in payload.muted)
+    user.remind_before = payload.remind_before
     session.add(user)
     session.commit()
-    return Preferences(muted=muted(user))
+    return Preferences(muted=muted(user), remind_before=lead_of(user))

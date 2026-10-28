@@ -39,7 +39,7 @@ def sent(monkeypatch):
         out.append((kind, sorted(uid for uid in user_ids if uid is not None), args))
         return 0
 
-    for module in ("app.routers.rides",):
+    for module in ("app.routers.rides", "app.routers.thread"):
         monkeypatch.setattr(f"{module}.notify", fake_notify)
     return out
 

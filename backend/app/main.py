@@ -20,10 +20,12 @@ from sqlmodel import Session
 from . import backfill
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
+from .housekeeping import housekeeping_loop
 from .models import Ride
 from .monitoring import init_sentry
+from .offices import fill_office_distances
 from .reminders import reminder_loop
-from .routers import admin, auth, cars, live, push, requests, rides, stats
+from .routers import admin, auth, cars, live, odometer, push, requests, rides, stats, thread, waitlist
 from .seed import seed_corporate_cars
 
 # The app's own loggers (karpul.*) at INFO next to uvicorn's: push, reminders,
@@ -56,12 +58,21 @@ async def lifespan(_: FastAPI):
         backfill.run_once(engine)
     except Exception:
         backfill.log.exception("Backfilling the shared-car log failed")
+    # The road between the offices is a known length (app/offices.py): rides
+    # on it from before that was so get their distance.
+    try:
+        fill_office_distances(engine)
+    except Exception:
+        log.exception("Filling in the office distances failed")
     # Departure reminders (app/reminders.py); a no-op tick while push is off.
     reminders = asyncio.create_task(reminder_loop())
+    # The nightly backup and the purge of expired rows (app/housekeeping.py).
+    chores = asyncio.create_task(housekeeping_loop())
     try:
         yield
     finally:
         reminders.cancel()
+        chores.cancel()
 
 
 app = FastAPI(title="Karpul", version="0.1.0", lifespan=lifespan)
@@ -105,6 +116,9 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(cars.router)
 app.include_router(rides.router)
+app.include_router(odometer.router)
+app.include_router(waitlist.router)
+app.include_router(thread.router)
 app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)

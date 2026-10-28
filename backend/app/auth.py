@@ -31,8 +31,13 @@ HASH_NAME = f"pbkdf2_{HASH_ALGO}"
 PBKDF2_ROUNDS = 200_000
 SALT_BYTES = 16
 TOKEN_BYTES = 32
-# How long a browser stays signed in without signing in again.
+# How long a browser stays signed in without being used. A session that is
+# used is pushed on (`renew_session`), so only a browser left alone for this
+# long sees the door again.
 SESSION_DAYS = 30
+# How much of a session's life has to be gone before using it writes a new
+# expiry: a row per day per session at most, not one per request.
+SESSION_RENEW_AFTER = timedelta(days=1)
 
 MIN_PASSWORD = 8
 
@@ -107,6 +112,40 @@ def session_for_token(session: Session, raw: str) -> AuthSession | None:
     if _as_utc(row.expires_at) <= datetime.now(timezone.utc):
         return None
     return row
+
+
+def renew_session(session: Session, raw: str, now: datetime | None = None) -> bool:
+    """Push a live session's expiry out to a full SESSION_DAYS from now, if
+    it was last pushed more than SESSION_RENEW_AFTER ago. Returns whether it
+    wrote anything; the caller commits. Called from a write route only
+    (`GET /api/auth/me`, which the app calls on every start): the read routes
+    must not turn into writers (database.begin_write)."""
+    row = session_for_token(session, raw)
+    if row is None:
+        return False
+    now = now or datetime.now(timezone.utc)
+    if _as_utc(row.expires_at) - now > timedelta(days=SESSION_DAYS) - SESSION_RENEW_AFTER:
+        return False
+    row.expires_at = now + timedelta(days=SESSION_DAYS)
+    session.add(row)
+    return True
+
+
+def purge_expired(session: Session, now: datetime | None = None) -> dict[str, int]:
+    """Delete the sessions that have expired and the reset links that have
+    expired or were used: they are refused anyway, and the tables would only
+    grow. Returns how many of each went; the caller commits."""
+    now = now or datetime.now(timezone.utc)
+    gone = {"sessions": 0, "resets": 0}
+    for row in session.exec(select(AuthSession)):
+        if _as_utc(row.expires_at) <= now:
+            session.delete(row)
+            gone["sessions"] += 1
+    for row in session.exec(select(PasswordReset)):
+        if row.used_at is not None or _as_utc(row.expires_at) <= now:
+            session.delete(row)
+            gone["resets"] += 1
+    return gone
 
 
 def end_session(session: Session, raw: str) -> bool:
