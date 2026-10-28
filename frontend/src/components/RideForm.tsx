@@ -8,7 +8,7 @@ import { MAX_STOPS } from '../lib/stops'
 import { Avatar } from './Avatar'
 import { DriverPicker, type Driver } from './DriverPicker'
 import { DatePicker } from './DatePicker'
-import { CarIcon, ChevronRightIcon, HandIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { CarIcon, ChevronRightIcon, CoffeeIcon, HandIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
 import { Select } from './Select'
 import { Sheet } from './Sheet'
@@ -75,6 +75,7 @@ function isAdvancedRide(seed: Ride | null): boolean {
     seed.stops_before.length > 0 ||
     seed.distance_km != null ||
     seed.chip_in.trim() !== '' ||
+    seed.coffee_please ||
     seed.notes.trim() !== ''
   )
 }
@@ -134,6 +135,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const [notes, setNotes] = useState(seed?.notes ?? '')
   const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
   const [passengersAddStops, setPassengersAddStops] = useState(seed?.passengers_add_stops ?? true)
+  const [coffee, setCoffee] = useState(seed?.coffee_please ?? false)
   const [stops, setStops] = useState<string[]>(seed?.stops ?? [])
   const [stopsBefore, setStopsBefore] = useState<string[]>(seed?.stops_before ?? [])
   const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
@@ -199,6 +201,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     passengersAddStops ? null : t.form.sumNoNewStops,
     distance.trim() || knownKm !== null ? t.form.sumDistance : null,
     chipIn.trim() ? t.form.sumChipIn : null,
+    coffee ? t.form.sumCoffee : null,
     notes.trim() ? t.form.sumNotes : null,
   ].filter((x): x is string => x !== null)
 
@@ -241,6 +244,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       notes,
       passengers_manage: passengersManage,
       passengers_add_stops: passengersAddStops,
+      coffee_please: coffee,
       stops: stops.map((s) => s.trim()).filter(Boolean),
       stops_before: stopsBefore.map((s) => s.trim()).filter(Boolean),
       distance_km: distanceNum,
@@ -591,6 +595,15 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           <p className="hint hint-tight">
             {knownKm !== null && distance.trim() === '' ? t.form.knownRoad(knownKm) : t.form.distanceHint} {t.form.chipInHint}
           </p>
+
+          <label className="switch-row">
+            <span className="switch-row-text">
+              <span className="switch-row-title">
+                <CoffeeIcon size={16} /> {t.form.coffee}
+              </span>
+            </span>
+            <input type="checkbox" checked={coffee} onChange={(e) => setCoffee(e.target.checked)} />
+          </label>
 
           <label className="field">
             <span className="field-label">

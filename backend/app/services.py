@@ -8,7 +8,7 @@ from datetime import date, datetime, time, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import object_session, selectinload
-from sqlmodel import Session, func, or_, select
+from sqlmodel import Session, col, func, or_, select
 
 from .models import Booking, CarType, CorporateCar, PushSubscription, Ride, RideMessage, RideRequest, User, WaitlistEntry
 from .schemas import MAX_STOPS
@@ -431,13 +431,15 @@ LIMIT_STRETCH = "That keeps a shared car with you for more than 24 hours in a ro
 
 def shared_car_use(session: Session, driver_id: int, day: date, exclude_ride_id: int | None = None) -> tuple[int, int]:
     """How many shared-car rides the driver already has in `day`'s week and on
-    `day` itself, whatever their approval."""
+    `day` itself, whatever their approval. A ride they cancelled into
+    `needs_driver` is not theirs any more."""
     monday = day - timedelta(days=day.weekday())
     stmt = select(Ride.ride_date).where(
         Ride.driver_id == driver_id,
         Ride.car_type == CarType.corporate,
         Ride.ride_date >= monday,
         Ride.ride_date <= monday + timedelta(days=6),
+        col(Ride.needs_driver).is_(False),
     )
     if exclude_ride_id is not None:
         stmt = stmt.where(Ride.id != exclude_ride_id)
@@ -468,6 +470,7 @@ def shared_car_stretch(
         Ride.car_type == CarType.corporate,
         Ride.ride_date >= day - timedelta(days=1),
         Ride.ride_date <= day + timedelta(days=1),
+        col(Ride.needs_driver).is_(False),
     )
     if exclude_ride_id is not None:
         stmt = stmt.where(Ride.id != exclude_ride_id)

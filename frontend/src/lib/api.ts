@@ -199,6 +199,7 @@ export const api = {
   updateRide: (id: number, patch: Partial<RideInput>) => request<Ride>(`/api/rides/${id}`, json('PATCH', patch)),
   /** Admin: a shared-car ride past the driver's share, let through or refused (refused: the ride goes). */
   approveRide: (id: number) => request<Ride>(`/api/rides/${id}/approve`, { method: 'POST' }),
+  takeOver: (id: number) => request<Ride>(`/api/rides/${id}/takeover`, { method: 'POST' }),
   /** "This is me": every ride under that account-less driver name, the one asked about first. */
   claimRide: (id: number) => request<Ride[]>(`/api/rides/${id}/claim`, { method: 'POST' }),
   declineRide: (id: number) => request<void>(`/api/rides/${id}/decline`, { method: 'POST' }),

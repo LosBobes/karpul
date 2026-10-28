@@ -66,7 +66,7 @@ class Target:
 # Notifications sheet). Every `kind` notify() sends belongs to exactly one.
 CATEGORIES: dict[str, tuple[str, ...]] = {
     "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
-    "changes": ("ride_changed", "ride_removed", "ride_assigned", "stop_added"),
+    "changes": ("ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
     "reminders": ("leaving_soon", "note_km"),
     "messages": ("message",),
     "requests": ("request_answered",),
@@ -102,6 +102,10 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver, alternatives=0: f"{driver} removed the ride"
         + ("" if not alternatives else f". {alternatives} other car{'s' if alternatives > 1 else ''} with free seats that day"),
         "ride_changed": lambda driver: f"{driver} changed the ride",
+        "driver_needed": lambda driver: f"{driver} can't drive. Will you take the car?",
+        "driver_found": lambda name: f"{name} drives now",
+        "no_driver": lambda alternatives=0: "Nobody took over the ride, it is off"
+        + ("" if not alternatives else f". {alternatives} other car{'s' if alternatives > 1 else ''} with free seats that day"),
         "stop_added": lambda name, place: f"{name} gets in at {place}, a new pickup point",
         "leaving_soon": lambda minutes: f"Leaving in {minutes} min",
         "note_km": lambda car: f"{car} back? Note the odometer",
@@ -122,6 +126,10 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver, alternatives=0: f"{driver} je uklonio/la vožnju"
         + ("" if not alternatives else f". Tog dana ima mesta u još {_sr_cars(alternatives)}"),
         "ride_changed": lambda driver: f"{driver} je izmenio/la vožnju",
+        "driver_needed": lambda driver: f"{driver} ne može da vozi. Hoćeš li ti da preuzmeš auto?",
+        "driver_found": lambda name: f"Sada vozi {name}",
+        "no_driver": lambda alternatives=0: "Niko nije preuzeo vožnju, otkazana je"
+        + ("" if not alternatives else f". Tog dana ima mesta u još {_sr_cars(alternatives)}"),
         "stop_added": lambda name, place: f"{name} ulazi kod: {place}, novo mesto ulaska",
         "leaving_soon": lambda minutes: f"Polazak za {minutes} min",
         "note_km": lambda car: f"{car} je vraćen? Upiši kilometražu",

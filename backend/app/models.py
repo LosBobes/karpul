@@ -127,6 +127,8 @@ class Ride(SQLModel, table=True):
     # Driver's choice: may a passenger put a new pickup point on the route
     # when getting in or moving? Off, only the driver (and an admin) adds them.
     passengers_add_stops: bool = Field(default=True)
+    # Driver's hint: they would appreciate a coffee. Only ever shown.
+    coffee_please: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     # One-way distance, for the "km shared" figures. Optional; the driver's estimate.
     distance_km: float | None = None
     # A free-text "chip in" note per seat ("300 din", "2 EUR"). No payments here,
@@ -146,6 +148,13 @@ class Ride(SQLModel, table=True):
     # waits for an admin, "approved" once an admin let it through (or made
     # it). Own cars are always "".
     approval: str = Field(default="")
+    # The driver of a shared car cancelled with passengers in it: the ride
+    # stays (and keeps the car) while they are asked whether one of them
+    # drives instead (POST /api/rides/{id}/takeover). `driver_id` and
+    # `driver_name` still say who cancelled, but that account no longer runs
+    # the ride (access.is_driver). Nobody by departure, it goes
+    # (reminders.drop_driverless).
+    needs_driver: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     created_at: datetime = Field(default_factory=utcnow)
 
     corporate_car: CorporateCar | None = Relationship(back_populates="rides")

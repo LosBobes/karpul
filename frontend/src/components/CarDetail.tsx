@@ -18,6 +18,7 @@ import {
   CalendarIcon,
   CheckIcon,
   CarIcon,
+  CoffeeIcon,
   CoinsIcon,
   CopyIcon,
   GripIcon,
@@ -74,6 +75,8 @@ interface Props {
   onDecline: (ride: Ride) => void
   /** "This is me": take over a ride whose driver is a name with no account. */
   onClaim: (ride: Ride) => void
+  /** A passenger drives a shared car whose driver cancelled (`needs_driver`). */
+  onTakeOver: (ride: Ride) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
   onGuide?: () => void
   /** How the shared car stands (components/CarStatus.tsx), for the line under its name. */
@@ -129,6 +132,7 @@ export function CarDetail({
   onApprove,
   onDecline,
   onClaim,
+  onTakeOver,
   onGuide,
   carState = null,
   onCarState,
@@ -248,6 +252,7 @@ export function CarDetail({
               {t.detail.driver}
               {isDriver && <span className="tag">{t.detail.you}</span>}
               {ride.driver_id === null && <span className="tag tag-muted">{t.detail.noAccount}</span>}
+              {ride.needs_driver && <span className="tag tag-amber">{t.detail.needsDriver}</span>}
               {ride.approval === 'pending' && <span className="tag tag-amber">{t.detail.awaiting}</span>}
               {ride.approval === 'approved' && <span className="tag tag-green">{t.detail.approved}</span>}
               {ride.series_id && (
@@ -271,6 +276,21 @@ export function CarDetail({
                 <CheckIcon size={16} /> {t.detail.approve}
               </button>
             </span>
+          </div>
+        )}
+
+        {ride.needs_driver && !isPast && (
+          <div className="approval-row">
+            <span className="approval-ask">
+              {myBooking ? t.detail.takeOverAsk(ride.driver_name) : t.detail.takeOverWait(ride.driver_name)}
+            </span>
+            {myBooking && (
+              <span className="approval-actions">
+                <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onTakeOver(ride)}>
+                  <CarIcon size={16} /> {t.detail.takeOver}
+                </button>
+              </span>
+            )}
           </div>
         )}
 
@@ -390,7 +410,7 @@ export function CarDetail({
           </span>
         </div>
 
-        {(ride.chip_in || ride.distance_km != null) && (
+        {(ride.chip_in || ride.distance_km != null || ride.coffee_please) && (
           <dl className="facts">
             {ride.distance_km != null && (
               <div className="fact">
@@ -406,6 +426,14 @@ export function CarDetail({
                   <CoinsIcon size={14} /> {t.form.chipIn}
                 </dt>
                 <dd>{t.detail.chipIn(ride.chip_in)}</dd>
+              </div>
+            )}
+            {ride.coffee_please && (
+              <div className="fact">
+                <dt>
+                  <CoffeeIcon size={14} /> {t.detail.coffee}
+                </dt>
+                <dd>{isDriver ? t.detail.coffeeYou : t.detail.coffeePlease(firstName(ride.driver_name))}</dd>
               </div>
             )}
           </dl>
