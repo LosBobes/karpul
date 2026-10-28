@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useT, type HowToTopic } from '../lib/i18n'
 import { ChevronRightIcon, LifebuoyIcon } from './icons'
 import { Sheet } from './Sheet'
@@ -11,6 +11,8 @@ function rich(text: string): ReactNode[] {
 /**
  * The app's own how-to: a topic per thing people come to do, each folding
  * open to a few numbered steps that name the controls as the screen does.
+ * A topic unfolds the way a drawer group does (a grid row from 0fr to 1fr,
+ * inert while shut) and its steps follow one after another.
  * The words are `howTo` in `lib/i18n.ts` (both languages; the longer version
  * is docs/user-guide.md, keep them in step); the admin topic shows to admins
  * only. Its foot is the way to a person (`SupportSheet`).
@@ -18,6 +20,14 @@ function rich(text: string): ReactNode[] {
 export function HowTo({ isAdmin, onSupport, onClose }: { isAdmin: boolean; onSupport: () => void; onClose: () => void }) {
   const t = useT()
   const topics = t.howTo.topics.filter((topic: HowToTopic) => isAdmin || !topic.admin)
+  // The first topic opens with the sheet; any number may be open at once.
+  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set([0]))
+  const toggle = (i: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(i)) next.add(i)
+      return next
+    })
   return (
     <Sheet
       id="howto-title"
@@ -34,21 +44,30 @@ export function HowTo({ isAdmin, onSupport, onClose }: { isAdmin: boolean; onSup
       }
     >
       <div className="howto-list">
-        {topics.map((topic: HowToTopic, i: number) => (
-          <details key={topic.title} className="howto-topic" open={i === 0}>
-            <summary className="howto-head">
-              <span className="drawer-group-chevron howto-chevron" aria-hidden="true">
-                <ChevronRightIcon size={14} />
-              </span>
-              <span>{topic.title}</span>
-            </summary>
-            <ol className="howto-steps">
-              {topic.steps.map((step) => (
-                <li key={step}>{rich(step)}</li>
-              ))}
-            </ol>
-          </details>
-        ))}
+        {topics.map((topic: HowToTopic, i: number) => {
+          const shown = open.has(i)
+          return (
+            <div key={topic.title} className={shown ? 'howto-topic howto-open' : 'howto-topic'}>
+              <button type="button" className="howto-head" aria-expanded={shown} aria-controls={`howto-${i}`} onClick={() => toggle(i)}>
+                <span className="drawer-group-chevron howto-chevron" aria-hidden="true">
+                  <ChevronRightIcon size={14} />
+                </span>
+                <span>{topic.title}</span>
+              </button>
+              <div id={`howto-${i}`} className="howto-body" inert={!shown}>
+                <div className="howto-clip">
+                  <ol className="howto-steps">
+                    {topic.steps.map((step, n) => (
+                      <li key={step} style={{ '--i': n } as CSSProperties}>
+                        {rich(step)}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
     </Sheet>
   )
