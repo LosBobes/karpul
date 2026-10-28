@@ -495,7 +495,7 @@
 }
 
 /* --- Motion -------------------------------------------------------------- */
-/* Fluent's motion. A view or a day board that replaces another steps in 20px
+/* Fluent's motion. A view or a day board that replaces another steps in 40px
    from the side it came from as it fades up (App.tsx keys the wrapper and
    picks the direction with useSlideDir in lib/motion.ts); sheets rise from
    the bottom edge on a phone, the drawer comes in from the left, dialogs grow
@@ -508,13 +508,11 @@
 .swap-right {
   animation: swap-from-right var(--dur-gentle) var(--ease-out) both;
 }
-/* Fluent's page step, both ways: the new content comes in from its side as
-   the old goes out the other (components/SlideSwitch.tsx lays a snapshot of
-   the leaving content over the host). The entering one fades up only over
-   its first frames, so it never blinks into place. */
+/* Fluent's page step: the new content comes in from its side, fading up over
+   its first half while it keeps settling into place. */
 @keyframes swap-from-left {
   from {
-    opacity: 0.35;
+    opacity: 0;
     transform: translateX(-40px);
   }
   45% {
@@ -523,14 +521,20 @@
 }
 @keyframes swap-from-right {
   from {
-    opacity: 0.35;
+    opacity: 0;
     transform: translateX(40px);
   }
   45% {
     opacity: 1;
   }
 }
+/* The step both ways (components/SlideSwitch.tsx lays a snapshot of the
+   leaving content over the host): the old content goes out first, alone,
+   fast and accelerating, and only once it is gone does the new one come in,
+   on the clear ground. Never both at once: two layouts of text stacked at
+   half opacity read as mud, not as motion, whatever the slide under them. */
 .swap-host {
+  --swap-out: calc(var(--dur-gentle) * 0.4);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -542,12 +546,18 @@
   min-height: 0;
   will-change: transform, opacity;
 }
-/* The leaving snapshot: under the entering content (its cards are opaque, so
-   it covers what it passes), out of the flow (the height is the new
-   content's), and gone by halfway, so what shows through is the ground.
-   Scoped to the host like the rule above, or that rule's `position: relative`
-   wins and the snapshot pushes the new content down by its own height (and a
-   tile's scrollIntoView then scrolls the page to chase it). */
+/* The entering content while something leaves (SlideSwitch marks it): held
+   invisible at its first keyframe for the exit, then the step. */
+.swap-host > .stack[data-after] {
+  animation-duration: var(--dur-normal);
+  animation-delay: var(--swap-out);
+}
+/* The leaving snapshot: under the entering content, out of the flow (the
+   height is the new content's) and gone before the new content shows, so
+   what the step crosses is the ground. Scoped to the host like the rule
+   above, or that rule's `position: relative` wins and the snapshot pushes
+   the new content down by its own height (and a tile's scrollIntoView then
+   scrolls the page to chase it). */
 .swap-host > .swap-leave {
   position: absolute;
   z-index: 0;
@@ -558,24 +568,18 @@
   will-change: transform, opacity;
 }
 .swap-leave-left {
-  animation: swap-to-left var(--dur-gentle) var(--ease-in) both;
+  animation: swap-to-left var(--swap-out) var(--ease-in) both;
 }
 .swap-leave-right {
-  animation: swap-to-right var(--dur-gentle) var(--ease-in) both;
+  animation: swap-to-right var(--swap-out) var(--ease-in) both;
 }
 @keyframes swap-to-left {
-  55% {
-    opacity: 0;
-  }
   to {
     opacity: 0;
     transform: translateX(-40px);
   }
 }
 @keyframes swap-to-right {
-  55% {
-    opacity: 0;
-  }
   to {
     opacity: 0;
     transform: translateX(40px);

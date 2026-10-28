@@ -618,9 +618,10 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
-  /* The one delay in the file. It waits for an animation that no longer plays,
-     and the refresh behind it waits on this one ending. */
-  .update-flare {
+  /* The two delays in the file. Each waits for an animation that no longer
+     plays (the refresh behind the flare waits on it ending). */
+  .update-flare,
+  .swap-host > .stack[data-after] {
     animation-delay: 0.01ms !important;
   }
   /* The bolt's idle loops are decoration, and a loop collapsed to 0.01ms is a
