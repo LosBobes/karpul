@@ -466,8 +466,10 @@
 }
 
 /* --- How to use Karpul (components/HowTo.tsx) ---------------------------- */
-/* Topics as Fluent accordion rows (the drawer's chevron well), each opening
-   to numbered steps on a green disc. */
+/* Topics as Fluent accordion rows (the drawer's chevron well). A topic unfolds
+   as a grid row from 0fr to 1fr, like a drawer group, and its steps follow it
+   in one by one (`--i`, each a beat after the last), rising 6px as they fade
+   in; folding back they go together, faster, as Fluent's exits do. */
 .howto-list {
   display: flex;
   flex-direction: column;
@@ -477,16 +479,18 @@
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  width: 100%;
   min-height: 44px;
   padding: 0.4rem 0.5rem 0.4rem 0.35rem;
+  border: none;
   border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
-  list-style: none;
   transition: background var(--hover);
-}
-.howto-head::-webkit-details-marker {
-  display: none;
 }
 .howto-head:active {
   background: color-mix(in srgb, var(--text) 11%, transparent);
@@ -495,8 +499,22 @@
   outline: 2px solid var(--text);
   outline-offset: -2px;
 }
-.howto-topic[open] .howto-chevron {
+.howto-open .howto-chevron {
   transform: rotate(90deg);
+  color: var(--green);
+}
+.howto-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-normal) var(--ease-in);
+}
+.howto-open .howto-body {
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--dur-gentle) var(--ease-out);
+}
+.howto-clip {
+  min-height: 0;
+  overflow: hidden;
 }
 .howto-steps {
   counter-reset: howto;
@@ -514,6 +532,18 @@
   counter-increment: howto;
   position: relative;
   padding-left: 1.85rem;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity var(--dur-fast) var(--ease-in),
+    transform var(--dur-fast) var(--ease-in);
+}
+.howto-open .howto-steps li {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur-gentle) var(--ease-out) calc(60ms + var(--i, 0) * 45ms),
+    transform var(--dur-gentle) var(--ease-out) calc(60ms + var(--i, 0) * 45ms);
 }
 .howto-steps li::before {
   content: counter(howto);
@@ -529,6 +559,12 @@
   color: #fff;
   font-size: 0.72rem;
   font-weight: 700;
+  transform: scale(0.4);
+  transition: transform var(--dur-fast) var(--ease-in);
+}
+.howto-open .howto-steps li::before {
+  transform: none;
+  transition: transform var(--dur-gentle) var(--ease-bounce) calc(90ms + var(--i, 0) * 45ms);
 }
 .howto-steps b {
   color: var(--text);
@@ -537,6 +573,12 @@
 @media (hover: hover) and (pointer: fine) {
   .howto-head:hover {
     background: color-mix(in srgb, var(--text) 6%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .howto-open .howto-steps li,
+  .howto-open .howto-steps li::before {
+    transition-delay: 0s;
   }
 }
 
