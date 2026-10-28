@@ -36,6 +36,14 @@ export type GuideArtKey =
   | 'flap'
   | 'frunk'
 
+/** One topic of the app's own how-to (components/HowTo.tsx); `**word**` marks a control's name. */
+export interface HowToTopic {
+  title: string
+  steps: string[]
+  /** Shown to admins only. */
+  admin?: boolean
+}
+
 export interface GuideEntry {
   art: GuideArtKey
   title: string
@@ -935,6 +943,103 @@ const en = {
         body: 'With no engine up front, the space under the bonnet is a small second boot, the frunk. It is where the charging cable lives, so the cable never rolls around the back. It opens from the Vehicle menu on the touchscreen, not from a lever under the dash. Close it with a firm push on the bonnet and check it is latched.',
       },
     ] as GuideEntry[],
+  },
+
+  howTo: {
+    title: 'How to use Karpul',
+    menu: 'How to use Karpul',
+    topics: [
+      {
+        title: 'Find your way around',
+        steps: [
+          '**Upcoming** lists every ride for the next 90 days, a heading per day. **Week** is one week, a day at a time. **Day** shows who has which shared car when.',
+          'The green **+** (on a computer, **Add ride** at the top right) adds a ride.',
+          'The ☰ menu holds your account, **Your rides**, **Car status**, help and settings.',
+          'The lamp in the top bar is lit while the board is live: what colleagues do shows up as it happens.',
+        ],
+      },
+      {
+        title: 'Get a seat in a car',
+        steps: [
+          'In **Upcoming**, tap **Free seats** to hide full cars, or search for a place or a driver.',
+          'Tap a ride to open it. If it has pickup points, choose yours in **Get in at**; **Somewhere else…** adds a new place to the route.',
+          'Tap **Get in this car**. The driver is told.',
+          '**Leave** takes you out. Already in a car that day? Another car offers **Switch to this car**.',
+          'In **Week** you can also drag your chip onto a car. On a phone, hold it for a moment until it lifts.',
+        ],
+      },
+      {
+        title: 'The car is full',
+        steps: [
+          'Tap **Wait for a seat**. The first seat that frees up is yours, with a notification.',
+          'A seat in another car that day takes you off the queue. **Stop waiting** does it by hand.',
+        ],
+      },
+      {
+        title: 'Offer a ride',
+        steps: [
+          'Tap **+**. Pick **Shared car** or **My own car**, the passenger seats, the day, the times and the route, then **Add ride**.',
+          '**One way** removes the return time and offers **Add the way back too** for another day.',
+          '**Advanced** adds a weekly repeat (up to 26 weeks), pickup points, distance, chip-in, coffee and a note. Chip-in is only the agreement: nothing is charged here.',
+          'Your ride\'s ⋮ menu edits, duplicates, shares or removes it. Your passengers are told when it moves or is removed.',
+          'On the card you can add a passenger by name, take one out and add a pickup point.',
+        ],
+      },
+      {
+        title: 'Shared cars',
+        steps: [
+          'A shared car cannot be double-booked. **Day** shows when each one is free; tap a free stretch to book it.',
+          'Each person gets one shared-car ride a day and one a week, and no more than 24 hours in a row. Past that, **Ask an admin to approve it**. A ride awaiting approval does not hold the car.',
+          'Before your first drive, read the **Shared car guide**: charging with the company card and the Mazda 6e.',
+          'In the car, note the odometer: **Note the start**, **Hand over** when someone else drives, **Car is back** with the battery and anything wrong.',
+          '**Car status** shows each car\'s odometer, battery and reported problems. **Report on this car** tells the admins.',
+          'Can\'t drive after all? Remove the ride: if colleagues are in it, it keeps the car and asks them. The first to tap **I\'ll drive** takes it over.',
+        ],
+      },
+      {
+        title: 'No car going your way',
+        steps: [
+          'Tap **Ask for a ride**: the day, roughly when, from and to.',
+          'Drivers see it on the board and can **Offer a ride**. You get the seat and a notification.',
+        ],
+      },
+      {
+        title: 'Messages',
+        steps: [
+          'Every ride has **Messages**. Everyone in the car is told when you write: a late start, a detour, a big suitcase.',
+        ],
+      },
+      {
+        title: 'Notifications and calendar',
+        steps: [
+          'Settings, **Notifications**: **Turn on**, then choose what to hear about and how long before you leave to be reminded.',
+          'On an iPhone, add Karpul to the home screen first (Share, **Add to Home Screen**).',
+          '**Add to calendar** in a ride\'s ⋮ menu saves that ride. **Your rides** has a calendar feed address with all of your rides; keep it to yourself.',
+          '**Share ride** sends a link that opens the ride for a colleague.',
+        ],
+      },
+      {
+        title: 'Your account',
+        steps: [
+          'Tap your name at the top of the menu to add a photo, change your name, phone or password, or sign out.',
+          'Your phone number is shown on the rides you drive, so passengers can call you.',
+          'Forgot your password? Ask an admin for a reset link.',
+          'When a new version is ready, a card says so: trace the bolt, or use the plain button.',
+        ],
+      },
+      {
+        title: 'For admins',
+        admin: true,
+        steps: [
+          '**Approvals** lists shared-car rides waiting for an answer. **Approve** books the car; **Decline** removes the ride.',
+          'An admin can edit or remove any ride and manage its seats. In the ride form, tap the driver line to add a ride in someone else\'s name.',
+          '**Shared cars** adds, edits and retires pool cars; its **Usage** tab shows how they are used.',
+          '**People** makes admins, issues a password reset link (pass it on yourself) and deletes accounts.',
+          '**All rides** is every ride in a date range, with a spreadsheet download. **Admin log** lists every change made to someone else\'s ride, a car or an account.',
+        ],
+      },
+    ] as HowToTopic[],
+    more: 'Still stuck?',
   },
 
   /** Server error texts are English; this is the identity for English. */
@@ -2024,6 +2129,103 @@ const sr: Messages = {
         body: 'Pošto napred nema motora, prostor ispod haube je mali drugi prtljažnik, takozvani frunk. U njemu stoji kabl za punjenje, pa se ne kotrlja po zadnjem prtljažniku. Otvara se iz menija Vehicle na ekranu, ne polugom ispod table. Zatvori ga čvrstim pritiskom na haubu i proveri da se zabravio.',
       },
     ],
+  },
+
+  howTo: {
+    title: 'Kako se koristi Karpul',
+    menu: 'Kako se koristi Karpul',
+    topics: [
+      {
+        title: 'Snalaženje',
+        steps: [
+          '**Predstojeće** prikazuje sve vožnje u narednih 90 dana, po danima. **Sedmica** prikazuje jednu sedmicu, dan po dan. **Dan** pokazuje ko ima koji zajednički auto i kada.',
+          'Zeleno **+** (na računaru, **Dodaj vožnju** gore desno) dodaje vožnju.',
+          'U meniju ☰ su tvoj nalog, **Tvoje vožnje**, **Stanje auta**, pomoć i podešavanja.',
+          'Lampica u gornjoj traci svetli dok je tabla uživo: šta kolege urade, vidiš odmah.',
+        ],
+      },
+      {
+        title: 'Kako da dobiješ mesto u autu',
+        steps: [
+          'U prikazu **Predstojeće** dodirni **Slobodna mesta** da sakriješ pune automobile, ili potraži mesto ili vozača.',
+          'Dodirni vožnju da je otvoriš. Ako ima mesta ulaska, izaberi svoje kod **Ulazim:**; **Negde drugde…** dodaje novo mesto na rutu.',
+          'Dodirni **Uđi u ovaj auto**. Vozač dobija obaveštenje.',
+          '**Izađi** te vadi iz auta. Već si u nekom autu tog dana? Drugi auto nudi **Pređi u ovaj auto**.',
+          'U prikazu **Sedmica** možeš i da prevučeš svoje ime na auto. Na telefonu ga zadrži prstom dok se ne podigne.',
+        ],
+      },
+      {
+        title: 'Auto je pun',
+        steps: [
+          'Dodirni **Čekaj mesto**. Prvo mesto koje se oslobodi je tvoje, uz obaveštenje.',
+          'Kad dobiješ mesto u drugom autu tog dana, izlaziš iz reda. **Prestani da čekaš** to radi ručno.',
+        ],
+      },
+      {
+        title: 'Kako da ponudiš vožnju',
+        steps: [
+          'Dodirni **+**. Izaberi zajednički ili svoj auto, broj mesta za putnike, dan, vreme i rutu, pa **Dodaj vožnju**.',
+          '**U jednom smeru** uklanja vreme povratka i nudi **Dodaj i povratak** za drugi dan.',
+          '**Napredno** dodaje ponavljanje svake sedmice (do 26 sedmica), mesta ulaska, razdaljinu, doprinos, kafu i napomenu. Doprinos je samo dogovor: ovde se ništa ne naplaćuje.',
+          'Meni ⋮ na tvojoj vožnji služi da je izmeniš, dupliraš, podeliš ili ukloniš. Putnici dobijaju obaveštenje kad se vožnja pomeri ili ukloni.',
+          'Na kartici vožnje možeš da dodaš putnika po imenu, izvadiš nekog iz auta i dodaš mesto ulaska.',
+        ],
+      },
+      {
+        title: 'Zajednički automobili',
+        steps: [
+          'Zajednički auto ne može dvaput da se rezerviše za isto vreme. **Dan** pokazuje kada je koji slobodan; dodirni slobodan deo da ga rezervišeš.',
+          'Svako ima jednu vožnju zajedničkim autom dnevno i jednu sedmično, i ne duže od 24 sata zaredom. Preko toga, **Zatraži odobrenje administratora**. Vožnja koja čeka odobrenje ne drži auto.',
+          'Pre prve vožnje pročitaj **Vodič za zajednički auto**: punjenje službenom karticom i Mazda 6e.',
+          'U autu upisuj kilometražu: **Upiši početnu**, **Predaj volan** kad vozi neko drugi, **Auto je vraćen** sa stanjem baterije i eventualnim problemima.',
+          '**Stanje auta** pokazuje kilometražu, bateriju i prijavljene probleme svakog auta. **Prijavi stanje auta** javlja administratorima.',
+          'Ipak ne možeš da voziš? Ukloni vožnju: ako u njoj ima kolega, auto ostaje rezervisan, a putnici dobijaju pitanje da li neko od njih vozi. Ko prvi dodirne **Ja ću voziti** preuzima vožnju.',
+        ],
+      },
+      {
+        title: 'Niko ne ide tvojim putem',
+        steps: [
+          'Dodirni **Zatraži prevoz**: dan, otprilike vreme, odakle i dokle.',
+          'Vozači to vide na tabli i mogu da dodirnu **Ponudi prevoz**. Ti dobijaš mesto i obaveštenje.',
+        ],
+      },
+      {
+        title: 'Poruke',
+        steps: [
+          'Svaka vožnja ima **Poruke**. Svi u autu dobijaju obaveštenje kad napišeš nešto: kašnjenje, skretanje, veliki kofer.',
+        ],
+      },
+      {
+        title: 'Obaveštenja i kalendar',
+        steps: [
+          'Podešavanja, **Obaveštenja**: **Uključi**, pa izaberi o čemu da te obaveštavamo i koliko pre polaska da te podsetimo.',
+          'Na iPhone-u prvo dodaj Karpul na početni ekran (Deli, **Dodaj na početni ekran**).',
+          '**Dodaj u kalendar** u meniju ⋮ čuva tu vožnju. U **Tvoje vožnje** je adresa kalendara sa svim tvojim vožnjama; ne deli je ni sa kim.',
+          '**Podeli vožnju** šalje link koji kolegi otvara tu vožnju.',
+        ],
+      },
+      {
+        title: 'Tvoj nalog',
+        steps: [
+          'Dodirni svoje ime na vrhu menija da dodaš fotografiju, promeniš ime, telefon ili lozinku, ili da se odjaviš.',
+          'Tvoj broj telefona se vidi na vožnjama koje voziš, da bi te putnici mogli pozvati.',
+          'Zaboravljena lozinka? Zatraži od administratora link za novu lozinku.',
+          'Kad je nova verzija spremna, pojavi se kartica: prevuci munju ili dodirni obično dugme.',
+        ],
+      },
+      {
+        title: 'Za administratore',
+        admin: true,
+        steps: [
+          '**Odobrenja** prikazuje vožnje zajedničkim autom koje čekaju odgovor. **Odobri** rezerviše auto; **Odbij** uklanja vožnju.',
+          'Administrator može da izmeni ili ukloni bilo koju vožnju i upravlja njenim mestima. U formi za vožnju dodirni red sa vozačem da dodaš vožnju u nečije ime.',
+          '**Zajednički automobili** služi za dodavanje, izmenu i povlačenje automobila; kartica **Korišćenje** pokazuje kako se koriste.',
+          '**Ljudi** služi da postaviš administratore, napraviš link za novu lozinku (prosleđuješ ga lično) i obrišeš naloge.',
+          '**Sve vožnje** su sve vožnje u izabranom periodu, uz preuzimanje kao tabelu. **Dnevnik administratora** beleži svaku izmenu tuđe vožnje, auta ili naloga.',
+        ],
+      },
+    ],
+    more: 'I dalje ne ide?',
   },
 
   apiError: srApiError,

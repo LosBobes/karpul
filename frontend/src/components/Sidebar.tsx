@@ -24,6 +24,8 @@ interface Content {
   /** Admins: how many shared-car rides wait for approval (a count on the item). */
   approvals: number
   onGuide: () => void
+  /** How to use the app (components/HowTo.tsx). */
+  onHowTo: () => void
   onSupport: () => void
   onFeedback: () => void
   onMyRides: () => void
@@ -69,7 +71,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -103,6 +105,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
   ]
   // When something goes wrong, or there is something to say.
   const help: Item[] = [
+    {
+      label: t.howTo.menu,
+      icon: 'book',
+      onSelect: pick(onHowTo),
+    },
     {
       label: t.support.title,
       icon: 'lifebuoy',

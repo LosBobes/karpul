@@ -7,6 +7,7 @@ import { Approvals } from './components/Approvals'
 import { AuthGate } from './components/AuthGate'
 import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
 import { CarGuide } from './components/CarGuide'
+import { HowTo } from './components/HowTo'
 import { CarStatus } from './components/CarStatus'
 import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
@@ -65,6 +66,7 @@ type Overlay =
   | 'sidebar'
   | 'account'
   | 'guide'
+  | 'howTo'
   | 'carState'
   | 'myRides'
   | 'notif'
@@ -826,6 +828,7 @@ function Board({ session }: { session: Session }) {
     onApprovals: () => show('approvals'),
     approvals: waiting,
     onGuide: () => show('guide'),
+    onHowTo: () => show('howTo'),
     onSupport: () => show('support'),
     onFeedback: () => show('feedback'),
     onMyRides: () => show('myRides'),
@@ -979,6 +982,8 @@ function Board({ session }: { session: Session }) {
         {is('sidebar') && !wide && <Sidebar {...menu} onClose={closer('sidebar')} />}
 
         {is('guide') && <CarGuide onSupport={() => show('support')} onClose={closer('guide')} />}
+
+        {is('howTo') && <HowTo isAdmin={isAdmin} onSupport={() => show('support')} onClose={closer('howTo')} />}
 
         {is('carState') && <CarStatus states={carStates} onNotice={notice} onReported={() => reloadCarStates().catch(() => undefined)} onClose={closer('carState')} />}
 

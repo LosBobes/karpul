@@ -547,7 +547,10 @@ entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, dr
 own icons only bigger (a 120×80 box at 96px, so the 1.875 stroke lands on 1.5px, round corners, soft
 neutral fills, numbers and ticks on a solid green disc) with the green accent on the one thing the
 step is about; also reachable from
-the driver card of any company-car ride; its foot opens *Contact support*). The *Help* group holds the guide,
+the driver card of any company-car ride; its foot opens *Contact support*). The *Help* group holds *How to use Karpul* (`HowTo`: a
+Fluent accordion of topics, each a few numbered steps; the words are `howTo` in `lib/i18n.ts`, `**name**` sets a
+control's name in bold, the admin topic shows to admins only; `docs/user-guide.md` is the long version, keep them
+in step), the guide,
 *Contact support* (`SupportSheet`: car, app and organizational contacts with `tel:` / `mailto:` buttons, the list is
 `SUPPORT` in `lib/support.ts`) and *Report a bug or send feedback* (`FeedbackSheet`, also at the foot of the support
 sheet: a bug or an idea sent as a `mailto:` to the app contact from the person's own mail app, with the account, view,

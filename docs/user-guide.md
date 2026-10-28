@@ -6,6 +6,8 @@ day, then explains every part of the app. The last section is for admins.
 
 The app speaks English and Serbian; the names of buttons below are the English ones.
 
+The short version of this guide is in the app itself: ☰ → **Help** → **How to use Karpul**.
+
 **Contents**
 
 1. [Getting started](#1-getting-started)
