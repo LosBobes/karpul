@@ -520,6 +520,14 @@ function Board({ session }: { session: Session }) {
       setToast({ kind: 'ok', text: t.toasts.claimed(claimed.length) })
     })
 
+  // The driver's "running late": a line in the thread and a push to the car;
+  // the ride comes back over the socket with its new message count.
+  const onLate = (ride: Ride, minutes: number) =>
+    withBusy(ride.id, async () => {
+      await api.runningLate(ride.id, minutes)
+      setToast({ kind: 'ok', text: t.toasts.lateSaid(minutes) })
+    })
+
   const onDecline = (ride: Ride) =>
     setConfirm({
       title: t.confirm.declineTitle,
@@ -708,6 +716,7 @@ function Board({ session }: { session: Session }) {
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}
       onTakeOver={(r) => void onTakeOver(r)}
+      onLate={(r, minutes) => void onLate(r, minutes)}
       onGuide={() => show('guide')}
       carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}
       onCarState={() => show('carState')}

@@ -246,7 +246,16 @@ its `message_count` (counted in bulk by `board_extras`) changes and an open `Rid
 refetches. Ride requests (`RideRequest`, `routers/requests.py`) are "I need a ride on day X
 around T from A to B": answered by a driver creating a ride with `request_id` (the requester
 gets a seat, `request_answered` push) or by the requester getting into any car that day;
-deleting the answering ride reopens it. Live events `request.saved` / `request.deleted`.
+deleting the answering ride reopens it. Live events `request.saved` / `request.deleted`. A new
+request is pushed `request_made` to the drivers who drive that way (`drivers_for` in
+`routers/requests.py`: a ride of theirs from `DRIVES_THAT_WAY_DAYS` (60) ago on, past or coming,
+that ends where the request ends and starts or picks up where it starts; places compared as an
+office under any of its names, else folded). **Running late**: on the ride's day the driver taps
+*Running late?* 5, 10 or 15 min on the card (`.late-row` in `CarDetail`, shown until an hour after
+departure); `POST /api/rides/{id}/late` (the driver only, the ride's day only) writes a thread line
+with `RideMessage.late_minutes` (an `ADDED_COLUMNS` column; `body` is the English, the app renders
+`thread.late` in the reader's language) and pushes `running_late` (category *changes*) to the
+passengers. The ride's times do not change.
 On screen: requests under each Upcoming day and under `YouPanel` in Week (`RequestList`,
 "Offer a ride" opens `RideForm` with `request`), asked through `RequestForm`.
 
@@ -359,7 +368,8 @@ admin password. Pushes are addressed by account (`notify(session, user_ids, ...)
 a seat with no account is skipped). Who is told: the driver when someone gets in or out on their own, a passenger
 when the driver takes them out, the passengers when the ride moves (date, times or route, not a
 note) or is removed, the first in line when a seat frees up, the car when someone writes in its
-thread, a requester when a driver answers, and everyone in the car before departure (`app/reminders.py`,
+thread, the passengers when the driver is running late, the drivers who drive that way when someone
+asks for a ride, a requester when a driver answers, and everyone in the car before departure (`app/reminders.py`,
 a minute-by-minute task started in the lifespan): **each person picks the lead**, 15, 30 or 60
 minutes (`User.remind_before`, `LEAD_CHOICES`, in `GET/PUT /api/push/preferences` as
 `remind_before`, the segmented control under the reminders row in `NotificationsSheet`), so one

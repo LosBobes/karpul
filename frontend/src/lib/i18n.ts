@@ -173,10 +173,10 @@ const en = {
     kindsOff: 'Takes effect once notifications are on.',
     category: {
       seats: ['Seats', 'Someone gets in or out, or a seat frees up for you'],
-      changes: ['Ride changes', 'A ride you are in moves or is removed, or you are put down to drive'],
+      changes: ['Ride changes', 'A ride you are in moves, runs late or is removed, or you are put down to drive'],
       reminders: ['Reminders', 'Before you leave, and to note the odometer when a shared car is back'],
       messages: ['Messages', 'Someone writes in the thread of your ride'],
-      requests: ['Ride requests', 'A driver offers you a ride you asked for'],
+      requests: ['Ride requests', 'Someone asks for a ride on a road you drive, or a driver offers you the one you asked for'],
       approvals: ['Shared-car approvals', 'An ask past the share, and the answer to yours'],
       cars: ['Shared-car reports', 'Someone reports a problem with a shared car'],
     } as Record<PushCategory, [string, string]>,
@@ -311,6 +311,9 @@ const en = {
     duplicateMine: 'Duplicate as my ride',
     driver: 'Driver',
     callDriver: 'Call the driver',
+    lateAsk: 'Running late?',
+    lateChoice: (minutes: number) => `${minutes} min`,
+    lateTell: (minutes: number) => `Tell the car you are ${minutes} min late`,
     you: 'You',
     rideOptions: 'Ride options',
     leaves: 'Leaves',
@@ -397,6 +400,7 @@ const en = {
     placeholder: 'Write a message',
     send: 'Send',
     remove: 'Remove message',
+    late: (minutes: number) => `Running ${minutes} min late`,
   },
 
   /** Asking for a ride nobody offers yet: components/RequestForm.tsx and RequestList.tsx. */
@@ -821,6 +825,7 @@ const en = {
     rideAwaiting: 'Added. The admins are asked to approve it.',
     rideApproved: (driver: string) => `Approved. ${driver} has the car.`,
     claimed: (n: number) => (n === 1 ? 'The ride is yours now.' : `${n} rides are yours now.`),
+    lateSaid: (minutes: number) => `The car knows you're ${minutes} min late.`,
     rideDeclined: 'Declined. The ride is removed.',
     ridesAdded: (n: number) => `${n} rides added, one a week.`,
     ridesRemoved: 'Rides removed.',
@@ -1003,13 +1008,14 @@ const en = {
         title: 'No car going your way',
         steps: [
           'Tap **Ask for a ride**: the day, roughly when, from and to.',
-          'Drivers see it on the board and can **Offer a ride**. You get the seat and a notification.',
+          'Drivers who drive that way are notified, and anyone can **Offer a ride** from the board. You get the seat and a notification.',
         ],
       },
       {
         title: 'Messages',
         steps: [
           'Every ride has **Messages**. Everyone in the car is told when you write: a late start, a detour, a big suitcase.',
+          'Driving and late? On the day, **Running late?** on your ride takes one tap: **5 min**, **10 min** or **15 min**. The passengers are told and it goes in the messages.',
         ],
       },
       {
@@ -1153,6 +1159,8 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Only the person waiting or the driver can do that$/, () => 'To može samo onaj ko čeka ili vozač'],
   [/^Message not found$/, () => 'Poruka nije pronađena'],
   [/^Only the author or the driver can remove this message$/, () => 'Poruku može da ukloni samo onaj ko ju je napisao ili vozač'],
+  [/^Only the driver can say the ride is running late$/, () => 'Samo vozač može da javi da vožnja kasni'],
+  [/^A ride can only run late on its own day$/, () => 'Kašnjenje se javlja samo na dan vožnje'],
   [/^Ride request not found$/, () => 'Zahtev za prevoz nije pronađen'],
   [/^Someone already answered that request$/, () => 'Neko je već odgovorio na taj zahtev'],
   [/^That is your own request$/, () => 'To je tvoj zahtev'],
@@ -1381,10 +1389,10 @@ const sr: Messages = {
     kindsOff: 'Važi kada uključiš obaveštenja.',
     category: {
       seats: ['Mesta', 'Neko uđe ili izađe, ili se oslobodi mesto za tebe'],
-      changes: ['Izmene vožnji', 'Vožnja u kojoj si se pomeri ili ukloni, ili te upišu kao vozača'],
+      changes: ['Izmene vožnji', 'Vožnja u kojoj si se pomeri, kasni ili ukloni, ili te upišu kao vozača'],
       reminders: ['Podsetnici', 'Pre polaska, i da upišeš kilometražu kad se zajednički auto vrati'],
       messages: ['Poruke', 'Neko napiše nešto u razgovoru tvoje vožnje'],
-      requests: ['Zahtevi za prevoz', 'Vozač ti ponudi prevoz koji si tražio/la'],
+      requests: ['Zahtevi za prevoz', 'Neko traži prevoz na putu koji voziš, ili ti vozač ponudi prevoz koji si tražio/la'],
       approvals: ['Odobrenja zajedničkog auta', 'Zahtev preko dozvoljenog i odgovor na tvoj'],
       cars: ['Prijave o zajedničkom autu', 'Neko prijavi problem sa zajedničkim autom'],
     },
@@ -1519,6 +1527,9 @@ const sr: Messages = {
     duplicateMine: 'Dupliraj kao moju vožnju',
     driver: 'Vozač',
     callDriver: 'Pozovi vozača',
+    lateAsk: 'Kasniš?',
+    lateChoice: (minutes) => `${minutes} min`,
+    lateTell: (minutes) => `Javi putnicima da kasniš ${minutes} min`,
     you: 'Ti',
     rideOptions: 'Opcije vožnje',
     leaves: 'Polazi',
@@ -1601,6 +1612,7 @@ const sr: Messages = {
     placeholder: 'Napiši poruku',
     send: 'Pošalji',
     remove: 'Ukloni poruku',
+    late: (minutes) => `Kasnim ${minutes} min`,
   },
 
   requests: {
@@ -2011,6 +2023,7 @@ const sr: Messages = {
     rideAwaiting: 'Dodato. Administratori su zamoljeni da odobre.',
     rideApproved: (driver) => `Odobreno. ${driver} ima auto.`,
     claimed: (n) => (n === 1 ? 'Vožnja je sada tvoja.' : `Vožnje su sada tvoje (${n}).`),
+    lateSaid: (minutes) => `Putnici znaju da kasniš ${minutes} min.`,
     rideDeclined: 'Odbijeno. Vožnja je uklonjena.',
     ridesAdded: (n) => `Dodato: ${srPlural(n, 'vožnja', 'vožnje', 'vožnji')}, jedna sedmično.`,
     ridesRemoved: 'Vožnje su uklonjene.',
@@ -2192,13 +2205,14 @@ const sr: Messages = {
         title: 'Niko ne ide tvojim putem',
         steps: [
           'Dodirni **Zatraži prevoz**: dan, otprilike vreme, odakle i dokle.',
-          'Vozači to vide na tabli i mogu da dodirnu **Ponudi prevoz**. Ti dobijaš mesto i obaveštenje.',
+          'Vozači koji voze tim putem dobijaju obaveštenje, a svako može da dodirne **Ponudi prevoz** na tabli. Ti dobijaš mesto i obaveštenje.',
         ],
       },
       {
         title: 'Poruke',
         steps: [
           'Svaka vožnja ima **Poruke**. Svi u autu dobijaju obaveštenje kad napišeš nešto: kašnjenje, skretanje, veliki kofer.',
+          'Voziš i kasniš? Na dan vožnje, **Kasniš?** na tvojoj vožnji je jedan dodir: **5 min**, **10 min** ili **15 min**. Putnici dobijaju obaveštenje, a to ide i u poruke.',
         ],
       },
       {

@@ -3,7 +3,7 @@
 import json
 import re
 from datetime import date, datetime, time, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -485,7 +485,14 @@ class MessageRead(BaseModel):
     author_id: int | None
     author_name: str
     body: str
+    late_minutes: int | None = None
     created_at: datetime
+
+
+class LateIn(BaseModel):
+    """The driver's one tap: how late the ride will leave."""
+
+    minutes: Literal[5, 10, 15]
 
 
 class BookingCreate(BaseModel):

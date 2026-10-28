@@ -35,11 +35,11 @@ def sent(monkeypatch):
     (kind, the accounts it was addressed to, its arguments)."""
     out = []
 
-    def fake_notify(session, user_ids, kind, ride, **args):
+    def fake_notify(session, user_ids, kind, ride=None, *, request=None, **args):
         out.append((kind, sorted(uid for uid in user_ids if uid is not None), args))
         return 0
 
-    for module in ("app.routers.rides", "app.routers.thread"):
+    for module in ("app.routers.rides", "app.routers.thread", "app.routers.requests"):
         monkeypatch.setattr(f"{module}.notify", fake_notify)
     return out
 
@@ -255,6 +255,45 @@ def test_asking_for_a_ride_and_a_driver_answering_it(client, sent):
     assert client.get("/api/requests", params={"from": TOMORROW, "to": TOMORROW}).json()[0]["ride_id"] is None
 
 
+def test_a_request_is_pushed_to_the_drivers_who_drive_that_way(client, sent):
+    # Ana drives it, Vuk picks up in Novi Sad on his way, under the office's
+    # other name; Bojan drives the other way and Pera to somewhere else.
+    client.post("/api/rides", json=own_ride())
+    client.post("/api/rides", json=own_ride(driver_name="Vuk", car_name="Red Clio", origin="Beograd", stops=["NS"]))
+    client.post("/api/rides", json=own_ride(driver_name="Bojan", car_name="Grey Polo", origin="HQ", destination="Novi Sad"))
+    client.post("/api/rides", json=own_ride(driver_name="Pera", car_name="Black Astra", destination="Airport"))
+    # Mila drives it too, but nobody is told about their own request.
+    client.post("/api/rides", json=own_ride(driver_name="Mila", car_name="White Fabia"))
+
+    client.post("/api/requests", json=ask(origin="novi sad "), headers=as_("Mila"))
+    told = [(ids, args) for kind, ids, args in sent if kind == "request_made"]
+    assert told == [(sorted([user_id(client, "Ana"), user_id(client, "Vuk")]), {"name": "Mila"})]
+
+
+def test_the_driver_says_the_ride_is_running_late(client, sent):
+    today = date.today().isoformat()
+    ride = client.post("/api/rides", json=own_ride(ride_date=today, departure_time="23:00", return_time="23:30", seats=2)).json()
+    url = f"/api/rides/{ride['id']}"
+    client.post(f"{url}/bookings", json={"passenger_name": "Marko"})
+    client.post(f"{url}/bookings", json={"passenger_name": "Gost"}, headers=as_("Ana"))
+
+    assert client.post(f"{url}/late", json={"minutes": 10}, headers=as_("Marko")).status_code == 403
+    assert client.post(f"{url}/late", json={"minutes": 7}, headers=as_("Ana")).status_code == 422
+    r = client.post(f"{url}/late", json={"minutes": 10}, headers=as_("Ana"))
+    assert r.status_code == 201, r.text
+    assert r.json()["late_minutes"] == 10 and r.json()["body"] == "Running 10 min late"
+
+    # It is a line in the thread, and the passengers with an account hear it.
+    thread = client.get(f"{url}/messages").json()
+    assert [(m["author_name"], m["late_minutes"]) for m in thread] == [("Ana", 10)]
+    assert client.get(url).json()["message_count"] == 1
+    assert ("running_late", [user_id(client, "Marko")], {"driver": "Ana", "minutes": 10}) in sent
+
+    # Only on the ride's own day.
+    later = client.post("/api/rides", json=own_ride(car_name="Grey Polo")).json()
+    assert client.post(f"/api/rides/{later['id']}/late", json={"minutes": 5}, headers=as_("Ana")).status_code == 409
+
+
 def test_getting_into_any_car_answers_your_request(client):
     request = client.post("/api/requests", json=ask(), headers=as_("Mila")).json()
     ride = client.post("/api/rides", json=own_ride(seats=2)).json()
@@ -307,3 +346,15 @@ def test_push_wording_for_the_new_notifications():
     assert push_module.ride_message("seat_freed", ride, "en", driver="Ana")["title"] == "A seat freed up: you're in Ana's car"
     assert push_module.ride_message("message", ride, "sr", name="Mila", text="kasnim")["title"] == "Mila: kasnim"
     assert push_module.ride_message("request_answered", ride, "sr", driver="Ana")["title"] == "Ana ti nudi prevoz"
+    assert push_module.ride_message("running_late", ride, "sr", driver="Ana", minutes=10)["title"] == "Ana kasni 10 min"
+
+    from app.models import RideRequest
+
+    asked = RideRequest(id=3, request_date=date(2026, 9, 10), user_id=1, name="Mila", origin="Novi Sad", destination="HQ", departure_time=time(8, 0))
+    message = push_module.ride_message("request_made", None, "en", request=asked, name="Mila")
+    assert message == {
+        "title": "Mila is looking for a ride you drive",
+        "body": "Thu 10 Sep 08:00, Novi Sad to HQ",
+        "url": "/",
+        "tag": "request-3-request_made",
+    }

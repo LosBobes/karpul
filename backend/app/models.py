@@ -258,6 +258,10 @@ class RideMessage(SQLModel, table=True):
     author_id: int | None = Field(default=None, foreign_key="appuser.id")
     author_name: str
     body: str
+    # Set when the driver said "running N min late" with one tap (POST
+    # /api/rides/{id}/late): the app shows it in each reader's language, and
+    # `body` is the English for anything that only reads text.
+    late_minutes: int | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="messages")

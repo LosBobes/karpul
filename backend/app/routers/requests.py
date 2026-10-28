@@ -17,8 +17,11 @@ from sqlmodel import Session, col, select
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..events import request_deleted, request_saved
-from ..models import RideRequest
+from ..models import Ride, RideRequest
+from ..offices import office_of
+from ..push import notify
 from ..schemas import RideRequestCreate, RideRequestRead
+from ..services import all_stops, fold_name
 
 router = APIRouter(prefix="/api/requests", tags=["requests"])
 
@@ -27,6 +30,35 @@ WriteSessionDep = Annotated[Session, Depends(get_write_session)]
 
 # One person's open requests at a time; plenty for a fortnight of commutes.
 MAX_OPEN_REQUESTS = 14
+# How far back a ride still makes its driver someone who "drives that way".
+DRIVES_THAT_WAY_DAYS = 60
+
+
+def _place(name: str) -> str:
+    """A place as one key: an office under any of its names, else the folded text."""
+    return office_of(name) or fold_name(name)
+
+
+def drivers_for(session: Session, request: RideRequest) -> list[int]:
+    """The accounts that drive the way `request` asks to go: a ride of theirs
+    from DRIVES_THAT_WAY_DAYS ago on, past or coming, that ends where the
+    request ends and starts, or picks up, where it starts. The requester is
+    not one of them."""
+    start, end = _place(request.origin), _place(request.destination)
+    rides = session.exec(
+        select(Ride).where(
+            Ride.ride_date >= date.today() - timedelta(days=DRIVES_THAT_WAY_DAYS),
+            col(Ride.driver_id).is_not(None),
+            Ride.driver_id != request.user_id,
+            Ride.needs_driver == False,  # noqa: E712 - SQL comparison
+        )
+    ).all()
+    found = {
+        r.driver_id
+        for r in rides
+        if _place(r.destination) == end and start in {_place(p) for p in [r.origin, *all_stops(r)]}
+    }
+    return sorted(uid for uid in found if uid is not None)
 
 
 @router.get("", response_model=list[RideRequestRead])
@@ -74,6 +106,7 @@ def create_request(payload: RideRequestCreate, session: WriteSessionDep, creds: 
     session.commit()
     session.refresh(request)
     request_saved(request)
+    notify(session, drivers_for(session, request), "request_made", request=request, name=user.display_name)
     return request
 
 

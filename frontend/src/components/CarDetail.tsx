@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carModels'
 import { factText } from '../lib/carState'
-import { firstName, fmtTime } from '../lib/dates'
+import { firstName, fmtTime, toISODate } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
@@ -77,6 +77,8 @@ interface Props {
   onClaim: (ride: Ride) => void
   /** A passenger drives a shared car whose driver cancelled (`needs_driver`). */
   onTakeOver: (ride: Ride) => void
+  /** The driver's one tap on the day: tell the car the ride leaves `minutes` late. */
+  onLate: (ride: Ride, minutes: number) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
   onGuide?: () => void
   /** How the shared car stands (components/CarStatus.tsx), for the line under its name. */
@@ -101,6 +103,19 @@ interface Props {
   onGrab: (e: React.PointerEvent<HTMLElement>, drag: PassengerDrag) => void
   /** False where there is nowhere to drag the chip to (the upcoming list). */
   draggable?: boolean
+}
+
+/** The driver's "running late" choices (backend: schemas.LateIn). */
+const LATE_CHOICES = [5, 10, 15]
+/** How long after departure the driver may still say so. */
+const LATE_AFTER_MIN = 60
+
+/** Is it the ride's day, and not yet an hour past its departure? The server
+ * takes a late notice all day (routers/thread.py); the row goes once it is moot. */
+function lateWindow(ride: Ride, now = new Date()): boolean {
+  if (ride.ride_date !== toISODate(now)) return false
+  const [h, m] = ride.departure_time.split(':').map(Number)
+  return now.getHours() * 60 + now.getMinutes() < h * 60 + m + LATE_AFTER_MIN
 }
 
 /** The pickup choice that opens a field for a place not on the route yet. */
@@ -133,6 +148,7 @@ export function CarDetail({
   onDecline,
   onClaim,
   onTakeOver,
+  onLate,
   onGuide,
   carState = null,
   onCarState,
@@ -336,6 +352,28 @@ export function CarDetail({
             <span className="when-value">{ride.return_time ? fmtTime(ride.return_time) : t.detail.oneWay}</span>
           </div>
         </div>
+
+        {isDriver && lateWindow(ride) && (
+          <div className="late-row" role="group" aria-label={t.detail.lateAsk}>
+            <span className="late-ask">
+              <HourglassIcon size={16} /> {t.detail.lateAsk}
+            </span>
+            <span className="late-actions">
+              {LATE_CHOICES.map((minutes) => (
+                <button
+                  key={minutes}
+                  type="button"
+                  className="btn btn-sm"
+                  disabled={busy}
+                  aria-label={t.detail.lateTell(minutes)}
+                  onClick={() => onLate(ride, minutes)}
+                >
+                  {t.detail.lateChoice(minutes)}
+                </button>
+              ))}
+            </span>
+          </div>
+        )}
 
         <ol className="trip" aria-label={`${ride.origin}, ${ride.destination}`}>
           {ride.stops_before.map((stop) => (

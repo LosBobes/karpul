@@ -248,6 +248,7 @@ export const api = {
   messages: (rideId: number) => request<RideMessage[]>(`/api/rides/${rideId}/messages`),
 
   postMessage: (rideId: number, body: string) => request<RideMessage>(`/api/rides/${rideId}/messages`, json('POST', { body })),
+  runningLate: (rideId: number, minutes: number) => request<RideMessage>(`/api/rides/${rideId}/late`, json('POST', { minutes })),
 
   deleteMessage: (rideId: number, messageId: number) =>
     request<void>(`/api/rides/${rideId}/messages/${messageId}`, { method: 'DELETE' }),
