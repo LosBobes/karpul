@@ -8,9 +8,9 @@ import { registerSW } from 'virtual:pwa-register'
  * app shows "a new version is ready" (`useUpdateReady`) and the user applies it
  * with a tap (`applyUpdate`), which hard-refreshes the page onto the new build.
  *
- * Someone who would rather not be asked turns the notice off (`setUpdateNotices`,
- * the Notifications sheet, remembered per browser as `karpul.updateNotices`).
- * Then nothing is shown and a waiting build is taken only in the first seconds
+ * The notice is off by default; someone who wants to be asked turns it on
+ * (`setUpdateNotices`, the Notifications sheet, remembered per browser as
+ * `karpul.updateNotices`). While it is off nothing is shown and a waiting build is taken only in the first seconds
  * after the app opens (`QUIET_WINDOW_MS`), before anything has been typed, so
  * an update lands the next time the app is started and never under a finger.
  *
@@ -26,11 +26,12 @@ const QUIET_WINDOW_MS = 10_000
 const NOTICES_KEY = 'karpul.updateNotices'
 const startedAt = Date.now()
 
+/** Off unless this browser turned it on: most people would rather the app just update. */
 function loadNotices(): boolean {
   try {
-    return localStorage.getItem(NOTICES_KEY) !== 'off'
+    return localStorage.getItem(NOTICES_KEY) === 'on'
   } catch {
-    return true
+    return false
   }
 }
 
@@ -74,7 +75,7 @@ export function useUpdateNotices(): boolean {
   return useSyncExternalStore(
     subscribe,
     () => notices,
-    () => true,
+    () => false,
   )
 }
 

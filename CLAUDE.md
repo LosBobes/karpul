@@ -370,7 +370,7 @@ through `importScripts`; every sign-in re-files the browser's subscription under
 (seats, changes, reminders, messages, requests, approvals, cars); a person switches categories off per account
 (`User.push_muted`, `GET/PUT /api/push/preferences`) and `notify` skips them. `NotificationsSheet` is the
 notification centre: the push switch on its own card, a row per category, and *New version notice* for this
-device (`useUpdateNotices` / `setUpdateNotices` in `lib/pwa.ts`, `karpul.updateNotices`): off, the update
+device (`useUpdateNotices` / `setUpdateNotices` in `lib/pwa.ts`, `karpul.updateNotices`, off unless turned on): off, the update
 toast and its bolt never show and a waiting build is taken only in the first seconds after the app opens.
 
 **Calendar, sharing, figures.** `app/calendar.py` writes floating local times (no zone) for one
