@@ -186,6 +186,22 @@
 .pax-list > li + li {
   border-top: 1px solid var(--border);
 }
+/* Someone who just got in grows into the list (lib/motion.ts useArrivals),
+   so the rows below slide down instead of jumping: a grid row from 0 to its
+   height, the way the Upcoming detail unfolds. `minmax(0, …)` lets the track
+   go below the row's own min-height; the slot's overflow hides the rest. */
+.pax-slot-new {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+  animation: pax-arrive var(--dur-gentle) var(--ease-out);
+}
+@keyframes pax-arrive {
+  from {
+    grid-template-rows: minmax(0, 0fr);
+    opacity: 0;
+  }
+}
 .pax-row {
   display: flex;
   align-items: center;
