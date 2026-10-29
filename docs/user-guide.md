@@ -119,7 +119,11 @@ That is it. Some more things you can do from there:
 - **Change your pickup point** later with **Change pickup**.
 - **Call the driver:** if the driver gave a phone number, **Call the driver** is on the card.
 - **Write to the car:** open **Messages** on the ride. Everyone in the car is notified.
-  Use it for "running five minutes late", "I have a big suitcase", and so on.
+  Use it for "I have a big suitcase", a detour, and so on.
+- **Running late (drivers):** on the day of your ride, until an hour after it was due to leave,
+  your ride card shows **Running late?** with **5 min**, **10 min** and **15 min**. One tap tells
+  your passengers and puts the line in the ride's messages, in each reader's language. The
+  departure time on the ride stays as it is.
 
 **The car is full?** Tap **Wait for a seat**. The first seat that frees up is given to you
 automatically and you get a notification. Getting a seat in any other car that day takes you
@@ -278,7 +282,9 @@ one takes it by departure time, it is removed and everyone is told.
 Use **Ask for a ride** (at the top of *Upcoming*, under the filters, and in the **You** panel in *Week*):
 the day, roughly when, from and to, and a note ("any time before 9").
 
-Your request shows on the board under that day, among the people **Looking for a ride**. A driver can tap
+Your request shows on the board under that day, among the people **Looking for a ride**, and
+the drivers who drive that way are notified: anyone with a ride in the last two months, or
+one coming up, that ends where you are going and starts or picks up where you start. A driver can tap
 **Offer a ride**: the ride form opens with your route filled in, and when they save it you
 get a seat and a notification. If you find a seat on your own that day, the request is
 closed for you. **Withdraw** removes it.
@@ -295,10 +301,10 @@ you want to hear about:
 | Category | You are told when |
 | --- | --- |
 | **Seats** | someone gets in or out of your car, or a seat frees up for you |
-| **Ride changes** | a ride you are in moves or is removed, or you are put down to drive |
+| **Ride changes** | a ride you are in moves, runs late or is removed, or you are put down to drive |
 | **Reminders** | it is time to leave, and to note the odometer when a shared car is back |
 | **Messages** | someone writes in the thread of your ride |
-| **Ride requests** | a driver offers you a ride you asked for |
+| **Ride requests** | someone asks for a ride on a road you drive, or a driver offers you the one you asked for |
 | **Shared-car approvals** | (admins) an ask past the share, and the answer to yours |
 | **Shared-car reports** | (admins) someone reports a problem with a shared car |
 

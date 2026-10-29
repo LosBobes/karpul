@@ -1,5 +1,7 @@
-"""`/api/rides/{id}/messages`: the ride's thread."""
+"""`/api/rides/{id}/messages`: the ride's thread, and `/late`, the driver's
+one-tap "running late" that is written in it."""
 
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,7 +13,7 @@ from ..database import get_session, get_write_session
 from ..events import ride_saved
 from ..models import RideMessage
 from ..push import notify
-from ..schemas import MessageIn, MessageRead
+from ..schemas import LateIn, MessageIn, MessageRead
 
 router = APIRouter(prefix="/api/rides", tags=["rides"])
 
@@ -78,3 +80,33 @@ def delete_message(ride_id: int, message_id: int, session: WriteSessionDep, cred
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
+
+
+@router.post("/{ride_id}/late", response_model=MessageRead, status_code=status.HTTP_201_CREATED)
+def running_late(ride_id: int, payload: LateIn, session: WriteSessionDep, creds: CredsDep):
+    """The driver's one tap on the day: "running N min late". It is a line in
+    the thread like any other (the app writes it in each reader's language
+    from `late_minutes`), and the passengers are pushed `running_late`. The
+    times on the ride stay as they are: it is a heads-up, not an edit."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    if not is_driver(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver can say the ride is running late")
+    if ride.ride_date != date.today():
+        raise HTTPException(status.HTTP_409_CONFLICT, "A ride can only run late on its own day")
+    minutes = payload.minutes
+    message = RideMessage(
+        ride_id=ride.id,  # type: ignore[arg-type]
+        author_id=user.id,
+        author_name=user.display_name,
+        body=f"Running {minutes} min late",
+        late_minutes=minutes,
+    )
+    session.add(message)
+    session.commit()
+    session.refresh(message)
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+    told = [b.passenger_id for b in ride.bookings if b.passenger_id != user.id]
+    notify(session, told, "running_late", ride, driver=user.display_name, minutes=minutes)
+    return message

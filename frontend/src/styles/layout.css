@@ -408,6 +408,27 @@ main,
 .claim-row .btn {
   min-height: 40px;
 }
+/* The driver's "running late" on the ride's day (CarDetail): the question
+   and three quick answers, one line under the clocks. */
+.late-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin: -0.25rem 0 0.75rem;
+}
+.late-ask {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.late-actions {
+  display: flex;
+  gap: 0.4rem;
+}
 /* The admin's queue (components/Approvals.tsx): one card per ask, the ride
    on top (a tap opens it on the day plan), the two answers under it. */
 .approval-list {

@@ -29,7 +29,7 @@ from typing import Any
 import httpx
 from sqlmodel import Session, select
 
-from .models import PushSubscription, Ride, User
+from .models import PushSubscription, Ride, RideRequest, User
 from .webpush import Vapid, encrypt
 
 log = logging.getLogger("karpul.push")
@@ -66,10 +66,10 @@ class Target:
 # Notifications sheet). Every `kind` notify() sends belongs to exactly one.
 CATEGORIES: dict[str, tuple[str, ...]] = {
     "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
-    "changes": ("ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
+    "changes": ("running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
     "reminders": ("leaving_soon", "note_km"),
     "messages": ("message",),
-    "requests": ("request_answered",),
+    "requests": ("request_made", "request_answered"),
     "approvals": ("approval_requested", "ride_approved", "ride_declined"),
     "cars": ("car_issue",),
 }
@@ -113,6 +113,8 @@ TEXTS: dict[str, dict[str, Any]] = {
         "seat_freed": lambda driver: f"A seat freed up: you're in {driver}'s car",
         "message": lambda name, text: f"{name}: {text}",
         "request_answered": lambda driver: f"{driver} offers you a ride",
+        "request_made": lambda name: f"{name} is looking for a ride you drive",
+        "running_late": lambda driver, minutes: f"{driver} is running {minutes} min late",
         "ride_assigned": lambda name: f"{name} put you down to drive",
         "approval_requested": lambda name: f"{name} asks for another shared car",
         "ride_approved": lambda name: f"{name} approved your shared car",
@@ -137,6 +139,8 @@ TEXTS: dict[str, dict[str, Any]] = {
         "seat_freed": lambda driver: f"Oslobodilo se mesto: u autu si, vozi {driver}",
         "message": lambda name, text: f"{name}: {text}",
         "request_answered": lambda driver: f"{driver} ti nudi prevoz",
+        "request_made": lambda name: f"{name} traži prevoz na putu koji voziš",
+        "running_late": lambda driver, minutes: f"{driver} kasni {minutes} min",
         "ride_assigned": lambda name: f"{name} te je upisao/la kao vozača",
         "approval_requested": lambda name: f"{name} traži još jedan zajednički auto",
         "ride_approved": lambda name: f"{name} je odobrio/la tvoj zajednički auto",
@@ -162,13 +166,28 @@ def _when(t: dict[str, Any], ride_date: date, departure: time, origin: str, dest
 
 
 def ride_message(
-    kind: str, ride: Ride | None, locale: str, *, url: str | None = None, body: str | None = None, **args: Any
+    kind: str,
+    ride: Ride | None,
+    locale: str,
+    *,
+    url: str | None = None,
+    body: str | None = None,
+    request: RideRequest | None = None,
+    **args: Any,
 ) -> dict[str, str]:
     """One notification, in the subscriber's language, deep-linking to the
     ride (or to `url`: a removed ride's link would only say it is gone). With
-    no ride (a car report) the body is `body` and the link is the app."""
+    no ride the body is `body` (a car report), or the "when and where" of a
+    ride `request`, and the link is the app."""
     t = _texts(locale)
     title = t[kind](**args) if args else t[kind]()
+    if ride is None and request is not None:
+        return {
+            "title": title,
+            "body": _when(t, request.request_date, request.departure_time, request.origin, request.destination),
+            "url": url or "/",
+            "tag": f"request-{request.id}-{kind}",
+        }
     if ride is None:
         return {"title": title, "body": body or "", "url": url or "/", "tag": f"{kind}-{hash(body) & 0xFFFF}"}
     return {
@@ -239,13 +258,14 @@ def notify(
     *,
     url: str | None = None,
     body: str | None = None,
+    request: RideRequest | None = None,
     **args: Any,
 ) -> int:
     """Queue `kind` about `ride` for every browser of the accounts in `user_ids`
     (None, a seat with no account behind it, is skipped, and so is anyone who
     switched that kind's category off). `url` replaces the link to the ride
     and `body` its "when and where" line; a notification about no ride at all
-    (a car report) gives both.
+    gives both (a car report), or the ride `request` it is about.
 
     Returns how many subscriptions were found. Call it before the session is
     closed; the ride's fields are copied so the send can outlive the request.
@@ -257,7 +277,11 @@ def notify(
     if not targets:
         return 0
     snapshot = Ride.model_validate(ride.model_dump()) if ride is not None else None
+    asked = RideRequest.model_validate(request.model_dump()) if request is not None else None
     _executor.submit(
-        deliver_all, targets, lambda locale: ride_message(kind, snapshot, locale, url=url, body=body, **args), identity
+        deliver_all,
+        targets,
+        lambda locale: ride_message(kind, snapshot, locale, url=url, body=body, request=asked, **args),
+        identity,
     )
     return len(targets)

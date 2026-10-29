@@ -107,6 +107,8 @@ export interface RideMessage {
   author_id: number | null
   author_name: string
   body: string
+  /** The driver's one-tap "running N min late"; shown in the reader's language. */
+  late_minutes: number | null
   created_at: string
 }
 

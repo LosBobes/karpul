@@ -122,7 +122,7 @@ export function RideThread({ ride, isDriver, onError }: Props) {
                         <strong>{mine ? t.detail.you : m.author_name}</strong>
                         <time dateTime={m.created_at}>{when(m.created_at)}</time>
                       </div>
-                      <p className="thread-msg-body">{m.body}</p>
+                      <p className="thread-msg-body">{m.late_minutes !== null ? t.thread.late(m.late_minutes) : m.body}</p>
                     </div>
                     {(mine || isDriver) && (
                       <button
