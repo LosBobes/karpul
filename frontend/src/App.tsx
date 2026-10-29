@@ -45,6 +45,7 @@ import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
 import { boardRange, daySelection, upcomingSelection, VIEWS, type View } from './lib/selection'
 import type { NewStop } from './lib/stops'
+import { keepFor, restoreScroll, useKept } from './lib/keep'
 import { useBoard } from './lib/useBoard'
 import { useOverlays } from './lib/useOverlays'
 import { usePassengerDrag } from './lib/usePassengerDrag'
@@ -120,27 +121,29 @@ function Board({ session }: { session: Session }) {
     [user.id, user.display_name, user.is_admin],
   )
   const [view, setViewState] = useState<View>(loadView)
-  const [selected, setSelectedDate] = useState(todayISO)
+  // Where you are comes back after a reload (lib/keep.ts): the day, the open
+  // ride, the sheets that were up and the forms in them.
+  const [selected, setSelectedDate] = useKept('board.date', todayISO)
   const [busyId, setBusyId] = useState<number | null>(null)
   const { toast, setToast, notice, failure } = useToast()
-  const [form, setForm] = useState<FormState>(null)
+  const [form, setForm] = useKept<FormState>('board.form', null)
   const [formError, setFormError] = useState<string | null>(null)
   // The error is the shared-car share: the form offers to ask an admin instead.
   const [formAsk, setFormAsk] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   // "Ask for a ride" (components/RequestForm.tsx): the day it opens on, or closed.
-  const [askDate, setAskDate] = useState<string | null>(null)
+  const [askDate, setAskDate] = useKept<string | null>('board.ask', null)
   const [askError, setAskError] = useState<string | null>(null)
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
-  const [carSel, setCarSel] = useState<number | null>(null)
+  const [carSel, setCarSel] = useKept<number | null>('board.ride', null)
   // The sheets and drawers: your account (AccountSheet), the app menu
   // (Sidebar, under the ☰), the company-car help (CarGuide, from the drawer
   // or a ride's driver card), how the shared cars stand (CarStatus), your
   // figures (MyRides), the push switch (NotificationsSheet), who to ask
   // (SupportSheet) and the bug form (FeedbackSheet), the update screen, and
   // the admin's sheets (CarAdmin, PeopleAdmin, RideLog, AdminLog, Approvals).
-  const { is, show, hide, closer } = useOverlays<Overlay>()
+  const { is, show, hide, closer } = useOverlays<Overlay>('board.sheets', ['update'])
 
   // Admin (backend: app/admin.py): the company-car pool and the people. The
   // drawer offers them to admins only; the server checks every call anyway.
@@ -187,7 +190,7 @@ function Board({ session }: { session: Session }) {
         setCarSel(ride.id)
       })
       .catch(() => setToast({ kind: 'error', text: messages().toasts.rideNotFound }))
-  }, [setToast])
+  }, [setToast, setSelectedDate, setCarSel])
 
   /** A line of the admin's log opens its ride on the day plan, where it sits among that day's cars. */
   const openLoggedRide = (rideId: number) => {
@@ -206,7 +209,7 @@ function Board({ session }: { session: Session }) {
   const setSelected = useCallback((iso: string) => {
     setSelectedDate(iso)
     setCarSel(null)
-  }, [])
+  }, [setSelectedDate, setCarSel])
 
   const setView = useCallback((v: View) => {
     setViewState(v)
@@ -218,7 +221,7 @@ function Board({ session }: { session: Session }) {
     } catch {
       /* private mode etc. */
     }
-  }, [])
+  }, [setCarSel, setSelectedDate])
 
   // What is loaded: the days ahead, the selected day for the day plan, or
   // the Mon-Sun week around the selected day (lib/selection.ts).
@@ -227,6 +230,10 @@ function Board({ session }: { session: Session }) {
   const onLoadError = useCallback((e: unknown) => setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) }), [setToast])
   const board = useBoard(range, { isAdmin, onLoadError })
   const { rides, requests, cars, adminCars, carStates, reloadCarStates, loading, liveStatus, load, upsertRide, removeRides, upsertRequest, removeRequest, reloadCars } = board
+  // Back where the page was scrolled, once there is a board to scroll.
+  useEffect(() => {
+    if (!loading) restoreScroll()
+  }, [loading])
   const openRequests = useMemo(() => requests.filter((r) => r.ride_id === null), [requests])
 
   // A newer build is installed and waiting (lib/pwa.ts); offered as a toast when no other shows.
@@ -426,7 +433,7 @@ function Board({ session }: { session: Session }) {
     setForm(null)
     setFormError(null)
     setFormAsk(false)
-  }, [])
+  }, [setForm])
 
   async function onSubmitForm(input: RideInput, wayBack?: RideInput) {
     setSubmitting(true)
@@ -565,7 +572,7 @@ function Board({ session }: { session: Session }) {
     setAskError(null)
     setAskDate(date)
   }
-  const closeAsk = useCallback(() => setAskDate(null), [])
+  const closeAsk = useCallback(() => setAskDate(null), [setAskDate])
 
   async function onSubmitAsk(input: RideRequestInput) {
     setSubmitting(true)
@@ -1150,5 +1157,6 @@ export default function App() {
   }, [])
   if (resetToken) return <AuthGate resetToken={resetToken} onResetDone={doneResetting} />
   if (!session) return <AuthGate />
+  keepFor(session.user.id)
   return <Board key={session.user.id} session={session} />
 }

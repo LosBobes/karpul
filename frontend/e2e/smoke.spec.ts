@@ -144,3 +144,28 @@ test('a profile photo replaces the initials, for everyone', async ({ browser }, 
   await expect(img).toHaveCount(0)
   await expect(face).toHaveCount(0)
 })
+
+test('a reload keeps the view, the open form and what was typed in it', async ({ browser }, info) => {
+  const tag = info.project.name === 'phone' ? 'p' : 'd'
+  const page = await register(browser, { username: `rita.${tag}`, first: 'Rita', last: `Reload ${tag.toUpperCase()}` }, info.project.use)
+  await page.getByRole('radiogroup', { name: 'View' }).getByRole('radio', { name: 'Week' }).click()
+  await page.getByRole('button', { name: 'Add ride' }).click()
+  const form = page.getByRole('dialog', { name: 'Add ride' })
+  await form.getByRole('radio', { name: 'My own car' }).click()
+  await form.getByPlaceholder('e.g. grey Octavia').fill('Red Clio')
+  await form.getByLabel('Pickup location').fill('Petrovaradin')
+
+  await page.reload()
+
+  await expect(page.getByRole('radiogroup', { name: 'View' }).getByRole('radio', { name: 'Week' })).toBeChecked()
+  const back = page.getByRole('dialog', { name: 'Add ride' })
+  await expect(back.getByPlaceholder('e.g. grey Octavia')).toHaveValue('Red Clio')
+  await expect(back.getByLabel('Pickup location')).toHaveValue('Petrovaradin')
+
+  // Closed, it is gone for good: the next reload opens on the board alone.
+  await back.getByRole('button', { name: 'Close' }).click()
+  await expect(back).toBeHidden()
+  await page.reload()
+  await expect(page.getByRole('radiogroup', { name: 'View' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Add ride' })).toBeHidden()
+})

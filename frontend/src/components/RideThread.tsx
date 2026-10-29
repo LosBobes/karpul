@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useKept } from '../lib/keep'
 import { api } from '../lib/api'
 import { CLOCK } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
@@ -39,9 +40,9 @@ interface Props {
 export function RideThread({ ride, isDriver, onError }: Props) {
   const t = useT()
   const me = useMe()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useKept(`thread.${ride.id}.open`, false)
   const [items, setItems] = useState<RideMessage[] | null>(null)
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useKept(`thread.${ride.id}.draft`, '')
   const [sending, setSending] = useState(false)
   const list = useRef<HTMLOListElement>(null)
 

@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react'
+import { useKept } from '../lib/keep'
 import { addDays, foldName, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { fmtKm, pinsFor } from '../lib/maps'
@@ -130,46 +131,46 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const me = useMe()
   // An admin adding a ride picks who drives it; a duplicate keeps its driver.
   const picksDriver = !!me.admin && !existing
-  const [driver, setDriver] = useState<Driver>(() =>
+  const [driver, setDriver] = useKept<Driver>('rideForm.driver', () =>
     picksDriver && template?.driver_id != null ? { id: template.driver_id, name: template.driver_name } : { id: me.id, name: userName },
   )
   const [last] = useState(loadLastRoute)
-  const [mode, setModeState] = useState<Mode>(() => (isAdvancedRide(seed) ? 'advanced' : loadMode()))
-  const [rideDate, setRideDate] = useState(existing?.ride_date ?? request?.request_date ?? date)
-  const [carType, setCarType] = useState<CarType>(slot ? 'corporate' : (seed?.car_type ?? (cars.length ? 'corporate' : 'own')))
-  const [carId, setCarId] = useState<number | ''>(slot?.carId ?? seed?.corporate_car_id ?? cars[0]?.id ?? '')
-  const [carName, setCarName] = useState(seed?.car_type === 'own' ? seed.car_name : last.car_name)
+  const [mode, setModeState] = useKept<Mode>('rideForm.mode', () => (isAdvancedRide(seed) ? 'advanced' : loadMode()))
+  const [rideDate, setRideDate] = useKept('rideForm.rideDate', existing?.ride_date ?? request?.request_date ?? date)
+  const [carType, setCarType] = useKept<CarType>('rideForm.carType', slot ? 'corporate' : (seed?.car_type ?? (cars.length ? 'corporate' : 'own')))
+  const [carId, setCarId] = useKept<number | ''>('rideForm.carId', slot?.carId ?? seed?.corporate_car_id ?? cars[0]?.id ?? '')
+  const [carName, setCarName] = useKept('rideForm.carName', seed?.car_type === 'own' ? seed.car_name : last.car_name)
   // A shared car kept somewhere (CorporateCar.home) starts a new ride there.
   const homeOf = (type: CarType, id: number | '') => (type === 'corporate' ? (cars.find((c) => c.id === id)?.home ?? '') : '')
-  const [origin, setOrigin] = useState(seed?.origin ?? request?.origin ?? (homeOf(carType, carId) || last.origin))
-  const [destination, setDestination] = useState(seed?.destination ?? request?.destination ?? last.destination)
-  const [departure, setDeparture] = useState(slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
-  const [ret, setRet] = useState(slot?.ret ?? seed?.return_time?.slice(0, 5) ?? '17:00')
-  const [oneWay, setOneWay] = useState(seed && !slot ? seed.return_time === null : false)
+  const [origin, setOrigin] = useKept('rideForm.origin', seed?.origin ?? request?.origin ?? (homeOf(carType, carId) || last.origin))
+  const [destination, setDestination] = useKept('rideForm.destination', seed?.destination ?? request?.destination ?? last.destination)
+  const [departure, setDeparture] = useKept('rideForm.departure', slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
+  const [ret, setRet] = useKept('rideForm.ret', slot?.ret ?? seed?.return_time?.slice(0, 5) ?? '17:00')
+  const [oneWay, setOneWay] = useKept('rideForm.oneWay', seed && !slot ? seed.return_time === null : false)
   // A one-way ride's mirror image, offered with it: the route reversed, on its own day and time.
-  const [wayBack, setWayBack] = useState(false)
-  const [backDate, setBackDate] = useState(existing?.ride_date ?? request?.request_date ?? date)
-  const [backDeparture, setBackDeparture] = useState('17:00')
+  const [wayBack, setWayBack] = useKept('rideForm.wayBack', false)
+  const [backDate, setBackDate] = useKept('rideForm.backDate', existing?.ride_date ?? request?.request_date ?? date)
+  const [backDeparture, setBackDeparture] = useKept('rideForm.backDeparture', '17:00')
   const offersWayBack = oneWay && !existing && !request
-  const [rawSeats, setSeats] = useState(seed?.seats ?? last.seats ?? 3)
-  const [notes, setNotes] = useState(seed?.notes ?? '')
-  const [passengersManage, setPassengersManage] = useState(seed?.passengers_manage ?? false)
-  const [passengersAddStops, setPassengersAddStops] = useState(seed?.passengers_add_stops ?? true)
-  const [coffee, setCoffee] = useState(seed?.coffee_please ?? false)
-  const [stops, setStops] = useState<string[]>(seed?.stops ?? [])
-  const [stopsBefore, setStopsBefore] = useState<string[]>(seed?.stops_before ?? [])
+  const [rawSeats, setSeats] = useKept('rideForm.rawSeats', seed?.seats ?? last.seats ?? 3)
+  const [notes, setNotes] = useKept('rideForm.notes', seed?.notes ?? '')
+  const [passengersManage, setPassengersManage] = useKept('rideForm.passengersManage', seed?.passengers_manage ?? false)
+  const [passengersAddStops, setPassengersAddStops] = useKept('rideForm.passengersAddStops', seed?.passengers_add_stops ?? true)
+  const [coffee, setCoffee] = useKept('rideForm.coffee', seed?.coffee_please ?? false)
+  const [stops, setStops] = useKept<string[]>('rideForm.stops', seed?.stops ?? [])
+  const [stopsBefore, setStopsBefore] = useKept<string[]>('rideForm.stopsBefore', seed?.stops_before ?? [])
   const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
-  const [distance, setDistance] = useState(seed?.distance_km != null ? String(seed.distance_km) : '')
-  const [chipIn, setChipIn] = useState(seed?.chip_in ?? '')
+  const [distance, setDistance] = useKept('rideForm.distance', seed?.distance_km != null ? String(seed.distance_km) : '')
+  const [chipIn, setChipIn] = useKept('rideForm.chipIn', seed?.chip_in ?? '')
   // The pins of the route by folded name (lib/maps.ts): the ride's own, a
   // request's, the last route's and the shared cars' homes, whichever apply.
-  const [pins, setPins] = useState<Record<string, Point>>(() => ({
+  const [pins, setPins] = useKept<Record<string, Point>>('rideForm.pins', () => ({
     ...(seed ? {} : (last.points ?? {})),
     ...Object.assign({}, ...cars.map(homePin)),
     ...(request?.points ?? {}),
     ...(seed?.points ?? {}),
   }))
-  const [picking, setPicking] = useState<Picking | null>(null)
+  const [picking, setPicking] = useKept<Picking | null>('rideForm.picking', null)
   const pinOf = (place: string): Point | null => pins[foldName(place)] ?? null
   // Typed words keep whatever pin those words already have; a suggestion brings its own.
   const placeSetter = (set: (value: string) => void) => (value: string, point: Point | null) => {
@@ -177,8 +178,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     if (point && value.trim()) setPins((p) => ({ ...p, [foldName(value)]: point }))
   }
   // New rides only: one ride a week up to a date. Editing touches one ride.
-  const [repeat, setRepeat] = useState(false)
-  const [repeatUntil, setRepeatUntil] = useState(() => toISODate(addDays(parseISODate(existing?.ride_date ?? date), 7 * 4)))
+  const [repeat, setRepeat] = useKept('rideForm.repeat', false)
+  const [repeatUntil, setRepeatUntil] = useKept('rideForm.repeatUntil', () => toISODate(addDays(parseISODate(existing?.ride_date ?? date), 7 * 4)))
   const repeatCount = repeat ? weeklyCount(rideDate, repeatUntil) : 1
   const repeatTooFar = repeat && weeklyCount(rideDate, repeatUntil) > MAX_REPEAT_WEEKS + 1
   const repeatTooEarly = repeat && repeatUntil < rideDate

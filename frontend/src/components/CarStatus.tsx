@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useKept } from '../lib/keep'
 import { api } from '../lib/api'
 import { factText, fmtWhen } from '../lib/carState'
 import { messages, useT } from '../lib/i18n'
@@ -35,7 +36,7 @@ const km = (n: number) => n.toLocaleString(intlTag())
  */
 export function CarStatus({ states, onNotice, onReported, onClose }: Props) {
   const t = useT()
-  const [reporting, setReporting] = useState<number | null>(null)
+  const [reporting, setReporting] = useKept<number | null>('carState.reporting', null)
 
   return (
     <Sheet
@@ -184,10 +185,10 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
 /** The report, inline on the car's card (not a second overlay). */
 function ReportForm({ carId, onDone }: { carId: number; onDone: (sent: boolean) => void }) {
   const t = useT()
-  const [odometer, setOdometer] = useState('')
-  const [soc, setSoc] = useState('')
-  const [cleanness, setCleanness] = useState<Cleanness>('')
-  const [issues, setIssues] = useState('')
+  const [odometer, setOdometer] = useKept(`carState.${carId}.odometer`, '')
+  const [soc, setSoc] = useKept(`carState.${carId}.soc`, '')
+  const [cleanness, setCleanness] = useKept<Cleanness>(`carState.${carId}.cleanness`, '')
+  const [issues, setIssues] = useKept(`carState.${carId}.issues`, '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
