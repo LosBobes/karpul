@@ -103,7 +103,8 @@ out of the app.
 2. **Tap a row.** The ride opens: the driver, when it **Leaves** and **Returns**, the route
    from start to destination with any pickup points, and who is already in the car.
 3. If the ride has pickup points, choose where you get in with **Get in at**. If none of them
-   suits you, choose **Somewhere else…**, type the place and where on the way it is; it is
+   suits you, choose **Somewhere else…**, type the place (or an address) and where on the way it is;
+   a map opens under it, so you can move it until the ring is on the exact spot. The place is
    added to the route and the driver is told.
 4. Tap **Get in this car**. Your name appears in the passenger list and the driver gets a
    notification.
@@ -225,11 +226,11 @@ that nobody has to add.
   places: the offices first, then where the shared cars are kept, then places colleagues have
   used before, then what the map search finds. Picking one puts the place on the map too. The
   offices are always on the map, even when typed by hand.
-- **Pick on the map.** The map button beside a place opens a map with a ring in the middle:
+- **Pick on the map.** The green **Map** button beside a place opens a map with a ring in the middle:
   move the map until the ring is on the spot and tap **Use this point**. The search box on top of
   the map (**Search for an address**) takes the map to a street and number or a place you type. **Use my location**
   starts from where you are (your phone asks first; Karpul never reads your location on its own).
-  A green pin on the button means the place is on the map.
+  The button reads **Pinned** once the place is on the map.
 - **Privacy.** Everyone with an account can see a point. A street corner, a petrol station or
   a shop near your home is enough; there is no need to pin your front door.
 - **On a ride.** The small map button beside each place opens it in your maps app (Google Maps),

@@ -49,6 +49,13 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   await expect(form.getByRole('button', { name: 'Move the pin of Novi Sad' })).toBeVisible()
   await form.getByLabel('Drop-off location').fill('Beo')
   await mira.getByRole('option', { name: /Beograd/ }).click()
+  // The map chip opens the picker, whose own search takes the map to a place.
+  await form.getByRole('button', { name: 'Move the pin of Beograd' }).click()
+  const picker = form.locator('.map-picker')
+  await picker.getByLabel('Search for an address').fill('Beo')
+  await mira.getByRole('option', { name: /Beograd/ }).click()
+  await picker.getByRole('button', { name: 'Use this point' }).click()
+  await expect(picker).toBeHidden()
   await form.getByRole('button', { name: 'Add ride' }).click()
   await expect(toast(mira, 'Ride added.')).toBeAttached()
 
@@ -67,18 +74,14 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   await expect(map.locator('.map-pin')).toHaveCount(2)
   if (info.project.name === 'phone') await toma.getByRole('dialog', { name: 'Novi Sad to Beograd' }).getByRole('button', { name: 'Close' }).click()
 
-  // He gets in somewhere new and drops its pin on the map.
+  // He gets in somewhere new: the map is open under the field, and moving it
+  // (a zoom here) puts the pin where it stops.
   await toma.getByRole('button', { name: 'Pickup', exact: true }).first().click()
   await toma.getByRole('option', { name: 'Somewhere else…' }).click()
   const stop = toma.locator('.add-stop')
   await stop.getByLabel('New pickup point').fill('Kod Spensa')
-  await stop.getByRole('button', { name: 'Pick on the map' }).click()
-  await expect(stop.getByText('Everyone in Karpul can see this point.', { exact: false })).toBeVisible()
-  // The picker's search takes the map to a place typed (Karpul's own places here).
-  await stop.getByLabel('Search for an address').fill('Novi')
-  await toma.getByRole('option', { name: /Novi Sad/ }).click()
-  await stop.getByRole('button', { name: 'Use this point' }).click()
-  await expect(stop.getByRole('button', { name: 'Move the pin of Kod Spensa' })).toBeVisible()
+  await expect(stop.getByText('Everyone in Karpul can see it.', { exact: false })).toBeVisible()
+  await stop.getByRole('button', { name: 'Zoom in' }).click()
   await stop.getByRole('button', { name: 'Get in this car' }).click()
   await expect(toast(toma, `You're in with Mira Maps ${tag}.`)).toBeAttached()
   await expect(card.locator('.trip-place')).toHaveText(['Novi Sad', 'Kod Spensa', 'Beograd'])

@@ -140,6 +140,7 @@ export function PlaceInput({ value, point, onChange, near, onMap, label, placeho
           onClick={onMap}
         >
           {point ? <PinIcon size={16} /> : <MapIcon size={16} />}
+          <span className="place-pin-label">{point ? t.map.pinnedShort : t.map.mapButton}</span>
         </button>
       )}
       {showing && (
