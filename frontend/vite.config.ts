@@ -58,6 +58,21 @@ export default defineConfig({
               cacheableResponse: { statuses: [200] },
             },
           },
+          {
+            // Map tiles (components/MapView.tsx), from whichever tile server
+            // /api/map/config names: the commute's few hundred tiles are
+            // kept, so an installed app still shows its maps offline. Never
+            // anything under /api.
+            urlPattern: ({ url, request }) =>
+              request.destination === 'image' && !url.pathname.startsWith('/api/') && /\/\d+\/\d+\/\d+(@2x)?\.(png|jpe?g|webp)$/.test(url.pathname),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'karpul-tiles',
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              // Another origin's tiles are opaque (status 0) to the worker.
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
         ],
         // A build the user applies must take over the open page at once, or a
         // page the previous worker never controlled (the first visit) would see

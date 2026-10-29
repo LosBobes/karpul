@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
-import type { CarUsage, CorporateCar, CorporateCarInput } from '../lib/types'
+import type { CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon } from './icons'
+import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { MapPicker } from './MapPicker'
 import { Menu } from './Menu'
+import { PlaceInput } from './PlaceInput'
 import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
 
@@ -78,7 +80,13 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
               </strong>
               <span>
                 <span className="mono">{car.plate}</span> · {t.admin.seats(car.passenger_seats)}
-                {car.home && <> · {car.home}</>}
+                {car.home && (
+                  <>
+                    {' · '}
+                    {car.home}
+                    {car.home_lat != null && <PinIcon size={12} className="admin-pin" aria-label={t.map.homePin} />}
+                  </>
+                )}
                 {!car.active && <span className="tag">{t.admin.retired}</span>}
               </span>
             </span>
@@ -98,8 +106,14 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
             />
             {editing === car.id && (
               <CarEditor
-                key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}:${car.home}`}
-                initial={{ name: car.name, plate: car.plate, passenger_seats: car.passenger_seats, home: car.home }}
+                key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}:${car.home}:${car.home_lat}:${car.home_lng}`}
+                initial={{
+                  name: car.name,
+                  plate: car.plate,
+                  passenger_seats: car.passenger_seats,
+                  home: car.home,
+                  home_point: car.home_lat != null && car.home_lng != null ? { lat: car.home_lat, lng: car.home_lng } : null,
+                }}
                 busy={busyId === car.id}
                 submitLabel={t.common.save}
                 onSubmit={(input) => {
@@ -115,7 +129,7 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
 
       {editing === 'new' ? (
         <CarEditor
-          initial={{ name: '', plate: '', passenger_seats: 4, home: '' }}
+          initial={{ name: '', plate: '', passenger_seats: 4, home: '', home_point: null }}
           busy={busyId === NEW_CAR_BUSY_ID}
           submitLabel={t.admin.addCar}
           onSubmit={(input) => {
@@ -318,9 +332,16 @@ function CarEditor({
   const [plate, setPlate] = useState(initial.plate)
   const [seats, setSeats] = useState(initial.passenger_seats)
   const [home, setHome] = useState(initial.home)
+  const [homePoint, setHomePoint] = useState<Point | null>(initial.home_point ?? null)
+  const [picking, setPicking] = useState(false)
 
   const valid = !!name.trim() && !!plate.trim() && seats >= 1 && seats <= 8
-  const dirty = name.trim() !== initial.name || plate.trim() !== initial.plate || seats !== initial.passenger_seats || home.trim() !== initial.home
+  const dirty =
+    name.trim() !== initial.name ||
+    plate.trim() !== initial.plate ||
+    seats !== initial.passenger_seats ||
+    home.trim() !== initial.home ||
+    JSON.stringify(homePoint) !== JSON.stringify(initial.home_point ?? null)
 
   return (
     // Not a <form>: the editor sits inside the admin sheet, which is not a form
@@ -350,10 +371,38 @@ function CarEditor({
           </div>
         </div>
       </div>
-      <label className="field">
+      <div className="field">
         <span className="field-label">{t.admin.home}</span>
-        <input maxLength={120} placeholder={t.admin.homePlaceholder} value={home} onChange={(e) => setHome(e.target.value)} />
-      </label>
+        <PlaceInput
+          label={t.admin.home}
+          placeholder={t.admin.homePlaceholder}
+          value={home}
+          point={homePoint}
+          onChange={(value, point) => {
+            setHome(value)
+            // The pin is of the words it was put on; new words, no pin, unless a suggestion brought one.
+            if (point) setHomePoint(point)
+            else if (value.trim() !== home.trim()) setHomePoint(null)
+          }}
+          onMap={() => setPicking(true)}
+        />
+        {picking && (
+          <MapPicker
+            initial={homePoint}
+            onCancel={() => setPicking(false)}
+            onPick={(point, placeName) => {
+              setHomePoint(point)
+              if (!home.trim() && placeName) setHome(placeName)
+              setPicking(false)
+            }}
+          />
+        )}
+        {homePoint && !picking && (
+          <button type="button" className="link link-sm" onClick={() => setHomePoint(null)}>
+            <XIcon size={14} /> {t.map.noPin}
+          </button>
+        )}
+      </div>
       <div className="row-end">
         <button type="button" className="btn btn-soft" onClick={onCancel}>
           {t.common.cancel}
@@ -362,7 +411,9 @@ function CarEditor({
           type="button"
           className="btn btn-primary"
           disabled={busy || !valid || !dirty}
-          onClick={() => onSubmit({ name: name.trim(), plate: plate.trim(), passenger_seats: seats, home: home.trim() })}
+          onClick={() =>
+            onSubmit({ name: name.trim(), plate: plate.trim(), passenger_seats: seats, home: home.trim(), home_point: home.trim() ? homePoint : null })
+          }
         >
           {busy ? t.common.saving : submitLabel}
         </button>

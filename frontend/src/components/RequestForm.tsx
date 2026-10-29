@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { addDays, parseISODate, toISODate, todayISO } from '../lib/dates'
+import { addDays, foldName, parseISODate, toISODate, todayISO } from '../lib/dates'
 import { useT } from '../lib/i18n'
-import type { RideRequestInput } from '../lib/types'
+import { pinsFor } from '../lib/maps'
+import type { Point, RideRequestInput } from '../lib/types'
 import { DatePicker } from './DatePicker'
 import { PinIcon } from './icons'
+import { MapPicker } from './MapPicker'
+import { PlaceInput } from './PlaceInput'
 import { Sheet } from './Sheet'
 import { TimePicker } from './TimePicker'
 
@@ -12,17 +15,17 @@ const LAST_ROUTE_KEY = 'karpul.lastRoute'
 /** How far ahead a request may be (backend: routers/requests.py). */
 const MAX_DAYS_AHEAD = 92
 
-function lastRoute(): { origin: string; destination: string } {
+function lastRoute(): { origin: string; destination: string; points: Record<string, Point> } {
   try {
     const raw = localStorage.getItem(LAST_ROUTE_KEY)
     if (raw) {
-      const r = JSON.parse(raw) as { origin?: string; destination?: string }
-      return { origin: r.origin ?? '', destination: r.destination ?? '' }
+      const r = JSON.parse(raw) as { origin?: string; destination?: string; points?: Record<string, Point> }
+      return { origin: r.origin ?? '', destination: r.destination ?? '', points: r.points ?? {} }
     }
   } catch {
     /* ignore */
   }
-  return { origin: '', destination: '' }
+  return { origin: '', destination: '', points: {} }
 }
 
 interface Props {
@@ -48,6 +51,14 @@ export function RequestForm({ date, submitting, error, onSubmit, onClose }: Prop
   const [origin, setOrigin] = useState(last.origin)
   const [destination, setDestination] = useState(last.destination)
   const [note, setNote] = useState('')
+  // Pinned, a request also reaches the drivers who pass close by (backend: requests.drivers_for).
+  const [pins, setPins] = useState<Record<string, Point>>(last.points)
+  const [picking, setPicking] = useState<'origin' | 'destination' | null>(null)
+  const pinOf = (place: string): Point | null => pins[foldName(place)] ?? null
+  const placeSetter = (set: (value: string) => void) => (value: string, point: Point | null) => {
+    set(value)
+    if (point && value.trim()) setPins((p) => ({ ...p, [foldName(value)]: point }))
+  }
 
   const latest = toISODate(addDays(parseISODate(today), MAX_DAYS_AHEAD))
   const dayError = day < today || day > latest
@@ -56,7 +67,14 @@ export function RequestForm({ date, submitting, error, onSubmit, onClose }: Prop
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!ready || submitting) return
-    onSubmit({ request_date: day, departure_time: time, origin: origin.trim(), destination: destination.trim(), note: note.trim() })
+    onSubmit({
+      request_date: day,
+      departure_time: time,
+      origin: origin.trim(),
+      destination: destination.trim(),
+      note: note.trim(),
+      points: pinsFor([origin, destination], pins),
+    })
   }
 
   return (
@@ -92,28 +110,51 @@ export function RequestForm({ date, submitting, error, onSubmit, onClose }: Prop
           <span className="route-row">
             <PinIcon size={16} />
             <span className="route-tag">{t.requests.from}</span>
-            <input
+            <PlaceInput
               required
-              aria-label={t.form.pickup}
-              maxLength={120}
+              label={t.form.pickup}
               placeholder={t.form.pickupPlaceholder}
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              point={pinOf(origin)}
+              near={pinOf(destination)}
+              onChange={placeSetter(setOrigin)}
+              onMap={() => setPicking('origin')}
             />
           </span>
           <span className="route-row">
             <PinIcon size={16} />
             <span className="route-tag">{t.requests.to}</span>
-            <input
+            <PlaceInput
               required
-              aria-label={t.form.dropoff}
-              maxLength={120}
+              label={t.form.dropoff}
               placeholder={t.form.dropoffPlaceholder}
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              point={pinOf(destination)}
+              near={pinOf(origin)}
+              onChange={placeSetter(setDestination)}
+              onMap={() => setPicking('destination')}
             />
           </span>
         </div>
+        {picking && (
+          <div className="route-picker">
+            <span className="subfield-label">{t.map.pinFor((picking === 'origin' ? origin : destination) || (picking === 'origin' ? t.form.pickup : t.form.dropoff))}</span>
+            <MapPicker
+              key={picking}
+              initial={pinOf(picking === 'origin' ? origin : destination)}
+              near={pinOf(origin) ?? pinOf(destination)}
+              onCancel={() => setPicking(null)}
+              onPick={(point, name) => {
+                const words = (picking === 'origin' ? origin : destination).trim() || name || ''
+                if (words) {
+                  ;(picking === 'origin' ? setOrigin : setDestination)(words)
+                  setPins((p) => ({ ...p, [foldName(words)]: point }))
+                }
+                setPicking(null)
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <label className="field">

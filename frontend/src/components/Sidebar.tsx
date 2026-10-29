@@ -18,6 +18,8 @@ interface Content {
   onAccount: () => void
   onCompanyCars: () => void
   onPeople: () => void
+  /** The places Karpul knows: the offices, the cars' homes, the suggestions. */
+  onPlaces: () => void
   onRideLog: () => void
   onAdminLog: () => void
   onApprovals: () => void
@@ -71,7 +73,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -147,6 +149,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
             label: t.sidebar.people,
             icon: 'people',
             onSelect: pick(onPeople),
+          },
+          {
+            label: t.sidebar.places,
+            icon: 'map',
+            onSelect: pick(onPlaces),
           },
           {
             label: t.rideLog.title,

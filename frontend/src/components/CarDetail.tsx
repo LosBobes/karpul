@@ -5,11 +5,14 @@ import { firstName, fmtTime, toISODate } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
+import { hasPins, mapsSearchUrl, pointOf, routeUrl, stopHint } from '../lib/maps'
 import { keepsKm } from '../lib/odometer'
+import { mapsOn, useMapConfig } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
-import type { CarState, Ride } from '../lib/types'
+import type { CarState, Ride, RideRequest } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
+import { useWide } from '../lib/useWide'
 import { AddStop } from './AddStop'
 import { Avatar } from './Avatar'
 import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
@@ -24,6 +27,8 @@ import {
   GripIcon,
   HourglassIcon,
   KebabIcon,
+  MapIcon,
+  NavigateIcon,
   PencilIcon,
   PhoneIcon,
   PinIcon,
@@ -40,6 +45,7 @@ import {
 import { Menu } from './Menu'
 import { Odometer } from './Odometer'
 import { RideThread } from './RideThread'
+import { RideMap, RouteMapSheet } from './RouteMap'
 import { Select } from './Select'
 
 interface Props {
@@ -93,6 +99,10 @@ interface Props {
   onOdometer: (ride: Ride, call: () => Promise<Ride>) => void
   /** The ride's day is after today: its odometer waits for the day. */
   coming: boolean
+  /** Your own open request that day, for the "on your way" hint (lib/maps.ts `stopHint`). */
+  myRequest?: RideRequest
+  /** Show the ride's map inline (a wide pane), rather than behind *Show on map*. */
+  inlineMap?: boolean
   /** Something in the thread failed; the board says so in its toast. */
   onError: (text: string) => void
   dragActive: boolean
@@ -116,6 +126,10 @@ function lateWindow(ride: Ride, now = new Date()): boolean {
   if (ride.ride_date !== toISODate(now)) return false
   const [h, m] = ride.departure_time.split(':').map(Number)
   return now.getHours() * 60 + now.getMinutes() < h * 60 + m + LATE_AFTER_MIN
+}
+
+function openRoute(ride: Ride) {
+  window.open(routeUrl(ride), '_blank', 'noopener,noreferrer')
 }
 
 /** The pickup choice that opens a field for a place not on the route yet. */
@@ -156,6 +170,8 @@ export function CarDetail({
   onLeaveLine,
   onOdometer,
   coming,
+  myRequest,
+  inlineMap,
   onError,
   dragActive,
   lifted,
@@ -191,6 +207,13 @@ export function CarDetail({
   const [pickup, setPickup] = useState('')
   const [movingPickup, setMovingPickup] = useState<false | 'pick' | 'new'>(false)
   const [addingStop, setAddingStop] = useState(false)
+  const [showMap, setShowMap] = useState(false)
+  const mapConfig = useMapConfig()
+  const wide = useWide()
+  const pinned = hasPins(ride) && mapsOn(mapConfig)
+  const mapInline = pinned && (inlineMap ?? wide)
+  // Your request that day starts near this route: offer to get in there.
+  const hint = canJoin && !isPast ? stopHint(ride, myRequest) : null
   const hasStops = allStops(ride).length > 0
   const roomForStop = allStops(ride).length < MAX_STOPS
   // Off, a passenger picks from the route as it is; the driver still adds places.
@@ -222,6 +245,20 @@ export function CarDetail({
     />
   )
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
+
+  // Every place opens in the maps app: by its pin when it has one, else by its words.
+  const placeLink = (place: string) => (
+    <a
+      className={pointOf(ride, place) ? 'trip-map trip-map-pinned' : 'trip-map'}
+      href={mapsSearchUrl(place, pointOf(ride, place))}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={t.map.openPlace(place)}
+      title={t.map.openPlace(place)}
+    >
+      <MapIcon size={14} />
+    </a>
+  )
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -259,6 +296,7 @@ export function CarDetail({
         },
         { label: t.detail.duplicate, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: busy },
         ...shareItems,
+        { label: t.map.navigate, icon: <NavigateIcon size={18} />, onSelect: () => openRoute(ride) },
         { label: t.detail.removeRide, icon: <TrashIcon size={18} />, onSelect: () => onCancel(ride), danger: true, disabled: busy },
         ...(ride.series_id
           ? [{ label: t.detail.removeFollowing, icon: <RepeatIcon size={18} />, onSelect: () => onCancelFollowing(ride), danger: true, disabled: busy }]
@@ -267,6 +305,7 @@ export function CarDetail({
     : [
         { label: t.detail.duplicateMine, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride) },
         ...shareItems,
+        { label: t.map.navigate, icon: <NavigateIcon size={18} />, onSelect: () => openRoute(ride) },
       ]
 
   return (
@@ -381,24 +420,35 @@ export function CarDetail({
               <span className="trip-dot" aria-hidden="true" />
               <span className="trip-place">{stop}</span>
               <span className="trip-note">{t.detail.pickup}</span>
+              {placeLink(stop)}
             </li>
           ))}
           <li className="trip-stop trip-start">
             <span className="trip-dot" aria-hidden="true" />
             <span className="trip-place">{ride.origin}</span>
+            {placeLink(ride.origin)}
           </li>
           {ride.stops.map((stop) => (
             <li key={stop} className="trip-stop trip-via">
               <span className="trip-dot" aria-hidden="true" />
               <span className="trip-place">{stop}</span>
               <span className="trip-note">{t.detail.pickup}</span>
+              {placeLink(stop)}
             </li>
           ))}
           <li className="trip-stop trip-end">
             <span className="trip-dot" aria-hidden="true" />
             <span className="trip-place">{ride.destination}</span>
+            {placeLink(ride.destination)}
           </li>
         </ol>
+        {mapInline && <RideMap ride={ride} className="ride-map-inline" />}
+        {pinned && !mapInline && (
+          <button type="button" className="link link-sm trip-add" onClick={() => setShowMap(true)}>
+            <MapIcon size={14} /> {t.map.showMap}
+          </button>
+        )}
+        {showMap && <RouteMapSheet ride={ride} onClose={() => setShowMap(false)} />}
         {runsIt && !isPast && roomForStop && !addingStop && (
           <button type="button" className="link link-sm trip-add" disabled={busy} onClick={() => setAddingStop(true)}>
             <PlusIcon size={14} /> {t.detail.addStop}
@@ -518,6 +568,21 @@ export function CarDetail({
             </span>
           )}
         </h3>
+
+        {hint && !choosingPlace && (
+          <div className="banner stop-hint">
+            <PinIcon size={20} />
+            <span>{t.map.hint(hint.place, hint.near)}</span>
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              disabled={busy}
+              onClick={() => getInAt(hint.place, { ...hint.where, point: hint.point })}
+            >
+              {t.map.hintGetIn(hint.place)}
+            </button>
+          </div>
+        )}
 
         {(canJoin || canWait) && choosingPlace && (
           <AddStop

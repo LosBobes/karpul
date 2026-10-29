@@ -34,7 +34,7 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat) and `e2e/places.spec.ts` (an office picked from the suggestions, the route on the map, a passenger dropping the pin of a new pickup point; the server runs with no geocoder or router and tiles from an address that answers nothing). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
@@ -356,6 +356,38 @@ shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes
 week (`weekly_dates`, at most `MAX_REPEAT_WEEKS`) under one `series_id`, all or nothing, and a
 409 on a later week names the date in parentheses (the Serbian `apiError` regex knows that
 suffix). `DELETE ?scope=following` removes the rest of the series.
+
+**Places on the map** (`app/geo.py`, `routers/places.py`, `lib/maps.ts`, `lib/places.ts`). A place
+is still its words; a pin is extra. `Ride.points` and `RideRequest.points` (`ADDED_COLUMNS`, JSON text)
+map the place's folded name (`fold_name` / `foldName`) to `{lat, lng}`, so reordering stops needs no
+bookkeeping: `RideBase.points` / `RideUpdate.points` (replaces them whole) are by the place as written,
+`geo.points_for` keeps only the route's places and fills in the pins everyone knows (`known_point`: an
+office, as an admin placed it in `KnownPlace` or else `offices.OFFICE_POINTS`, and a shared car's home,
+`CorporateCar.home_lat/home_lng`, set with `home_point`). `NewStop.point` pins a new pickup point (a
+passenger's only while `passengers_add_stops`; a place already on the route keeps its pin, only whoever
+runs the ride moves one), and the waiting list keeps it on the entry (`new_stop_lat/lng`) until the seat
+comes. A moved pin (not a first one) is the route moving: `ride_changed`, and an admin's is a `pins`
+change in the log. Pinned places become suggestions (`KnownPlace` kind `learned`, `geo.learn`); offices
+and car homes are seeded on start by `geo.seed_places`, which also pins old office rides. Admins keep them
+at `/api/admin/places` (*Places* in the drawer, `PlacesAdmin`; `place_moved` / `place_removed` in the log).
+The server, never the browser, asks the outside services: `GET /api/places?q=` (known places, then the
+geocoder, `KARPUL_GEOCODER_URL`, the public Nominatim by default, "" off), `/api/places/reverse` (a dropped
+pin's name) and `/api/places/road?via=` (an OSRM at `KARPUL_ROUTER_URL`, off by default), all signed in,
+per account throttled (`ratelimit.place_lookups`), the answers cached in memory (`geo.cache`; a read route
+writes nothing) and the public Nominatim asked once a second at most; tests replace `geo.fetch_json`, and
+`clean_env` turns the geocoder off. `GET /api/map/config` (open) gives the tiles (`KARPUL_MAP_TILES`, OSM
+by default, "" no map at all: only *Open in Maps*). `requests.drivers_for` also matches a pinned request
+whose start is within `geo.NEAR_KM` of a ride's pinned pickup point, and the calendar's `LOCATION`/`GEO`
+are the reader's own pickup. On screen: `PlaceInput` (suggestions in a `Popover`, which opens only when
+something is found, and a pin button) in `RideForm`, `AddStop`, `RequestForm` and `CarAdmin`;
+`MapPicker` (a crosshair over a moving map, inline, not an overlay); `MapView` (Leaflet, loaded on first
+use through `lib/leaflet.ts`, so it is a chunk of its own; Karpul's own pins as `divIcon`s, the disc drawn
+in `.map-pin-body` because Leaflet owns the marker's transform; dark tiles by a CSS filter); on the card
+each place opens in Google Maps (`mapsSearchUrl`), *Show on map* opens `RouteMapSheet` (portalled to
+`<body>`: the card may clip) or, in a wide pane, `RideMap` inline; *Open the route in Maps* in the ⋮ menu
+(`routeUrl`); the "on your way" hint (`stopHint`) offers your open request's pinned start as a new stop;
+Day has a *Map* shape (`DayMap`); *Car status* shows a pinned car's home. The service worker keeps map
+tiles (`karpul-tiles`, never anything under `/api`). Tests: `tests/test_places.py`, `maps.test.ts`.
 
 **Push notifications.** `app/webpush.py` does RFC 8291 encryption and VAPID (RFC 8292) on the
 `cryptography` package rather than pywebpush, whose `http-ece` dependency does not build on a

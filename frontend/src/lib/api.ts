@@ -9,8 +9,12 @@ import type {
   CarUsage,
   CorporateCar,
   CorporateCarInput,
+  KnownPlace,
+  MapConfig,
   PersonStats,
   Photo,
+  PlaceSuggestion,
+  Point,
   ProfilePatch,
   PushConfig,
   PushPreferences,
@@ -19,6 +23,7 @@ import type {
   RideMessage,
   RideRequest,
   RideRequestInput,
+  Road,
 } from './types'
 
 const BASE = import.meta.env.VITE_API_URL ?? ''
@@ -142,6 +147,36 @@ async function download(path: string, fallbackName: string): Promise<void> {
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) })
 
 export const api = {
+  // --- places on the map (backend: app/geo.py, routers/places.py) ---
+
+  /** Where the map's tiles come from; open, like the push config. */
+  mapConfig: () => request<MapConfig>('/api/map/config', {}, { anonymous: true }),
+
+  /** Suggestions for a place being typed, the known places first; `near` biases the search. */
+  places: (q: string, lang: string, near: Point | null, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ q, lang })
+    if (near) {
+      params.set('lat', String(near.lat))
+      params.set('lng', String(near.lng))
+    }
+    return request<PlaceSuggestion[]>(`/api/places?${params}`, { signal })
+  },
+
+  /** A name for a pin dropped on the map. */
+  placeName: (point: Point, lang: string) =>
+    request<{ name: string | null }>(`/api/places/reverse?lat=${point.lat}&lng=${point.lng}&lang=${lang}`),
+
+  /** The road through the pins, in order (404 when the server has no router). */
+  road: (points: Point[], signal?: AbortSignal) =>
+    request<Road>(`/api/places/road?via=${points.map((p) => `${p.lat},${p.lng}`).join(';')}`, { signal }),
+
+  knownPlaces: () => request<KnownPlace[]>('/api/admin/places'),
+
+  updateKnownPlace: (id: number, patch: { name?: string; point?: Point }) =>
+    request<KnownPlace>(`/api/admin/places/${id}`, json('PATCH', patch)),
+
+  deleteKnownPlace: (id: number) => request<void>(`/api/admin/places/${id}`, { method: 'DELETE' }),
+
   // --- accounts (backend: app/auth.py, routers/auth.py) ---
 
   register: (input: RegisterInput) => request<Session>('/api/auth/register', json('POST', input), { anonymous: true }),

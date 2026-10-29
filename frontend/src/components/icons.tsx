@@ -118,6 +118,25 @@ export const PinIcon = icon(
     <circle cx="12" cy="9.75" r="2.5" />
   </>,
 )
+/** Fluent's Map: three folded panels. */
+export const MapIcon = icon(
+  <>
+    <path d="M9 4.75 4.4 6.4a1 1 0 0 0-.65.94v11.2a.75.75 0 0 0 1 .7L9 17.75l6 1.5 4.6-1.65a1 1 0 0 0 .65-.94V5.46a.75.75 0 0 0-1-.7L15 6.25l-6-1.5Z" />
+    <path d="M9 4.75v13M15 6.25v13" />
+  </>,
+)
+/** Fluent's Navigation arrow: "take me there". */
+export const NavigateIcon = icon(
+  <path d="M19.6 4.4 4.9 10.35a.6.6 0 0 0 .06 1.13l5.79 1.77 1.77 5.79a.6.6 0 0 0 1.13.06L19.6 4.4Z" />,
+)
+/** Fluent's Location target: "where I am". */
+export const LocateIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="6.25" />
+    <circle cx="12" cy="12" r="2" />
+    <path d="M12 2.75v3M12 18.25v3M2.75 12h3M18.25 12h3" />
+  </>,
+)
 /** Fluent's ReOrderDots. */
 export const GripIcon = icon(
   <>

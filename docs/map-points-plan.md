@@ -1,6 +1,9 @@
 # Plan: map points for pickup points and places
 
-Status: proposal, nothing built yet.
+Status: built (phases 0 to 3), see CLAUDE.md, *Places on the map*. Where the build differs from
+this plan: the geocoder's and router's answers are cached in memory rather than in a table (a
+read route must not write), the road length is offered by the ride form rather than filled in by
+the server, and the "suggest a stop" hint uses your own open request's pinned start.
 
 ## Where things stand
 

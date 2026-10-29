@@ -37,6 +37,7 @@ function ride(over: Partial<Ride>): Ride {
     free_seats: 3,
     approval: '',
     legs: [],
+    points: {},
     ...over,
   }
 }

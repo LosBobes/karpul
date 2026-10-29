@@ -112,6 +112,7 @@ const en = {
     shape: 'Show the day as',
     clock: 'Clock',
     timeline: 'Timeline',
+    map: 'Map',
     overview: 'The whole day',
   },
 
@@ -121,6 +122,7 @@ const en = {
     cars: 'Shared cars',
     carState: 'Car status',
     people: 'People',
+    places: 'Places',
     guide: 'Shared car guide',
     closeMenu: 'Close menu',
     admin: 'Manage',
@@ -513,6 +515,7 @@ const en = {
     defaultDestination: 'Office',
     /** The road between the offices is a known length (lib/offices.ts). */
     knownRoad: (km: number) => `${km} km, the road between the offices. Filled in for you.`,
+    roadKm: (km: string) => `${km} km by road between the pins. Filled in for you.`,
     /** A one-way ride: offer its mirror image. */
     wayBack: 'Add the way back too',
     wayBackHint: 'A second one-way ride with the route reversed.',
@@ -624,6 +627,10 @@ const en = {
           return `${admin} deleted the account of ${subject}`
         case 'photo_removed':
           return `${admin} removed the photo of ${subject}`
+        case 'place_moved':
+          return `${admin} changed the place ${subject}`
+        case 'place_removed':
+          return `${admin} forgot the place ${subject}`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -652,6 +659,9 @@ const en = {
       passenger_seats: 'Passenger seats',
       active: 'In the pool',
       home: 'Departs from',
+      pins: 'Pins moved',
+      home_pin: 'Pin of where it departs from',
+      pin: 'Pin moved',
     } as Record<string, string>,
   },
 
@@ -994,6 +1004,16 @@ const en = {
         ],
       },
       {
+        title: 'Places on the map',
+        steps: [
+          'Type a place and pick it from the suggestions: the offices, the shared cars\' homes and places colleagues used before. A suggestion puts the place on the map too.',
+          'The map button beside a place (**Pick on the map**) opens a map: move it until the ring is on the spot and tap **Use this point**. **Use my location** starts where you are.',
+          'A pin is optional. Everyone in Karpul can see it, so a corner or a landmark is better than your front door.',
+          'On a ride, the map button beside each place opens it in your maps app. **Show on map** draws the whole route; **Open the route in Maps** in the ⋮ menu starts the navigation.',
+          'Asked for a ride with a pinned start? A car passing close by offers to pick you up there.',
+        ],
+      },
+      {
         title: 'Shared cars',
         steps: [
           'A shared car cannot be double-booked. **Day** shows when each one is free; tap a free stretch to book it.',
@@ -1052,6 +1072,49 @@ const en = {
   },
 
   /** Server error texts are English; this is the identity for English. */
+  /** Places on the map: components/MapView.tsx, MapPicker, PlaceInput, RouteMap, PlacesAdmin. */
+  map: {
+    loading: 'Loading the map…',
+    failed: 'The map did not load.',
+    noLocation: 'Your location is not available.',
+    locating: 'Finding you…',
+    myLocation: 'Use my location',
+    usePoint: 'Use this point',
+    privacy: 'Everyone in Karpul can see this point. A corner or a landmark near your home is enough.',
+    sourceOffice: 'Office',
+    sourceCar: 'Shared car',
+    sourceLearned: 'Used before',
+    pickOnMap: 'Pick on the map',
+    pinned: 'On the map',
+    movePin: (place: string) => `Move the pin of ${place}`,
+    pinFor: (place: string) => `Pin ${place}`,
+    routeOf: (from: string, to: string) => `${from} to ${to}`,
+    roadIs: (km: number, minutes: number) => `${km} km by road, about ${minutes} min.`,
+    notPinned: 'Not on the map:',
+    navigate: 'Open the route in Maps',
+    toMyPickup: 'Directions to my pickup',
+    openPlace: (place: string) => `Open ${place} in Maps`,
+    showMap: 'Show on map',
+    hint: (place: string, nearBy: string) => `Your request starts at ${place}, near ${nearBy} on this route.`,
+    hintGetIn: (place: string) => `Get in at ${place}`,
+    places: 'Places',
+    kindOffice: 'Office',
+    kindCarHome: 'Shared car home',
+    kindLearned: 'Pinned on a ride',
+    uses: (n: number) => enPlural(n, 'ride', 'rides'),
+    move: 'Move',
+    rename: 'Rename',
+    forget: 'Forget',
+    forgetHint: 'It is no longer suggested. Rides keep their pins.',
+    noPlaces: 'No places yet.',
+    placeName: 'Name',
+    homePin: 'On the map',
+    noPin: 'Not on the map',
+    dayEmpty: 'No pinned places this day.',
+    dayLabel: (day: string) => `Pickup points on ${day}`,
+    saved: (place: string) => `${place} saved.`,
+  },
+
   apiError: (message: string) => message,
 }
 
@@ -1079,6 +1142,13 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^No connection to the server$/, () => 'Nema veze sa serverom'],
   [/^Booking not found$/, () => 'Rezervacija nije pronađena'],
   [/^Corporate car not found$/, () => 'Zajednički auto nije pronađen'],
+  [/^This point is outside the area Karpul covers$/, () => 'Ova tačka je van područja koje Karpul pokriva'],
+  [/^Place not found$/, () => 'Mesto nije pronađeno'],
+  [/^(.+) is already a known place$/, (m) => `${m[1]} je već poznato mesto`],
+  [/^No road finder is set up$/, () => 'Pretraga puta nije podešena'],
+  [/^No road found between these points$/, () => 'Nema puta između ovih tačaka'],
+  [/^A road needs (\d+) to (\d+) points$/, (m) => `Za put je potrebno od ${m[1]} do ${m[2]} tačaka`],
+  [/^`via` is lat,lng pairs separated by semicolons$/, () => '`via` su parovi lat,lng odvojeni tačkom i zarezom'],
   [/^You already have a shared car this week\. An admin can approve another$/, () => 'Već imaš zajednički auto ove sedmice. Administrator može da odobri još jedan'],
   [/^You already have a shared car that day\. An admin can approve another$/, () => 'Već imaš zajednički auto tog dana. Administrator može da odobri još jedan'],
   [/^That keeps a shared car with you for more than 24 hours in a row\. An admin can approve it$/, () => 'Tako bi zajednički auto bio kod tebe duže od 24 sata zaredom. Administrator može da to odobri'],
@@ -1328,6 +1398,7 @@ const sr: Messages = {
     shape: 'Prikaz dana',
     clock: 'Časovnik',
     timeline: 'Vremenska linija',
+    map: 'Mapa',
     overview: 'Ceo dan',
   },
 
@@ -1337,6 +1408,7 @@ const sr: Messages = {
     cars: 'Zajednički automobili',
     carState: 'Stanje auta',
     people: 'Ljudi',
+    places: 'Mesta',
     guide: 'Vodič za zajednički auto',
     closeMenu: 'Zatvori meni',
     admin: 'Upravljanje',
@@ -1718,6 +1790,7 @@ const sr: Messages = {
     coffee: 'Obradovao/la bih se kafi',
     defaultDestination: 'Kancelarija',
     knownRoad: (km) => `${km} km, put između kancelarija. Upisano umesto tebe.`,
+    roadKm: (km) => `${km} km putem između tačaka. Upisano umesto tebe.`,
     wayBack: 'Dodaj i povratak',
     wayBackHint: 'Druga vožnja u jednom smeru, sa obrnutom rutom.',
     wayBackDay: 'Dan povratka',
@@ -1805,6 +1878,10 @@ const sr: Messages = {
           return `${admin} je obrisao/la nalog: ${subject}`
         case 'photo_removed':
           return `${admin} je uklonio/la fotografiju: ${subject}`
+        case 'place_moved':
+          return `${admin} je izmenio/la mesto: ${subject}`
+        case 'place_removed':
+          return `${admin} je zaboravio/la mesto: ${subject}`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -1833,6 +1910,9 @@ const sr: Messages = {
       passenger_seats: 'Mesta za putnike',
       active: 'U voznom parku',
       home: 'Polazi iz',
+      pins: 'Pomerene tačke',
+      home_pin: 'Tačka mesta polaska',
+      pin: 'Pomerena tačka',
     },
   },
 
@@ -2191,6 +2271,16 @@ const sr: Messages = {
         ],
       },
       {
+        title: 'Mesta na mapi',
+        steps: [
+          'Upiši mesto i izaberi ga iz predloga: kancelarije, mesta zajedničkih automobila i mesta koja su kolege već koristile. Predlog stavlja mesto i na mapu.',
+          'Dugme sa mapom pored mesta (**Izaberi na mapi**) otvara mapu: pomeraj je dok krug ne bude na tom mestu i dodirni **Uzmi ovu tačku**. **Moja lokacija** počinje od mesta gde si.',
+          'Tačka nije obavezna. Vide je svi u Karpulu, pa je ugao ili poznato mesto bolje od ulaznih vrata.',
+          'Na vožnji, dugme sa mapom pored svakog mesta otvara ga u aplikaciji za mape. **Prikaži na mapi** crta celu rutu; **Otvori rutu u Mapama** u ⋮ meniju pokreće navigaciju.',
+          'Tražio/la si vožnju sa označenim polaskom? Auto koji prolazi blizu nudi da te pokupi tu.',
+        ],
+      },
+      {
         title: 'Zajednički automobili',
         steps: [
           'Zajednički auto ne može dvaput da se rezerviše za isto vreme. **Dan** pokazuje kada je koji slobodan; dodirni slobodan deo da ga rezervišeš.',
@@ -2246,6 +2336,48 @@ const sr: Messages = {
       },
     ],
     more: 'I dalje ne ide?',
+  },
+
+  map: {
+    loading: 'Učitavam mapu…',
+    failed: 'Mapa nije učitana.',
+    noLocation: 'Tvoja lokacija nije dostupna.',
+    locating: 'Tražim te…',
+    myLocation: 'Moja lokacija',
+    usePoint: 'Uzmi ovu tačku',
+    privacy: 'Ovu tačku vide svi u Karpulu. Dovoljan je ugao ili neko poznato mesto blizu kuće.',
+    sourceOffice: 'Kancelarija',
+    sourceCar: 'Zajednički auto',
+    sourceLearned: 'Korišćeno ranije',
+    pickOnMap: 'Izaberi na mapi',
+    pinned: 'Na mapi',
+    movePin: (place) => `Pomeri tačku: ${place}`,
+    pinFor: (place) => `Tačka na mapi: ${place}`,
+    routeOf: (from, to) => `${from} → ${to}`,
+    roadIs: (km, minutes) => `${km} km putem, oko ${minutes} min.`,
+    notPinned: 'Nije na mapi:',
+    navigate: 'Otvori rutu u Mapama',
+    toMyPickup: 'Put do mog mesta ulaska',
+    openPlace: (place) => `Otvori u Mapama: ${place}`,
+    showMap: 'Prikaži na mapi',
+    hint: (place, nearBy) => `Tvoj zahtev počinje od mesta ${place}, blizu stanice ${nearBy} na ovoj ruti.`,
+    hintGetIn: (place) => `Uđi kod: ${place}`,
+    places: 'Mesta',
+    kindOffice: 'Kancelarija',
+    kindCarHome: 'Mesto zajedničkog auta',
+    kindLearned: 'Označeno na vožnji',
+    uses: (n) => srPlural(n, 'vožnja', 'vožnje', 'vožnji'),
+    move: 'Pomeri',
+    rename: 'Preimenuj',
+    forget: 'Zaboravi',
+    forgetHint: 'Više se ne predlaže. Vožnje zadržavaju svoje tačke.',
+    noPlaces: 'Još nema mesta.',
+    placeName: 'Naziv',
+    homePin: 'Na mapi',
+    noPin: 'Nije na mapi',
+    dayEmpty: 'Ovog dana nema označenih mesta.',
+    dayLabel: (day) => `Mesta ulaska, ${day}`,
+    saved: (place) => `Sačuvano: ${place}`,
   },
 
   apiError: srApiError,
