@@ -838,6 +838,10 @@
   gap: 0.5rem;
   margin: 0.4rem 0;
 }
+/* The picker's address search, a plain Fluent field over the map. */
+.map-search .place-input input {
+  width: 100%;
+}
 .map-pick .map-canvas {
   height: min(48vh, 360px);
 }

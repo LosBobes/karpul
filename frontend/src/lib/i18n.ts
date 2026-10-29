@@ -664,6 +664,7 @@ const en = {
       pins: 'Pins moved',
       home_pin: 'Pin of where it departs from',
       pin: 'Pin moved',
+      rides: 'Coming rides moved with it',
     } as Record<string, string>,
   },
 
@@ -1083,6 +1084,8 @@ const en = {
     locating: 'Finding you…',
     myLocation: 'Use my location',
     usePoint: 'Use this point',
+    searchAddress: 'Search for an address',
+    searchPlaceholder: 'Street and number, or a place',
     privacy: 'Everyone in Karpul can see this point. A corner or a landmark near your home is enough.',
     sourceOffice: 'Office',
     sourceCar: 'Shared car',
@@ -1917,6 +1920,7 @@ const sr: Messages = {
       pins: 'Pomerene tačke',
       home_pin: 'Tačka mesta polaska',
       pin: 'Pomerena tačka',
+      rides: 'Pomerene buduće vožnje',
     },
   },
 
@@ -2350,6 +2354,8 @@ const sr: Messages = {
     locating: 'Tražim te…',
     myLocation: 'Moja lokacija',
     usePoint: 'Uzmi ovu tačku',
+    searchAddress: 'Pretraži adresu',
+    searchPlaceholder: 'Ulica i broj, ili mesto',
     privacy: 'Ovu tačku vide svi u Karpulu. Dovoljan je ugao ili neko poznato mesto blizu kuće.',
     sourceOffice: 'Kancelarija',
     sourceCar: 'Zajednički auto',

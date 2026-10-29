@@ -376,6 +376,11 @@ comes. A moved pin (not a first one) is the route moving: `ride_changed`, and an
 change in the log. Pinned places become suggestions (`KnownPlace` kind `learned`, `geo.learn`); offices
 and car homes are seeded on start by `geo.seed_places`, which also pins old office rides. Admins keep them
 at `/api/admin/places` (*Places* in the drawer, `PlacesAdmin`; `place_moved` / `place_removed` in the log).
+**A moved office or car home takes its coming rides along** (`geo.repin` / `repin_known`, also from a
+car's `home_point` edit): rides from today on and open requests that name it and still carry its old pin
+(an office's city-centre default counts as old) get the new one; a pin dropped elsewhere for it and the
+rides already driven stay, and no one is pushed. `seed_places` does the same catch-up on start for an
+office placed before this existed.
 The server, never the browser, asks the outside services: `GET /api/places?q=` (known places, then the
 geocoder, `KARPUL_GEOCODER_URL`, the public Nominatim by default, "" off), `/api/places/reverse` (a dropped
 pin's name) and `/api/places/road?via=` (an OSRM at `KARPUL_ROUTER_URL`, off by default), all signed in,
@@ -386,7 +391,8 @@ by default, "" no map at all: only *Open in Maps*). `requests.drivers_for` also 
 whose start is within `geo.NEAR_KM` of a ride's pinned pickup point, and the calendar's `LOCATION`/`GEO`
 are the reader's own pickup. On screen: `PlaceInput` (suggestions in a `Popover`, which opens only when
 something is found, and a pin button) in `RideForm`, `AddStop`, `RequestForm` and `CarAdmin`;
-`MapPicker` (a crosshair over a moving map, inline, not an overlay); `MapView` (Leaflet, loaded on first
+`MapPicker` (a crosshair over a moving map, inline, not an overlay, with an address search on top: a
+`PlaceInput` whose pick centres the map, Enter kept from the form around it); `MapView` (Leaflet, loaded on first
 use through `lib/leaflet.ts`, so it is a chunk of its own; Karpul's own pins as `divIcon`s, the disc drawn
 in `.map-pin-body` because Leaflet owns the marker's transform; dark tiles by a CSS filter); on the card
 each place opens in Google Maps (`mapsSearchUrl`), *Show on map* opens `RouteMapSheet` (portalled to

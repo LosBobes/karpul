@@ -74,6 +74,9 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   await stop.getByLabel('New pickup point').fill('Kod Spensa')
   await stop.getByRole('button', { name: 'Pick on the map' }).click()
   await expect(stop.getByText('Everyone in Karpul can see this point.', { exact: false })).toBeVisible()
+  // The picker's search takes the map to a place typed (Karpul's own places here).
+  await stop.getByLabel('Search for an address').fill('Novi')
+  await toma.getByRole('option', { name: /Novi Sad/ }).click()
   await stop.getByRole('button', { name: 'Use this point' }).click()
   await expect(stop.getByRole('button', { name: 'Move the pin of Kod Spensa' })).toBeVisible()
   await stop.getByRole('button', { name: 'Get in this car' }).click()

@@ -24,6 +24,7 @@ from .. import audit, geo, ratelimit
 from ..admin import require_admin
 from ..auth import Credentials, CredsDep, require_user
 from ..database import get_session, get_write_session
+from ..events import request_saved, ride_saved
 from ..models import KnownPlace, User
 from ..schemas import KnownPlaceRead, KnownPlaceUpdate, MapConfigRead, PlaceRead, ReverseRead, RoadRead
 
@@ -160,9 +161,10 @@ def _place_or_404(session: Session, place_id: int) -> KnownPlace:
 
 @router.patch("/api/admin/places/{place_id}", response_model=KnownPlaceRead)
 def update_known_place(place_id: int, payload: KnownPlaceUpdate, session: WriteSessionDep, creds: CredsDep):
-    """Put a known place where it really is, or rename it. Moving an office
-    changes where the rides to it are pinned from now on; the rides already
-    on the board keep the pin they were made with."""
+    """Put a known place where it really is, or rename it. Moving one moves
+    the pins of the coming rides and open requests that still carry its old
+    one (`geo.repin_known`); a pin someone dropped elsewhere for it, and the
+    rides already driven, stay as they are."""
     admin = require_admin(session, creds)
     place = _place_or_404(session, place_id)
     changes = []
@@ -175,14 +177,25 @@ def update_known_place(place_id: int, payload: KnownPlaceUpdate, session: WriteS
             if other is not None:
                 raise HTTPException(status.HTTP_409_CONFLICT, f"{other.name} is already a known place")
             place.key = key
+    rides, requests = [], []
     if payload.point is not None and (payload.point.lat, payload.point.lng) != (place.lat, place.lng):
         changes.append(("pin", None, place.name))
+        old = {"lat": place.lat, "lng": place.lng}
         place.lat, place.lng = payload.point.lat, payload.point.lng
+        rides, requests = geo.repin_known(session, place, old)
+        if rides:
+            changes.append(("rides", None, len(rides)))
     if changes:
         audit.record(session, admin, "place_moved", place.name, changes=changes)
     session.add(place)
     session.commit()
     session.refresh(place)
+    for ride in rides:
+        session.refresh(ride)
+        ride_saved(ride, created=False)
+    for request in requests:
+        session.refresh(request)
+        request_saved(request)
     return place
 
 

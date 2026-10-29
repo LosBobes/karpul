@@ -194,6 +194,19 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Writ
         lat, lng = (payload.home_point.lat, payload.home_point.lng) if payload.home_point else (None, None)
         if (lat, lng) != (car.home_lat, car.home_lng):
             changes.append(("home_pin", None, data.get("home", car.home) if point else ""))
+            # The car's coming rides that start where it is kept, with the old
+            # pin, follow it (geo.repin); cars_changed below reloads the boards.
+            if lat is not None and lng is not None and car.home_lat is not None and car.home_lng is not None:
+                home = geo.fold(data.get("home", car.home))
+                if home and home == geo.fold(car.home):
+                    moved, _ = geo.repin(
+                        session,
+                        lambda p: geo.fold(p) == home,
+                        [{"lat": car.home_lat, "lng": car.home_lng}],
+                        {"lat": lat, "lng": lng},
+                    )
+                    if moved:
+                        changes.append(("rides", None, len(moved)))
         car.home_lat, car.home_lng = lat, lng
     if "plate" in data:
         _ensure_plate_free(session, data["plate"], exclude_id=car.id)

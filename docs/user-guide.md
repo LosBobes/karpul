@@ -228,7 +228,8 @@ that nobody has to add.
   used before, then what the map search finds. Picking one puts the place on the map too. The
   offices are always on the map, even when typed by hand.
 - **Pick on the map.** The map button beside a place opens a map with a ring in the middle:
-  move the map until the ring is on the spot and tap **Use this point**. **Use my location**
+  move the map until the ring is on the spot and tap **Use this point**. The search box on top of
+  the map (**Search for an address**) takes the map to a street and number or a place you type. **Use my location**
   starts from where you are (your phone asks first; Karpul never reads your location on its own).
   A green pin on the button means the place is on the map.
 - **Privacy.** Everyone with an account can see a point. A street corner, a petrol station or
@@ -407,7 +408,8 @@ ride, the driver is notified.
   spreadsheet** (opens correctly in Excel set to German or Serbian).
 - **Places:** every place Karpul knows on one map: the offices, where the shared cars are kept,
   and the places people pinned (which are suggested to everyone). **Move** puts an office where
-  it really is (new rides to it are pinned from there), **Rename** tidies a name, and **Forget**
+  it really is (new rides to it are pinned from there, and coming rides that still had its old
+  pin move with it), **Rename** tidies a name, and **Forget**
   stops a place being suggested (rides keep their pins). A shared car's *Departs from* can be
   pinned in **Shared cars**, and every ride starting there gets the pin.
 - **Admin log:** every change an admin made to someone else's ride, a car or an account,
