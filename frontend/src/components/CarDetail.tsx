@@ -209,7 +209,7 @@ export function CarDetail({
   const [addingStop, setAddingStop] = useState(false)
   const [showMap, setShowMap] = useState(false)
   const mapConfig = useMapConfig()
-  // The maps are tried out by admins first (KARPUL_MAPS): for anyone else none of it shows.
+  // Without the maps (KARPUL_MAPS) none of this shows.
   const mapsAllowed = useMapsAllowed()
   const wide = useWide()
   const pinned = hasPins(ride) && mapsOn(mapConfig)

@@ -8,7 +8,7 @@ road between them when a router is configured. All of it is read-only on our
 side: the outside answers are cached in memory, never written to the
 database from a read route. `GET /api/map/config` (open, like the push
 config) tells the browser where its map tiles come from and who has the maps
-(`KARPUL_MAPS`: admins only while they are tried out, everyone, or nobody);
+(`KARPUL_MAPS`: everyone, admins only, or nobody);
 the lookups here are refused to anyone else.
 
 Admins keep the known places tidy at `/api/admin/places`: an office put

@@ -382,8 +382,11 @@ def test_distances():
 OFFICE_POINTS_DICT = {k: {"lat": lat, "lng": lng} for k, (lat, lng) in OFFICE_POINTS.items()}
 
 
-def test_the_maps_are_for_admins_while_they_are_tried_out(client, admin_auth, monkeypatch):
+def test_the_maps_can_be_kept_to_the_admins(client, admin_auth, monkeypatch):
+    # Everyone has them unless the server says otherwise.
     monkeypatch.delenv("KARPUL_MAPS")
+    assert client.anon.get("/api/map/config").json()["audience"] == "everyone"
+    monkeypatch.setenv("KARPUL_MAPS", "admins")
     assert client.anon.get("/api/map/config").json()["audience"] == "admins"
     # A plain account is refused the lookups; an admin is not.
     r = client.get("/api/places", params={"q": "Beo"}, headers=as_("Ana"))

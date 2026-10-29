@@ -36,8 +36,8 @@ services:
       # The nightly snapshots (app/housekeeping.py): where in the volume, how many to keep.
       KARPUL_BACKUP_DIR: ${KARPUL_BACKUP_DIR:-/data/backups}
       KARPUL_BACKUP_KEEP: ${KARPUL_BACKUP_KEEP:-14}
-      # Who has the maps (app/geo.py): admins while they are tried out, then everyone.
-      KARPUL_MAPS: ${KARPUL_MAPS:-admins}
+      # Who has the maps (app/geo.py): everyone, admins (to try something first) or off.
+      KARPUL_MAPS: ${KARPUL_MAPS:-everyone}
       # Caddy is the only thing that can reach the container (the port below is
       # loopback-only), so uvicorn may believe its X-Forwarded-For. That is what
       # gives the sign-in rate limit (app/ratelimit.py) the visitor's address
