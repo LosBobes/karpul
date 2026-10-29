@@ -838,12 +838,71 @@
   gap: 0.5rem;
   margin: 0.4rem 0;
 }
-/* The picker's address search, a plain Fluent field over the map. */
+/* The picker's address search floats on the map, a rounded field with a
+   search glyph and a soft lift, the way a maps app has it. */
+.map-search {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 800;
+}
+.map-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  color: var(--muted);
+  pointer-events: none;
+}
 .map-search .place-input input {
   width: 100%;
+  height: 42px;
+  padding-left: 38px;
+  border: none;
+  border-radius: 21px;
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  font-size: 0.95rem;
+}
+.map-search .place-input input:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 0;
 }
 .map-pick .map-canvas {
   height: min(48vh, 360px);
+}
+.map-picker-embedded .map-pick .map-canvas {
+  height: 200px;
+}
+/* *Use my location*: a round button on the map, bottom right. */
+.map-locate {
+  position: absolute;
+  right: 10px;
+  bottom: 26px;
+  z-index: 800;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--green);
+  box-shadow: var(--shadow-pop);
+  cursor: pointer;
+}
+.map-locate:disabled {
+  color: var(--muted);
+}
+.map-locating {
+  animation: map-locating 1s linear infinite;
+}
+@keyframes map-locating {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .map-crosshair {
   position: absolute;
@@ -873,6 +932,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
 .map-picker-actions .btn {
@@ -900,25 +960,31 @@
   flex: 1;
   min-width: 0;
 }
+/* The way to the map beside a place: a labelled chip in the accent, so it
+   reads as a control at a glance; solid once the place is pinned. */
 .place-pin {
   flex: none;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 32px;
+  padding: 0 0.65rem;
+  border: 1px solid var(--green-line);
+  border-radius: 16px;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background var(--hover), color var(--hover);
+  transition: background var(--hover), color var(--hover), border-color var(--hover);
 }
 .place-pin:hover {
-  background: var(--surface-2);
-  color: var(--text);
+  border-color: var(--green);
 }
 .place-pin-on {
-  color: var(--green);
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
 }
 .place-list .option {
   display: flex;
