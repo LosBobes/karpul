@@ -42,6 +42,8 @@ export interface HowToTopic {
   steps: string[]
   /** Shown to admins only. */
   admin?: boolean
+  /** Shown only to whoever has the maps (lib/places.ts `useMapsAllowed`). */
+  maps?: boolean
 }
 
 export interface GuideEntry {
@@ -1005,6 +1007,7 @@ const en = {
       },
       {
         title: 'Places on the map',
+        maps: true,
         steps: [
           'Type a place and pick it from the suggestions: the offices, the shared cars\' homes and places colleagues used before. A suggestion puts the place on the map too.',
           'The map button beside a place (**Pick on the map**) opens a map: move it until the ring is on the spot and tap **Use this point**. **Use my location** starts where you are.',
@@ -1144,6 +1147,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Corporate car not found$/, () => 'Zajednički auto nije pronađen'],
   [/^This point is outside the area Karpul covers$/, () => 'Ova tačka je van područja koje Karpul pokriva'],
   [/^Place not found$/, () => 'Mesto nije pronađeno'],
+  [/^Maps are not switched on for you yet$/, () => 'Mape ti još nisu uključene'],
   [/^(.+) is already a known place$/, (m) => `${m[1]} je već poznato mesto`],
   [/^No road finder is set up$/, () => 'Pretraga puta nije podešena'],
   [/^No road found between these points$/, () => 'Nema puta između ovih tačaka'],
@@ -2272,6 +2276,7 @@ const sr: Messages = {
       },
       {
         title: 'Mesta na mapi',
+        maps: true,
         steps: [
           'Upiši mesto i izaberi ga iz predloga: kancelarije, mesta zajedničkih automobila i mesta koja su kolege već koristile. Predlog stavlja mesto i na mapu.',
           'Dugme sa mapom pored mesta (**Izaberi na mapi**) otvara mapu: pomeraj je dok krug ne bude na tom mestu i dodirni **Uzmi ovu tačku**. **Moja lokacija** počinje od mesta gde si.',

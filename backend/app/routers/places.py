@@ -7,7 +7,9 @@ pinned before), then what the geocoder finds. A pin dropped on the map asks
 road between them when a router is configured. All of it is read-only on our
 side: the outside answers are cached in memory, never written to the
 database from a read route. `GET /api/map/config` (open, like the push
-config) tells the browser where its map tiles come from.
+config) tells the browser where its map tiles come from and who has the maps
+(`KARPUL_MAPS`: admins only while they are tried out, everyone, or nobody);
+the lookups here are refused to anyone else.
 
 Admins keep the known places tidy at `/api/admin/places`: an office put
 where it really is, a learned place renamed or forgotten.
@@ -20,9 +22,9 @@ from sqlmodel import Session, select
 
 from .. import audit, geo, ratelimit
 from ..admin import require_admin
-from ..auth import CredsDep, require_user
+from ..auth import Credentials, CredsDep, require_user
 from ..database import get_session, get_write_session
-from ..models import KnownPlace
+from ..models import KnownPlace, User
 from ..schemas import KnownPlaceRead, KnownPlaceUpdate, MapConfigRead, PlaceRead, ReverseRead, RoadRead
 
 router = APIRouter(tags=["places"])
@@ -37,6 +39,14 @@ GEOCODER_LANG = {"en": "en", "sr": "sr-Latn,sr,en"}
 MAX_VIA = 10
 # A found place this close to a known one is that place.
 SAME_PLACE_KM = 0.05
+
+
+def _maps_user(session: Session, creds: Credentials) -> User:
+    """The signed-in account, when the maps are on for it (geo.maps_for)."""
+    user = require_user(session, creds)
+    if not geo.maps_for(user):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Maps are not switched on for you yet")
+    return user
 
 
 def _lookup_allowed(user_id: int | None) -> None:
@@ -61,7 +71,7 @@ def find_places(
 ):
     """Places for what was typed, the known ones first, at most a handful.
     `lat`/`lng` (another place of the route, say) bias the search towards it."""
-    user = require_user(session, creds)
+    user = _maps_user(session, creds)
     found = geo.suggestions(session, q)
     if len(found) < geo.MAX_SUGGESTIONS and len(q.strip()) >= 3 and geo.geocoder_url():
         _lookup_allowed(user.id)
@@ -85,7 +95,7 @@ def name_point(
 ):
     """A name for a pin dropped on the map: a known place right there, else
     what the geocoder calls the spot."""
-    user = require_user(session, creds)
+    user = _maps_user(session, creds)
     point = {"lat": lat, "lng": lng}
     for place in session.exec(select(KnownPlace)):
         if geo.near(point, {"lat": place.lat, "lng": place.lng}, SAME_PLACE_KM):
@@ -116,7 +126,7 @@ def find_road(session: SessionDep, creds: CredsDep, via: str = Query(min_length=
     """The road through `via` (`lat,lng;lat,lng;...`, in order): its length,
     how long it takes, and the line to draw. 404 when there is no router or
     it found nothing; the app then draws straight lines."""
-    user = require_user(session, creds)
+    user = _maps_user(session, creds)
     points = _via(via)
     if not geo.router_url():
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No road finder is set up")

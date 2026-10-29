@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { useT, type HowToTopic } from '../lib/i18n'
+import { useMapsAllowed } from '../lib/places'
 import { ChevronRightIcon, LifebuoyIcon } from './icons'
 import { Sheet } from './Sheet'
 
@@ -19,7 +20,8 @@ function rich(text: string): ReactNode[] {
  */
 export function HowTo({ isAdmin, onSupport, onClose }: { isAdmin: boolean; onSupport: () => void; onClose: () => void }) {
   const t = useT()
-  const topics = t.howTo.topics.filter((topic: HowToTopic) => isAdmin || !topic.admin)
+  const maps = useMapsAllowed()
+  const topics = t.howTo.topics.filter((topic: HowToTopic) => (isAdmin || !topic.admin) && (maps || !topic.maps))
   // The first topic opens with the sheet; any number may be open at once.
   const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set([0]))
   const toggle = (i: number) =>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { api } from './api'
+import { useMe, type Me } from './me'
 import type { MapConfig, Point, Road } from './types'
 
 /**
@@ -7,9 +8,11 @@ import type { MapConfig, Point, Road } from './types'
  * (GET /api/map/config) and kept here like the theme: an external store, so
  * every map and every place input reads the same answer. Until it arrives (or
  * when it fails) there is no map, only "Open in Maps", which needs nothing.
+ * The server also says who has the maps (`audience`); for anyone else the
+ * hooks answer as if there were none, so nothing of them shows.
  */
 
-const OFF: MapConfig = { tiles: '', attribution: '', max_zoom: 19, search: false, road: false }
+const OFF: MapConfig = { audience: 'off', tiles: '', attribution: '', max_zoom: 19, search: false, road: false }
 
 let config: MapConfig = OFF
 let asked = false
@@ -36,8 +39,21 @@ function subscribe(fn: () => void) {
   return () => listeners.delete(fn)
 }
 
+/** Are the maps on for `me` (backend: geo.maps_for)? */
+export function mapsFor(c: MapConfig, me: Me): boolean {
+  return c.audience === 'everyone' || (c.audience === 'admins' && !!me.admin)
+}
+
+/** The map config as this person has it: none at all unless the maps are theirs. */
 export function useMapConfig(): MapConfig {
-  return useSyncExternalStore(subscribe, () => config, () => OFF)
+  const me = useMe()
+  const c = useSyncExternalStore(subscribe, () => config, () => OFF)
+  return mapsFor(c, me) ? c : OFF
+}
+
+/** Whether anything of the maps shows to this person: suggestions, pins, the "Open in Maps" links. */
+export function useMapsAllowed(): boolean {
+  return useMapConfig().audience !== 'off'
 }
 
 /** Whether there is a map to draw at all. */

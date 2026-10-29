@@ -822,6 +822,8 @@ class RoadRead(BaseModel):
 
 
 class MapConfigRead(BaseModel):
+    # Who has the maps: "everyone", "admins" (while they are tried out) or "off".
+    audience: Literal["everyone", "admins", "off"]
     # The tile address template ({z}/{x}/{y}); "" is no map.
     tiles: str
     attribution: str

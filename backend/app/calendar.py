@@ -50,7 +50,9 @@ def _where(ride: Ride, user: User | None) -> tuple[str, dict[str, float] | None]
         booking = next((b for b in ride.bookings if is_person(user, b.passenger_id, b.passenger_name)), None)
         if booking is not None and booking.pickup:
             place = booking.pickup
-    return place, geo.load(ride.points).get(geo.fold(place))
+    # The pin only for someone who has the maps (geo.maps_for).
+    pin = geo.load(ride.points).get(geo.fold(place)) if user is not None and geo.maps_for(user) else None
+    return place, pin
 
 
 def ride_event(ride: Ride, now: datetime | None = None, user: User | None = None) -> list[str]:

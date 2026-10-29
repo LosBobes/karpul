@@ -380,3 +380,23 @@ def test_distances():
 
 
 OFFICE_POINTS_DICT = {k: {"lat": lat, "lng": lng} for k, (lat, lng) in OFFICE_POINTS.items()}
+
+
+def test_the_maps_are_for_admins_while_they_are_tried_out(client, admin_auth, monkeypatch):
+    monkeypatch.delenv("KARPUL_MAPS")
+    assert client.anon.get("/api/map/config").json()["audience"] == "admins"
+    # A plain account is refused the lookups; an admin is not.
+    r = client.get("/api/places", params={"q": "Beo"}, headers=as_("Ana"))
+    assert r.status_code == 403 and "not switched on" in r.text
+    assert client.get("/api/places/reverse", params={"lat": 45.25, "lng": 19.84}, headers=as_("Ana")).status_code == 403
+    assert client.get("/api/places", params={"q": "Beo"}, headers=admin_auth).status_code == 200
+    # The pins are kept all the same, so turning the maps on shows them at once,
+    # but a plain account's calendar does not carry them yet.
+    rid = client.post("/api/rides", json=own_ride(points={"Liman": LIMAN})).json()["id"]
+    assert client.get(f"/api/rides/{rid}", headers=as_("Ana")).json()["points"] == {"liman": LIMAN}
+    assert "GEO:" not in client.get(f"/api/rides/{rid}/calendar.ics", headers=as_("Ana")).text
+    assert "GEO:" in client.get(f"/api/rides/{rid}/calendar.ics", headers=admin_auth).text
+    monkeypatch.setenv("KARPUL_MAPS", "off")
+    assert client.get("/api/places", params={"q": "Beo"}, headers=admin_auth).status_code == 403
+    monkeypatch.setenv("KARPUL_MAPS", "everyone")
+    assert client.get("/api/places", params={"q": "Beo"}, headers=as_("Ana")).status_code == 200

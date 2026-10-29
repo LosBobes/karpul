@@ -7,7 +7,7 @@ import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { hasPins, mapsSearchUrl, pointOf, routeUrl, stopHint } from '../lib/maps'
 import { keepsKm } from '../lib/odometer'
-import { mapsOn, useMapConfig } from '../lib/places'
+import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
 import type { CarState, Ride, RideRequest } from '../lib/types'
@@ -209,11 +209,13 @@ export function CarDetail({
   const [addingStop, setAddingStop] = useState(false)
   const [showMap, setShowMap] = useState(false)
   const mapConfig = useMapConfig()
+  // The maps are tried out by admins first (KARPUL_MAPS): for anyone else none of it shows.
+  const mapsAllowed = useMapsAllowed()
   const wide = useWide()
   const pinned = hasPins(ride) && mapsOn(mapConfig)
   const mapInline = pinned && (inlineMap ?? wide)
   // Your request that day starts near this route: offer to get in there.
-  const hint = canJoin && !isPast ? stopHint(ride, myRequest) : null
+  const hint = mapsAllowed && canJoin && !isPast ? stopHint(ride, myRequest) : null
   const hasStops = allStops(ride).length > 0
   const roomForStop = allStops(ride).length < MAX_STOPS
   // Off, a passenger picks from the route as it is; the driver still adds places.
@@ -247,18 +249,19 @@ export function CarDetail({
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
 
   // Every place opens in the maps app: by its pin when it has one, else by its words.
-  const placeLink = (place: string) => (
-    <a
-      className={pointOf(ride, place) ? 'trip-map trip-map-pinned' : 'trip-map'}
-      href={mapsSearchUrl(place, pointOf(ride, place))}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={t.map.openPlace(place)}
-      title={t.map.openPlace(place)}
-    >
-      <MapIcon size={14} />
-    </a>
-  )
+  const placeLink = (place: string) =>
+    mapsAllowed ? (
+      <a
+        className={pointOf(ride, place) ? 'trip-map trip-map-pinned' : 'trip-map'}
+        href={mapsSearchUrl(place, pointOf(ride, place))}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={t.map.openPlace(place)}
+        title={t.map.openPlace(place)}
+      >
+        <MapIcon size={14} />
+      </a>
+    ) : null
 
   function submitAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -279,6 +282,7 @@ export function CarDetail({
       onSelect: () => onDownloadCalendar(ride),
     },
   ]
+  const mapItems = mapsAllowed ? [{ label: t.map.navigate, icon: <NavigateIcon size={18} />, onSelect: () => openRoute(ride) }] : []
   const menuItems = runsIt
     ? [
         { label: t.detail.editRide, icon: <PencilIcon size={18} />, onSelect: () => onEdit(ride), disabled: busy },
@@ -296,7 +300,7 @@ export function CarDetail({
         },
         { label: t.detail.duplicate, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride), disabled: busy },
         ...shareItems,
-        { label: t.map.navigate, icon: <NavigateIcon size={18} />, onSelect: () => openRoute(ride) },
+        ...mapItems,
         { label: t.detail.removeRide, icon: <TrashIcon size={18} />, onSelect: () => onCancel(ride), danger: true, disabled: busy },
         ...(ride.series_id
           ? [{ label: t.detail.removeFollowing, icon: <RepeatIcon size={18} />, onSelect: () => onCancelFollowing(ride), danger: true, disabled: busy }]
@@ -305,7 +309,7 @@ export function CarDetail({
     : [
         { label: t.detail.duplicateMine, icon: <CopyIcon size={18} />, onSelect: () => onDuplicate(ride) },
         ...shareItems,
-        { label: t.map.navigate, icon: <NavigateIcon size={18} />, onSelect: () => openRoute(ride) },
+        ...mapItems,
       ]
 
   return (

@@ -16,6 +16,7 @@ import {
   stopHint,
 } from './maps'
 import type { Me } from './me'
+import { mapsFor } from './places'
 import type { Ride, RideRequest } from './types'
 
 const LIMAN = { lat: 45.244, lng: 19.842 }
@@ -171,5 +172,17 @@ describe('the "on your way" hint', () => {
     expect(stopHint({ ...pinned, passengers_add_stops: false }, request())).toBeNull()
     expect(stopHint(pinned, request({ points: { 'kod pumpe': FUTOG } }))).toBeNull()
     expect(stopHint({ ...pinned, stops: ['a', 'b', 'c', 'd', 'e', 'f'] }, request())).toBeNull()
+  })
+})
+
+describe('who has the maps', () => {
+  const config = { tiles: 't', attribution: '', max_zoom: 19, search: true, road: false }
+  it('is the admins while they are tried out, everyone after, nobody when off', () => {
+    const ana: Me = { id: 1, name: 'Ana' }
+    const ada: Me = { id: 2, name: 'Ada', admin: true }
+    expect(mapsFor({ ...config, audience: 'admins' }, ana)).toBe(false)
+    expect(mapsFor({ ...config, audience: 'admins' }, ada)).toBe(true)
+    expect(mapsFor({ ...config, audience: 'everyone' }, ana)).toBe(true)
+    expect(mapsFor({ ...config, audience: 'off' }, ada)).toBe(false)
   })
 })

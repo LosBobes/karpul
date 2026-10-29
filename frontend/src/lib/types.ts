@@ -178,6 +178,8 @@ export interface KnownPlace {
 
 /** Where the map's tiles come from (GET /api/map/config); `tiles` "" is no map. */
 export interface MapConfig {
+  /** Who has the maps (`KARPUL_MAPS`): admins only while they are tried out, everyone, or nobody. */
+  audience: 'everyone' | 'admins' | 'off'
   tiles: string
   attribution: string
   max_zoom: number

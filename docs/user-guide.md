@@ -218,6 +218,8 @@ that ride. On a phone the strip on top (**The whole day**) lets you jump around 
 
 ### Places on the map
 
+*For now only admins see this while it is tried out; everyone else sees places as words, as before.*
+
 Every place in Karpul is first of all the words someone typed; a point on the map is an extra
 that nobody has to add.
 

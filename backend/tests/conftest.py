@@ -29,6 +29,8 @@ def clean_env(monkeypatch):
     monkeypatch.setenv("KARPUL_GEOCODER_URL", "")
     monkeypatch.delenv("KARPUL_ROUTER_URL", raising=False)
     monkeypatch.delenv("KARPUL_MAP_TILES", raising=False)
+    # The maps for everyone, unless a test is about who has them.
+    monkeypatch.setenv("KARPUL_MAPS", "everyone")
     geo.cache.clear()
     ratelimit.reset_all()
 

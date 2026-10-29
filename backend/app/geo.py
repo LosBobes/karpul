@@ -301,11 +301,32 @@ def router_url() -> str:
     return os.getenv("KARPUL_ROUTER_URL", "").strip().rstrip("/")
 
 
+AUDIENCES = ("everyone", "admins", "off")
+
+
+def audience() -> str:
+    """Who has the maps (`KARPUL_MAPS`, read per call like the other knobs):
+    "admins" while they are being tried out (the default), "everyone", or
+    "off". Everyone else sees the places as words, as before; the pins are
+    still kept on the rides, so turning it on for everyone shows them at once."""
+    value = os.getenv("KARPUL_MAPS", "admins").strip().lower()
+    return value if value in AUDIENCES else "admins"
+
+
+def maps_for(user: Any) -> bool:
+    from .admin import is_admin
+
+    who = audience()
+    return who == "everyone" or (who == "admins" and is_admin(user))
+
+
 def map_config() -> dict[str, Any]:
     """What the browser needs to draw a map; `tiles` "" is no map (the app
-    then only offers "Open in Maps")."""
+    then only offers "Open in Maps"). `audience` says who may use it; the
+    app shows nothing of the maps to anyone else."""
     tiles = os.getenv("KARPUL_MAP_TILES", DEFAULT_TILES).strip()
     return {
+        "audience": audience(),
         "tiles": tiles,
         "attribution": os.getenv("KARPUL_MAP_ATTRIBUTION", DEFAULT_ATTRIBUTION).strip() if tiles else "",
         "max_zoom": 19,

@@ -2,7 +2,7 @@ import { useEffect, useId, useState, type KeyboardEvent } from 'react'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
 import { useLocale } from '../lib/locale'
-import { mapsOn, SEARCH_MIN, SEARCH_PAUSE_MS, useMapConfig } from '../lib/places'
+import { mapsOn, SEARCH_MIN, SEARCH_PAUSE_MS, useMapConfig, useMapsAllowed } from '../lib/places'
 import type { PlaceSuggestion, Point } from '../lib/types'
 import { MapIcon, PinIcon } from './icons'
 import { Popover } from './Popover'
@@ -46,10 +46,12 @@ export function PlaceInput({ value, point, onChange, near, onMap, label, placeho
   const [active, setActive] = useState(-1)
   const [query, setQuery] = useState<string | null>(null)
   const map = onMap && mapsOn(config)
+  // Without the maps it is a plain text field, as it always was.
+  const allowed = useMapsAllowed()
 
   // Ask once the typing pauses; a newer question cancels the one in flight.
   useEffect(() => {
-    if (query === null) return
+    if (query === null || !allowed) return
     const q = query.trim()
     if (q.length < SEARCH_MIN) return
     const ctl = new AbortController()
@@ -68,12 +70,12 @@ export function PlaceInput({ value, point, onChange, near, onMap, label, placeho
       window.clearTimeout(timer)
       ctl.abort()
     }
-  }, [query, locale, near])
+  }, [query, locale, near, allowed])
 
   const choices = found.length + (map ? 1 : 0)
   // Only real suggestions open the list (the map entry rides along at its
   // foot); the pin button beside the field is always the way to the map.
-  const showing = open && query !== null && query.trim().length >= SEARCH_MIN && found.length > 0
+  const showing = allowed && open && query !== null && query.trim().length >= SEARCH_MIN && found.length > 0
 
   function choose(i: number) {
     if (i < found.length) {
