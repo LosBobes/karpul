@@ -374,11 +374,11 @@ AUDIENCES = ("everyone", "admins", "off")
 
 def audience() -> str:
     """Who has the maps (`KARPUL_MAPS`, read per call like the other knobs):
-    "admins" while they are being tried out (the default), "everyone", or
-    "off". Everyone else sees the places as words, as before; the pins are
-    still kept on the rides, so turning it on for everyone shows them at once."""
-    value = os.getenv("KARPUL_MAPS", "admins").strip().lower()
-    return value if value in AUDIENCES else "admins"
+    "everyone" (the default), "admins" (to try something out first), or
+    "off". Anyone without them sees the places as words; the pins are still
+    kept on the rides, so turning the maps back on shows them at once."""
+    value = os.getenv("KARPUL_MAPS", "everyone").strip().lower()
+    return value if value in AUDIENCES else "everyone"
 
 
 def maps_for(user: Any) -> bool:

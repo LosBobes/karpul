@@ -358,12 +358,12 @@ week (`weekly_dates`, at most `MAX_REPEAT_WEEKS`) under one `series_id`, all or 
 suffix). `DELETE ?scope=following` removes the rest of the series.
 
 **Places on the map** (`app/geo.py`, `routers/places.py`, `lib/maps.ts`, `lib/places.ts`). A place
-is still its words; a pin is extra. **Admins only for now**: `KARPUL_MAPS` (`admins`, the default,
-`everyone` or `off`, read per request, `geo.maps_for`) says who has the maps; `/api/map/config` carries it
+is still its words; a pin is extra. **Who has them**: `KARPUL_MAPS` (`everyone`, the default,
+`admins` or `off`, read per request, `geo.maps_for`) says who has the maps; `/api/map/config` carries it
 as `audience`, the lookups are a 403 for anyone else, the calendar's `GEO` too, and in the app
 `useMapConfig` / `useMapsAllowed` answer "no maps" to them, so `PlaceInput` is a plain field and the card
 shows no map links, hint or menu item (the *Places on the map* how-to topic is `maps: true`). The pins are
-stored for everyone regardless, so `KARPUL_MAPS=everyone` shows them at once; tests run with `everyone`
+stored for everyone regardless, so turning the maps back on shows them at once; tests run with `everyone`
 (`clean_env`, `playwright.config.ts`). `Ride.points` and `RideRequest.points` (`ADDED_COLUMNS`, JSON text)
 map the place's folded name (`fold_name` / `foldName`) to `{lat, lng}`, so reordering stops needs no
 bookkeeping: `RideBase.points` / `RideUpdate.points` (replaces them whole) are by the place as written,
