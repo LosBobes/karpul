@@ -121,6 +121,12 @@ ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("ride", "coffee_please", "BOOLEAN NOT NULL DEFAULT 0"),
     ("corporatecar", "home", "VARCHAR NOT NULL DEFAULT ''"),
     ("ridemessage", "late_minutes", "INTEGER"),
+    ("ride", "points", "VARCHAR NOT NULL DEFAULT '{}'"),
+    ("riderequest", "points", "VARCHAR NOT NULL DEFAULT '{}'"),
+    ("corporatecar", "home_lat", "FLOAT"),
+    ("corporatecar", "home_lng", "FLOAT"),
+    ("waitlistentry", "new_stop_lat", "FLOAT"),
+    ("waitlistentry", "new_stop_lng", "FLOAT"),
 ]
 
 # Columns that started out NOT NULL and are optional now. SQLite cannot drop a

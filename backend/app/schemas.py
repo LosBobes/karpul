@@ -9,6 +9,30 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .models import CarType
 
+# Where Karpul's people drive: Germany and Serbia and the roads between them,
+# generously (south, north, west, east). A point outside is a typo or a slip
+# of the finger on the map, not a pickup point.
+MAP_AREA = (40.0, 56.0, 4.0, 25.0)
+
+
+class Point(BaseModel):
+    """A place on the map, in degrees (WGS 84), rounded to about 10 cm."""
+
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def in_area(self) -> "Point":
+        south, north, west, east = MAP_AREA
+        if not (south <= self.lat <= north and west <= self.lng <= east):
+            raise ValueError("This point is outside the area Karpul covers")
+        self.lat, self.lng = round(self.lat, 6), round(self.lng, 6)
+        return self
+
+
+# A ride's pins: one per place on its route at most (origin, stops, destination).
+Points = Annotated[dict[str, Point], Field(max_length=12)]
+
 
 def _clean_name(value: str) -> str:
     value = " ".join(value.split())
@@ -37,6 +61,9 @@ class CorporateCarRead(BaseModel):
     passenger_seats: int
     active: bool
     home: str
+    # Where `home` is on the map, when an admin pinned it.
+    home_lat: float | None = None
+    home_lng: float | None = None
 
 
 class CorporateCarCreate(BaseModel):
@@ -48,6 +75,7 @@ class CorporateCarCreate(BaseModel):
     active: bool = True
     # The car's default departure point ("Novi Sad office"); blank is none.
     home: str = Field(default="", max_length=120)
+    home_point: Point | None = None
 
     @field_validator("name")
     @classmethod
@@ -73,6 +101,8 @@ class CorporateCarUpdate(BaseModel):
     passenger_seats: int | None = Field(default=None, ge=1, le=8)
     active: bool | None = None
     home: str | None = Field(default=None, max_length=120)
+    # The pin of `home`; null takes it away.
+    home_point: Point | None = None
 
     @field_validator("name")
     @classmethod
@@ -439,10 +469,12 @@ class CarStateRead(BaseModel):
 class NewStop(BaseModel):
     """Where a pickup point that is not on the route yet goes: into the list
     before the origin (`before`) or the one after it, at `index` (None: at the
-    end, so last before the origin or last before the destination)."""
+    end, so last before the origin or last before the destination). `point`
+    is where it is on the map, when the person pinned it."""
 
     before: bool = False
     index: int | None = Field(default=None, ge=0)
+    point: Point | None = None
 
 
 class WaitlistJoin(BaseModel):
@@ -582,6 +614,9 @@ class RideBase(BaseModel):
     stops_before: list[str] = Field(default_factory=list)
     distance_km: float | None = Field(default=None, ge=0, le=2000)
     chip_in: str = Field(default="", max_length=40)
+    # Where the places of the route are on the map, by the place as written
+    # (any spelling of it: services.fold_name). A place without one is fine.
+    points: Points = Field(default_factory=dict)
 
     @field_validator("driver_name", "origin", "destination", "car_name", "notes", "chip_in")
     @classmethod
@@ -657,6 +692,8 @@ class RideUpdate(BaseModel):
     stops_before: list[str] | None = None
     distance_km: float | None = Field(default=None, ge=0, le=2000)
     chip_in: str | None = Field(default=None, max_length=40)
+    # Replaces the ride's pins whole; a place left out loses its pin.
+    points: Points | None = None
 
 
 class RideRead(BaseModel):
@@ -700,6 +737,9 @@ class RideRead(BaseModel):
     free_seats: int
     # A shared car's odometer, stretch by stretch, in the order they were driven.
     legs: list[DriveLegRead] = []
+    # The pins of the route, by the place's folded name (services.fold_name):
+    # {"novi sad": {"lat": 45.25, "lng": 19.84}}.
+    points: dict[str, dict[str, float]] = {}
 
 
 # --- ride requests ------------------------------------------------------------
@@ -711,6 +751,8 @@ class RideRequestCreate(BaseModel):
     destination: str = Field(min_length=1, max_length=120)
     departure_time: time
     note: str = Field(default="", max_length=300)
+    # Where its start and end are on the map, by place, as on a ride.
+    points: Points = Field(default_factory=dict)
 
     @field_validator("origin", "destination", "note")
     @classmethod
@@ -739,3 +781,77 @@ class RideRequestRead(BaseModel):
     # The ride that answered it; None while it is open.
     ride_id: int | None
     created_at: datetime
+    points: dict[str, dict[str, float]] = {}
+
+    @field_validator("points", mode="before")
+    @classmethod
+    def read_points(cls, v: object) -> object:
+        # The row keeps them as JSON text (models.RideRequest.points).
+        if isinstance(v, str):
+            from .geo import load
+
+            return load(v)
+        return v
+
+
+# --- places on the map --------------------------------------------------------
+
+
+class PlaceRead(BaseModel):
+    """A suggestion for a place being typed (GET /api/places): a place Karpul
+    knows ("office", "car_home", "learned") or one the geocoder found ("search")."""
+
+    name: str
+    lat: float
+    lng: float
+    source: Literal["office", "car_home", "learned", "search"]
+
+
+class ReverseRead(BaseModel):
+    # A short name for the pin ("Bulevar oslobođenja 12, Novi Sad"); None when none is known.
+    name: str | None
+
+
+class RoadRead(BaseModel):
+    """The road through some pins, from the router (app/geo.road)."""
+
+    km: float
+    minutes: int
+    # [[lat, lng], ...], simplified, for drawing.
+    line: list[list[float]]
+
+
+class MapConfigRead(BaseModel):
+    # The tile address template ({z}/{x}/{y}); "" is no map.
+    tiles: str
+    attribution: str
+    max_zoom: int
+    # Whether the server can look places up, and the road between them.
+    search: bool
+    road: bool
+
+
+class KnownPlaceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    key: str
+    lat: float
+    lng: float
+    kind: str
+    uses: int
+    last_used: datetime
+
+
+class KnownPlaceUpdate(BaseModel):
+    """Admin-only: put a known place (an office above all) where it really is,
+    or call it something else."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    point: Point | None = None
+
+    @field_validator("name")
+    @classmethod
+    def clean(cls, v: str | None) -> str | None:
+        return _clean_name(v) if v is not None else None

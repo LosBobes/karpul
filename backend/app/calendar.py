@@ -13,8 +13,9 @@ from datetime import date, datetime, timedelta
 
 from sqlmodel import Session
 
+from . import geo
 from .models import Ride, User
-from .services import all_stops, rides_of
+from .services import all_stops, is_person, rides_of
 
 PRODID = "-//Karpul//Karpul rides//EN"
 
@@ -41,7 +42,18 @@ def _dt(d: date, t) -> str:
     return datetime.combine(d, t).strftime("%Y%m%dT%H%M%S")
 
 
-def ride_event(ride: Ride, now: datetime | None = None) -> list[str]:
+def _where(ride: Ride, user: User | None) -> tuple[str, dict[str, float] | None]:
+    """Where the event happens for `user`: their pickup point when they ride
+    in the car, else the start; and its pin, when it has one (app/geo.py)."""
+    place = ride.origin
+    if user is not None:
+        booking = next((b for b in ride.bookings if is_person(user, b.passenger_id, b.passenger_name)), None)
+        if booking is not None and booking.pickup:
+            place = booking.pickup
+    return place, geo.load(ride.points).get(geo.fold(place))
+
+
+def ride_event(ride: Ride, now: datetime | None = None, user: User | None = None) -> list[str]:
     now = now or datetime.utcnow()
     end = ride.return_time or (datetime.combine(ride.ride_date, ride.departure_time) + timedelta(hours=1)).time()
     if ride.return_time is None and end < ride.departure_time:
@@ -56,6 +68,7 @@ def ride_event(ride: Ride, now: datetime | None = None) -> list[str]:
         description += f"\nChip in: {ride.chip_in}"
     if ride.notes:
         description += f"\n{ride.notes}"
+    place, pin = _where(ride, user)
     return [
         "BEGIN:VEVENT",
         f"UID:karpul-ride-{ride.id}@karpul",
@@ -63,7 +76,8 @@ def ride_event(ride: Ride, now: datetime | None = None) -> list[str]:
         f"DTSTART:{_dt(ride.ride_date, ride.departure_time)}",
         f"DTEND:{_dt(ride.ride_date, end)}",
         f"SUMMARY:{_escape(f'Karpul: {ride.origin} to {ride.destination} ({ride.driver_name})')}",
-        f"LOCATION:{_escape(ride.origin)}",
+        f"LOCATION:{_escape(place)}",
+        *([f"GEO:{pin['lat']:.6f};{pin['lng']:.6f}"] if pin else []),
         f"DESCRIPTION:{_escape(description)}",
         f"URL:/ride/{ride.id}",
         "END:VEVENT",
@@ -85,12 +99,12 @@ def _calendar(name: str, events: list[list[str]]) -> str:
     return "\r\n".join(_fold(line) for line in lines) + "\r\n"
 
 
-def ride_ics(ride: Ride) -> str:
-    return _calendar("Karpul", [ride_event(ride)])
+def ride_ics(ride: Ride, user: User | None = None) -> str:
+    return _calendar("Karpul", [ride_event(ride, user=user)])
 
 
 def person_ics(session: Session, user: User, today: date | None = None) -> str:
     """Every ride `user` drives or rides in, from a week back to a year ahead."""
     today = today or date.today()
     rides = rides_of(session, user, today - timedelta(days=7), today + timedelta(days=365))
-    return _calendar(f"Karpul: {user.display_name}", [ride_event(r) for r in rides])
+    return _calendar(f"Karpul: {user.display_name}", [ride_event(r, user=user) for r in rides])

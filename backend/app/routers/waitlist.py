@@ -47,6 +47,8 @@ def join_waitlist(ride_id: int, payload: WaitlistJoin, session: WriteSessionDep,
         if len(all_stops(ride)) >= MAX_STOPS:
             raise HTTPException(status.HTTP_409_CONFLICT, f"This ride already has {MAX_STOPS} pickup points")
         entry.pickup, entry.new_stop_before, entry.new_stop_index = payload.pickup, where.before, where.index
+        if where.point is not None:
+            entry.new_stop_lat, entry.new_stop_lng = where.point.lat, where.point.lng
     ride.waitlist.append(entry)
     session.commit()
     session.refresh(ride)

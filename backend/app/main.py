@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlmodel import Session
 
-from . import backfill
+from . import backfill, geo
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
 from .housekeeping import housekeeping_loop
@@ -25,7 +25,7 @@ from .models import Ride
 from .monitoring import init_sentry
 from .offices import fill_office_distances
 from .reminders import reminder_loop
-from .routers import admin, auth, cars, live, odometer, photos, push, requests, rides, stats, thread, waitlist
+from .routers import admin, auth, cars, live, odometer, photos, places, push, requests, rides, stats, thread, waitlist
 from .seed import seed_corporate_cars
 
 # The app's own loggers (karpul.*) at INFO next to uvicorn's: push, reminders,
@@ -64,6 +64,11 @@ async def lifespan(_: FastAPI):
         fill_office_distances(engine)
     except Exception:
         log.exception("Filling in the office distances failed")
+    # The offices as places on the map, and the pins of old rides to them (app/geo.py).
+    try:
+        geo.seed_places(engine)
+    except Exception:
+        log.exception("Seeding the known places failed")
     # Departure reminders (app/reminders.py); a no-op tick while push is off.
     reminders = asyncio.create_task(reminder_loop())
     # The nightly backup and the purge of expired rows (app/housekeeping.py).
@@ -118,6 +123,7 @@ app.include_router(cars.router)
 app.include_router(rides.router)
 app.include_router(odometer.router)
 app.include_router(waitlist.router)
+app.include_router(places.router)
 app.include_router(thread.router)
 app.include_router(live.router)
 app.include_router(push.router)

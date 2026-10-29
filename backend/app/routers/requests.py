@@ -14,6 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, col, select
 
+from .. import geo
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..events import request_deleted, request_saved
@@ -45,6 +46,8 @@ def drivers_for(session: Session, request: RideRequest) -> list[int]:
     request ends and starts, or picks up, where it starts. The requester is
     not one of them."""
     start, end = _place(request.origin), _place(request.destination)
+    pins = geo.load(request.points)
+    start_pin, end_pin = pins.get(geo.fold(request.origin)), pins.get(geo.fold(request.destination))
     rides = session.exec(
         select(Ride).where(
             Ride.ride_date >= date.today() - timedelta(days=DRIVES_THAT_WAY_DAYS),
@@ -53,12 +56,21 @@ def drivers_for(session: Session, request: RideRequest) -> list[int]:
             Ride.needs_driver == False,  # noqa: E712 - SQL comparison
         )
     ).all()
-    found = {
-        r.driver_id
-        for r in rides
-        if _place(r.destination) == end and start in {_place(p) for p in [r.origin, *all_stops(r)]}
-    }
+    found = {r.driver_id for r in rides if _drives_that_way(r, start, end, start_pin, end_pin)}
     return sorted(uid for uid in found if uid is not None)
+
+
+def _drives_that_way(
+    ride: Ride, start: str, end: str, start_pin: dict[str, float] | None, end_pin: dict[str, float] | None
+) -> bool:
+    """Does `ride` end where the request ends and start, or pick up, where it
+    starts? A place matches by name, or by its pin within `geo.NEAR_KM` of
+    the request's when both are pinned."""
+    pins = geo.load(ride.points)
+    pickups = [ride.origin, *all_stops(ride)]
+    ends = _place(ride.destination) == end or geo.near(end_pin, pins.get(geo.fold(ride.destination)))
+    starts = start in {_place(p) for p in pickups} or any(geo.near(start_pin, pins.get(geo.fold(p))) for p in pickups)
+    return ends and starts
 
 
 @router.get("", response_model=list[RideRequestRead])
@@ -101,7 +113,12 @@ def create_request(payload: RideRequestCreate, session: WriteSessionDep, creds: 
     )
     if open_count >= MAX_OPEN_REQUESTS:
         raise HTTPException(status.HTTP_409_CONFLICT, f"You already have {MAX_OPEN_REQUESTS} open requests")
-    request = RideRequest(**payload.model_dump(), user_id=user.id, name=user.display_name)  # type: ignore[arg-type]
+    places = [payload.origin, payload.destination]
+    points = geo.points_for(session, places, payload.points)
+    request = RideRequest(
+        **payload.model_dump(exclude={"points"}), points=geo.dump(points), user_id=user.id, name=user.display_name  # type: ignore[arg-type]
+    )
+    geo.learn(session, places, geo.folded(payload.points))
     session.add(request)
     session.commit()
     session.refresh(request)

@@ -29,6 +29,8 @@ ACTIONS = (
     "admin_revoked",
     "reset_link",
     "photo_removed",  # someone's profile photo taken down
+    "place_moved",  # a known place (an office, a suggestion) put somewhere else
+    "place_removed",
     "account_deleted",
 )
 
