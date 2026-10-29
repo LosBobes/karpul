@@ -400,3 +400,72 @@ def test_the_maps_are_for_admins_while_they_are_tried_out(client, admin_auth, mo
     assert client.get("/api/places", params={"q": "Beo"}, headers=admin_auth).status_code == 403
     monkeypatch.setenv("KARPUL_MAPS", "everyone")
     assert client.get("/api/places", params={"q": "Beo"}, headers=as_("Ana")).status_code == 200
+
+
+def test_moving_an_office_moves_its_coming_rides(client, admin_auth, engine, session_factory):
+    geo.seed_places(engine)
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    old = {"lat": OFFICE_POINTS["beograd"][0], "lng": OFFICE_POINTS["beograd"][1]}
+    coming = client.post("/api/rides", json=own_ride(origin="Beograd", destination="NS")).json()
+    # One rider dropped a pin of their own for the office: it stays theirs.
+    own_pin = {"lat": 44.8200, "lng": 20.4100}
+    custom = client.post(
+        "/api/rides", json=own_ride(origin="Belgrade", destination="NS", points={"Belgrade": own_pin}, driver_name="Vuk", car_name="Red Clio")
+    ).json()
+    asked = client.post("/api/requests", json=ask(origin="BG", destination="HQ"), headers=as_("Mila")).json()
+    with session_factory() as s:
+        # A ride already driven keeps the pin it was driven with.
+        s.add(Ride(ride_date=date.fromisoformat(yesterday), car_type="own", car_name="Golf", driver_name="Ana",
+                   origin="Beograd", destination="HQ", departure_time=time(7), seats=2,
+                   points=geo.dump({"beograd": old})))
+        s.commit()
+    office = next(p for p in client.get("/api/admin/places", headers=admin_auth).json() if p["key"] == "beograd")
+    exact = {"lat": 44.8000, "lng": 20.4700}
+    assert client.patch(f"/api/admin/places/{office['id']}", json={"point": exact}, headers=admin_auth).status_code == 200
+
+    assert client.get(f"/api/rides/{coming['id']}").json()["points"]["beograd"] == exact
+    assert client.get(f"/api/rides/{custom['id']}").json()["points"]["belgrade"] == own_pin
+    listed = client.get("/api/requests", params={"from": TOMORROW, "to": TOMORROW}).json()
+    assert next(r for r in listed if r["id"] == asked["id"])["points"]["bg"] == exact
+    with session_factory() as s:
+        past = s.exec(select(Ride).where(Ride.ride_date == date.fromisoformat(yesterday))).one()
+        assert geo.load(past.points)["beograd"] == old
+        line = s.exec(select(AdminAction).where(AdminAction.action == "place_moved")).one()
+        assert '["rides", "", "1"]' in line.changes
+
+    # Moved again, from the admin's spot this time: the coming ride follows.
+    again = {"lat": 44.8010, "lng": 20.4710}
+    client.patch(f"/api/admin/places/{office['id']}", json={"point": again}, headers=admin_auth)
+    assert client.get(f"/api/rides/{coming['id']}").json()["points"]["beograd"] == again
+
+
+def test_moving_a_cars_home_moves_its_coming_rides(client, admin_auth):
+    home = {"lat": 45.2560, "lng": 19.8440}
+    car = client.post(
+        "/api/cars/corporate",
+        json={"name": "Mazda 6e", "plate": "NS-200-AA", "passenger_seats": 4, "home": "Garaža Spens", "home_point": home},
+        headers=admin_auth,
+    ).json()
+    ride = client.post(
+        "/api/rides", json=own_ride(car_type="corporate", corporate_car_id=car["id"], car_name="", origin="Garaža Spens", seats=2)
+    ).json()
+    assert ride["points"]["garaza spens"] == home
+    moved = {"lat": 45.2570, "lng": 19.8450}
+    r = client.patch(f"/api/cars/corporate/{car['id']}", json={"home_point": moved}, headers=admin_auth)
+    assert r.status_code == 200, r.text
+    assert client.get(f"/api/rides/{ride['id']}").json()["points"]["garaza spens"] == moved
+
+
+def test_rides_pinned_before_an_office_was_placed_catch_up_on_start(client, engine, session_factory):
+    geo.seed_places(engine)
+    ride = client.post("/api/rides", json=own_ride(origin="Beograd", destination="NS")).json()
+    exact = {"lat": 44.8000, "lng": 20.4700}
+    with session_factory() as s:
+        # Placed without the rides following (as before this existed).
+        office = s.exec(select(KnownPlace).where(KnownPlace.key == "beograd")).one()
+        office.lat, office.lng = exact["lat"], exact["lng"]
+        s.add(office)
+        s.commit()
+    assert geo.seed_places(engine) == 1
+    assert client.get(f"/api/rides/{ride['id']}").json()["points"]["beograd"] == exact
+    assert geo.seed_places(engine) == 0

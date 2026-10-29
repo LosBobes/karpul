@@ -664,6 +664,7 @@ const en = {
       pins: 'Pins moved',
       home_pin: 'Pin of where it departs from',
       pin: 'Pin moved',
+      rides: 'Coming rides moved with it',
     } as Record<string, string>,
   },
 
@@ -1917,6 +1918,7 @@ const sr: Messages = {
       pins: 'Pomerene tačke',
       home_pin: 'Tačka mesta polaska',
       pin: 'Pomerena tačka',
+      rides: 'Pomerene buduće vožnje',
     },
   },
 

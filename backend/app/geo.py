@@ -35,6 +35,8 @@ import time as clock
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
+from collections.abc import Callable
+from datetime import date
 from typing import Any
 
 from sqlalchemy.engine import Engine
@@ -186,6 +188,62 @@ def moved(before: dict[str, dict[str, float]], after: dict[str, dict[str, float]
     return [k for k in after if k in before and before[k] != after[k]]
 
 
+def _same(a: dict[str, float], b: dict[str, float]) -> bool:
+    return abs(a["lat"] - b["lat"]) < 1e-6 and abs(a["lng"] - b["lng"]) < 1e-6
+
+
+def repin(
+    session: Session,
+    names_it: Callable[[str], bool],
+    old: list[dict[str, float]],
+    new: dict[str, float],
+    today: date | None = None,
+) -> tuple[list[Ride], list[RideRequest]]:
+    """A known place (an office, a shared car's home) moved: the rides from
+    `today` on, and the open requests, that name it (`names_it`) and still
+    carry one of its `old` pins get the `new` one. A pin someone dropped
+    somewhere else for that place stays theirs, and the past stays as it was
+    driven. Returns what changed, for the caller to publish after its commit."""
+    today = today or date.today()
+    rides: list[Ride] = []
+    for ride in session.exec(select(Ride).where(Ride.ride_date >= today)):
+        points, hit = load(ride.points), False
+        for place in route_places(ride):
+            key = fold(place)
+            if names_it(place) and key in points and any(_same(points[key], o) for o in old):
+                points[key], hit = dict(new), True
+        if hit:
+            ride.points = dump(points)
+            session.add(ride)
+            rides.append(ride)
+    requests: list[RideRequest] = []
+    for request in session.exec(select(RideRequest).where(RideRequest.request_date >= today)):
+        points, hit = load(request.points), False
+        for place in (request.origin, request.destination):
+            key = fold(place)
+            if names_it(place) and key in points and any(_same(points[key], o) for o in old):
+                points[key], hit = dict(new), True
+        if hit:
+            request.points = dump(points)
+            session.add(request)
+            requests.append(request)
+    return rides, requests
+
+
+def repin_known(session: Session, place: KnownPlace, old: dict[str, float]) -> tuple[list[Ride], list[RideRequest]]:
+    """`place` moved from `old`: its upcoming rides follow (`repin`). An
+    office is named under any of its names, and a ride pinned from the city
+    centre before an admin placed it moves too; anything else by its own name."""
+    new = {"lat": place.lat, "lng": place.lng}
+    if place.kind == "office":
+        olds = [old]
+        if place.key in OFFICE_POINTS:
+            lat, lng = OFFICE_POINTS[place.key]
+            olds.append({"lat": lat, "lng": lng})
+        return repin(session, lambda p: office_of(p) == place.key, olds, new)
+    return repin(session, lambda p: fold(p) == place.key, [old], new)
+
+
 # --- the places Karpul knows --------------------------------------------------
 
 
@@ -226,8 +284,9 @@ def keep_car_home(session: Session, car: CorporateCar) -> None:
 
 def seed_places(target: Engine) -> int:
     """On every start: the offices as known places (once; an admin may move
-    them after), the pinned car homes, and the pins of the old rides and
-    requests that name an office. Returns how many rows changed."""
+    them after), the coming rides still on an office's city centre once an
+    admin has placed it, the pinned car homes, and the pins of the old rides
+    and requests that name an office. Returns how many rows changed."""
     changed = 0
     with Session(target) as session:
         names = {"beograd": "Beograd", "novi sad": "Novi Sad"}
@@ -236,6 +295,15 @@ def seed_places(target: Engine) -> int:
                 session.add(KnownPlace(name=names.get(office, office.title()), key=office, lat=lat, lng=lng, kind="office"))
                 changed += 1
         session.flush()
+        # An office an admin has placed: coming rides still on its city-centre
+        # pin (pinned before it was placed) move there. Safe to repeat.
+        for office, (lat, lng) in OFFICE_POINTS.items():
+            row = session.exec(select(KnownPlace).where(KnownPlace.key == office, KnownPlace.kind == "office")).first()
+            if row is not None and not _same({"lat": row.lat, "lng": row.lng}, {"lat": lat, "lng": lng}):
+                rides, requests = repin(
+                    session, lambda p, o=office: office_of(p) == o, [{"lat": lat, "lng": lng}], {"lat": row.lat, "lng": row.lng}
+                )
+                changed += len(rides) + len(requests)
         for car in session.exec(select(CorporateCar)):
             keep_car_home(session, car)
         for ride in session.exec(select(Ride)):

@@ -407,7 +407,8 @@ ride, the driver is notified.
   spreadsheet** (opens correctly in Excel set to German or Serbian).
 - **Places:** every place Karpul knows on one map: the offices, where the shared cars are kept,
   and the places people pinned (which are suggested to everyone). **Move** puts an office where
-  it really is (new rides to it are pinned from there), **Rename** tidies a name, and **Forget**
+  it really is (new rides to it are pinned from there, and coming rides that still had its old
+  pin move with it), **Rename** tidies a name, and **Forget**
   stops a place being suggested (rides keep their pins). A shared car's *Departs from* can be
   pinned in **Shared cars**, and every ride starting there gets the pin.
 - **Admin log:** every change an admin made to someone else's ride, a car or an account,
