@@ -1,4 +1,4 @@
-import type { Ride } from './types'
+import type { Point, Ride } from './types'
 
 /** Pickup points on one ride, before the start and on the way together (backend: schemas.MAX_STOPS). */
 export const MAX_STOPS = 6
@@ -8,6 +8,8 @@ export const MAX_STOPS = 6
 export interface NewStop {
   before: boolean
   index: number
+  /** Where the new place is on the map, when it was pinned. */
+  point?: Point | null
 }
 
 /** One place a new pickup point can go, between two points of the route. */

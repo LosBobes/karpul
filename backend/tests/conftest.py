@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, select
 
-from app import ratelimit
+from app import geo, ratelimit
 from app.auth import start_session
 from app.database import begin_write, get_session, make_engine
 from app.main import app
@@ -24,6 +24,14 @@ def clean_env(monkeypatch):
     monkeypatch.delenv("KARPUL_ADMINS", raising=False)
     monkeypatch.delenv("KARPUL_SENTRY_DSN", raising=False)
     monkeypatch.delenv("KARPUL_ALLOWED_COUNTRIES", raising=False)
+    # No test ever asks the public geocoder or a router; tests that want one
+    # set the address and replace geo.fetch_json.
+    monkeypatch.setenv("KARPUL_GEOCODER_URL", "")
+    monkeypatch.delenv("KARPUL_ROUTER_URL", raising=False)
+    monkeypatch.delenv("KARPUL_MAP_TILES", raising=False)
+    # The maps for everyone, unless a test is about who has them.
+    monkeypatch.setenv("KARPUL_MAPS", "everyone")
+    geo.cache.clear()
     ratelimit.reset_all()
 
 

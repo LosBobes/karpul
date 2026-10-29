@@ -24,6 +24,7 @@ const ride = (id: number, over: Partial<Ride> = {}): Ride =>
     bookings: [],
     waitlist: [],
     legs: [],
+    points: {},
     distance_km: null,
     chip_in: '',
     notes: '',

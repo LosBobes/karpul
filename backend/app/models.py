@@ -95,6 +95,10 @@ class CorporateCar(SQLModel, table=True):
     active: bool = Field(default=True)
     # Where the car is kept: a new ride in it starts here unless the driver says otherwise.
     home: str = Field(default="", sa_column_kwargs={"server_default": ""})
+    # Where `home` is on the map, when an admin pinned it (app/geo.py): a ride
+    # in the car that starts there gets the pin.
+    home_lat: float | None = None
+    home_lng: float | None = None
 
     rides: list["Ride"] = Relationship(back_populates="corporate_car")
 
@@ -131,6 +135,12 @@ class Ride(SQLModel, table=True):
     passengers_add_stops: bool = Field(default=True)
     # Driver's hint: they would appreciate a coffee. Only ever shown.
     coffee_please: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    # Where the places of the route are on the map, as JSON: the place's
+    # folded name (services.fold_name) to {"lat": .., "lng": ..}. Keyed by
+    # name, not position, so reordering or adding stops needs no bookkeeping;
+    # a pin whose place left the route is dropped (geo.prune_points). Optional:
+    # a place nobody pinned is just its words.
+    points: str = Field(default="{}", sa_column_kwargs={"server_default": "{}"})
     # One-way distance, for the "km shared" figures. Optional; the driver's estimate.
     distance_km: float | None = None
     # A free-text "chip in" note per seat ("300 din", "2 EUR"). No payments here,
@@ -245,6 +255,9 @@ class WaitlistEntry(SQLModel, table=True):
     # None while the pickup is the origin or one of the stops.
     new_stop_before: bool | None = None
     new_stop_index: int | None = None
+    # Where that new place is on the map, when they pinned it.
+    new_stop_lat: float | None = None
+    new_stop_lng: float | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="waitlist")
@@ -283,6 +296,8 @@ class RideRequest(SQLModel, table=True):
     note: str = ""
     # The ride that answered it; None while it is open.
     ride_id: int | None = Field(default=None, foreign_key="ride.id")
+    # Its start and end on the map, as on a ride (Ride.points).
+    points: str = Field(default="{}", sa_column_kwargs={"server_default": "{}"})
     created_at: datetime = Field(default_factory=utcnow)
 
 
@@ -393,3 +408,25 @@ class CarReport(SQLModel, table=True):
     # What is wrong, in the reporter's words: "" for nothing wrong, None for not said.
     issues: str | None = None
     created_at: datetime = Field(default_factory=utcnow, index=True)
+
+
+class KnownPlace(SQLModel, table=True):
+    """A place Karpul knows where it is (app/geo.py): the offices, where each
+    shared car is kept, and the places people pinned on a ride, so that a
+    colleague's usual corner ("Pumpa na Zemunskoj") is a suggestion for the
+    next one. An office's or a car's pin is put on a ride that names the place
+    without anyone pinning it; a learned one only ever suggests."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    # As people write it, from the first time it was pinned.
+    name: str
+    # services.fold_name(name): one place under any spelling.
+    key: str = Field(unique=True, index=True)
+    lat: float
+    lng: float
+    # "office", "car_home" or "learned" (geo.KINDS).
+    kind: str = Field(default="learned")
+    # How many times it was pinned on a ride: the order of the suggestions.
+    uses: int = Field(default=0)
+    last_used: datetime = Field(default_factory=utcnow)
+

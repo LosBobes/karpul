@@ -7,7 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, select
 
-from .. import audit
+from .. import audit, geo
 from ..access import booking_of, driver_unless_actor, get_ride_or_404, is_driver, may_manage_seats, may_run, on_behalf
 from ..admin import admin_ids, is_admin, require_admin
 from ..auth import CredsDep, require_user
@@ -17,7 +17,7 @@ from ..events import request_saved, ride_deleted, ride_saved
 from ..models import Booking, CarType, Ride, RideRequest, User
 from ..offices import office_distance
 from ..push import notify
-from ..schemas import BookingCreate, BookingRead, BookingUpdate, NewStop, RideCreate, RideRead, RideUpdate, StopCreate
+from ..schemas import BookingCreate, BookingRead, BookingUpdate, NewStop, Point, RideCreate, RideRead, RideUpdate, StopCreate
 from ..services import (
     account_for_name,
     add_stop,
@@ -122,6 +122,7 @@ def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_
     # distance on that route is filled in, so the figures never miss it.
     if data["distance_km"] is None:
         data["distance_km"] = office_distance(validated.origin, validated.destination)  # type: ignore[arg-type]
+    car = None
     if validated.car_type == CarType.corporate:
         car = resolve_corporate_car(session, validated.corporate_car_id)  # type: ignore[arg-type]
         ensure_car_available(
@@ -138,6 +139,9 @@ def _prepare(session: Session, validated: RideCreate | RideUpdate, exclude_ride_
                 422,
                 f"{car.name} only has {car.passenger_seats} passenger seats",
             )
+    # The pins of the route (app/geo.py): what was given for its places, and
+    # an office's or the car's home's pin where nobody gave one.
+    data["points"] = geo.dump(geo.points_for(session, geo.route_places(validated), validated.points, car))
     return data
 
 
@@ -220,6 +224,8 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
         # Flush so the next occurrence's availability check sees this one.
         session.flush()
         rides.append(ride)
+    # The places someone pinned become suggestions for the next ride.
+    geo.learn(session, geo.route_places(payload), geo.folded(payload.points))
     if driver is not user:
         weeks = [("weeks", None, len(rides))] if len(rides) > 1 else []
         audit.record(session, user, "ride_added", driver.display_name, ride=rides[0], changes=weeks)
@@ -254,10 +260,10 @@ def get_ride(ride_id: int, session: SessionDep, creds: CredsDep):
 @router.get("/{ride_id}/calendar.ics", include_in_schema=True)
 def ride_calendar(ride_id: int, session: SessionDep, creds: CredsDep):
     """The ride as a calendar file, for "Add to calendar"."""
-    require_user(session, creds)
+    user = require_user(session, creds)
     ride = get_ride_or_404(session, ride_id)
     return Response(
-        ride_ics(ride),
+        ride_ics(ride, user),
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="karpul-ride-{ride.id}.ics"'},
     )
@@ -294,11 +300,22 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
             status.HTTP_409_CONFLICT,
             f"{len(ride.bookings)} passengers already joined; seats cannot go below that",
         )
-    # The passengers are told when the plan itself moves, not about a note.
-    moved = any(
+    # The passengers are told when the plan itself moves, not about a note;
+    # a pin put somewhere else is the route moving.
+    pins_before, pins_after = geo.load(ride.points), geo.load(data["points"])
+    pins_moved = geo.moved(pins_before, pins_after)
+    moved = bool(pins_moved) or any(
         getattr(ride, key) != data[key] for key in ("ride_date", "departure_time", "return_time", "origin", "destination")
     )
-    changes = audit.diff(ride, data, skip=("corporate_car_id", "driver_name")) if on_behalf(user, ride) else []
+    changes = audit.diff(ride, data, skip=("corporate_car_id", "driver_name", "points")) if on_behalf(user, ride) else []
+    if pins_moved and on_behalf(user, ride):
+        names = {geo.fold(p): p for p in geo.route_places(validated)}
+        changes.append(("pins", None, ", ".join(names.get(k, k) for k in pins_moved)))
+    geo.learn(
+        session,
+        geo.route_places(validated),
+        {k: v for k, v in pins_after.items() if pins_before.get(k) != v and k in geo.folded(payload.points)},
+    )
     for key, value in data.items():
         setattr(ride, key, value)
     if changes:
@@ -551,7 +568,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
         raise HTTPException(status.HTTP_409_CONFLICT, f"{name} already joined this ride")
     if len(ride.bookings) >= ride.seats:
         raise HTTPException(status.HTTP_409_CONFLICT, "No free seats left")
-    added = _new_stop(ride, user, payload.pickup, payload.new_stop)
+    added = _new_stop(session, ride, user, payload.pickup, payload.new_stop)
     pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     passenger_id = passenger.id if passenger is not None else None
     ride.bookings.append(Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup))  # type: ignore[arg-type]
@@ -594,7 +611,7 @@ def move_booking(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
     if not is_person(user, booking.passenger_id, booking.passenger_name) and not may_manage_seats(ride, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the passenger or the driver can change this booking")
-    added = _new_stop(ride, user, payload.pickup, payload.new_stop)
+    added = _new_stop(session, ride, user, payload.pickup, payload.new_stop)
     booking.pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     session.add(booking)
     session.add(ride)
@@ -618,6 +635,7 @@ def create_stop(ride_id: int, payload: StopCreate, session: WriteSessionDep, cre
     add_stop(ride, payload.stop, payload.before, payload.index)
     if (ride.stops_before, ride.stops) == before:
         raise HTTPException(status.HTTP_409_CONFLICT, f"{payload.stop} is already on this ride's route")
+    _pin_new_place(session, ride, payload.stop, payload.point)
     if on_behalf(user, ride):
         audit.record(session, user, "ride_edited", ride.driver_name, ride=ride, changes=[("stops", None, payload.stop)])
     session.add(ride)
@@ -629,18 +647,34 @@ def create_stop(ride_id: int, payload: StopCreate, session: WriteSessionDep, cre
     return to_ride_read_dict(ride)
 
 
-def _new_stop(ride: Ride, user: User, pickup: str, where: NewStop | None) -> str | None:
+def _new_stop(session: Session, ride: Ride, user: User, pickup: str, where: NewStop | None) -> str | None:
     """A passenger getting in (or moving) at a place that is not on the route
     yet adds it there, unless the driver switched that off; None when they did
-    not ask for a new place."""
+    not ask for a new place. The pin they gave goes with it; a place already
+    on the route keeps its own (only whoever runs the ride moves a pin)."""
     if where is None:
         return None
     route = (ride.stops_before, ride.stops)
     place = add_stop(ride, pickup, where.before, where.index)
     # A place already on the route is just a pickup, switch or no switch.
-    if (ride.stops_before, ride.stops) != route and not ride.passengers_add_stops and not may_run(user, ride):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "The driver does not take new pickup points on this ride")
+    if (ride.stops_before, ride.stops) != route:
+        if not ride.passengers_add_stops and not may_run(user, ride):
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "The driver does not take new pickup points on this ride")
+        _pin_new_place(session, ride, place, where.point)
     return place
+
+
+def _pin_new_place(session: Session, ride: Ride, place: str, point: Point | None) -> None:
+    """A new place on the route: its pin, when one was given, else the pin
+    everyone knows it by (an office, the car's home), and remembered."""
+    if point is None:
+        known = geo.known_point(session, place, ride.corporate_car)
+        if known is not None:
+            point = Point(**known)
+    if point is None:
+        return
+    geo.pin(ride, place, point)
+    geo.learn(session, [place], geo.folded({place: point}))
 
 
 @router.delete("/{ride_id}/bookings/{booking_id}", response_model=RideRead)

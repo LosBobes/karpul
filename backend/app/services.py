@@ -11,7 +11,7 @@ from sqlalchemy.orm import object_session, selectinload
 from sqlmodel import Session, col, func, or_, select
 
 from .models import Booking, CarType, CorporateCar, PushSubscription, Ride, RideMessage, RideRequest, User, WaitlistEntry
-from .schemas import MAX_STOPS
+from .schemas import MAX_STOPS, Point
 
 
 def new_calendar_token() -> str:
@@ -77,6 +77,19 @@ def all_stops(ride: Ride) -> list[str]:
     return stops_from_text(ride.stops_before) + stops_from_text(ride.stops)
 
 
+def load_points(text: str) -> dict[str, dict[str, float]]:
+    # app/geo.py imports this module (fold_name), so it is reached late.
+    from .geo import load
+
+    return load(text)
+
+
+def pin_point(ride: Ride, place: str, point: Point) -> None:
+    from .geo import pin
+
+    pin(ride, place, point)
+
+
 def is_person(user: User, person_id: int | None, name: str) -> bool:
     """Is this row (a driver, a passenger) `user`? By account where the row has
     one; a row from before accounts that was never linked has only its name,
@@ -135,6 +148,7 @@ def to_ride_read_dict(ride: Ride, extras: BoardExtras | None = None) -> dict:
     data["message_count"] = extras.message_counts.get(ride.id, 0)  # type: ignore[arg-type]
     data["free_seats"] = max(ride.seats - len(ride.bookings), 0)
     data["legs"] = ride.legs
+    data["points"] = load_points(ride.points)
     return data
 
 
@@ -143,6 +157,7 @@ def ride_to_create_dict(ride: Ride) -> dict:
     data = ride.model_dump()
     data["stops"] = stops_from_text(ride.stops)
     data["stops_before"] = stops_from_text(ride.stops_before)
+    data["points"] = load_points(ride.points)
     return data
 
 
@@ -394,6 +409,8 @@ def promote_waitlist(session: Session, ride: Ride, new_stops: list[Booking] | No
             if entry.new_stop_before is not None and ride.passengers_add_stops and len(all_stops(ride)) < MAX_STOPS:
                 pickup = add_stop(ride, entry.pickup, entry.new_stop_before, entry.new_stop_index)
                 added = True
+                if entry.new_stop_lat is not None and entry.new_stop_lng is not None:
+                    pin_point(ride, pickup, Point(lat=entry.new_stop_lat, lng=entry.new_stop_lng))
         booking = Booking(
             ride_id=ride.id,  # type: ignore[arg-type]
             passenger_id=entry.user_id,

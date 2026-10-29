@@ -43,6 +43,14 @@ export default defineConfig({
       KARPUL_ADMINS: 'ana',
       // Every test registers its own people, all from one address.
       KARPUL_REGISTRATIONS_PER_HOUR: '100',
+      // No outside services: places come from what Karpul knows (the offices),
+      // and the map's tiles from an address that answers nothing, so the map
+      // draws its pins on a blank ground without the test touching the network.
+      // The maps for everyone (production starts with admins only, KARPUL_MAPS).
+      KARPUL_MAPS: 'everyone',
+      KARPUL_GEOCODER_URL: '',
+      KARPUL_ROUTER_URL: '',
+      KARPUL_MAP_TILES: '/api/no-tiles/{z}/{x}/{y}.png',
     },
   },
 })

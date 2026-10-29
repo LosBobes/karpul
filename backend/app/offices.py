@@ -22,6 +22,14 @@ OFFICES: dict[str, tuple[str, ...]] = {
     "novi sad": ("novi sad", "ns", "novi sad office", "kancelarija novi sad", "novi sad kancelarija"),
 }
 
+# Where each office is until an admin places it exactly (a `KnownPlace` of
+# kind "office", which app/geo.py seeds from these): the city centres.
+# The frontend has no copy; it reads the pins off the rides.
+OFFICE_POINTS: dict[str, tuple[float, float]] = {
+    "beograd": (44.8125, 20.4612),
+    "novi sad": (45.2551, 19.8452),
+}
+
 # Kilometres from one office to the other, by direction.
 DISTANCES: dict[tuple[str, str], float] = {
     ("beograd", "novi sad"): 90.0,

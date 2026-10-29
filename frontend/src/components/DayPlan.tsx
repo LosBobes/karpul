@@ -14,6 +14,7 @@ import {
   type PlanRow,
 } from '../lib/dayPlan'
 import { useT } from '../lib/i18n'
+import { mapsOn, useMapConfig } from '../lib/places'
 import { useWide } from '../lib/useWide'
 import { drives, runs, seatedIn, useMe } from '../lib/me'
 import type { CorporateCar, Ride } from '../lib/types'
@@ -22,8 +23,9 @@ import { Avatar } from './Avatar'
 import { PowertrainMark } from './CarArt'
 import { DatePicker } from './DatePicker'
 import { DayClock } from './DayClock'
+import { DayMap } from './DayMap'
 import { PlanOverview } from './PlanOverview'
-import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, PencilIcon, TimelineIcon } from './icons'
+import { ChevronLeftIcon, ChevronRightIcon, ClockIcon, MapIcon, PencilIcon, TimelineIcon } from './icons'
 import { SegThumb } from './Segmented'
 
 /** A free stretch of a company car, tapped: the ride form opens on it. */
@@ -66,15 +68,15 @@ function useNowMinutes(on: boolean): number {
   return now
 }
 
-type Shape = 'clock' | 'timeline'
-const SHAPES: Shape[] = ['clock', 'timeline']
+type Shape = 'clock' | 'timeline' | 'map'
+const ALL_SHAPES: Shape[] = ['clock', 'timeline', 'map']
 /** The day as a clock or as roads across the hours, remembered per browser. */
 const SHAPE_KEY = 'karpul.planShape'
 
 function loadShape(): Shape | null {
   try {
     const v = localStorage.getItem(SHAPE_KEY)
-    return v === 'clock' || v === 'timeline' ? v : null
+    return v === 'clock' || v === 'timeline' || v === 'map' ? v : null
   } catch {
     return null
   }
@@ -117,7 +119,10 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   // a phone keeps the roads, which scroll sideways under a thumb.
   const wide = useWide()
   const [chosen, setChosen] = useState<Shape | null>(loadShape)
-  const shape: Shape = chosen ?? (wide ? 'clock' : 'timeline')
+  // The map is a shape only while there are map tiles (lib/places.ts).
+  const SHAPES = mapsOn(useMapConfig()) ? ALL_SHAPES : ALL_SHAPES.filter((s) => s !== 'map')
+  const fallback: Shape = wide ? 'clock' : 'timeline'
+  const shape: Shape = chosen && SHAPES.includes(chosen) ? chosen : fallback
   const pickShape = (next: Shape) => {
     setChosen(next)
     try {
@@ -306,7 +311,7 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
                 className={shape === s ? 'seg seg-on' : 'seg'}
                 onClick={() => pickShape(s)}
               >
-                {s === 'clock' ? <ClockIcon size={16} /> : <TimelineIcon size={16} />}
+                {s === 'clock' ? <ClockIcon size={16} /> : s === 'map' ? <MapIcon size={16} /> : <TimelineIcon size={16} />}
               </button>
             ))}
           </div>
@@ -330,6 +335,8 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
         <div className="card empty-card empty-card-short">
           <strong>{isPast ? t.empty.noRidesWent : t.empty.noRidesDay}</strong>
         </div>
+      ) : shape === 'map' ? (
+        <DayMap rides={rides} dayLabel={`${fmtDayLabel(date)}, ${fmtDayDate(date)}`} onSelect={onSelect} />
       ) : shape === 'clock' ? (
         <div className="card plan-board plan-board-clock">
           <DayClock

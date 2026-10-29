@@ -1,10 +1,14 @@
 import { useRef, useState, type FormEvent } from 'react'
-import { addDays, parseISODate, toISODate } from '../lib/dates'
+import { addDays, foldName, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
+import { fmtKm, pinsFor } from '../lib/maps'
 import { officeDistance } from '../lib/offices'
-import type { CarType, CorporateCar, Ride, RideInput, RideRequest } from '../lib/types'
+import { useRoad } from '../lib/places'
+import type { CarType, CorporateCar, Point, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
 import { MAX_STOPS } from '../lib/stops'
+import { MapPicker } from './MapPicker'
+import { PlaceInput } from './PlaceInput'
 import { Avatar } from './Avatar'
 import { DriverPicker, type Driver } from './DriverPicker'
 import { DatePicker } from './DatePicker'
@@ -87,6 +91,20 @@ interface LastRoute {
   destination: string
   car_name: string
   seats?: number
+  /** The pins of the two, by folded name, when they had any. */
+  points?: Record<string, Point>
+}
+
+/** A shared car's home as a pin, by its folded name. */
+function homePin(car: CorporateCar | undefined): Record<string, Point> {
+  return car && car.home && car.home_lat != null && car.home_lng != null ? { [foldName(car.home)]: { lat: car.home_lat, lng: car.home_lng } } : {}
+}
+
+/** Which place of the route the map picker is pinning. */
+interface Picking {
+  field: 'origin' | 'destination' | 'stop' | 'before'
+  /** Which stop, for a stop. */
+  index: number
 }
 
 function loadLastRoute(): LastRoute {
@@ -143,6 +161,21 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
   const [distance, setDistance] = useState(seed?.distance_km != null ? String(seed.distance_km) : '')
   const [chipIn, setChipIn] = useState(seed?.chip_in ?? '')
+  // The pins of the route by folded name (lib/maps.ts): the ride's own, a
+  // request's, the last route's and the shared cars' homes, whichever apply.
+  const [pins, setPins] = useState<Record<string, Point>>(() => ({
+    ...(seed ? {} : (last.points ?? {})),
+    ...Object.assign({}, ...cars.map(homePin)),
+    ...(request?.points ?? {}),
+    ...(seed?.points ?? {}),
+  }))
+  const [picking, setPicking] = useState<Picking | null>(null)
+  const pinOf = (place: string): Point | null => pins[foldName(place)] ?? null
+  // Typed words keep whatever pin those words already have; a suggestion brings its own.
+  const placeSetter = (set: (value: string) => void) => (value: string, point: Point | null) => {
+    set(value)
+    if (point && value.trim()) setPins((p) => ({ ...p, [foldName(value)]: point }))
+  }
   // New rides only: one ride a week up to a date. Editing touches one ride.
   const [repeat, setRepeat] = useState(false)
   const [repeatUntil, setRepeatUntil] = useState(() => toISODate(addDays(parseISODate(existing?.ride_date ?? date), 7 * 4)))
@@ -185,6 +218,10 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const distanceNum = distance.trim() === '' ? null : Number(distance.replace(',', '.'))
   // The road between the offices is a known length (lib/offices.ts); the server fills a blank in with it.
   const knownKm = officeDistance(origin, destination)
+  // Elsewhere, with the two ends pinned and a road finder on the server, the
+  // road's length is the placeholder, and what a blank distance is sent as.
+  const roadPins = [pinOf(origin), ...stops.map(pinOf), pinOf(destination)]
+  const roadKm = useRoad(knownKm === null && advanced && roadPins.every(Boolean) ? (roadPins as Point[]) : [])?.km ?? null
   const distanceBad = distanceNum !== null && (!Number.isFinite(distanceNum) || distanceNum < 0 || distanceNum > 2000)
   // An answer to a request has to be on the day that was asked for, with a
   // seat for whoever asked (the server says the same, in the same words).
@@ -223,6 +260,25 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     if (lastInput.current) onSubmit({ ...lastInput.current, request_approval: true })
   }
 
+  function pickingPlace(p: Picking): string {
+    if (p.field === 'origin') return origin
+    if (p.field === 'destination') return destination
+    return (p.field === 'stop' ? stops : stopsBefore)[p.index] ?? ''
+  }
+
+  function pickingLabel(p: Picking): string {
+    if (p.field === 'origin') return t.form.pickup
+    if (p.field === 'destination') return t.form.dropoff
+    return p.field === 'stop' ? `${t.form.stops} ${p.index + 1}` : `${t.detail.beforeStart} ${p.index + 1}`
+  }
+
+  function setPickingPlace(p: Picking, value: string) {
+    if (p.field === 'origin') setOrigin(value)
+    else if (p.field === 'destination') setDestination(value)
+    else if (p.field === 'stop') setStop(p.index, value)
+    else setStopBefore(p.index, value)
+  }
+
   function setStop(i: number, value: string) {
     setStops((ss) => ss.map((s, j) => (j === i ? value : s)))
   }
@@ -236,7 +292,15 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     if (localError || distanceBad) return
     try {
       // A ride an admin adds for someone else is not their own commute to remember.
-      const remembered: LastRoute = { origin, destination, car_name: carType === 'own' ? carName : last.car_name, seats }
+      const remembered: LastRoute = {
+        origin,
+        destination,
+        car_name: carType === 'own' ? carName : last.car_name,
+        seats,
+        points: Object.fromEntries(
+          [origin, destination].filter((p) => pinOf(p)).map((p) => [foldName(p), pinOf(p) as Point]),
+        ),
+      }
       if (driver.id === me.id) localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify(remembered))
     } catch {
       /* ignore */
@@ -259,8 +323,9 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       coffee_please: coffee,
       stops: stops.map((s) => s.trim()).filter(Boolean),
       stops_before: stopsBefore.map((s) => s.trim()).filter(Boolean),
-      distance_km: distanceNum,
+      distance_km: distanceNum ?? (knownKm === null ? roadKm : null),
       chip_in: chipIn.trim(),
+      points: pinsFor([...stopsBefore, origin, ...stops, destination], pins),
       repeat_until: !existing && repeat && repeatCount > 1 ? repeatUntil : null,
       request_id: request?.id ?? null,
     }
@@ -500,12 +565,14 @@ export function RideForm({ date, userName, cars, existing, template, request = n
               <span key={i} className="route-row route-row-stop">
                 <PinIcon size={16} />
                 <span className="route-tag">{t.form.beforeTag}</span>
-                <input
-                  aria-label={`${t.detail.beforeStart} ${i + 1}`}
-                  maxLength={120}
+                <PlaceInput
+                  label={`${t.detail.beforeStart} ${i + 1}`}
                   placeholder={t.form.stopPlaceholder}
                   value={stop}
-                  onChange={(e) => setStopBefore(i, e.target.value)}
+                  point={pinOf(stop)}
+                  near={pinOf(origin)}
+                  onChange={placeSetter((v) => setStopBefore(i, v))}
+                  onMap={() => setPicking({ field: 'before', index: i })}
                 />
                 <button
                   type="button"
@@ -520,13 +587,15 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           <span className="route-row">
             <PinIcon size={16} />
             <span className="route-tag">{t.form.from}</span>
-            <input
+            <PlaceInput
               required
-              aria-label={t.form.pickup}
-              maxLength={120}
+              label={t.form.pickup}
               placeholder={t.form.pickupPlaceholder}
               value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
+              point={pinOf(origin)}
+              near={pinOf(destination)}
+              onChange={placeSetter(setOrigin)}
+              onMap={() => setPicking({ field: 'origin', index: 0 })}
             />
           </span>
           {advanced &&
@@ -534,12 +603,14 @@ export function RideForm({ date, userName, cars, existing, template, request = n
               <span key={i} className="route-row route-row-stop">
                 <PinIcon size={16} />
                 <span className="route-tag">{t.form.stopTag}</span>
-                <input
-                  aria-label={`${t.form.stops} ${i + 1}`}
-                  maxLength={120}
+                <PlaceInput
+                  label={`${t.form.stops} ${i + 1}`}
                   placeholder={t.form.stopPlaceholder}
                   value={stop}
-                  onChange={(e) => setStop(i, e.target.value)}
+                  point={pinOf(stop)}
+                  near={pinOf(origin)}
+                  onChange={placeSetter((v) => setStop(i, v))}
+                  onMap={() => setPicking({ field: 'stop', index: i })}
                 />
                 <button
                   type="button"
@@ -554,13 +625,15 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           <span className="route-row">
             <PinIcon size={16} />
             <span className="route-tag">{t.form.to}</span>
-            <input
+            <PlaceInput
               required
-              aria-label={t.form.dropoff}
-              maxLength={120}
+              label={t.form.dropoff}
               placeholder={t.form.dropoffPlaceholder}
               value={destination}
-              onChange={(e) => setDestination(e.target.value)}
+              point={pinOf(destination)}
+              near={pinOf(origin)}
+              onChange={placeSetter(setDestination)}
+              onMap={() => setPicking({ field: 'destination', index: 0 })}
             />
           </span>
           {advanced && roomForStop && (
@@ -569,6 +642,25 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             </button>
           )}
         </div>
+        {picking && (
+          <div className="route-picker">
+            <span className="subfield-label">{t.map.pinFor(pickingPlace(picking) || pickingLabel(picking))}</span>
+            <MapPicker
+              key={JSON.stringify(picking)}
+              initial={pinOf(pickingPlace(picking))}
+              near={pinOf(origin) ?? pinOf(destination)}
+              onCancel={() => setPicking(null)}
+              onPick={(point, name) => {
+                const words = pickingPlace(picking).trim() || name || ''
+                if (words) {
+                  setPickingPlace(picking, words)
+                  setPins((p) => ({ ...p, [foldName(words)]: point }))
+                }
+                setPicking(null)
+              }}
+            />
+          </div>
+        )}
         {advanced && <p className="hint">{t.form.stopsHint}</p>}
         {advanced && (
           <label className="switch-row">
@@ -591,7 +683,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
                   inputMode="decimal"
                   pattern="[0-9]*[.,]?[0-9]*"
                   maxLength={7}
-                  placeholder={knownKm !== null ? String(knownKm) : '0'}
+                  placeholder={knownKm !== null ? String(knownKm) : roadKm !== null ? fmtKm(roadKm) : '0'}
                   aria-invalid={distanceBad || undefined}
                   value={distance}
                   onChange={(e) => setDistance(e.target.value)}
@@ -605,7 +697,12 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             </label>
           </div>
           <p className="hint hint-tight">
-            {knownKm !== null && distance.trim() === '' ? t.form.knownRoad(knownKm) : t.form.distanceHint} {t.form.chipInHint}
+            {knownKm !== null && distance.trim() === ''
+              ? t.form.knownRoad(knownKm)
+              : roadKm !== null && distance.trim() === ''
+                ? t.form.roadKm(fmtKm(roadKm))
+                : t.form.distanceHint}{' '}
+            {t.form.chipInHint}
           </p>
 
           <label className="switch-row">
@@ -645,3 +742,4 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     </Sheet>
   )
 }
+

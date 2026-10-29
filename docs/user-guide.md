@@ -213,7 +213,36 @@ that name become yours.
 **Day view tips.** Tap a ride's bar to open it beside or below the plan. Tap a free stretch of
 a shared car to start a new ride in that car at that time (it fills in the car, the start
 and the time it is free until). Use **Show the day as** to switch between **Clock** and
-**Timeline**. On a phone the strip on top (**The whole day**) lets you jump around the day.
+**Timeline**, or **Map**: the day's pickup points in each driver's colour, a tap on one opens
+that ride. On a phone the strip on top (**The whole day**) lets you jump around the day.
+
+### Places on the map
+
+*For now only admins see this while it is tried out; everyone else sees places as words, as before.*
+
+Every place in Karpul is first of all the words someone typed; a point on the map is an extra
+that nobody has to add.
+
+- **Suggestions.** When you type a start, a destination or a pickup point, Karpul suggests
+  places: the offices first, then where the shared cars are kept, then places colleagues have
+  used before, then what the map search finds. Picking one puts the place on the map too. The
+  offices are always on the map, even when typed by hand.
+- **Pick on the map.** The map button beside a place opens a map with a ring in the middle:
+  move the map until the ring is on the spot and tap **Use this point**. **Use my location**
+  starts from where you are (your phone asks first; Karpul never reads your location on its own).
+  A green pin on the button means the place is on the map.
+- **Privacy.** Everyone with an account can see a point. A street corner, a petrol station or
+  a shop near your home is enough; there is no need to pin your front door.
+- **On a ride.** The small map button beside each place opens it in your maps app (Google Maps),
+  by its point when it has one, else by its name. **Show on map** draws the whole route: the
+  driver's start with their initials, the pickup points numbered in order, your own pickup in
+  green. On a computer the map sits on the ride card. **Open the route in Maps** (in the ⋮ menu,
+  or at the foot of the map) starts the navigation with every pickup point on the way; a
+  passenger gets **Directions to my pickup**.
+- **Requests.** A ride request with a pinned start also reaches drivers who pass within about
+  2 km, and a car that passes close by offers to pick you up there (**Get in at …**).
+- **Distance.** With both ends pinned and road search set up on the server, the ride form fills
+  in the distance by road.
 
 ---
 
@@ -376,6 +405,11 @@ ride, the driver is notified.
 - **All rides:** a spreadsheet-style table of every ride in any date range, past included,
   with filters, sorting, the shared cars' odometer and kilometres, and **Download as a
   spreadsheet** (opens correctly in Excel set to German or Serbian).
+- **Places:** every place Karpul knows on one map: the offices, where the shared cars are kept,
+  and the places people pinned (which are suggested to everyone). **Move** puts an office where
+  it really is (new rides to it are pinned from there), **Rename** tidies a name, and **Forget**
+  stops a place being suggested (rides keep their pins). A shared car's *Departs from* can be
+  pinned in **Shared cars**, and every ride starting there gets the pin.
 - **Admin log:** every change an admin made to someone else's ride, a car or an account,
   with the old and new values. Tap a line about a ride to open it.
 - **Car reports:** with *Shared-car reports* notifications on, you are told when someone

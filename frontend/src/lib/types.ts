@@ -1,5 +1,14 @@
 export type CarType = 'corporate' | 'own'
 
+/** A place on the map, in degrees. */
+export interface Point {
+  lat: number
+  lng: number
+}
+
+/** A route's pins, by the place's folded name (`foldName`; backend: app/geo.py). */
+export type Points = Record<string, Point>
+
 export interface CorporateCar {
   id: number
   name: string
@@ -9,6 +18,9 @@ export interface CorporateCar {
   active: boolean
   /** Where the car is kept: a new ride in it starts here. Blank is nowhere in particular. */
   home: string
+  /** Where `home` is on the map, when an admin pinned it. */
+  home_lat?: number | null
+  home_lng?: number | null
 }
 
 export interface CorporateCarInput {
@@ -16,6 +28,8 @@ export interface CorporateCarInput {
   plate: string
   passenger_seats: number
   home: string
+  /** The pin of `home`; null takes it away. */
+  home_point?: Point | null
 }
 
 export interface Booking {
@@ -76,6 +90,8 @@ export interface Ride {
   free_seats: number
   /** A shared car's odometer, stretch by stretch, in the order they were driven. */
   legs: DriveLeg[]
+  /** The pins of the route; a place nobody pinned is not in it (lib/maps.ts `pointOf`). */
+  points: Points
 }
 
 /** One stretch at the wheel of a shared car (backend: DriveLeg). */
@@ -126,6 +142,8 @@ export interface RideRequest {
   /** The ride that answered it; null while it is open. */
   ride_id: number | null
   created_at: string
+  /** Where its start and end are on the map, when pinned. */
+  points?: Points
 }
 
 export interface RideRequestInput {
@@ -134,6 +152,47 @@ export interface RideRequestInput {
   destination: string
   departure_time: string
   note: string
+  /** By the place as written. */
+  points?: Record<string, Point>
+}
+
+/** A suggestion for a place being typed (GET /api/places). */
+export interface PlaceSuggestion {
+  name: string
+  lat: number
+  lng: number
+  source: 'office' | 'car_home' | 'learned' | 'search'
+}
+
+/** A place Karpul knows (GET /api/admin/places). */
+export interface KnownPlace {
+  id: number
+  name: string
+  key: string
+  lat: number
+  lng: number
+  kind: 'office' | 'car_home' | 'learned'
+  uses: number
+  last_used: string
+}
+
+/** Where the map's tiles come from (GET /api/map/config); `tiles` "" is no map. */
+export interface MapConfig {
+  /** Who has the maps (`KARPUL_MAPS`): admins only while they are tried out, everyone, or nobody. */
+  audience: 'everyone' | 'admins' | 'off'
+  tiles: string
+  attribution: string
+  max_zoom: number
+  search: boolean
+  road: boolean
+}
+
+/** The road through some pins (GET /api/places/road). */
+export interface Road {
+  km: number
+  minutes: number
+  /** [[lat, lng], ...] */
+  line: [number, number][]
 }
 
 /** A line of the admin's log (GET /api/admin/log, backend: app/audit.py). */
@@ -193,6 +252,8 @@ export interface RideInput {
   stops_before: string[]
   distance_km: number | null
   chip_in: string
+  /** The pins of the route, by the place as written (or folded); replaces them whole on an edit. */
+  points?: Record<string, Point>
   /** Create only: one ride per week up to this date (inclusive). */
   repeat_until?: string | null
   /** Create only: the ride answers this request, and its requester gets a seat. */

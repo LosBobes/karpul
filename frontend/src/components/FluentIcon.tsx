@@ -83,6 +83,10 @@ const FLUENT = {
     ),
     extra: <path d="M13.25 11.9a3.9 3.9 0 0 1 4.25 3.85" />,
   },
+  map: {
+    body: <path d="M7.5 3.5 3.6 4.9a.9.9 0 0 0-.6.85v10.1a.6.6 0 0 0 .8.56L7.5 15l5 1.5 3.9-1.4a.9.9 0 0 0 .6-.85V4.15a.6.6 0 0 0-.8-.56L12.5 5l-5-1.5Z" />,
+    detail: <path d="M7.5 3.5V15M12.5 5v11.5" />,
+  },
   table: {
     body: <rect x="3" y="4" width="14" height="12" rx="2" />,
     detail: <path d="M3 8h14M3 12h14M8 8v8" />,

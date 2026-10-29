@@ -36,6 +36,7 @@ function ride(id: number, overrides: Partial<Ride> = {}): Ride {
     message_count: 0,
     free_seats: 2,
     legs: [],
+    points: {},
     approval: '',
     ...overrides,
   }

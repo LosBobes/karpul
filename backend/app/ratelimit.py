@@ -87,7 +87,12 @@ registrations = Limiter(int(os.getenv("KARPUL_REGISTRATIONS_PER_HOUR", "10")), 6
 # Reset-link attempts (a wrong or dead token), per address.
 reset_attempts = Limiter(20, 15 * 60)
 
-ALL = (login_failures_by_account, login_failures_by_ip, registrations, reset_attempts)
+# Place searches and pin lookups (app/geo.py), per account: typing a place asks
+# once per pause, so this is a lot of typing; it keeps one browser from
+# spending the public geocoder's patience for everyone.
+place_lookups = Limiter(60, 60)
+
+ALL = (login_failures_by_account, login_failures_by_ip, registrations, reset_attempts, place_lookups)
 
 
 def reset_all() -> None:

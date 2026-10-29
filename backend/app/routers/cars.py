@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlmodel import Session, col, func, select
 
-from .. import audit
+from .. import audit, geo
 from ..admin import admin_ids, require_admin
 from ..auth import CredsDep, require_user
 from ..carstate import car_states
@@ -166,8 +166,14 @@ def corporate_car_usage_csv(session: SessionDep, creds: CredsDep, days: int = Qu
 def create_corporate_car(payload: CorporateCarCreate, session: WriteSessionDep, creds: CredsDep):
     admin = require_admin(session, creds)
     _ensure_plate_free(session, payload.plate)
-    car = CorporateCar(**payload.model_dump())
+    point = payload.home_point
+    car = CorporateCar(
+        **payload.model_dump(exclude={"home_point"}),
+        home_lat=point.lat if point else None,
+        home_lng=point.lng if point else None,
+    )
     session.add(car)
+    geo.keep_car_home(session, car)
     audit.record(session, admin, "car_added", corporate_car_label(car))
     session.commit()
     session.refresh(car)
@@ -181,7 +187,14 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Writ
     car = _get_car_or_404(session, car_id)
     data = payload.model_dump(exclude_unset=True)
     label = corporate_car_label(car)
+    pinned = "home_point" in data
+    point = data.pop("home_point", None)
     changes = audit.diff(car, data)
+    if pinned:
+        lat, lng = (payload.home_point.lat, payload.home_point.lng) if payload.home_point else (None, None)
+        if (lat, lng) != (car.home_lat, car.home_lng):
+            changes.append(("home_pin", None, data.get("home", car.home) if point else ""))
+        car.home_lat, car.home_lng = lat, lng
     if "plate" in data:
         _ensure_plate_free(session, data["plate"], exclude_id=car.id)
     if "passenger_seats" in data:
@@ -189,6 +202,7 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Writ
     for key, value in data.items():
         setattr(car, key, value)
     session.add(car)
+    geo.keep_car_home(session, car)
     # `Ride.car_name` is a denormalised "<Name> (<PLATE>)" label, so a rename has
     # to travel to the rides already booked in this car or the board keeps
     # showing the old one. Same transaction as the car edit: the label and the

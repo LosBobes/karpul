@@ -9,6 +9,7 @@ import { CarGlyph, PowertrainMark } from './CarArt'
 import { BoltIcon, DropIcon, InfoIcon, RoadIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
+import { MapView } from './MapView'
 
 interface Props {
   /** The board's copy, kept live (lib/useBoard.ts); null until loaded. */
@@ -98,6 +99,14 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
           <span className="mono">{state.car.plate}</span>
         </span>
       </header>
+
+      {state.car.home && state.car.home_lat != null && state.car.home_lng != null && (
+        <MapView
+          className="car-state-map"
+          label={state.car.home}
+          pins={[{ point: { lat: state.car.home_lat, lng: state.car.home_lng }, label: state.car.home, kind: 'spot' }]}
+        />
+      )}
 
       <dl className="car-facts">
         <div className={odo.guessed ? 'car-fact car-fact-guess' : 'car-fact'}>

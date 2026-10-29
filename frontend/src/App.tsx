@@ -21,6 +21,7 @@ import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
 import { PeopleAdmin } from './components/PeopleAdmin'
+import { PlacesAdmin } from './components/PlacesAdmin'
 import { RideLog } from './components/RideLog'
 import { RequestForm } from './components/RequestForm'
 import { RequestList } from './components/RequestList'
@@ -75,6 +76,7 @@ type Overlay =
   | 'update'
   | 'cars'
   | 'people'
+  | 'places'
   | 'rideLog'
   | 'adminLog'
   | 'approvals'
@@ -724,6 +726,7 @@ function Board({ session }: { session: Session }) {
       onLeaveLine={onLeaveLine}
       onOdometer={onOdometer}
       coming={ride.ride_date > todayISO()}
+      myRequest={openRequests.find((r) => r.request_date === ride.ride_date && isMyRequest(r, me))}
       onError={failure}
       dragActive={drag !== null}
       lifted={drag?.fromRideId === ride.id}
@@ -832,6 +835,7 @@ function Board({ session }: { session: Session }) {
     onAccount: () => show('account'),
     onCompanyCars: openAdmin,
     onPeople: () => show('people'),
+    onPlaces: () => show('places'),
     onRideLog: () => show('rideLog'),
     onAdminLog: () => show('adminLog'),
     onApprovals: () => show('approvals'),
@@ -1066,6 +1070,7 @@ function Board({ session }: { session: Session }) {
         )}
 
         {is('people') && isAdmin && <PeopleAdmin onNotice={notice} onClose={closer('people')} />}
+        {is('places') && isAdmin && <PlacesAdmin onNotice={notice} onClose={closer('places')} />}
 
         {is('rideLog') && isAdmin && <RideLog onClose={closer('rideLog')} />}
 

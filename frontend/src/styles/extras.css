@@ -680,3 +680,307 @@
   justify-content: center;
   gap: 0.3rem;
 }
+
+/* --- Maps: a route's pins, the picker, places as you type ------------------ */
+/* A map is a card's inset: rounded, Fluent's stroke, and Karpul's own pins
+   (components/MapView.tsx) instead of Leaflet's blue drops. */
+.map {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border);
+  isolation: isolate;
+}
+.map-canvas {
+  width: 100%;
+  height: 240px;
+  background: var(--surface-2);
+  font: inherit;
+}
+.route-map-sheet .map-canvas,
+.places-map .map-canvas {
+  height: min(56vh, 420px);
+}
+.day-map .map-canvas {
+  height: min(64vh, 560px);
+}
+.car-state-map .map-canvas {
+  height: 120px;
+}
+.car-state-map {
+  margin: 0.25rem 0 0.5rem;
+}
+.ride-map-inline {
+  margin: 0.25rem 0 0.75rem;
+}
+.ride-map {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.map-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+.map-unpinned {
+  margin: 0;
+  font-size: 0.82rem;
+}
+.map-unpinned a {
+  color: var(--green);
+}
+.map .leaflet-container {
+  font: inherit;
+  background: var(--surface-2);
+}
+.map .leaflet-control-zoom a {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border) !important;
+}
+.map .leaflet-bar {
+  border: none;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+}
+.map .leaflet-control-attribution {
+  font-size: 0.66rem;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  color: var(--muted);
+}
+.map .leaflet-control-attribution a {
+  color: inherit;
+}
+.map .leaflet-tooltip {
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+}
+/* The pins: a disc with a white ring and a soft shadow, numbered along the
+   route. Leaflet places the marker box (and owns its transform and display,
+   its stylesheet loading after this one), so the disc is the body inside it. */
+.map .map-pin {
+  display: grid !important;
+  place-items: center;
+  background: none;
+  border: none;
+}
+.map-pin-body {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--surface), 0 1px 4px rgba(0, 0, 0, 0.3);
+  color: var(--text);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+}
+.map-pin-start .map-pin-body {
+  width: 28px;
+  height: 28px;
+  border: none;
+  color: var(--tone, var(--green-dark));
+  background: var(--tone-soft, var(--green-soft));
+}
+.map-pin-stop .map-pin-body {
+  width: 20px;
+  height: 20px;
+  border-color: var(--tone, var(--border-strong));
+}
+.map-pin-end .map-pin-body,
+.map-pin-spot .map-pin-body {
+  width: 18px;
+  height: 18px;
+  border: 5px solid var(--tone, var(--green));
+}
+.map-pin-mine .map-pin-body {
+  width: 28px;
+  height: 28px;
+  border: none;
+  color: #fff;
+  background: var(--green);
+}
+.map-path {
+  stroke: var(--tone, var(--green));
+  stroke-width: 4px;
+  stroke-opacity: 0.85;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+.map-path-dashed {
+  stroke-width: 3px;
+  stroke-dasharray: 2 8;
+}
+/* Tiles are drawn for daylight; in the dark they are turned inside out and
+   dimmed, so a map is not a white hole in the sheet. */
+:root[data-resolved='dark'] .map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.88) contrast(0.9);
+}
+
+/* The picker: the map moves under a fixed crosshair. */
+.map-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+.map-pick .map-canvas {
+  height: min(48vh, 360px);
+}
+.map-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 500;
+  width: 26px;
+  height: 26px;
+  margin: -13px 0 0 -13px;
+  border: 3px solid var(--green);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #fff, 0 1px 6px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+.map-crosshair::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.map-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.map-picker-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.map-picker-spacer {
+  flex: 1;
+}
+.route-picker {
+  margin-top: 0.5rem;
+}
+
+/* A place being typed: the input, and the pin button that says whether it is on the map. */
+.place-input {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.place-input input {
+  flex: 1;
+  min-width: 0;
+}
+.place-pin {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--hover), color var(--hover);
+}
+.place-pin:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.place-pin-on {
+  color: var(--green);
+}
+.place-list .option {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  text-align: left;
+}
+.place-list .option-text {
+  flex: 1;
+  min-width: 0;
+}
+.place-list .option > svg {
+  flex: none;
+  color: var(--muted);
+}
+.option-active {
+  background: var(--surface-2);
+}
+.option-map {
+  border-top: 1px solid var(--border);
+  color: var(--green);
+}
+.option-map > svg {
+  color: var(--green) !important;
+}
+
+/* Each place on a ride's route opens in the maps app. */
+.trip-stop {
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+}
+.trip-map {
+  grid-column: 4;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: -6px -4px -6px 0;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: background var(--hover), color var(--hover);
+}
+.trip-map:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.trip-map-pinned {
+  color: var(--green);
+}
+.stop-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.stop-hint > span {
+  flex: 1;
+  min-width: 12rem;
+}
+.admin-pin {
+  margin-left: 0.25rem;
+  color: var(--green);
+  vertical-align: -1px;
+}
+.plan-board-map {
+  padding: 0;
+  overflow: hidden;
+}
