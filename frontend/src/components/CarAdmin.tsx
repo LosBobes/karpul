@@ -4,7 +4,7 @@ import { messages, useT } from '../lib/i18n'
 import type { CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
-import { MapPicker } from './MapPicker'
+import { PlaceDialog } from './PlaceDialog'
 import { Menu } from './Menu'
 import { PlaceInput } from './PlaceInput'
 import { SegThumb } from './Segmented'
@@ -387,12 +387,14 @@ function CarEditor({
           onMap={() => setPicking(true)}
         />
         {picking && (
-          <MapPicker
-            initial={homePoint}
-            onCancel={() => setPicking(false)}
-            onPick={(point, placeName) => {
+          <PlaceDialog
+            title={t.admin.home}
+            value={home}
+            point={homePoint}
+            onClose={() => setPicking(false)}
+            onPick={(placeName, point) => {
               setHomePoint(point)
-              if (!home.trim() && placeName) setHome(placeName)
+              setHome(placeName)
               setPicking(false)
             }}
           />

@@ -226,11 +226,14 @@ that nobody has to add.
   places: the offices first, then where the shared cars are kept, then places colleagues have
   used before, then what the map search finds. Picking one puts the place on the map too. The
   offices are always on the map, even when typed by hand.
-- **Pick on the map.** The green **Map** button beside a place opens a map with a ring in the middle:
-  move the map until the ring is on the spot and tap **Use this point**. The search box on top of
-  the map (**Search for an address**) takes the map to a street and number or a place you type. **Use my location**
-  starts from where you are (your phone asks first; Karpul never reads your location on its own).
-  The button reads **Pinned** once the place is on the map.
+- **Choose a place.** The green **Map** button beside a place opens a place picker over the whole
+  screen. The **Saved places** are listed straight away (the offices, where the shared cars are kept
+  and places colleagues used before): tap one and it is chosen, pin and all. Type in the search box
+  to narrow them down or to find an **address** (a street and number). An address, or **Pick on the
+  map**, opens a big map with a ring in the middle: move the map until the ring is on the spot,
+  check the **Name** and tap **Use this point**. **Use my location** starts from where you are (your
+  phone asks first; Karpul never reads your location on its own). The button reads **Pinned** once
+  the place is on the map.
 - **Privacy.** Everyone with an account can see a point. A street corner, a petrol station or
   a shop near your home is enough; there is no need to pin your front door.
 - **On a ride.** The small map button beside each place opens it in your maps app (Google Maps),

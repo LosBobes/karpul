@@ -86,6 +86,20 @@ def find_places(
     return found[: geo.MAX_SUGGESTIONS]
 
 
+# The saved places shown before anything is typed: a picker's whole list.
+MAX_SAVED = 60
+
+
+@router.get("/api/places/saved", response_model=list[PlaceRead])
+def saved_places(session: SessionDep, creds: CredsDep):
+    """The places Karpul knows, for picking one without typing: the offices,
+    the shared cars' homes, then the places colleagues pinned, most used first."""
+    _maps_user(session, creds)
+    rank = {"office": 0, "car_home": 1, "learned": 2}
+    places = sorted(session.exec(select(KnownPlace)), key=lambda p: (rank.get(p.kind, 3), -p.uses, p.name.casefold()))
+    return [{"name": p.name, "lat": p.lat, "lng": p.lng, "source": p.kind} for p in places[:MAX_SAVED]]
+
+
 @router.get("/api/places/reverse", response_model=ReverseRead)
 def name_point(
     session: SessionDep,

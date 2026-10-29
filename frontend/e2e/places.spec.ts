@@ -47,15 +47,23 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   await mira.getByRole('option', { name: /Novi Sad/ }).click()
   await expect(form.getByLabel('Pickup location')).toHaveValue('Novi Sad')
   await expect(form.getByRole('button', { name: 'Move the pin of Novi Sad' })).toBeVisible()
-  await form.getByLabel('Drop-off location').fill('Beo')
-  await mira.getByRole('option', { name: /Beograd/ }).click()
-  // The map chip opens the picker, whose own search takes the map to a place.
+  // The map chip opens the place picker over everything: the saved places
+  // are there before anything is typed, and one tap is the pick.
+  await form.locator('.route-row').nth(1).getByRole('button', { name: 'Pick on the map' }).click()
+  const places = mira.getByRole('dialog', { name: 'Drop-off location' })
+  await expect(places.getByRole('heading', { name: 'Saved places' })).toBeVisible()
+  await places.getByRole('button', { name: /^Beograd/ }).click()
+  await expect(places).toBeHidden()
+  await expect(form.getByLabel('Drop-off location')).toHaveValue('Beograd')
+  // Again, to nudge the pin: the search narrows the list, and the map takes the whole picker.
   await form.getByRole('button', { name: 'Move the pin of Beograd' }).click()
-  const picker = form.locator('.map-picker')
-  await picker.getByLabel('Search for an address').fill('Beo')
-  await mira.getByRole('option', { name: /Beograd/ }).click()
-  await picker.getByRole('button', { name: 'Use this point' }).click()
-  await expect(picker).toBeHidden()
+  await places.getByLabel('Search places and addresses').fill('Beo')
+  await expect(places.getByRole('button', { name: /^Novi Sad/ })).toBeHidden()
+  await places.getByRole('button', { name: 'Move the pin on the map' }).click()
+  await expect(places.getByLabel('Name')).toHaveValue('Beograd')
+  await places.getByRole('button', { name: 'Use this point' }).click()
+  await expect(places).toBeHidden()
+  await expect(form).toBeVisible()
   await form.getByRole('button', { name: 'Add ride' }).click()
   await expect(toast(mira, 'Ride added.')).toBeAttached()
 
