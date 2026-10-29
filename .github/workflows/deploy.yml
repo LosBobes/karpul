@@ -1,7 +1,12 @@
 name: Deploy to Hetzner
 
-# Builds Karpul on the shared Hetzner server from source on every push to
-# main, exactly like gamgee, iris and flora-find on the same box.
+# Builds Karpul on the shared Hetzner server from source, exactly like
+# gamgee, iris and flora-find on the same box, once CI has passed on main:
+# a push to main runs CI (.github/workflows/ci.yml: backend, frontend and the
+# end-to-end tests), and only a green run starts this workflow. What is
+# deployed is the commit CI tested, never a newer one that has not been
+# tested yet; if main has moved on by then, that commit's own CI deploys it.
+# A manual run deploys main's head, and only when CI passed on it.
 #
 # HETZNER_HOST / HETZNER_USER / HETZNER_SSH_KEY (and optional HETZNER_PORT) are
 # inherited from the LosBobes org secrets. The deploy directory is NOT a
@@ -17,7 +22,9 @@ name: Deploy to Hetzner
 # done, the deploy job fails with a clear message before touching anything.
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -28,8 +35,10 @@ concurrency:
   cancel-in-progress: false
 
 # The deploy runs entirely over SSH; it needs no GitHub API write access.
+# Reading the CI runs is how a manual deploy checks the tests passed.
 permissions:
   contents: read
+  actions: read
 
 env:
   # Where Karpul lives on the box. Deliberately hard-coded (not a secret or
@@ -37,9 +46,50 @@ env:
   DEPLOY_PATH: /opt/karpul
 
 jobs:
+  ci-passed:
+    name: CI passed on this commit
+    runs-on: ubuntu-latest
+    # A red run, or a pull request's, skips the deploy outright (the check
+    # below says the same for a manual run, which has no CI run attached).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    outputs:
+      sha: ${{ steps.check.outputs.sha }}
+    steps:
+      - name: Check the CI run
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          if [ "$EVENT" = "workflow_run" ]; then
+            # A pull request's CI never deploys, and a red run stops here.
+            if [ "$RUN_EVENT" != "push" ] || [ "$RUN_CONCLUSION" != "success" ]; then
+              echo "::error::CI on main did not pass (${RUN_EVENT}: ${RUN_CONCLUSION}). Not deploying."
+              exit 1
+            fi
+            sha="$RUN_SHA"
+          else
+            sha="$DISPATCH_SHA"
+            ok="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$sha" --event push \
+              --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')"
+            if [ "${ok:-0}" -lt 1 ]; then
+              echo "::error::CI has not passed on ${sha}. Not deploying."
+              exit 1
+            fi
+          fi
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          echo "CI passed on ${sha}."
+
   check-secrets:
     name: Check deploy secrets are configured
     runs-on: ubuntu-latest
+    needs: ci-passed
     outputs:
       configured: ${{ steps.check.outputs.configured }}
     steps:
@@ -61,7 +111,7 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
-    needs: check-secrets
+    needs: [ci-passed, check-secrets]
     if: needs.check-secrets.outputs.configured == 'true'
     timeout-minutes: 20
 
@@ -87,6 +137,7 @@ jobs:
             set -e
             DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
             EXPECTED_REPO="${{ github.repository }}"
+            TESTED_SHA="${{ needs.ci-passed.outputs.sha }}"
             COMPOSE="docker compose -f docker-compose.prod.yml"
 
             echo "Checking ${DEPLOY_PATH} is the Karpul checkout..."
@@ -108,9 +159,16 @@ jobs:
                 ;;
             esac
 
-            echo "Pulling latest code..."
+            echo "Pulling the tested commit..."
             git fetch origin main
-            git reset --hard origin/main
+            # Only the commit CI passed on goes out. If main has moved on, the
+            # newer commit is deployed by its own CI run once it passes, and an
+            # older run finishing late must not roll the box back.
+            if [ "$(git rev-parse origin/main)" != "${TESTED_SHA}" ]; then
+              echo "main has moved past ${TESTED_SHA}; its newer commit deploys when its own CI passes."
+              exit 0
+            fi
+            git reset --hard "${TESTED_SHA}"
 
             if ! ${COMPOSE} config --services | grep -qx app; then
               echo "::error::docker-compose.prod.yml in ${DEPLOY_PATH} does not define the 'app' service. Refusing to deploy."

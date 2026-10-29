@@ -820,6 +820,13 @@ Tests (`backend/tests/conftest.py`) use an in-memory SQLite engine (`make_engine
 
 Karpul shares a Hetzner box with gamgee, iris, flora-find and sokola. Host-level Caddy terminates TLS for `www.karpul.dev` and proxies to `127.0.0.1:3004` (the other apps own 3000–3003); the stack lives in `/opt/karpul` with SQLite in the `karpul_karpul_data` volume. Full runbook: `docs/deployment-hetzner.md`.
 
+**CI gates both merges and deploys.** `deploy.yml` runs on `workflow_run` of CI (not on push): only a green
+CI run of a push to `main` deploys, and it deploys the commit CI tested (`ci-passed` hands its sha to the SSH
+script, which exits without touching anything if `main` has moved past it, so a late run never rolls back). A
+manual run checks with `gh run list` that CI passed on `main`'s head first. Merges are gated by branch
+protection on `main` (a GitHub setting, see `docs/deployment-hetzner.md` §6) requiring the three CI jobs, so
+keep their `name:`s (`Backend tests`, `Frontend lint and build`, `End-to-end smoke test`) or update the rule.
+
 Two constraints in `.github/workflows/deploy.yml` that look accidental but are not — don't "clean them up":
 - `DEPLOY_PATH` is hard-coded to `/opt/karpul` in the workflow `env`. The LosBobes org carries a `DEPLOY_PATH` secret pointing at a sibling app; reading it would rebuild that app instead. The script also verifies the directory is a clone of this repo and that its compose file defines `app` before touching anything.
 - `script_stop: false` on `appleboy/ssh-action` is required. With it true the action injects exit-code checks between lines, which breaks the multi-line `case` block.
