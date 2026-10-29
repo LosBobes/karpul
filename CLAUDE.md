@@ -555,7 +555,11 @@ entry alone. Sheets rise from the bottom edge on a phone and pop up on a desktop
 slides from the left, confirmations grow out of the middle and popovers come out of their anchor (`Popover` sets
 `transform-origin` and measures itself with `offsetWidth`, which a transform does not change),
 the toast and the floating plus spring in (the plus also contracts while pressed and springs back on release; the pressed state comes from pointer and key events, not `:active`, which phones apply late and Chrome holds on after the finger lifts), the Upcoming detail unfolds as a grid row from
-`0fr` (the `.session-detail-clip` wrapper hides the overflow and leaves room for shadows), and
+`0fr` (the `.session-detail-clip` wrapper hides the overflow and leaves room for shadows), a
+passenger who just got in grows into the car's list the same way (`.pax-slot-new`, `useArrivals`
+in `lib/motion.ts`: not on first render, not into an empty list, not your own row, which takes the
+place of the *Get in* row; the seat controls stay on screen, disabled, while the call is out, so
+the card never flickers through its empty state first), and
 the segmented controls (`SegThumb`, `components/Segmented.tsx`, drawn as Fluent's TabList: the
 choices on the page, the pick semibold over a short accent bar) and the date pills
 (`.date-thumb`) move one marker element instead of recolouring buttons. Reduced motion collapses
