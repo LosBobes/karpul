@@ -391,7 +391,8 @@ by default, "" no map at all: only *Open in Maps*). `requests.drivers_for` also 
 whose start is within `geo.NEAR_KM` of a ride's pinned pickup point, and the calendar's `LOCATION`/`GEO`
 are the reader's own pickup. On screen: `PlaceInput` (suggestions in a `Popover`, which opens only when
 something is found, and a pin button) in `RideForm`, `AddStop`, `RequestForm` and `CarAdmin`;
-`MapPicker` (a crosshair over a moving map, inline, not an overlay); `MapView` (Leaflet, loaded on first
+`MapPicker` (a crosshair over a moving map, inline, not an overlay, with an address search on top: a
+`PlaceInput` whose pick centres the map, Enter kept from the form around it); `MapView` (Leaflet, loaded on first
 use through `lib/leaflet.ts`, so it is a chunk of its own; Karpul's own pins as `divIcon`s, the disc drawn
 in `.map-pin-body` because Leaflet owns the marker's transform; dark tiles by a CSS filter); on the card
 each place opens in Google Maps (`mapsSearchUrl`), *Show on map* opens `RouteMapSheet` (portalled to
