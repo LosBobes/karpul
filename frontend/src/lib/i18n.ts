@@ -612,6 +612,10 @@ const en = {
           return `${admin} edited a ride of ${subject}`
         case 'ride_removed':
           return `${admin} removed a ride of ${subject}`
+        case 'ride_approved':
+          return `${admin} approved a shared-car ride of ${subject}`
+        case 'ride_declined':
+          return `${admin} declined a shared-car ride of ${subject}`
         case 'seat_added':
           return `${admin} put someone in the car of ${subject}`
         case 'seat_removed':
@@ -1883,6 +1887,10 @@ const sr: Messages = {
           return `${admin} je izmenio/la vožnju, vozi ${subject}`
         case 'ride_removed':
           return `${admin} je uklonio/la vožnju, vozio/la je ${subject}`
+        case 'ride_approved':
+          return `${admin} je odobrio/la vožnju zajedničkim autom, vozi ${subject}`
+        case 'ride_declined':
+          return `${admin} je odbio/la vožnju zajedničkim autom, vozio/la bi ${subject}`
         case 'seat_added':
           return `${admin} je dodao/la putnika, vozi ${subject}`
         case 'seat_removed':
