@@ -6,6 +6,7 @@ import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { hasPins, mapsSearchUrl, pointOf, routeUrl, stopHint } from '../lib/maps'
+import { useArrivals } from '../lib/motion'
 import { keepsKm } from '../lib/odometer'
 import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
@@ -68,7 +69,8 @@ interface Props {
   /** Remove this ride and the later ones of its weekly series. */
   onCancelFollowing: (ride: Ride) => void
   /** Put somebody else in the car (driver, or a passenger when the driver allows it). */
-  onAddPassenger: (ride: Ride, name: string) => void
+  /** Settles once the call is done, so the form can stay until the passenger is in. */
+  onAddPassenger: (ride: Ride, name: string) => Promise<void>
   onCancel: (ride: Ride) => void
   onEdit: (ride: Ride) => void
   onDuplicate: (ride: Ride) => void
@@ -190,18 +192,23 @@ export function CarDetail({
   const powertrain = carPowertrain(ride.car_name)
   const myBooking = findMyBooking(ride, me)
   const full = ride.free_seats <= 0
-  const canJoin = !isDriver && !myBooking && !full && !busy && !isPast
+  // A seat on offer stays on screen while a call is out (its buttons only go
+  // disabled), so the card never flickers through "No passengers yet" before
+  // the passenger arrives; `canJoin` is whether it can be taken right now.
+  const seatOnOffer = !isDriver && !myBooking && !full && !isPast
+  const canJoin = seatOnOffer && !busy
   const receives = dragActive && canJoin
   // Who may put other people in and take them out: the driver (or an admin)
   // always, the passengers while the driver has switched it on (backend: _may_manage_seats).
   const canManage = !isPast && (runsIt || (ride.passengers_manage && !!myBooking))
-  const canAddOther = canManage && !full && !busy
+  const canAddOther = canManage && !full
   // A full car has a queue: the first seat that frees up goes to the first in line.
   const myEntry = myWaitlistEntry(ride, me)
   const line = placeInLine(ride, me)
   const canWait = full && !isDriver && !myBooking && !myEntry && !isPast && ride.seats > 0
 
   const [adding, setAdding] = useState(false)
+  const arrived = useArrivals(ride.bookings.map((b) => b.id))
   const [newName, setNewName] = useState('')
   // Where you get in: the start, one of the stops, or somewhere new you put on the route.
   const [pickup, setPickup] = useState('')
@@ -215,7 +222,7 @@ export function CarDetail({
   const pinned = hasPins(ride) && mapsOn(mapConfig)
   const mapInline = pinned && (inlineMap ?? wide)
   // Your request that day starts near this route: offer to get in there.
-  const hint = mapsAllowed && canJoin && !isPast ? stopHint(ride, myRequest) : null
+  const hint = mapsAllowed && seatOnOffer ? stopHint(ride, myRequest) : null
   const hasStops = allStops(ride).length > 0
   const roomForStop = allStops(ride).length < MAX_STOPS
   // Off, a passenger picks from the route as it is; the driver still adds places.
@@ -266,10 +273,12 @@ export function CarDetail({
   function submitAdd(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const name = newName.trim().replace(/\s+/g, ' ')
-    if (!name) return
-    onAddPassenger(ride, name)
-    setNewName('')
-    setAdding(false)
+    if (!name || busy) return
+    // The form stays until the new row is there, so the two swap in one step.
+    void onAddPassenger(ride, name).then(() => {
+      setNewName('')
+      setAdding(false)
+    })
   }
 
   const shareItems = [
@@ -596,14 +605,14 @@ export function CarDetail({
           </div>
         )}
 
-        {(canJoin || canWait) && choosingPlace && (
+        {(seatOnOffer || canWait) && choosingPlace && (
           <AddStop
             ride={ride}
-            submitLabel={canJoin ? getInLabel : t.detail.waitFor}
+            submitLabel={seatOnOffer ? getInLabel : t.detail.waitFor}
             busy={busy}
             onCancel={() => setPickup('')}
             onSubmit={
-              canJoin
+              seatOnOffer
                 ? getInAt
                 : (place, where) => {
                     setPickup('')
@@ -613,16 +622,16 @@ export function CarDetail({
           />
         )}
 
-        {ride.bookings.length === 0 && !canJoin ? (
+        {ride.bookings.length === 0 && !seatOnOffer ? (
           <div className="dropzone dropzone-still">
             <UsersIcon size={28} />
             <span>{isPast ? t.detail.nobodyRode : full ? t.detail.noSeatsOffered : t.detail.noPassengers}</span>
           </div>
         ) : null}
 
-        {ride.bookings.length === 0 && canJoin && !choosingPlace ? (
+        {ride.bookings.length === 0 && seatOnOffer && !choosingPlace ? (
           <div className="join-box">
-            <button type="button" className="dropzone" onClick={getIn}>
+            <button type="button" className="dropzone" disabled={busy} onClick={getIn}>
               <UsersIcon size={28} />
               <strong>{getInLabel}</strong>
               <span>
@@ -644,99 +653,101 @@ export function CarDetail({
             {ride.bookings.map((b) => {
               const mine = isMyBooking(b, me)
               const grabbable = draggable && mine && !busy && !isPast
+              // Someone new grows into the list; your own row takes the place of the get-in row you tapped.
               return (
-                <li
-                  key={b.id}
-                  className={['pax-row', mine && 'pax-row-me', grabbable && 'grabbable', mine && lifted && 'lifting']
-                    .filter(Boolean)
-                    .join(' ')}
-                  title={grabbable ? t.detail.dragSwitch : undefined}
-                  onPointerDown={(e) => {
-                    if (grabbable) onGrab(e, { name: me.name, fromRideId: ride.id, bookingId: b.id })
-                  }}
-                  onDragStart={(e) => e.preventDefault()}
-                >
-                  <Avatar name={b.passenger_name} />
-                  <span className="pax-name">
-                    <span className="pax-name-row">
-                      {b.passenger_name}
-                      {mine && <span className="tag">{t.detail.you}</span>}
-                    </span>
-                    {(hasStops || (mine && !isPast)) && (
-                      <span className="pax-pickup">
-                        <PinIcon size={12} /> {t.detail.getsInAt(b.pickup || ride.origin)}
-                        {mine && !isPast && !movingPickup && (
-                          <button type="button" className="link link-sm" disabled={busy} onClick={() => setMovingPickup('pick')}>
-                            {t.common.edit}
-                          </button>
-                        )}
+                <li key={b.id} className={arrived.has(b.id) && !mine ? 'pax-slot pax-slot-new' : 'pax-slot'}>
+                  <div
+                    className={['pax-row', mine && 'pax-row-me', grabbable && 'grabbable', mine && lifted && 'lifting']
+                      .filter(Boolean)
+                      .join(' ')}
+                    title={grabbable ? t.detail.dragSwitch : undefined}
+                    onPointerDown={(e) => {
+                      if (grabbable) onGrab(e, { name: me.name, fromRideId: ride.id, bookingId: b.id })
+                    }}
+                    onDragStart={(e) => e.preventDefault()}
+                  >
+                    <Avatar name={b.passenger_name} />
+                    <span className="pax-name">
+                      <span className="pax-name-row">
+                        {b.passenger_name}
+                        {mine && <span className="tag">{t.detail.you}</span>}
                       </span>
-                    )}
-                    {mine && movingPickup === 'new' && (
-                      <AddStop
-                        ride={ride}
-                        submitLabel={t.common.save}
-                        busy={busy}
-                        onCancel={() => setMovingPickup(false)}
-                        onSubmit={(place, where) => {
-                          setMovingPickup(false)
-                          onMovePickup(ride, b.id, place, where)
-                        }}
-                      />
-                    )}
-                    {mine && movingPickup === 'pick' && (
-                      <span className="pax-pickup-pick">
-                        <Select
-                          label={t.detail.changePickup}
-                          icon={<PinIcon size={16} />}
-                          value={b.pickup}
-                          options={withElsewhere}
-                          onChange={(v) => {
-                            if (v === ELSEWHERE) return setMovingPickup('new')
+                      {(hasStops || (mine && !isPast)) && (
+                        <span className="pax-pickup">
+                          <PinIcon size={12} /> {t.detail.getsInAt(b.pickup || ride.origin)}
+                          {mine && !isPast && !movingPickup && (
+                            <button type="button" className="link link-sm" disabled={busy} onClick={() => setMovingPickup('pick')}>
+                              {t.common.edit}
+                            </button>
+                          )}
+                        </span>
+                      )}
+                      {mine && movingPickup === 'new' && (
+                        <AddStop
+                          ride={ride}
+                          submitLabel={t.common.save}
+                          busy={busy}
+                          onCancel={() => setMovingPickup(false)}
+                          onSubmit={(place, where) => {
                             setMovingPickup(false)
-                            if (v !== b.pickup) onMovePickup(ride, b.id, v)
+                            onMovePickup(ride, b.id, place, where)
                           }}
                         />
-                        <button type="button" className="icon-btn icon-btn-sm" aria-label={t.common.cancel} onClick={() => setMovingPickup(false)}>
-                          <XIcon size={16} />
-                        </button>
+                      )}
+                      {mine && movingPickup === 'pick' && (
+                        <span className="pax-pickup-pick">
+                          <Select
+                            label={t.detail.changePickup}
+                            icon={<PinIcon size={16} />}
+                            value={b.pickup}
+                            options={withElsewhere}
+                            onChange={(v) => {
+                              if (v === ELSEWHERE) return setMovingPickup('new')
+                              setMovingPickup(false)
+                              if (v !== b.pickup) onMovePickup(ride, b.id, v)
+                            }}
+                          />
+                          <button type="button" className="icon-btn icon-btn-sm" aria-label={t.common.cancel} onClick={() => setMovingPickup(false)}>
+                            <XIcon size={16} />
+                          </button>
+                        </span>
+                      )}
+                    </span>
+                    {canManage && !mine && (
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-sm"
+                        title={t.detail.removeName(b.passenger_name)}
+                        aria-label={t.detail.removeName(b.passenger_name)}
+                        disabled={busy}
+                        onClick={() => onLeave(ride, b.id)}
+                      >
+                        <XIcon size={16} />
+                      </button>
+                    )}
+                    {mine && !isDriver && !isPast && (
+                      <button
+                        type="button"
+                        className="link pax-leave"
+                        disabled={busy}
+                        onClick={() => onLeave(ride, b.id)}
+                      >
+                        {t.detail.leave}
+                      </button>
+                    )}
+                    {grabbable && (
+                      <span className="grip" aria-hidden="true">
+                        <GripIcon size={18} />
                       </span>
                     )}
-                  </span>
-                  {canManage && !mine && (
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn-sm"
-                      title={t.detail.removeName(b.passenger_name)}
-                      aria-label={t.detail.removeName(b.passenger_name)}
-                      disabled={busy}
-                      onClick={() => onLeave(ride, b.id)}
-                    >
-                      <XIcon size={16} />
-                    </button>
-                  )}
-                  {mine && !isDriver && !isPast && (
-                    <button
-                      type="button"
-                      className="link pax-leave"
-                      disabled={busy}
-                      onClick={() => onLeave(ride, b.id)}
-                    >
-                      {t.detail.leave}
-                    </button>
-                  )}
-                  {grabbable && (
-                    <span className="grip" aria-hidden="true">
-                      <GripIcon size={18} />
-                    </span>
-                  )}
+                  </div>
                 </li>
               )
             })}
-            {canJoin && !choosingPlace && (
+            {seatOnOffer && !choosingPlace && (
               <li>
                 <div className="join-row">
-                  <button type="button" className="add-row" onClick={getIn}>
+                  <button type="button" className="add-row" disabled={busy} onClick={getIn}>
                     <PlusIcon size={18} />
                     {getInLabel}
                   </button>
@@ -750,7 +761,7 @@ export function CarDetail({
 
 
         {canAddOther && !adding && (
-          <button type="button" className="add-row add-row-quiet" onClick={() => setAdding(true)}>
+          <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => setAdding(true)}>
             <UserIcon size={18} />
             {t.detail.addByName}
           </button>

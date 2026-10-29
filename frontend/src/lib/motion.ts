@@ -29,6 +29,30 @@ export function useSlideDir(value: string, rank: (v: string) => number): SlideDi
 }
 
 /**
+ * Which keys of a list have just arrived, so their rows can grow in rather
+ * than land: the keys that were not there last time the list changed. The
+ * first list is no arrival at all (a card opening is not news), nor is
+ * anything added to an empty list (it replaces the empty state, which a
+ * growing row would only shrink first). The answer holds until the list
+ * changes again, so a re-render with the same keys does not cut the
+ * animation short. State is derived during render, as in `useSlideDir`.
+ */
+export function useArrivals(keys: readonly number[]): ReadonlySet<number> {
+  const sig = keys.join(',')
+  const [last, setLast] = useState<{ sig: string; keys: ReadonlySet<number>; fresh: ReadonlySet<number> }>(() => ({
+    sig,
+    keys: new Set(keys),
+    fresh: new Set(),
+  }))
+  if (last.sig !== sig) {
+    const fresh = new Set(last.keys.size ? keys.filter((k) => !last.keys.has(k)) : [])
+    setLast({ sig, keys: new Set(keys), fresh })
+    return fresh
+  }
+  return last.fresh
+}
+
+/**
  * Keeps the last value around after it goes, so a marker can pop out where it
  * was instead of vanishing: `[shown, on]` is the value to draw and whether it
  * is still current. `value` must keep its identity between renders (state,
