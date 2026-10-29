@@ -22,6 +22,7 @@ import {
   CalendarIcon,
   CheckIcon,
   CarIcon,
+  ChevronRightIcon,
   CoffeeIcon,
   CoinsIcon,
   CopyIcon,
@@ -465,8 +466,10 @@ export function CarDetail({
         </ol>
         {mapInline && <RideMap ride={ride} className="ride-map-inline" />}
         {pinned && !mapInline && (
-          <button type="button" className="link link-sm trip-add" onClick={() => setShowMap(true)}>
-            <MapIcon size={14} /> {t.map.showMap}
+          <button type="button" className="btn btn-block trip-map-open" onClick={() => setShowMap(true)}>
+            <MapIcon size={18} />
+            {t.map.showMap}
+            <ChevronRightIcon size={16} className="trip-map-open-chevron" />
           </button>
         )}
         {showMap && <RouteMapSheet ride={ride} onClose={() => setShowMap(false)} />}
