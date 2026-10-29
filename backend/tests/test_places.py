@@ -259,6 +259,22 @@ def test_the_offices_are_suggested_first(client, engine):
     assert [p["source"] for p in found][:1] == ["office"]
 
 
+def test_the_saved_places_are_listed_without_typing(client, engine, monkeypatch):
+    geo.seed_places(engine)
+    client.post("/api/rides", json=own_ride(origin="Pumpa NIS", points={"Pumpa NIS": FUTOG}))
+    client.post("/api/rides", json=own_ride(origin="Pumpa NIS", points={"Pumpa NIS": FUTOG}, driver_name="Vuk", car_name="Red Clio"))
+    client.post("/api/rides", json=own_ride(origin="Kod Spensa", points={"Kod Spensa": LIMAN}, driver_name="Pera", car_name="Grey Polo"))
+    saved = client.get("/api/places/saved").json()
+    kinds = [p["source"] for p in saved]
+    # The offices first, then what colleagues pinned, the more used first.
+    assert kinds == sorted(kinds, key=["office", "car_home", "learned"].index) and kinds[0] == "office"
+    learned = [p["name"] for p in saved if p["source"] == "learned"]
+    assert learned[:2] == ["Pumpa NIS", "Kod Spensa"]
+    assert client.anon.get("/api/places/saved").status_code == 401
+    monkeypatch.setenv("KARPUL_MAPS", "off")
+    assert client.get("/api/places/saved").status_code == 403
+
+
 def test_the_place_search_asks_the_geocoder(client, outside):
     asked, answers = outside
     answers["/search?"] = [

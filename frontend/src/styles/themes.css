@@ -179,6 +179,23 @@
   .panel-sheet .panel-grab {
     display: block;
   }
+  /* Choosing a place takes the whole screen on a phone. */
+  .backdrop-place {
+    padding: 0;
+  }
+  .panel-place {
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    animation: sheet-up 0.3s var(--ease-out);
+  }
+  .backdrop-closing .panel-place {
+    animation: sheet-down 0.22s var(--ease-in) forwards;
+  }
+  .place-dialog-top {
+    padding-top: calc(0.6rem + env(safe-area-inset-top));
+  }
   .when-grid {
     grid-template-columns: 1fr 1fr;
   }

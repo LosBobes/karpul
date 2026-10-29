@@ -162,6 +162,9 @@ export const api = {
     return request<PlaceSuggestion[]>(`/api/places?${params}`, { signal })
   },
 
+  /** The places Karpul knows, for a picker's list before anything is typed. */
+  savedPlaces: (signal?: AbortSignal) => request<PlaceSuggestion[]>('/api/places/saved', { signal }),
+
   /** A name for a pin dropped on the map. */
   placeName: (point: Point, lang: string) =>
     request<{ name: string | null }>(`/api/places/reverse?lat=${point.lat}&lng=${point.lng}&lang=${lang}`),

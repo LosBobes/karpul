@@ -7,7 +7,7 @@ import { useRoad } from '../lib/places'
 import type { CarType, CorporateCar, Point, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
 import { MAX_STOPS } from '../lib/stops'
-import { MapPicker } from './MapPicker'
+import { PlaceDialog } from './PlaceDialog'
 import { PlaceInput } from './PlaceInput'
 import { Avatar } from './Avatar'
 import { DriverPicker, type Driver } from './DriverPicker'
@@ -643,23 +643,19 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           )}
         </div>
         {picking && (
-          <div className="route-picker">
-            <span className="subfield-label">{t.map.pinFor(pickingPlace(picking) || pickingLabel(picking))}</span>
-            <MapPicker
-              key={JSON.stringify(picking)}
-              initial={pinOf(pickingPlace(picking))}
-              near={pinOf(origin) ?? pinOf(destination)}
-              onCancel={() => setPicking(null)}
-              onPick={(point, name) => {
-                const words = pickingPlace(picking).trim() || name || ''
-                if (words) {
-                  setPickingPlace(picking, words)
-                  setPins((p) => ({ ...p, [foldName(words)]: point }))
-                }
-                setPicking(null)
-              }}
-            />
-          </div>
+          <PlaceDialog
+            key={JSON.stringify(picking)}
+            title={pickingLabel(picking)}
+            value={pickingPlace(picking)}
+            point={pinOf(pickingPlace(picking))}
+            near={pinOf(origin) ?? pinOf(destination)}
+            onClose={() => setPicking(null)}
+            onPick={(name, point) => {
+              setPickingPlace(picking, name)
+              setPins((p) => ({ ...p, [foldName(name)]: point }))
+              setPicking(null)
+            }}
+          />
         )}
         {advanced && <p className="hint">{t.form.stopsHint}</p>}
         {advanced && (

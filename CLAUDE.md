@@ -390,7 +390,12 @@ writes nothing) and the public Nominatim asked once a second at most; tests repl
 by default, "" no map at all: only *Open in Maps*). `requests.drivers_for` also matches a pinned request
 whose start is within `geo.NEAR_KM` of a ride's pinned pickup point, and the calendar's `LOCATION`/`GEO`
 are the reader's own pickup. On screen: `PlaceInput` (suggestions in a `Popover`, which opens only when
-something is found, and a labelled *Map* / *Pinned* chip, `.place-pin`) in `RideForm`, `RequestForm` and `CarAdmin`;
+something is found, and a labelled *Map* / *Pinned* chip, `.place-pin`) in `RideForm`, `RequestForm` and `CarAdmin`,
+whose chip opens `PlaceDialog` (portalled to `<body>`, the whole screen on a phone, a tall panel on a desktop,
+Escape captured so the form behind stays open): a search on top, the *Saved places* below it before anything is
+typed (`GET /api/places/saved`: every `KnownPlace`, offices first, then car homes, then the most used), the matches
+and the geocoder's *Addresses* once something is; a saved place is the pick at once, an address or *Pick on the map*
+goes on to the embedded `MapPicker` filling the panel, with a *Name* field and *Use this point*;
 `MapPicker` (a crosshair over a moving map, inline, not an overlay, a round *Use my location* button and the zoom
 bottom left; on its own a floating rounded address search on top, a `PlaceInput` whose pick centres the map, Enter
 kept from the form around it; `embedded`, in `AddStop`, it has no search or buttons: the stop's own field is the

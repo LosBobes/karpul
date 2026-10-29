@@ -5,7 +5,7 @@ import { pinsFor } from '../lib/maps'
 import type { Point, RideRequestInput } from '../lib/types'
 import { DatePicker } from './DatePicker'
 import { PinIcon } from './icons'
-import { MapPicker } from './MapPicker'
+import { PlaceDialog } from './PlaceDialog'
 import { PlaceInput } from './PlaceInput'
 import { Sheet } from './Sheet'
 import { TimePicker } from './TimePicker'
@@ -137,23 +137,19 @@ export function RequestForm({ date, submitting, error, onSubmit, onClose }: Prop
           </span>
         </div>
         {picking && (
-          <div className="route-picker">
-            <span className="subfield-label">{t.map.pinFor((picking === 'origin' ? origin : destination) || (picking === 'origin' ? t.form.pickup : t.form.dropoff))}</span>
-            <MapPicker
-              key={picking}
-              initial={pinOf(picking === 'origin' ? origin : destination)}
-              near={pinOf(origin) ?? pinOf(destination)}
-              onCancel={() => setPicking(null)}
-              onPick={(point, name) => {
-                const words = (picking === 'origin' ? origin : destination).trim() || name || ''
-                if (words) {
-                  ;(picking === 'origin' ? setOrigin : setDestination)(words)
-                  setPins((p) => ({ ...p, [foldName(words)]: point }))
-                }
-                setPicking(null)
-              }}
-            />
-          </div>
+          <PlaceDialog
+            key={picking}
+            title={picking === 'origin' ? t.form.pickup : t.form.dropoff}
+            value={picking === 'origin' ? origin : destination}
+            point={pinOf(picking === 'origin' ? origin : destination)}
+            near={pinOf(origin) ?? pinOf(destination)}
+            onClose={() => setPicking(null)}
+            onPick={(name, point) => {
+              ;(picking === 'origin' ? setOrigin : setDestination)(name)
+              setPins((p) => ({ ...p, [foldName(name)]: point }))
+              setPicking(null)
+            }}
+          />
         )}
       </div>
 
