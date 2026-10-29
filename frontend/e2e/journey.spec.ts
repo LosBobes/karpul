@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page, type TestInfo } from '@playwright/test'
 
 /**
  * One whole ride, from both sides: a driver offers one, a colleague gets in,
@@ -7,8 +7,17 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
  * this proves the board agrees with itself after each step.
  */
 
-function person(project: string, who: 'lena' | 'nikola') {
-  const tag = project === 'phone' ? 'P' : 'D'
+/**
+ * A tag for this project and attempt, in the usernames and the surnames: a
+ * retry runs on the same database, where the first attempt's people and rides
+ * are still there, so it signs up people of its own.
+ */
+function attempt(info: TestInfo) {
+  const n = info.retry + info.repeatEachIndex
+  return (info.project.name === 'phone' ? 'P' : 'D') + (n ? String(n + 1) : '')
+}
+
+function person(tag: string, who: 'lena' | 'nikola') {
   return who === 'lena'
     ? { username: `lena.${tag.toLowerCase()}`, first: 'Lena', last: `Mitić ${tag}` }
     : { username: `nikola.${tag.toLowerCase()}`, first: 'Nikola', last: `Savić ${tag}` }
@@ -34,10 +43,11 @@ async function register(browser: Browser, who: ReturnType<typeof person>, option
 
 test('offer a ride, get in, leave, and the driver removes it', async ({ browser }, info) => {
   const options = info.project.use
-  const lena = await register(browser, person(info.project.name, 'lena'), options)
-  const nikola = await register(browser, person(info.project.name, 'nikola'), options)
-  const lenaName = `Lena Mitić ${info.project.name === 'phone' ? 'P' : 'D'}`
-  const nikolaName = `Nikola Savić ${info.project.name === 'phone' ? 'P' : 'D'}`
+  const tag = attempt(info)
+  const lena = await register(browser, person(tag, 'lena'), options)
+  const nikola = await register(browser, person(tag, 'nikola'), options)
+  const lenaName = `Lena Mitić ${tag}`
+  const nikolaName = `Nikola Savić ${tag}`
 
   // Lena offers a ride between the offices in her own car: the distance is known.
   await lena.getByRole('button', { name: 'Add ride' }).click()
@@ -76,7 +86,8 @@ test('offer a ride, get in, leave, and the driver removes it', async ({ browser 
 })
 
 test('the car status sheet opens for everyone', async ({ browser }, info) => {
-  const page = await register(browser, { username: `vuk.${info.project.name}`, first: 'Vuk', last: `Perić ${info.project.name}` }, info.project.use)
+  const tag = attempt(info).toLowerCase()
+  const page = await register(browser, { username: `vuk.${tag}`, first: 'Vuk', last: `Perić ${tag}` }, info.project.use)
   if (info.project.name === 'phone') await page.getByRole('button', { name: 'Menu' }).click()
   await page.getByRole('button', { name: 'Car status' }).click()
   await expect(page.getByRole('dialog', { name: 'Car status' })).toBeVisible()
