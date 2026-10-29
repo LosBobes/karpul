@@ -166,8 +166,21 @@ curl -sS https://www.karpul.dev.com/api/cars/corporate # seeded car pool
 
 ## 6. Automatic deploys via GitHub Actions
 
-`.github/workflows/deploy.yml` redeploys Karpul on every push to `main` by
-SSHing in, pulling and rebuilding, exactly like the sibling repos.
+`.github/workflows/deploy.yml` redeploys Karpul by SSHing in, pulling and
+rebuilding, exactly like the sibling repos, but only once CI has passed: a push
+to `main` runs CI (backend, frontend and the end-to-end tests), and a green run
+starts the deploy (`workflow_run`). It deploys the very commit CI tested; if
+`main` has moved on meanwhile it does nothing, and the newer commit deploys when
+its own CI passes, so a late run never rolls the box back. A red CI run deploys
+nothing. A manual run (*Run workflow*) deploys `main`'s head, and refuses when
+CI has not passed on it.
+
+Merges wait on CI too, through branch protection on `main` (a repository
+setting, not a file): *Settings → Rules → Rulesets → New branch ruleset*,
+target the default branch, turn on *Require a pull request before merging* and
+*Require status checks to pass*, and add the three CI jobs: `Backend tests`,
+`Frontend lint and build` and `End-to-end smoke test`. Keep *Block force
+pushes* on.
 
 | Secret | Where | Value |
 | --- | --- | --- |
