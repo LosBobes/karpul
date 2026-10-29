@@ -418,7 +418,7 @@ export function CarDetail({
           </div>
         )}
 
-        <ol className="trip" aria-label={`${ride.origin}, ${ride.destination}`}>
+        <ol className="trip" aria-label={ride.return_time ? `${ride.origin}, ${ride.destination}, ${ride.origin}` : `${ride.origin}, ${ride.destination}`}>
           {ride.stops_before.map((stop) => (
             <li key={stop} className="trip-stop trip-via">
               <span className="trip-dot" aria-hidden="true" />
@@ -445,6 +445,14 @@ export function CarDetail({
             <span className="trip-place">{ride.destination}</span>
             {placeLink(ride.destination)}
           </li>
+          {/* A ride with a return comes back where it started: the last dot of the way. */}
+          {ride.return_time && (
+            <li className="trip-stop trip-back">
+              <span className="trip-dot" aria-hidden="true" />
+              <span className="trip-place">{ride.origin}</span>
+              <span className="trip-note">{t.detail.backAt(fmtTime(ride.return_time))}</span>
+            </li>
+          )}
         </ol>
         {mapInline && <RideMap ride={ride} className="ride-map-inline" />}
         {pinned && !mapInline && (

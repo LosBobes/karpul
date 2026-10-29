@@ -66,15 +66,15 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   const vesnaRow = vesna.getByRole('button', { name: new RegExp(`Vesna Driver ${tag} · Green Polo`) })
   if ((await vesnaRow.getAttribute('aria-expanded')) !== 'true') await vesnaRow.click()
   const trip = vesna.locator('.trip').first()
-  await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'HQ'])
+  await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'HQ', 'Novi Sad'])
 
   // She adds Liman on the way; it lands between the start and HQ.
   await vesna.getByRole('button', { name: 'Add a pickup point' }).first().click()
   await vesna.getByLabel('New pickup point').fill('Liman')
   await vesna.locator('.add-stop').getByRole('button', { name: 'Add', exact: true }).click()
   await expect(toast(vesna, 'Liman is on the route.')).toBeAttached()
-  await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ'])
-  await expect(goran.locator('.trip').first().locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ'])
+  await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ', 'Novi Sad'])
+  await expect(goran.locator('.trip').first().locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ', 'Novi Sad'])
 
   // She closes the route to new places: Goran can only pick from what is there.
   await vesna.getByRole('button', { name: 'Ride options' }).first().click()
@@ -123,10 +123,10 @@ test('a new pickup point from the waiting list goes on the route with the seat',
   await filip.locator('.add-stop').getByRole('button', { name: 'Wait for a seat' }).click()
   await expect(filip.getByText('Gets in at Kać · new pickup point').first()).toBeVisible()
   const trip = filip.locator('.trip').first().locator('.trip-place')
-  await expect(trip).toHaveText(['Novi Sad', 'HQ'])
+  await expect(trip).toHaveText(['Novi Sad', 'HQ', 'Novi Sad'])
 
   // Ema leaves: the seat is Filip's, and Kać is on the route.
   await ema.getByRole('button', { name: 'Leave' }).first().click()
-  await expect(trip).toHaveText(['Kać', 'Novi Sad', 'HQ'])
+  await expect(trip).toHaveText(['Kać', 'Novi Sad', 'HQ', 'Novi Sad'])
   await expect(filip.getByText('Gets in at Kać').first()).toBeVisible()
 })

@@ -92,7 +92,7 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   await stop.getByRole('button', { name: 'Zoom in' }).click()
   await stop.getByRole('button', { name: 'Get in this car' }).click()
   await expect(toast(toma, `You're in with Mira Maps ${tag}.`)).toBeAttached()
-  await expect(card.locator('.trip-place')).toHaveText(['Novi Sad', 'Kod Spensa', 'Beograd'])
+  await expect(card.locator('.trip-place')).toHaveText(['Novi Sad', 'Kod Spensa', 'Beograd', 'Novi Sad'])
   await expect(card.locator('.trip-map-pinned')).toHaveCount(3)
 
   // Mira sees the new pin too, without reloading.

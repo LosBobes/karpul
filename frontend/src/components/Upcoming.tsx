@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, shortCarName } from '../lib/dates'
+import { useKept } from '../lib/keep'
 import { useT } from '../lib/i18n'
 import { drives, seatedIn, useMe } from '../lib/me'
 import type { Ride, RideRequest } from '../lib/types'
@@ -41,8 +42,8 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
   const t = useT()
   const me = useMe()
   // Filters live here: they are a way of looking at the list, not board state.
-  const [filter, setFilter] = useState<Filter>('all')
-  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useKept<Filter>('upcoming.filter', 'all')
+  const [query, setQuery] = useKept('upcoming.query', '')
   const q = fold(query.trim())
   const matches = (r: Ride) => {
     if (filter === 'free' && r.free_seats <= 0) return false

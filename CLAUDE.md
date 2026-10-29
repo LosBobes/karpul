@@ -34,7 +34,7 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat) and `e2e/places.spec.ts` (an office picked from the suggestions, the route on the map, a passenger dropping the pin of a new pickup point; the server runs with no geocoder or router and tiles from an address that answers nothing). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread; a reload keeping the view and a half-filled form) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat) and `e2e/places.spec.ts` (an office picked from the suggestions, the route on the map, a passenger dropping the pin of a new pickup point; the server runs with no geocoder or router and tiles from an address that answers nothing). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
@@ -351,7 +351,9 @@ new place too (`WaitlistJoin.new_stop`), but keeps it on the entry (`WaitlistEnt
 (and the driver is pushed `stop_added`), or seats them at the origin when the switch is off or the
 route is full by then. On screen the pickup `Select` ends in *Somewhere else…*, which opens
 `components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`),
-and the driver card has *Add a pickup point* under the route for whoever runs the ride. `distance_km` and `chip_in` are the driver's own words and only ever
+and the driver card has *Add a pickup point* under the route for whoever runs the ride. A ride with a
+return draws one more, quieter row at the foot of the card's route, the start again with *Back
+<time>* (`.trip-back`, after a dashed rule; no map link, the start has one). `distance_km` and `chip_in` are the driver's own words and only ever
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per
 week (`weekly_dates`, at most `MAX_REPEAT_WEEKS`) under one `series_id`, all or nothing, and a
 409 on a later week names the date in parentheses (the Serbian `apiError` regex knows that
@@ -716,7 +718,17 @@ are open (`lib/useOverlays.ts`, one open set, `is`/`show`/`hide` and a stable `c
 the toast (`lib/useToast.ts`), the passenger chip in flight (`lib/usePassengerDrag.ts`), and
 the pure rules for which ride is open and which days are loaded (`lib/selection.ts`:
 `daySelection`, `upcomingSelection`, `boardRange`, tested in `selection.test.ts`). The board's
-data lives in `lib/useBoard.ts` (the shared cars' state too, `carStates`): rides and requests for the range on screen (a Mon–Sun week, or the Upcoming 90 days), both car lists, the sequence-guarded `load`, the live-event reducer and the 30 s fallback poll. Mutating endpoints return the updated `Ride` so `upsertRide()` can patch state without a full reload. The rest of the components are presentational, plus a few sheets that fetch their own data (`MyRides`, `PeopleAdmin`, `RideThread`). On any mutation error it toasts and refetches. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
+data lives in `lib/useBoard.ts` (the shared cars' state too, `carStates`): rides and requests for the range on screen (a Mon–Sun week, or the Upcoming 90 days), both car lists, the sequence-guarded `load`, the live-event reducer and the 30 s fallback poll. Mutating endpoints return the updated `Ride` so `upsertRide()` can patch state without a full reload. The rest of the components are presentational, plus a few sheets that fetch their own data (`MyRides`, `PeopleAdmin`, `RideThread`). On any mutation error it toasts and refetches. **A reload lands where you were** (`lib/keep.ts`): state that should survive a refresh (the
+browser's, or `applyUpdate` taking a new build) is held with `useKept(key, init)` instead of
+`useState`: the day, the open ride, the open sheets (`useOverlays`, all but the update screen), the
+ride and request forms field by field, a thread's draft, the feedback text, a car report, the account's
+details (never a password) and Upcoming's filter. Every mounted `useKept` is in a registry that is
+written to sessionStorage (`karpul.keep`) on `pagehide` and when the tab is hidden, so what comes back
+is exactly what was on screen: a closed sheet is unmounted and simply not saved. Each key is handed
+back once, the snapshot belongs to one account (`keepFor`, in `App`) and goes stale after 6 hours; the
+page's and the panes' scroll ride along (`restoreScroll`, once the board has loaded). A reload with a
+sheet open keeps its back-button entry for the sheet to take over (`useBackClose`). Tests: the reload
+walk in `e2e/smoke.spec.ts`. All dates crossing the API are local-date ISO strings built by hand in `lib/dates.ts`
 (`toISODate`) — never `toISOString()`, which would shift the day by the timezone offset.
 
 **Installable (PWA).** `vite-plugin-pwa` in `vite.config.ts` writes the web app manifest

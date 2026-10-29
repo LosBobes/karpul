@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { type FormEvent } from 'react'
+import { useKept } from '../lib/keep'
 import { useT } from '../lib/i18n'
 import { feedbackMail, type FeedbackKind } from '../lib/support'
 import { SegThumb } from './Segmented'
@@ -22,8 +23,8 @@ interface Props {
  */
 export function FeedbackSheet({ user, view, onClose }: Props) {
   const t = useT()
-  const [kind, setKind] = useState<FeedbackKind>('bug')
-  const [text, setText] = useState('')
+  const [kind, setKind] = useKept<FeedbackKind>('feedback.kind', 'bug')
+  const [text, setText] = useKept('feedback.text', '')
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()

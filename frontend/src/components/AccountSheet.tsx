@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useKept } from '../lib/keep'
 import { api, ApiError } from '../lib/api'
 import { clearSession, setUser, type AuthUser } from '../lib/auth'
 import { intlTag } from '../lib/locale'
@@ -34,10 +35,10 @@ interface Props {
  */
 export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Props) {
   const t = useT()
-  const [firstName, setFirstName] = useState(user.first_name)
-  const [lastName, setLastName] = useState(user.last_name)
-  const [email, setEmail] = useState(user.email ?? '')
-  const [phone, setPhone] = useState(user.phone ?? '')
+  const [firstName, setFirstName] = useKept('account.firstName', user.first_name)
+  const [lastName, setLastName] = useKept('account.lastName', user.last_name)
+  const [email, setEmail] = useKept('account.email', user.email ?? '')
+  const [phone, setPhone] = useKept('account.phone', user.phone ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [busy, setBusy] = useState(false)

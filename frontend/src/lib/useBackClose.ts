@@ -43,9 +43,15 @@ function onPopState() {
   top.close()
 }
 
-// A reload with an overlay open keeps its entry as the current one; drop the
-// marker so the next back press is not spent on it.
-if (hasEntry()) history.replaceState(null, '')
+// A reload with an overlay open keeps its entry as the current one. The
+// overlay usually comes back with the page (lib/keep.ts) and takes the entry
+// over; when none has by the time the page settles, drop the marker so the
+// next back press is not spent on it.
+if (hasEntry()) {
+  setTimeout(() => {
+    if (stack.length === 0 && hasEntry()) history.replaceState(null, '')
+  }, 1500)
+}
 window.addEventListener('popstate', onPopState)
 
 /** Register the calling overlay as an open layer for as long as it is mounted. */

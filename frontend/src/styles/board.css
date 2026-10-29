@@ -442,6 +442,16 @@
   border-width: 2px;
   border-color: var(--border-strong);
 }
+/* The way home of a ride with a return: the start again, quieter, after a dashed rule. */
+.trip-end:not(:last-child)::before {
+  background: repeating-linear-gradient(to bottom, var(--border-strong) 0 4px, transparent 4px 7px);
+}
+.trip-back {
+  color: var(--muted);
+}
+.trip-back .trip-dot {
+  border-color: var(--border-strong);
+}
 .trip-via {
   font-size: 0.88rem;
   font-weight: 400;

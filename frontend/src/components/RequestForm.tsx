@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { addDays, foldName, parseISODate, toISODate, todayISO } from '../lib/dates'
+import { useKept } from '../lib/keep'
 import { useT } from '../lib/i18n'
 import { pinsFor } from '../lib/maps'
 import type { Point, RideRequestInput } from '../lib/types'
@@ -46,14 +47,14 @@ export function RequestForm({ date, submitting, error, onSubmit, onClose }: Prop
   const t = useT()
   const [last] = useState(lastRoute)
   const today = todayISO()
-  const [day, setDay] = useState(date < today ? today : date)
-  const [time, setTime] = useState('08:00')
-  const [origin, setOrigin] = useState(last.origin)
-  const [destination, setDestination] = useState(last.destination)
-  const [note, setNote] = useState('')
+  const [day, setDay] = useKept('askForm.day', date < today ? today : date)
+  const [time, setTime] = useKept('askForm.time', '08:00')
+  const [origin, setOrigin] = useKept('askForm.origin', last.origin)
+  const [destination, setDestination] = useKept('askForm.destination', last.destination)
+  const [note, setNote] = useKept('askForm.note', '')
   // Pinned, a request also reaches the drivers who pass close by (backend: requests.drivers_for).
-  const [pins, setPins] = useState<Record<string, Point>>(last.points)
-  const [picking, setPicking] = useState<'origin' | 'destination' | null>(null)
+  const [pins, setPins] = useKept<Record<string, Point>>('askForm.pins', last.points)
+  const [picking, setPicking] = useKept<'origin' | 'destination' | null>('askForm.picking', null)
   const pinOf = (place: string): Point | null => pins[foldName(place)] ?? null
   const placeSetter = (set: (value: string) => void) => (value: string, point: Point | null) => {
     set(value)
