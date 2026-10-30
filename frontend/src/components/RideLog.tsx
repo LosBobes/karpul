@@ -4,7 +4,7 @@ import { addDays, fmtTime, parseISODate, todayISO, toISODate } from '../lib/date
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import { odometerSpan, kmDriven } from '../lib/odometer'
-import { atWheel, filterLog, logCsv, logTotals, sortLog, type LogKind, type LogSort, type SortKey } from '../lib/rideLog'
+import { atWheel, filterLog, wheelBooked, logCsv, logTotals, sortLog, type LogKind, type LogSort, type SortKey } from '../lib/rideLog'
 import type { Ride } from '../lib/types'
 import { DatePicker } from './DatePicker'
 import { CarIcon, DownloadIcon, SearchIcon, XIcon } from './icons'
@@ -252,6 +252,7 @@ export function RideLog({ onClose }: Props) {
 
 /** The odometer's three cells: out and back, how far, and who drove how much (lib/odometer.ts). */
 function OdometerCells({ ride }: { ride: Ride }) {
+  const t = useT()
   const { start, end } = odometerSpan(ride)
   const driven = kmDriven(ride)
   const n = (v: number | null) => (v == null ? '' : v.toLocaleString(intlTag()))
@@ -259,7 +260,10 @@ function OdometerCells({ ride }: { ride: Ride }) {
     <>
       <td className="log-num mono">{start == null ? '' : `${n(start)} → ${n(end)}`}</td>
       <td className="log-num mono">{n(driven)}</td>
-      <td className="log-wide">{atWheel(ride, intlTag())}</td>
+      <td className="log-wide">
+        {atWheel(ride, intlTag())}
+        {wheelBooked(ride) && <span className="log-sub">{ride.needs_driver ? t.detail.needsDriver : t.rideLog.booked}</span>}
+      </td>
     </>
   )
 }

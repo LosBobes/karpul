@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canNoteKm, isBack, kmByDriver, kmDriven, odometerSpan, openLeg } from './odometer'
-import { atWheel, logCsv } from './rideLog'
+import { atWheel, logCsv, wheelBooked } from './rideLog'
 import { messages } from './i18n'
 import type { DriveLeg, Ride } from './types'
 
@@ -83,5 +83,15 @@ describe('the odometer', () => {
     expect(cells(row)[at(c.odoEnd)]).toBe('12580')
     expect(cells(row)[at(c.driven)]).toBe('240')
     expect(cells(row)[at(c.atWheel)]).toBe('Ana Petrović 200 km, Marko Marković 40 km')
+  })
+
+  it('falls back to whoever booked it while no odometer is kept', () => {
+    const coming = ride([])
+    expect(wheelBooked(coming)).toBe(true)
+    expect(wheelBooked(done)).toBe(false)
+    expect(atWheel(coming, 'en')).toBe(coming.driver_name)
+    expect(atWheel({ ...coming, needs_driver: true }, 'en')).toBe('')
+    const [header, row] = logCsv([coming], messages()).replace('\uFEFF', '').split('\r\n')
+    expect(row.split(';')[header.split(';').indexOf(messages().rideLog.col.atWheel)]).toBe(`${coming.driver_name} (as booked)`)
   })
 })
