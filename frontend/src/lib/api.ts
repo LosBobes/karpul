@@ -58,6 +58,15 @@ export class ApiError extends Error {
  */
 export const NETWORK_ERROR = 'No connection to the server'
 
+/**
+ * How long a call may go unanswered before it counts as no connection. A phone
+ * back from a long sleep can hand a request to a connection that died while it
+ * slept, and the browser then waits a minute or more before giving up: every
+ * tap looks ignored and the board never fills. Cut short, the call fails like
+ * any network error, which the board retries and a tap toasts.
+ */
+const TIMEOUT_MS = 20_000
+
 export function isNetworkError(e: unknown): boolean {
   return e instanceof ApiError && e.status === 0
 }
@@ -93,12 +102,27 @@ async function send(path: string, init: RequestInit = {}, opts: Opts = {}): Prom
   if (init.body && !headers['Content-Type']) headers['Content-Type'] = 'application/json'
   const token = opts.anonymous ? '' : authToken()
   if (token) headers.Authorization = `Bearer ${token}`
+  // The caller's own signal (a search typed over) still aborts as an AbortError;
+  // only our timer turns into a network error.
+  const controller = new AbortController()
+  const outer = init.signal
+  const abort = () => controller.abort()
+  if (outer?.aborted) controller.abort()
+  else outer?.addEventListener('abort', abort, { once: true })
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, TIMEOUT_MS)
   let res: Response
   try {
-    res = await fetch(`${BASE}${path}`, { ...init, headers })
+    res = await fetch(`${BASE}${path}`, { ...init, headers, signal: controller.signal })
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') throw e
+    if (!timedOut && e instanceof DOMException && e.name === 'AbortError') throw e
     throw new ApiError(0, NETWORK_ERROR)
+  } finally {
+    clearTimeout(timer)
+    outer?.removeEventListener('abort', abort)
   }
   if (!res.ok) {
     const text = await res.text()

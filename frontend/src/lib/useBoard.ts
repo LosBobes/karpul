@@ -226,14 +226,23 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
   }, [reloadCarStates])
 
   // Keep the board fresh for people who leave the tab open. Polling is the
-  // fallback for when the socket is down; a focus always re-syncs.
+  // fallback for when the socket is down; coming back to the app always
+  // re-syncs: a focus, or (an installed app on a phone, which often fires no
+  // focus when it is brought back) the page becoming visible again.
   useEffect(() => {
     const id = liveStatus === 'live' ? null : setInterval(() => void load(), 30_000)
     const onFocus = () => void load()
+    const onShow = () => {
+      if (document.visibilityState !== 'visible') return
+      void load()
+      loadPhotos().catch(() => undefined)
+    }
     window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onShow)
     return () => {
       if (id !== null) clearInterval(id)
       window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onShow)
     }
   }, [load, liveStatus])
 
