@@ -73,24 +73,31 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   const trip = vesna.locator('.trip').first()
   await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'HQ', 'Novi Sad'])
 
-  // She edits the route on its own screen: it shows who gets in where, Liman
-  // goes in on the way (just after the start), Kać goes in and comes off again,
-  // and nothing is sent until she saves.
+  // She adds Liman: Add a pickup point goes straight to the place picker, then
+  // where on the way (just after the start by default), and it is on the route.
   await vesna.getByRole('button', { name: 'Add a pickup point' }).first().click()
+  const vesnaPlace = vesna.getByRole('dialog', { name: 'New pickup point' })
+  await vesnaPlace.getByLabel('Search places and addresses').fill('Liman')
+  await vesnaPlace.getByLabel('Search places and addresses').press('Enter')
+  await vesnaPlace.getByRole('button', { name: 'Add', exact: true }).click()
+  await expect(toast(vesna, 'Liman is on the route.')).toBeAttached()
+  await expect(vesnaPlace).toBeHidden()
+
+  // Edit the route is the whole route on its own screen: who gets in where,
+  // Kać goes in and comes off again, and nothing is sent until she saves.
+  await vesna.getByRole('button', { name: 'Edit the route' }).first().click()
   const route = vesna.getByRole('dialog', { name: 'Route' })
   await expect(route.getByText(`Getting in here: Goran Rider ${tag}`)).toBeVisible()
-  const vesnaPlace = vesna.getByRole('dialog', { name: 'New pickup point' })
-  for (const place of ['Liman', 'Kać']) {
-    await route.getByRole('button', { name: 'Add a pickup point' }).click()
-    await vesnaPlace.getByLabel('Search places and addresses').fill(place)
-    await vesnaPlace.getByLabel('Search places and addresses').press('Enter')
-    await vesnaPlace.getByRole('button', { name: 'Done' }).click()
-    await expect(vesnaPlace).toBeHidden()
-  }
+  await route.getByRole('button', { name: 'Add a pickup point' }).click()
+  await vesnaPlace.getByLabel('Search places and addresses').fill('Kać')
+  await vesnaPlace.getByLabel('Search places and addresses').press('Enter')
+  await vesnaPlace.getByRole('button', { name: 'Done' }).click()
+  await expect(vesnaPlace).toBeHidden()
   await expect(route.locator('.place-row-name')).toHaveText(['Futog', 'Novi Sad', 'Kać', 'Liman', 'HQ', 'Add a pickup point'])
   await route.getByRole('button', { name: 'Remove Kać' }).click()
-  await route.getByRole('button', { name: 'Save route' }).click()
-  await expect(toast(vesna, 'Route saved.')).toBeAttached()
+  await route.getByRole('button', { name: 'Remove Futog' }).click()
+  await expect(route.getByText(`Goran Rider ${tag} will get in at the start instead.`)).toBeVisible()
+  await route.getByRole('button', { name: 'Close' }).click()
   await expect(route).toBeHidden()
   await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ', 'Novi Sad'])
   await expect(goran.locator('.trip').first().locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ', 'Novi Sad'])
@@ -103,6 +110,7 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   await goran.getByRole('button', { name: 'Change pickup' }).click()
   await expect(goran.getByRole('option', { name: 'Liman' })).toBeVisible()
   await expect(goran.getByRole('option', { name: 'Somewhere else…' })).toHaveCount(0)
+  await expect(goran.getByRole('button', { name: 'Add a pickup point' })).toHaveCount(0)
 })
 
 test('a new pickup point from the waiting list goes on the route with the seat', async ({ browser }, info) => {
@@ -134,8 +142,9 @@ test('a new pickup point from the waiting list goes on the route with the seat',
   await expect(filipRow).toBeVisible()
   if ((await filipRow.getAttribute('aria-expanded')) !== 'true') await filipRow.click()
   await expect(filip.getByRole('button', { name: 'Wait for a seat' })).toBeVisible()
-  await filip.getByRole('button', { name: 'Pickup', exact: true }).first().click()
-  await filip.getByRole('option', { name: 'Somewhere else…' }).click()
+  // A passenger has Add a pickup point under the route too (no Edit the route).
+  await expect(filip.getByRole('button', { name: 'Edit the route' })).toHaveCount(0)
+  await filip.getByRole('button', { name: 'Add a pickup point' }).first().click()
   const filipPlace = filip.getByRole('dialog', { name: 'New pickup point' })
   await filipPlace.getByLabel('Search places and addresses').fill('Kać')
   await filipPlace.getByRole('button', { name: 'Use “Kać”' }).click()

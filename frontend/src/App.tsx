@@ -284,6 +284,13 @@ function Board({ session }: { session: Session }) {
       setToast({ kind: 'ok', text: t.toasts.pickupChanged(pickup || ride.origin) })
     })
 
+  /** The driver (or an admin) puts another pickup point on the route. */
+  const onAddStop = (ride: Ride, stop: string, where: NewStop) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.addStop(ride.id, stop, where))
+      setToast({ kind: 'ok', text: t.toasts.stopAdded(stop) })
+    })
+
   /** The driver (or an admin) saves the route edited in `RouteEditor`; true when it went through. */
   const onSaveRoute = async (ride: Ride, patch: Partial<RideInput>) => {
     let saved = false
@@ -715,6 +722,7 @@ function Board({ session }: { session: Session }) {
       switchFrom={seatElsewhere(ride)}
       onSwitch={onSwitch}
       onMovePickup={onMovePickup}
+      onAddStop={onAddStop}
       onSaveRoute={onSaveRoute}
       onShare={(r) => void onShare(r)}
       onDownloadCalendar={onDownloadCalendar}

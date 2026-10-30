@@ -64,6 +64,8 @@ interface Props {
   /** Move a passenger (yourself, or anyone if you may manage seats) to another pickup point, or a new one. */
   onMovePickup: (ride: Ride, bookingId: number, pickup: string, newStop?: NewStop | null) => void
   /** The driver (or an admin) puts another pickup point on the route. */
+  /** The driver (or an admin) puts a pickup point on the route straight from `AddStop`. */
+  onAddStop: (ride: Ride, stop: string, where: NewStop) => void
   /** The route edited in `RouteEditor`, saved; resolves true when it went through. */
   onSaveRoute: (ride: Ride, patch: Partial<RideInput>) => Promise<boolean>
   onShare: (ride: Ride) => void
@@ -153,6 +155,7 @@ export function CarDetail({
   switchFrom = null,
   onSwitch,
   onMovePickup,
+  onAddStop,
   onSaveRoute,
   onShare,
   onDownloadCalendar,
@@ -216,7 +219,8 @@ export function CarDetail({
   // Where you get in: the start, one of the stops, or somewhere new you put on the route.
   const [pickup, setPickup] = useState('')
   const [movingPickup, setMovingPickup] = useState<false | 'pick' | 'new'>(false)
-  const [addingStop, setAddingStop] = useState(false)
+  // Whoever runs the ride: straight to a new pickup point, or the whole route.
+  const [routing, setRouting] = useState<'add' | 'edit' | null>(null)
   const [showMap, setShowMap] = useState(false)
   const mapConfig = useMapConfig()
   // Without the maps (KARPUL_MAPS) none of this shows.
@@ -237,6 +241,8 @@ export function CarDetail({
   ]
   const withElsewhere = mayAddStop ? [...pickupOptions, { value: ELSEWHERE, label: t.detail.elsewhere }] : pickupOptions
   const choosingPlace = pickup === ELSEWHERE
+  // A passenger's own *Add a pickup point*: getting in, queueing or moving their seat to a new place.
+  const passengerAddsStop = !isPast && !isDriver && mayAddStop && (seatOnOffer || canWait || !!myBooking)
   const switching = !!switchFrom && !!onSwitch
   const getIn = () => (switching ? onSwitch!(ride, switchFrom!, pickup) : onJoin(ride, pickup))
   const getInAt = (place: string, where: NewStop) => {
@@ -475,18 +481,49 @@ export function CarDetail({
           </button>
         )}
         {showMap && <RouteMapSheet ride={ride} onClose={() => setShowMap(false)} />}
-        {runsIt && !isPast && !addingStop && (
-          <button type="button" className="link link-sm trip-add" disabled={busy} onClick={() => setAddingStop(true)}>
-            {roomForStop ? <PlusIcon size={14} /> : <PencilIcon size={14} />} {roomForStop ? t.detail.addStop : t.detail.editRoute}
-          </button>
+        {!runsIt && passengerAddsStop && (
+          <span className="trip-actions">
+            <button
+              type="button"
+              className="link link-sm trip-add"
+              disabled={busy}
+              onClick={() => (myBooking ? setMovingPickup('new') : setPickup(ELSEWHERE))}
+            >
+              <PlusIcon size={14} /> {t.detail.addStop}
+            </button>
+          </span>
         )}
-        {runsIt && !isPast && addingStop && (
+        {runsIt && !isPast && (
+          <span className="trip-actions">
+            {roomForStop && (
+              <button type="button" className="link link-sm trip-add" disabled={busy} onClick={() => setRouting('add')}>
+                <PlusIcon size={14} /> {t.detail.addStop}
+              </button>
+            )}
+            <button type="button" className="link link-sm trip-add" disabled={busy} onClick={() => setRouting('edit')}>
+              <PencilIcon size={14} /> {t.detail.editRoute}
+            </button>
+          </span>
+        )}
+        {runsIt && !isPast && routing === 'add' && (
+          <AddStop
+            ride={ride}
+            submitLabel={t.common.add}
+            busy={busy}
+            onCancel={() => setRouting(null)}
+            onSubmit={(place, where) => {
+              setRouting(null)
+              onAddStop(ride, place, where)
+            }}
+          />
+        )}
+        {runsIt && !isPast && routing === 'edit' && (
           <RouteEditor
             ride={ride}
             busy={busy}
-            onClose={() => setAddingStop(false)}
+            onClose={() => setRouting(null)}
             onSave={async (patch) => {
-              if (await onSaveRoute(ride, patch)) setAddingStop(false)
+              if (await onSaveRoute(ride, patch)) setRouting(null)
             }}
           />
         )}
