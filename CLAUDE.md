@@ -350,7 +350,8 @@ new place too (`WaitlistJoin.new_stop`), but keeps it on the entry (`WaitlistEnt
 / `new_stop_index`) instead of the route: `promote_waitlist` puts it on the route with the seat
 (and the driver is pushed `stop_added`), or seats them at the origin when the switch is off or the
 route is full by then. On screen the pickup `Select` ends in *Somewhere else…*, which opens
-`components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`),
+`components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`; the place
+is the ride form's `PlaceInput`, whose *Map* chip opens the same `PlaceDialog`),
 and the driver card has *Add a pickup point* under the route for whoever runs the ride. A ride with a
 return draws one more, quieter row at the foot of the card's route, the start again with *Back
 <time>* (`.trip-back`, after a dashed rule; no map link, the start has one). `distance_km` and `chip_in` are the driver's own words and only ever
@@ -400,8 +401,8 @@ and the geocoder's *Addresses* once something is; a saved place is the pick at o
 goes on to the embedded `MapPicker` filling the panel, with a *Name* field and *Use this point*;
 `MapPicker` (a crosshair over a moving map, inline, not an overlay, a round *Use my location* button and the zoom
 bottom left; on its own a floating rounded address search on top, a `PlaceInput` whose pick centres the map, Enter
-kept from the form around it; `embedded`, in `AddStop`, it has no search or buttons: the stop's own field is the
-search (`focus`) and the map is open under it from the start, the pin being where it was moved, `onMove`); `MapView` (Leaflet, loaded on first
+kept from the form around it; `embedded`, in `PlaceDialog`, it has no search or buttons, the pin being where it was
+moved, `onMove`); `MapView` (Leaflet, loaded on first
 use through `lib/leaflet.ts`, so it is a chunk of its own; Karpul's own pins as `divIcon`s, the disc drawn
 in `.map-pin-body` because Leaflet owns the marker's transform; dark tiles by a CSS filter); on the card
 each place opens in Google Maps (`mapsSearchUrl`), *Show on map* opens `RouteMapSheet` (portalled to
