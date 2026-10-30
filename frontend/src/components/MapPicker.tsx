@@ -19,13 +19,11 @@ interface Props {
   onPick?: (point: Point, name: string | null) => void
   onCancel?: () => void
   /**
-   * Part of a form that has its own place field (*Add a pickup point*): no
-   * search box and no buttons of its own. The map goes where `focus` says
-   * (a suggestion picked in that field) and reports where it was moved to
-   * with `onMove`, and that is the pin.
+   * Part of a panel that has its own name field and button (`PlaceDialog`):
+   * no search box and no buttons of its own. It reports where it was moved
+   * to with `onMove`, and that is the pin.
    */
   embedded?: boolean
-  focus?: Point | null
   onMove?: (point: Point) => void
 }
 
@@ -41,11 +39,11 @@ const round = (p: { lat: number; lng: number }): Point => ({
  * suggestions as any place field, which takes the map there to be nudged,
  * and *Use this point* takes the middle: named by the address picked while
  * the map has not moved off it, else looked up (`/api/places/reverse`).
- * Embedded, the form's own field is the search and the middle is the pin as
- * soon as the map is moved. Either way *Use my location* is a round button
+ * Embedded, the panel around it names the place and the middle is the pin
+ * as soon as the map is moved. Either way *Use my location* is a round button
  * on the map, and the picker sits inline, never as a second overlay.
  */
-export function MapPicker({ initial, near, onPick, onCancel, embedded = false, focus = null, onMove }: Props) {
+export function MapPicker({ initial, near, onPick, onCancel, embedded = false, onMove }: Props) {
   const t = useT()
   const locale = useLocale()
   const config = useMapConfig()
@@ -104,14 +102,6 @@ export function MapPicker({ initial, near, onPick, onCancel, embedded = false, f
       map.current = null
     }
   }, [config, t.map.failed])
-
-  // A suggestion picked in the form's own field takes the map there.
-  const focusKey = focus ? `${focus.lat},${focus.lng}` : ''
-  useEffect(() => {
-    if (!focusKey || !ready) return
-    const [lat, lng] = focusKey.split(',').map(Number)
-    map.current?.setView([lat, lng], 17)
-  }, [focusKey, ready])
 
   function locate() {
     if (!('geolocation' in navigator)) {
