@@ -82,23 +82,22 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   await expect(map.locator('.map-pin')).toHaveCount(2)
   if (info.project.name === 'phone') await toma.getByRole('dialog', { name: 'Novi Sad to Beograd' }).getByRole('button', { name: 'Close' }).click()
 
-  // He gets in somewhere new: the field's map chip opens the same place picker
-  // as the ride form, and moving its map (a zoom here) puts the pin where it stops.
+  // He gets in somewhere new: the same full-screen place picker as the ride
+  // form, then moving its map (a zoom here) puts the pin where it stops, and a
+  // last step asks where on the way.
   await toma.getByRole('button', { name: 'Pickup', exact: true }).first().click()
   await toma.getByRole('option', { name: 'Somewhere else…' }).click()
-  const stop = toma.locator('.add-stop')
-  await stop.getByLabel('New pickup point').fill('Kod Spensa')
-  await stop.getByRole('button', { name: 'Pick on the map' }).click()
   const picker = toma.getByRole('dialog', { name: 'New pickup point' })
   await expect(picker.getByRole('heading', { name: 'Saved places' })).toBeVisible()
+  await picker.getByLabel('Search places and addresses').fill('Kod Spensa')
   await picker.getByRole('button', { name: 'Pick on the map' }).click()
   await expect(picker.getByLabel('Name')).toHaveValue('Kod Spensa')
   await expect(picker.getByText('Everyone in Karpul can see it.', { exact: false })).toBeVisible()
   await picker.getByRole('button', { name: 'Zoom in' }).click()
   await picker.getByRole('button', { name: 'Use this point' }).click()
+  await expect(picker.getByText('On the map')).toBeVisible()
+  await picker.getByRole('button', { name: 'Get in this car' }).click()
   await expect(picker).toBeHidden()
-  await expect(stop.getByLabel('New pickup point')).toHaveValue('Kod Spensa')
-  await stop.getByRole('button', { name: 'Get in this car' }).click()
   await expect(toast(toma, `You're in with Mira Maps ${tag}.`)).toBeAttached()
   await expect(card.locator('.trip-place')).toHaveText(['Novi Sad', 'Kod Spensa', 'Beograd', 'Novi Sad'])
   await expect(card.locator('.trip-map-pinned')).toHaveCount(3)

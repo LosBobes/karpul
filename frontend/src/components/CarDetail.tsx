@@ -11,10 +11,11 @@ import { keepsKm } from '../lib/odometer'
 import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
-import type { CarState, Ride, RideRequest } from '../lib/types'
+import type { CarState, Ride, RideInput, RideRequest } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { useWide } from '../lib/useWide'
 import { AddStop } from './AddStop'
+import { RouteEditor } from './RouteEditor'
 import { Avatar } from './Avatar'
 import { BrandLogo, CarArt, PowertrainIcon } from './CarArt'
 import {
@@ -63,7 +64,8 @@ interface Props {
   /** Move a passenger (yourself, or anyone if you may manage seats) to another pickup point, or a new one. */
   onMovePickup: (ride: Ride, bookingId: number, pickup: string, newStop?: NewStop | null) => void
   /** The driver (or an admin) puts another pickup point on the route. */
-  onAddStop: (ride: Ride, stop: string, where: NewStop) => void
+  /** The route edited in `RouteEditor`, saved; resolves true when it went through. */
+  onSaveRoute: (ride: Ride, patch: Partial<RideInput>) => Promise<boolean>
   onShare: (ride: Ride) => void
   /** "Add to calendar": the ride's .ics, as a download. */
   onDownloadCalendar: (ride: Ride) => void
@@ -151,7 +153,7 @@ export function CarDetail({
   switchFrom = null,
   onSwitch,
   onMovePickup,
-  onAddStop,
+  onSaveRoute,
   onShare,
   onDownloadCalendar,
   onCancelFollowing,
@@ -473,20 +475,18 @@ export function CarDetail({
           </button>
         )}
         {showMap && <RouteMapSheet ride={ride} onClose={() => setShowMap(false)} />}
-        {runsIt && !isPast && roomForStop && !addingStop && (
+        {runsIt && !isPast && !addingStop && (
           <button type="button" className="link link-sm trip-add" disabled={busy} onClick={() => setAddingStop(true)}>
-            <PlusIcon size={14} /> {t.detail.addStop}
+            {roomForStop ? <PlusIcon size={14} /> : <PencilIcon size={14} />} {roomForStop ? t.detail.addStop : t.detail.editRoute}
           </button>
         )}
         {runsIt && !isPast && addingStop && (
-          <AddStop
+          <RouteEditor
             ride={ride}
-            submitLabel={t.common.add}
             busy={busy}
-            onCancel={() => setAddingStop(false)}
-            onSubmit={(place, where) => {
-              setAddingStop(false)
-              onAddStop(ride, place, where)
+            onClose={() => setAddingStop(false)}
+            onSave={async (patch) => {
+              if (await onSaveRoute(ride, patch)) setAddingStop(false)
             }}
           />
         )}
