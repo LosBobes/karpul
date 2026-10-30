@@ -196,12 +196,17 @@
   flex: none;
   color: var(--muted);
 }
+.trip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  align-self: flex-start;
+  margin: 0.15rem 0 0.35rem 1.7rem;
+}
 .trip-add {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  align-self: flex-start;
-  margin: 0.15rem 0 0.35rem 1.7rem;
 }
 
 /* --- Week tiles: the route line and the seat count's state ---------------- */

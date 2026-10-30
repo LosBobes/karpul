@@ -261,6 +261,10 @@ export const api = {
   movePickup: (rideId: number, bookingId: number, pickup: string, newStop: NewStop | null = null) =>
     request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, json('PATCH', { pickup, new_stop: newStop })),
 
+  /** The driver (or an admin) puts another pickup point on the route. */
+  addStop: (rideId: number, stop: string, where: NewStop) =>
+    request<Ride>(`/api/rides/${rideId}/stops`, json('POST', { stop, ...where })),
+
   /** Take the wheel of a shared car at `km`: the ride's driver (`bookingId` null) or a passenger; a handover while someone drives. */
   takeWheel: (rideId: number, km: number, bookingId: number | null) =>
     request<Ride>(`/api/rides/${rideId}/legs`, json('POST', { km, booking_id: bookingId })),
