@@ -33,6 +33,15 @@ function socketUrl(): string {
 }
 
 const MAX_BACKOFF_MS = 30_000
+/**
+ * The server pings an idle socket every 25 s (backend: routers/live.py), so a
+ * socket that has said nothing for longer than this is dead even though the
+ * browser still calls it open: a phone that slept with the app in the
+ * background keeps a socket like that for minutes and never fires `close`.
+ */
+const SILENT_MS = 40_000
+/** How often a visible tab checks that its socket still talks. */
+const WATCH_MS = 10_000
 
 /**
  * One socket for the tab, kept open for as long as the page lives. Drops are
@@ -57,13 +66,16 @@ export function useLiveBoard(handlers: Handlers): LiveStatus {
     let closed = false
     let attempt = 0
     let timer: number | null = null
+    let heard = Date.now()
 
     function connect() {
       if (closed || socket) return
       const ws = new WebSocket(socketUrl())
       socket = ws
+      heard = Date.now()
       ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token: authToken() }))
       ws.onmessage = (m) => {
+        heard = Date.now()
         let event: LiveEvent
         try {
           event = JSON.parse(m.data as string) as LiveEvent
@@ -102,9 +114,29 @@ export function useLiveBoard(handlers: Handlers): LiveStatus {
       }, delay)
     }
 
+    /**
+     * Let go of a socket that stopped talking: its `close` may come minutes
+     * later or never, so it is detached first (its handlers see it is no longer
+     * the socket) and a fresh one is opened at once.
+     */
+    function dropIfSilent(): boolean {
+      if (!socket || Date.now() - heard < SILENT_MS) return false
+      const dead = socket
+      socket = null
+      setStatus('offline')
+      try {
+        dead.close()
+      } catch {
+        /* already gone */
+      }
+      return true
+    }
+
     /** Skip the backoff when the user is plainly back. */
     function wake() {
-      if (document.visibilityState !== 'visible' || socket) return
+      if (document.visibilityState !== 'visible') return
+      dropIfSilent()
+      if (socket) return
       if (timer !== null) {
         clearTimeout(timer)
         timer = null
@@ -113,12 +145,17 @@ export function useLiveBoard(handlers: Handlers): LiveStatus {
     }
 
     connect()
+    // A hidden tab's timers are frozen or throttled, so the check runs while it is in view.
+    const watch = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && dropIfSilent()) wake()
+    }, WATCH_MS)
     document.addEventListener('visibilitychange', wake)
     window.addEventListener('online', wake)
     window.addEventListener('focus', wake)
     return () => {
       closed = true
       if (timer !== null) clearTimeout(timer)
+      clearInterval(watch)
       document.removeEventListener('visibilitychange', wake)
       window.removeEventListener('online', wake)
       window.removeEventListener('focus', wake)
