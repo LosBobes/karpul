@@ -350,8 +350,9 @@ new place too (`WaitlistJoin.new_stop`), but keeps it on the entry (`WaitlistEnt
 / `new_stop_index`) instead of the route: `promote_waitlist` puts it on the route with the seat
 (and the driver is pushed `stop_added`), or seats them at the origin when the switch is off or the
 route is full by then. On screen the pickup `Select` ends in *Somewhere else…*, which opens
-`components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`; the place
-is the ride form's `PlaceInput`, whose *Map* chip opens the same `PlaceDialog`),
+`components/AddStop.tsx`: the full-screen `PlaceDialog` of the ride form's places, with `freeText` (a *Use
+"<words>"* row, the place with no pin) and a `confirm` step after the pick that names the place and asks which
+stretch of the route it is on (`stopSlots` in `lib/stops.ts`) above the submit button,
 and the driver card has *Add a pickup point* under the route for whoever runs the ride. A ride with a
 return draws one more, quieter row at the foot of the card's route, the start again with *Back
 <time>* (`.trip-back`, after a dashed rule; no map link, the start has one). `distance_km` and `chip_in` are the driver's own words and only ever

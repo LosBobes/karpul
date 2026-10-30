@@ -103,8 +103,9 @@ out of the app.
 2. **Tap a row.** The ride opens: the driver, when it **Leaves** and **Returns**, the route
    from start to destination with any pickup points, and who is already in the car.
 3. If the ride has pickup points, choose where you get in with **Get in at**. If none of them
-   suits you, choose **Somewhere else…**, type the place (or an address) and where on the way it is;
-   a map opens under it, so you can move it until the ring is on the exact spot. The place is
+   suits you, choose **Somewhere else…**: the place picker opens over the whole screen, the same one
+   as for a ride's places. Pick a saved place or an address, **Pick on the map** to put the ring on
+   the exact spot, or just use the words you typed; then say where on the way it is. The place is
    added to the route and the driver is told.
 4. Tap **Get in this car**. Your name appears in the passenger list and the driver gets a
    notification.
