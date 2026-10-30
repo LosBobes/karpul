@@ -191,6 +191,8 @@ def test_ride_message_wording():
         "tag": "ride-7-leaving_soon",
     }
     assert ride_message("leaving_soon", ride, "sr", minutes=5)["title"] == "Polazak za 5 min"
+    # The day in the reader's language, whatever the server's locale.
+    assert ride_message("leaving_soon", ride, "sr", minutes=5)["body"] == "pon 14. sep 07:30, Liman do HQ"
 
 
 # --- Reminders -------------------------------------------------------------------
@@ -249,7 +251,7 @@ def test_a_muted_category_is_not_sent_and_the_rest_still_is(client, configured, 
 def test_every_kind_belongs_to_a_category():
     from app.push import CATEGORY_OF, TEXTS
 
-    assert set(TEXTS["en"]) - {"when"} == set(CATEGORY_OF)
+    assert set(TEXTS["en"]) - {"when", "day"} == set(CATEGORY_OF)
 
 
 # --- A removed ride points at the other cars --------------------------------------

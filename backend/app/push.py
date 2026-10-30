@@ -120,6 +120,9 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_approved": lambda name: f"{name} approved your shared car",
         "ride_declined": lambda name: f"{name} declined your shared car",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} to {destination}",
+        # Not strftime: its names follow the server's locale, not the reader's.
+        "day": lambda d: f"{('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')[d.weekday()]} {d.day:02d} "
+        f"{('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec')[d.month - 1]}",
     },
     "sr": {
         "got_in": lambda name: f"{name} je ušao/la u tvoj auto",
@@ -146,6 +149,8 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_approved": lambda name: f"{name} je odobrio/la tvoj zajednički auto",
         "ride_declined": lambda name: f"{name} je odbio/la tvoj zajednički auto",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} do {destination}",
+        "day": lambda d: f"{('pon', 'uto', 'sre', 'čet', 'pet', 'sub', 'ned')[d.weekday()]} {d.day}. "
+        f"{('jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec')[d.month - 1]}",
     },
 }
 
@@ -162,7 +167,7 @@ def _texts(locale: str) -> dict[str, Any]:
 
 
 def _when(t: dict[str, Any], ride_date: date, departure: time, origin: str, destination: str) -> str:
-    return t["when"](ride_date.strftime("%a %d %b"), departure.strftime("%H:%M"), origin, destination)
+    return t["when"](t["day"](ride_date), departure.strftime("%H:%M"), origin, destination)
 
 
 def ride_message(
