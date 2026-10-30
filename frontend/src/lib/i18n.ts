@@ -721,6 +721,7 @@ const en = {
     company: 'Company',
     own: 'Own',
     oneWay: 'one way',
+    booked: 'as booked',
     none: 'No rides between these dates.',
     noMatch: 'No ride matches the filters.',
     totals: (rides: number, pax: number, km: number, driven: number) =>
@@ -2005,6 +2006,7 @@ const sr: Messages = {
     company: 'Zajednički',
     own: 'Sopstveni',
     oneWay: 'u jednom pravcu',
+    booked: 'prema rezervaciji',
     none: 'Između ovih datuma nema vožnji.',
     noMatch: 'Nijedna vožnja ne odgovara filterima.',
     totals: (rides, pax, km, driven) =>

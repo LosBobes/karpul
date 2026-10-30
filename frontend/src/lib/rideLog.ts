@@ -76,11 +76,22 @@ export function logTotals(rides: Ride[]): { rides: number; pax: number; km: numb
   }
 }
 
-/** Who drove how far, as one cell: "Ana Petrović 120 km, Marko Marković 40 km". */
+/**
+ * Who drove how far, as one cell: "Ana Petrović 120 km, Marko Marković 40 km".
+ * With no odometer kept (a ride still to come, an own car, nobody noted it)
+ * it is whoever booked the ride, and `wheelBooked` says so; a ride that
+ * needs a driver has nobody yet.
+ */
 export function atWheel(ride: Ride, locale?: string): string {
+  if (wheelBooked(ride)) return ride.needs_driver ? '' : ride.driver_name
   return kmByDriver(ride)
     .map((d) => `${d.name} ${d.km.toLocaleString(locale)} km`)
     .join(', ')
+}
+
+/** Is the "at the wheel" cell the booking rather than the odometer? */
+export function wheelBooked(ride: Ride): boolean {
+  return ride.legs.length === 0
 }
 
 const hhmm = (t: string | null) => (t ? t.slice(0, 5) : '')
@@ -121,7 +132,9 @@ export function logCsv(rides: Ride[], t: Messages): string {
     odo.end == null ? '' : String(odo.end),
     driven == null ? '' : String(driven),
     // Plain digits here: a thousands separator would read as a decimal comma.
-    kmByDriver(r).map((d) => `${d.name} ${d.km} km`).join(', '),
+    wheelBooked(r)
+      ? r.needs_driver ? '' : `${r.driver_name} (${t.rideLog.booked})`
+      : kmByDriver(r).map((d) => `${d.name} ${d.km} km`).join(', '),
     r.chip_in,
     r.notes,
     ]
