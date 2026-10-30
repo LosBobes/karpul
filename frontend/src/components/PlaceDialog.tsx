@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
@@ -9,7 +9,7 @@ import { mapsOn, SEARCH_MIN, SEARCH_PAUSE_MS, useMapConfig } from '../lib/places
 import type { PlaceSuggestion, Point } from '../lib/types'
 import { useBackClose } from '../lib/useBackClose'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
-import { ArrowLeftIcon, CarIcon, ChevronRightIcon, MapIcon, PinIcon, SearchIcon, XIcon } from './icons'
+import { ArrowLeftIcon, CarIcon, ChevronRightIcon, PencilIcon, MapIcon, PinIcon, SearchIcon, XIcon } from './icons'
 import { MapPicker } from './MapPicker'
 
 interface Props {
@@ -20,8 +20,21 @@ interface Props {
   point: Point | null
   /** Another place of the route: the search looks there first and the map opens there. */
   near?: Point | null
-  onPick: (name: string, point: Point) => void
+  onPick?: (name: string, point: Point) => void
   onClose: () => void
+  /** The words typed may be the place as they are, with no pin. */
+  freeText?: boolean
+  /**
+   * One more step after the pick, in the same panel: what is shown under the
+   * place picked (its form and button). Without it the pick is `onPick`.
+   */
+  confirm?: (place: Picked) => ReactNode
+}
+
+/** A place picked: its words, and its pin when it has one. */
+export interface Picked {
+  name: string
+  point: Point | null
 }
 
 /** A found place goes to the map with the name it was found under. */
@@ -39,7 +52,7 @@ interface Spot {
  * a ring in the middle, to be nudged onto the exact spot and named.
  * Portalled to `<body>`: the form it opens from must not take its Enter.
  */
-export function PlaceDialog({ title, value, point, near = null, onPick, onClose }: Props) {
+export function PlaceDialog({ title, value, point, near = null, onPick, onClose, freeText = false, confirm }: Props) {
   const t = useT()
   const locale = useLocale()
   const config = useMapConfig()
@@ -56,18 +69,26 @@ export function PlaceDialog({ title, value, point, near = null, onPick, onClose 
   const [name, setName] = useState('')
   const [naming, setNaming] = useState(false)
   const [nameNeeded, setNameNeeded] = useState(false)
+  const [chosen, setChosen] = useState<Picked | null>(null)
+
+  // With a `confirm` step the pick goes there; else it is the answer.
+  function done(words: string, pin: Point | null) {
+    if (confirm) setChosen({ name: words, point: pin })
+    else if (pin) onPick?.(words, pin)
+  }
 
   // Escape steps back from the map, else closes; captured, so the form behind stays open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       e.stopImmediatePropagation()
-      if (spot) setSpot(null)
+      if (chosen) setChosen(null)
+      else if (spot) setSpot(null)
       else requestClose()
     }
     window.addEventListener('keydown', onKey, true)
     return () => window.removeEventListener('keydown', onKey, true)
-  }, [spot, requestClose])
+  }, [chosen, spot, requestClose])
 
   useEffect(() => {
     const ctl = new AbortController()
@@ -129,7 +150,7 @@ export function PlaceDialog({ title, value, point, near = null, onPick, onClose 
       document.getElementById(`${titleId}-name`)?.focus()
       return
     }
-    onPick(words, centre)
+    done(words, centre)
   }
 
   const sourceLabel = (s: PlaceSuggestion['source']) =>
@@ -151,12 +172,29 @@ export function PlaceDialog({ title, value, point, near = null, onPick, onClose 
     </li>
   )
 
-  const pickSaved = (place: PlaceSuggestion) => onPick(place.name, { lat: place.lat, lng: place.lng })
+  const pickSaved = (place: PlaceSuggestion) => done(place.name, { lat: place.lat, lng: place.lng })
+  const typed = freeText ? query.trim().replace(/\s+/g, ' ') : ''
   // An address is only roughly where the door is: nudge it on the map, when there is one.
   const pickAddress = (place: PlaceSuggestion) =>
     hasMap ? toMap({ name: place.name, point: { lat: place.lat, lng: place.lng } }) : pickSaved(place)
 
-  const body = spot ? (
+  const body = chosen && confirm ? (
+    <div className="place-dialog-confirm">
+      <div className="place-row place-dialog-chosen">
+        <span className="place-row-icon place-row-office" aria-hidden="true">
+          <PinIcon size={18} />
+        </span>
+        <span className="place-row-text">
+          <span className="place-row-name">{chosen.name}</span>
+          <span className="place-row-kind">{chosen.point ? t.map.pinned : t.map.unpinned}</span>
+        </span>
+        <button type="button" className="link link-sm" onClick={() => setChosen(null)}>
+          {t.common.edit}
+        </button>
+      </div>
+      {confirm(chosen)}
+    </div>
+  ) : spot ? (
     <div className="place-dialog-map">
       <MapPicker
         embedded
@@ -219,6 +257,7 @@ export function PlaceDialog({ title, value, point, near = null, onPick, onClose 
             e.preventDefault()
             const first = shownSaved[0] ?? addresses[0]
             if (first) (first.source === 'search' ? pickAddress : pickSaved)(first)
+            else if (typed) done(typed, null)
           }}
         />
         {query && (
@@ -228,6 +267,17 @@ export function PlaceDialog({ title, value, point, near = null, onPick, onClose 
         )}
       </div>
       <div className="place-dialog-scroll">
+        {typed && (
+          <button type="button" className="place-row place-row-map" onClick={() => done(typed, null)}>
+            <span className="place-row-icon" aria-hidden="true">
+              <PencilIcon size={18} />
+            </span>
+            <span className="place-row-text">
+              <span className="place-row-name">{t.map.useWords(typed)}</span>
+            </span>
+            <ChevronRightIcon size={16} />
+          </button>
+        )}
         {hasMap && (
           <button
             type="button"
@@ -273,8 +323,8 @@ export function PlaceDialog({ title, value, point, near = null, onPick, onClose 
     >
       <div className="panel panel-place" role="dialog" aria-modal="true" aria-labelledby={titleId} onAnimationEnd={onAnimationEnd}>
         <header className="panel-head place-dialog-top">
-          {spot ? (
-            <button type="button" className="icon-btn" aria-label={t.common.back} onClick={() => setSpot(null)}>
+          {spot || chosen ? (
+            <button type="button" className="icon-btn" aria-label={t.common.back} onClick={() => (chosen ? setChosen(null) : setSpot(null))}>
               <ArrowLeftIcon />
             </button>
           ) : null}

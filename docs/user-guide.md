@@ -103,8 +103,9 @@ out of the app.
 2. **Tap a row.** The ride opens: the driver, when it **Leaves** and **Returns**, the route
    from start to destination with any pickup points, and who is already in the car.
 3. If the ride has pickup points, choose where you get in with **Get in at**. If none of them
-   suits you, choose **Somewhere else…**, type the place (or an address) and where on the way it is;
-   a map opens under it, so you can move it until the ring is on the exact spot. The place is
+   suits you, choose **Somewhere else…**: the place picker opens over the whole screen, the same one
+   as for a ride's places. Pick a saved place or an address, **Pick on the map** to put the ring on
+   the exact spot, or just use the words you typed; then say where on the way it is. The place is
    added to the route and the driver is told.
 4. Tap **Get in this car**. Your name appears in the passenger list and the driver gets a
    notification.
@@ -180,7 +181,12 @@ Open your ride and use the **⋮** menu:
 - **Share ride** and **Add to calendar** (see [section 8](#8-notifications-calendar-and-sharing)).
 
 On the card itself you can **Add a passenger by name** (a colleague without an account works
-too), take a passenger out, and **Add a pickup point** under the route.
+too) and take a passenger out. Under the route, **Add a pickup point** goes straight to the place
+picker and then where on the way it is. **Edit the route** opens the whole route over the full screen,
+with who gets in where: tap a place to
+pick it again (a pickup point also says where on the way it goes), **×** takes a pickup point off,
+**Add a pickup point** puts a new one in, and nothing changes until **Save route**. A passenger whose
+pickup point you take off gets in at the start instead; the screen says so before you save.
 
 When you change the date, the times or the route, or remove the ride, your passengers are
 notified. Passengers of a removed ride are also told how many other cars that day still have

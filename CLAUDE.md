@@ -350,8 +350,16 @@ new place too (`WaitlistJoin.new_stop`), but keeps it on the entry (`WaitlistEnt
 / `new_stop_index`) instead of the route: `promote_waitlist` puts it on the route with the seat
 (and the driver is pushed `stop_added`), or seats them at the origin when the switch is off or the
 route is full by then. On screen the pickup `Select` ends in *Somewhere else…*, which opens
-`components/AddStop.tsx` (the place and which stretch of the route, `stopSlots` in `lib/stops.ts`),
-and the driver card has *Add a pickup point* under the route for whoever runs the ride. A ride with a
+`components/AddStop.tsx`: the full-screen `PlaceDialog` of the ride form's places, with `freeText` (a *Use
+"<words>"* row, the place with no pin) and a `confirm` step after the pick that names the place and asks which
+stretch of the route it is on (`stopSlots` in `lib/stops.ts`) above the submit button,
+and the driver card has two links under the route for whoever runs the ride: *Add a pickup point* (while
+there is room) opens that same `AddStop`, straight to the place and then where on the way (`POST
+/api/rides/{id}/stops`, `onAddStop`), and *Edit the route* opens `components/RouteEditor.tsx`: the whole route full screen, the same panel as `PlaceDialog`,
+a row per place with who gets in there, a tap picks it again in `PlaceDialog` (a stop's `confirm` step also
+takes where on the way, which is how one moves), × takes a stop off, and *Save route* is one `PATCH` of the
+route and its pins (`onSaveRoute` in `App.tsx`; the foot says who `drop_orphaned_pickups` will move to the
+start). A ride with a
 return draws one more, quieter row at the foot of the card's route, the start again with *Back
 <time>* (`.trip-back`, after a dashed rule; no map link, the start has one). `distance_km` and `chip_in` are the driver's own words and only ever
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per
@@ -400,8 +408,8 @@ and the geocoder's *Addresses* once something is; a saved place is the pick at o
 goes on to the embedded `MapPicker` filling the panel, with a *Name* field and *Use this point*;
 `MapPicker` (a crosshair over a moving map, inline, not an overlay, a round *Use my location* button and the zoom
 bottom left; on its own a floating rounded address search on top, a `PlaceInput` whose pick centres the map, Enter
-kept from the form around it; `embedded`, in `AddStop`, it has no search or buttons: the stop's own field is the
-search (`focus`) and the map is open under it from the start, the pin being where it was moved, `onMove`); `MapView` (Leaflet, loaded on first
+kept from the form around it; `embedded`, in `PlaceDialog`, it has no search or buttons, the pin being where it was
+moved, `onMove`); `MapView` (Leaflet, loaded on first
 use through `lib/leaflet.ts`, so it is a chunk of its own; Karpul's own pins as `divIcon`s, the disc drawn
 in `.map-pin-body` because Leaflet owns the marker's transform; dark tiles by a CSS filter); on the card
 each place opens in Google Maps (`mapsSearchUrl`), *Show on map* opens `RouteMapSheet` (portalled to

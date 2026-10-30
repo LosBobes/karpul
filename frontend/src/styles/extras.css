@@ -196,24 +196,17 @@
   flex: none;
   color: var(--muted);
 }
-/* A pickup point not on the route yet: the place, then which stretch it is on. */
-.add-stop {
+.trip-actions {
   display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-  width: 100%;
-  margin: 0.2rem 0 0.5rem;
-}
-.add-stop .control {
-  flex: 1;
-  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  align-self: flex-start;
+  margin: 0.15rem 0 0.35rem 1.7rem;
 }
 .trip-add {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-  align-self: flex-start;
-  margin: 0.15rem 0 0.35rem 1.7rem;
 }
 
 /* --- Week tiles: the route line and the seat count's state ---------------- */
@@ -1116,6 +1109,41 @@
 .place-dialog-map .map-picker > .error {
   padding: 0 1rem;
 }
+/* The route of a ride, edited on its own screen (RouteEditor): a row per place, × on a stop. */
+.route-rows > li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.route-rows .place-row {
+  flex: 1;
+  min-width: 0;
+}
+.route-editor > .place-row:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.place-dialog-confirm {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  overflow-y: auto;
+}
+.place-dialog-chosen {
+  cursor: default;
+  background: var(--surface-2);
+}
+.place-dialog-chosen:hover {
+  background: var(--surface-2);
+}
+.place-dialog-confirm .add-stop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
 .place-dialog-name {
   display: flex;
   flex-direction: column;
@@ -1192,23 +1220,55 @@
 .trip-stop {
   grid-template-columns: 14px minmax(0, 1fr) auto auto;
 }
+/* A small button, not a glyph: a tinted tile with a hairline, so it reads as
+   something to tap beside the name rather than a decoration. */
 .trip-map {
   grid-column: 4;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  margin: -6px -4px -6px 0;
+  width: 32px;
+  height: 32px;
+  margin: -6px -2px -6px 0;
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  color: var(--muted);
-  transition: background var(--hover), color var(--hover);
-}
-.trip-map:hover {
   background: var(--surface-2);
   color: var(--text);
+  transition: background var(--hover), color var(--hover), border-color var(--hover);
+}
+.trip-map:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+.trip-map:active {
+  background: color-mix(in srgb, var(--text) 8%, var(--surface-2));
 }
 .trip-map-pinned {
+  border-color: var(--green-line);
+  background: var(--green-soft);
   color: var(--green);
+}
+.trip-map-pinned:active {
+  background: color-mix(in srgb, var(--green) 18%, var(--surface));
+}
+/* "Show on map": a whole-width button under the route, in the green tint, so
+   the map is something you see is there rather than a line of link text. */
+.trip-map-open {
+  justify-content: flex-start;
+  margin: 0.25rem 0 0.5rem;
+  border-color: var(--green-line);
+  background: var(--green-soft);
+  color: var(--green);
+  font-weight: 600;
+}
+.trip-map-open:hover:not(:disabled) {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 16%, var(--surface));
+}
+.trip-map-open:active:not(:disabled) {
+  background: color-mix(in srgb, var(--green) 22%, var(--surface));
+}
+.trip-map-open-chevron {
+  margin-left: auto;
 }
 .stop-hint {
   display: flex;

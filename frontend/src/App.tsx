@@ -291,6 +291,17 @@ function Board({ session }: { session: Session }) {
       setToast({ kind: 'ok', text: t.toasts.stopAdded(stop) })
     })
 
+  /** The driver (or an admin) saves the route edited in `RouteEditor`; true when it went through. */
+  const onSaveRoute = async (ride: Ride, patch: Partial<RideInput>) => {
+    let saved = false
+    await withBusy(ride.id, async () => {
+      upsertRide(await api.updateRide(ride.id, patch))
+      setToast({ kind: 'ok', text: t.toasts.routeSaved })
+      saved = true
+    })
+    return saved
+  }
+
   /** A shared car's odometer (components/Odometer.tsx): the call returns the ride. */
   const onOdometer = (ride: Ride, call: () => Promise<Ride>) =>
     withBusy(ride.id, async () => {
@@ -712,6 +723,7 @@ function Board({ session }: { session: Session }) {
       onSwitch={onSwitch}
       onMovePickup={onMovePickup}
       onAddStop={onAddStop}
+      onSaveRoute={onSaveRoute}
       onShare={(r) => void onShare(r)}
       onDownloadCalendar={onDownloadCalendar}
       onCancelFollowing={onCancelFollowing}
