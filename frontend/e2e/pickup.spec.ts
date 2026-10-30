@@ -73,13 +73,25 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   const trip = vesna.locator('.trip').first()
   await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'HQ', 'Novi Sad'])
 
-  // She adds Liman on the way; it lands between the start and HQ.
+  // She edits the route on its own screen: it shows who gets in where, Liman
+  // goes in on the way (just after the start), Kać goes in and comes off again,
+  // and nothing is sent until she saves.
   await vesna.getByRole('button', { name: 'Add a pickup point' }).first().click()
+  const route = vesna.getByRole('dialog', { name: 'Route' })
+  await expect(route.getByText(`Getting in here: Goran Rider ${tag}`)).toBeVisible()
   const vesnaPlace = vesna.getByRole('dialog', { name: 'New pickup point' })
-  await vesnaPlace.getByLabel('Search places and addresses').fill('Liman')
-  await vesnaPlace.getByLabel('Search places and addresses').press('Enter')
-  await vesnaPlace.getByRole('button', { name: 'Add', exact: true }).click()
-  await expect(toast(vesna, 'Liman is on the route.')).toBeAttached()
+  for (const place of ['Liman', 'Kać']) {
+    await route.getByRole('button', { name: 'Add a pickup point' }).click()
+    await vesnaPlace.getByLabel('Search places and addresses').fill(place)
+    await vesnaPlace.getByLabel('Search places and addresses').press('Enter')
+    await vesnaPlace.getByRole('button', { name: 'Done' }).click()
+    await expect(vesnaPlace).toBeHidden()
+  }
+  await expect(route.locator('.place-row-name')).toHaveText(['Futog', 'Novi Sad', 'Kać', 'Liman', 'HQ', 'Add a pickup point'])
+  await route.getByRole('button', { name: 'Remove Kać' }).click()
+  await route.getByRole('button', { name: 'Save route' }).click()
+  await expect(toast(vesna, 'Route saved.')).toBeAttached()
+  await expect(route).toBeHidden()
   await expect(trip.locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ', 'Novi Sad'])
   await expect(goran.locator('.trip').first().locator('.trip-place')).toHaveText(['Futog', 'Novi Sad', 'Liman', 'HQ', 'Novi Sad'])
 

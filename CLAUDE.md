@@ -353,7 +353,12 @@ route is full by then. On screen the pickup `Select` ends in *Somewhere else…*
 `components/AddStop.tsx`: the full-screen `PlaceDialog` of the ride form's places, with `freeText` (a *Use
 "<words>"* row, the place with no pin) and a `confirm` step after the pick that names the place and asks which
 stretch of the route it is on (`stopSlots` in `lib/stops.ts`) above the submit button,
-and the driver card has *Add a pickup point* under the route for whoever runs the ride. A ride with a
+and the driver card has *Add a pickup point* (*Edit the route* when full) under the route for whoever runs
+the ride, which opens `components/RouteEditor.tsx`: the whole route full screen, the same panel as `PlaceDialog`,
+a row per place with who gets in there, a tap picks it again in `PlaceDialog` (a stop's `confirm` step also
+takes where on the way, which is how one moves), × takes a stop off, and *Save route* is one `PATCH` of the
+route and its pins (`onSaveRoute` in `App.tsx`; the foot says who `drop_orphaned_pickups` will move to the
+start). `POST /api/rides/{id}/stops` is no longer called from the app. A ride with a
 return draws one more, quieter row at the foot of the card's route, the start again with *Back
 <time>* (`.trip-back`, after a dashed rule; no map link, the start has one). `distance_km` and `chip_in` are the driver's own words and only ever
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per

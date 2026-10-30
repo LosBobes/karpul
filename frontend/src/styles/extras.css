@@ -1104,6 +1104,20 @@
 .place-dialog-map .map-picker > .error {
   padding: 0 1rem;
 }
+/* The route of a ride, edited on its own screen (RouteEditor): a row per place, × on a stop. */
+.route-rows > li {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.route-rows .place-row {
+  flex: 1;
+  min-width: 0;
+}
+.route-editor > .place-row:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
 .place-dialog-confirm {
   flex: 1;
   min-height: 0;

@@ -181,7 +181,11 @@ Open your ride and use the **⋮** menu:
 - **Share ride** and **Add to calendar** (see [section 8](#8-notifications-calendar-and-sharing)).
 
 On the card itself you can **Add a passenger by name** (a colleague without an account works
-too), take a passenger out, and **Add a pickup point** under the route.
+too), take a passenger out, and **Add a pickup point** under the route (**Edit the route** once it
+has all six). It opens the whole route over the full screen, with who gets in where: tap a place to
+pick it again (a pickup point also says where on the way it goes), **×** takes a pickup point off,
+**Add a pickup point** puts a new one in, and nothing changes until **Save route**. A passenger whose
+pickup point you take off gets in at the start instead; the screen says so before you save.
 
 When you change the date, the times or the route, or remove the ride, your passengers are
 notified. Passengers of a removed ride are also told how many other cars that day still have
