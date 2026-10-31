@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
+import { api } from '../lib/api'
 import { messages, useT } from '../lib/i18n'
-import type { CarState, CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
+import type { CarReportInput, CarState, CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { CarStatusList } from './CarStatus'
 import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from './icons'
@@ -76,8 +77,21 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
     />
   )
 
-  const editorFor = (car: CorporateCar) =>
-    editing === car.id ? (
+  // An admin's odometer and battery from the car's editor go in as an ordinary report.
+  async function saveReading(carId: number, reading: CarReportInput) {
+    try {
+      await api.reportCar(carId, reading)
+      onNotice(t.carState.reportSent)
+      onReported()
+    } catch (e) {
+      onNotice(messages().apiError(e instanceof Error ? e.message : String(e)))
+    }
+  }
+
+  const editorFor = (car: CorporateCar) => {
+    if (editing !== car.id) return null
+    const state = states?.find((s) => s.car.id === car.id)
+    return (
       <CarEditor
         key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}:${car.home}:${car.home_lat}:${car.home_lng}`}
         initial={{
@@ -87,15 +101,18 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
           home: car.home,
           home_point: car.home_lat != null && car.home_lng != null ? { lat: car.home_lat, lng: car.home_lng } : null,
         }}
+        readings={state ? { odometer: state.odometer.value, soc: state.soc.value } : undefined}
         busy={busyId === car.id}
         submitLabel={t.common.save}
-        onSubmit={(input) => {
-          onUpdate(car.id, input)
+        onSubmit={(input, reading) => {
+          if (input) onUpdate(car.id, input)
+          if (reading) void saveReading(car.id, reading)
           setEditing(null)
         }}
         onCancel={() => setEditing(null)}
       />
-    ) : null
+    )
+  }
 
   return (
     <Sheet
@@ -142,7 +159,7 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
                   busy={busyId === NEW_CAR_BUSY_ID}
                   submitLabel={t.admin.addCar}
                   onSubmit={(input) => {
-                    onCreate(input)
+                    if (input) onCreate(input)
                     setEditing(null)
                   }}
                   onCancel={() => setEditing(null)}
@@ -355,15 +372,19 @@ function Usage({ load, download }: { load: (days: number) => Promise<CarUsage>; 
 
 function CarEditor({
   initial,
+  readings,
   busy,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   initial: CorporateCarInput
+  /** An existing car's odometer and battery as they stand; a change is sent as a report. */
+  readings?: { odometer: number | null; soc: number | null }
   busy: boolean
   submitLabel: string
-  onSubmit: (input: CorporateCarInput) => void
+  /** `input` is null when the car itself did not change, `reading` when its readings did not. */
+  onSubmit: (input: CorporateCarInput | null, reading: CarReportInput | null) => void
   onCancel: () => void
 }) {
   const t = useT()
@@ -373,14 +394,24 @@ function CarEditor({
   const [home, setHome] = useState(initial.home)
   const [homePoint, setHomePoint] = useState<Point | null>(initial.home_point ?? null)
   const [picking, setPicking] = useState(false)
+  const odoAt = readings?.odometer != null ? String(readings.odometer) : ''
+  const socAt = readings?.soc != null ? String(readings.soc) : ''
+  const [odometer, setOdometer] = useState(odoAt)
+  const [soc, setSoc] = useState(socAt)
+  const socNum = soc === '' ? null : Number(soc)
+  const socBad = socNum !== null && socNum > 100
+  // A field emptied says nothing new: the state cannot be unsaid from here.
+  const odoChanged = odometer !== '' && odometer !== odoAt
+  const socChanged = soc !== '' && soc !== socAt
 
-  const valid = !!name.trim() && !!plate.trim() && seats >= 1 && seats <= 8
-  const dirty =
+  const valid = !!name.trim() && !!plate.trim() && seats >= 1 && seats <= 8 && !socBad
+  const carDirty =
     name.trim() !== initial.name ||
     plate.trim() !== initial.plate ||
     seats !== initial.passenger_seats ||
     home.trim() !== initial.home ||
     JSON.stringify(homePoint) !== JSON.stringify(initial.home_point ?? null)
+  const dirty = carDirty || odoChanged || socChanged
 
   return (
     // Not a <form>: the editor sits inside the admin sheet, which is not a form
@@ -444,6 +475,21 @@ function CarEditor({
           </button>
         )}
       </div>
+      {readings && (
+        <>
+          <div className="grid-2">
+            <label className="field">
+              <span className="field-label">{t.carState.odometerField}</span>
+              <input inputMode="numeric" pattern="[0-9]*" maxLength={7} placeholder="0" value={odometer} onChange={(e) => setOdometer(e.target.value.replace(/\D/g, ''))} />
+            </label>
+            <label className="field">
+              <span className="field-label">{t.odo.soc}</span>
+              <input inputMode="numeric" pattern="[0-9]*" maxLength={3} placeholder="80" aria-invalid={socBad || undefined} value={soc} onChange={(e) => setSoc(e.target.value.replace(/\D/g, ''))} />
+            </label>
+          </div>
+          {(odoChanged || socChanged) && <p className="hint hint-tight">{t.carState.readingsHint}</p>}
+        </>
+      )}
       <div className="row-end">
         <button type="button" className="btn btn-soft" onClick={onCancel}>
           {t.common.cancel}
@@ -453,7 +499,10 @@ function CarEditor({
           className="btn btn-primary"
           disabled={busy || !valid || !dirty}
           onClick={() =>
-            onSubmit({ name: name.trim(), plate: plate.trim(), passenger_seats: seats, home: home.trim(), home_point: home.trim() ? homePoint : null })
+            onSubmit(
+              carDirty ? { name: name.trim(), plate: plate.trim(), passenger_seats: seats, home: home.trim(), home_point: home.trim() ? homePoint : null } : null,
+              odoChanged || socChanged ? { odometer_km: odoChanged ? Number(odometer) : null, soc: socChanged ? socNum : null } : null,
+            )
           }
         >
           {busy ? t.common.saving : submitLabel}

@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useT } from '../lib/i18n'
 import { useClosing } from '../lib/motion'
 import { useBackClose } from '../lib/useBackClose'
@@ -17,6 +18,12 @@ interface Props {
   onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
   footer?: ReactNode
   className?: string
+  /**
+   * Opened from inside another sheet: portalled to <body> above it (a sheet's
+   * panel is transformed, which would trap a fixed child), and Escape is
+   * captured so only this one closes.
+   */
+  stacked?: boolean
 }
 
 /**
@@ -26,16 +33,20 @@ interface Props {
  * exit animation first (`useClosing`); a parent that unmounts it outright,
  * after a save, skips it.
  */
-export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'div', onSubmit, footer, className }: Props) {
+export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'div', onSubmit, footer, className, stacked = false }: Props) {
   const t = useT()
   const { closing, requestClose, onAnimationEnd } = useClosing(onClose)
   // The phone's back button closes the sheet instead of leaving the page.
   useBackClose(requestClose)
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && requestClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [requestClose])
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (stacked) e.stopImmediatePropagation()
+      requestClose()
+    }
+    window.addEventListener('keydown', onKey, stacked)
+    return () => window.removeEventListener('keydown', onKey, stacked)
+  }, [requestClose, stacked])
 
   // Body scroll is locked while a sheet is up, or the page behind scrolls on
   // a phone when the finger overshoots the sheet.
@@ -61,9 +72,9 @@ export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'd
     </>
   )
   const panelClass = ['panel', `panel-${variant}`, className].filter(Boolean).join(' ')
-  return (
+  const node = (
     <div
-      className={['backdrop', `backdrop-${variant}`, closing && 'backdrop-closing'].filter(Boolean).join(' ')}
+      className={['backdrop', `backdrop-${variant}`, stacked && 'backdrop-top', closing && 'backdrop-closing'].filter(Boolean).join(' ')}
       onMouseDown={(e) => e.target === e.currentTarget && requestClose()}
     >
       {as === 'form' ? (
@@ -84,4 +95,5 @@ export function Sheet({ title, id, onClose, children, variant = 'sheet', as = 'd
       )}
     </div>
   )
+  return stacked ? createPortal(node, document.body) : node
 }

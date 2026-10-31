@@ -799,6 +799,17 @@ const en = {
     removeTitle: 'Remove this report?',
     removeBody: (name: string, when: string) => `The report of ${name} from ${when} goes. The car's status falls back on the one before it.`,
     reportRemoved: 'Report removed.',
+    /** The report sheet (components/CarReportSheet.tsx). */
+    editTitle: 'Edit the report',
+    send: 'Send report',
+    lastRead: (km: string) => `Last known: ${km}`,
+    addKm: (n: number) => `Add ${n} km`,
+    clearField: (field: string) => `Clear ${field.toLowerCase()}`,
+    notRead: 'Not read',
+    range: (km: number) => `about ${km} km of range`,
+    lastSoc: (n: number) => `last ${n} %`,
+    quickIssues: ['Warning light', 'Scratch or dent', 'Low tyre', 'Charging cable missing', 'Something left inside'],
+    readingsHint: 'A changed reading is saved as a report in your name.',
   },
 
   upcoming: {
@@ -2102,6 +2113,16 @@ const sr: Messages = {
     removeTitle: 'Ukloniti ovu prijavu?',
     removeBody: (name, when) => `Prijava (${name}, ${when}) se briše. Stanje auta se vraća na prethodnu prijavu.`,
     reportRemoved: 'Prijava je uklonjena.',
+    editTitle: 'Izmena prijave',
+    send: 'Pošalji prijavu',
+    lastRead: (km) => `Poslednje poznato: ${km}`,
+    addKm: (n) => `Dodaj ${n} km`,
+    clearField: (field) => `Obriši polje: ${field.toLowerCase()}`,
+    notRead: 'Nije očitano',
+    range: (km) => `domet oko ${km} km`,
+    lastSoc: (n) => `ranije ${n} %`,
+    quickIssues: ['Upaljena lampica', 'Ogrebotina ili udubljenje', 'Slaba guma', 'Nema kabla za punjenje', 'Nešto je ostavljeno u autu'],
+    readingsHint: 'Izmenjeno očitavanje se čuva kao prijava na tvoje ime.',
   },
 
   people: {

@@ -227,10 +227,17 @@ sent replace the report's, null clears one, a report left saying nothing is a 42
 and `DELETE` of the same (the state falls back on the report before), both in the admin's log
 (`car_report_edited` / `car_report_removed`); *Mark as fixed* is an ordinary report with `issues: ""`.
 On screen: *Shared cars* in the drawer for everyone (`components/SharedCars.tsx`), one list of the
-cars: `CarStatusList` (`components/CarStatus.tsx`: a card per car with its state, the report form inline
-on it; the text helpers in `lib/carState.ts`). The pool is managed on the same cards, not a list of its
+cars: `CarStatusList` (`components/CarStatus.tsx`: a card per car with its state; the text helpers in
+`lib/carState.ts`). *Report on this car* opens `CarReportSheet` (`components/CarReportSheet.tsx`, a `Sheet`
+with `stacked`: portalled over Shared cars, Escape captured): the odometer as rolling wheels over an invisible
+input with +10/+100/+1000 chips from the last reading, the battery as a battery dragged or arrow-keyed
+(`role="slider"`, red under 20, amber under 50, the range at `SOC_PER_KM` on an electric car), clean / needs a
+wash / not checked as pictures of the car (sparkles, mud and flies, moving only when picked, stilled under
+reduced motion), and quick problems as chips; the arithmetic in `lib/carReport.ts`, tested in
+`carReport.test.ts`. The pool is managed on the same cards, not a list of its
 own: an admin gets the car's ⋮ (edit, retire, delete) and its `CarEditor` handed in through `carMenu` /
-`carEditor`, *Mark as fixed* on a problem, a ⋮ with *Edit* / *Remove* on each recent report, *Add
+`carEditor` (which also takes the odometer and battery: a changed one is sent as an ordinary report in the
+admin's name, the car's own fields only when they changed), *Mark as fixed* on a problem, a ⋮ with *Edit* / *Remove* on each recent report, *Add
 shared car* at the foot and the retired cars listed under it; the one other tab, admins only, is
 *Usage* (the tab is `sharedCars.tab` in `App.tsx`, so the driver card's car line opens it on the cars). One line under
 the car's name on the driver card of a shared-car ride (`.driver-car-state`). Tests:
