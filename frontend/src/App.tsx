@@ -5,10 +5,9 @@ import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
 import { AdminLog } from './components/AdminLog'
 import { Approvals } from './components/Approvals'
 import { AuthGate } from './components/AuthGate'
-import { CarAdmin, NEW_CAR_BUSY_ID } from './components/CarAdmin'
+import { NEW_CAR_BUSY_ID, SharedCars, type SharedCarsTab } from './components/SharedCars'
 import { CarGuide } from './components/CarGuide'
 import { HowTo } from './components/HowTo'
-import { CarStatus } from './components/CarStatus'
 import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
 import { ConfirmDialog } from './components/ConfirmDialog'
@@ -69,7 +68,6 @@ type Overlay =
   | 'account'
   | 'guide'
   | 'howTo'
-  | 'carState'
   | 'myRides'
   | 'notif'
   | 'support'
@@ -137,12 +135,15 @@ function Board({ session }: { session: Session }) {
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useKept<number | null>('board.ride', null)
+  // The Shared cars sheet's tab: a ride card opens it on Status, the drawer where it was.
+  const [carsTab, setCarsTab] = useKept<SharedCarsTab>('sharedCars.tab', 'status')
   // The sheets and drawers: your account (AccountSheet), the app menu
   // (Sidebar, under the ☰), the company-car help (CarGuide, from the drawer
-  // or a ride's driver card), how the shared cars stand (CarStatus), your
+  // or a ride's driver card), the shared cars (SharedCars: how they stand,
+  // and for admins the pool and its usage), your
   // figures (MyRides), the push switch (NotificationsSheet), who to ask
   // (SupportSheet) and the bug form (FeedbackSheet), the update screen, and
-  // the admin's sheets (CarAdmin, PeopleAdmin, RideLog, AdminLog, Approvals).
+  // the admin's sheets (PeopleAdmin, RideLog, AdminLog, Approvals).
   const { is, show, hide, closer } = useOverlays<Overlay>('board.sheets', ['update'])
 
   // Admin (backend: app/admin.py): the company-car pool and the people. The
@@ -610,8 +611,10 @@ function Board({ session }: { session: Session }) {
 
   // --- admin: the car pool ---
 
-  function openAdmin() {
+  function openSharedCars(tab?: SharedCarsTab) {
+    if (tab) setCarsTab(tab)
     show('cars')
+    if (!isAdmin) return
     setAdminError(null)
     reloadCars().catch((e) => setAdminError(errMsg(e)))
   }
@@ -740,7 +743,7 @@ function Board({ session }: { session: Session }) {
       onLate={(r, minutes) => void onLate(r, minutes)}
       onGuide={() => show('guide')}
       carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}
-      onCarState={() => show('carState')}
+      onCarState={() => openSharedCars('status')}
       onWait={onWait}
       onLeaveLine={onLeaveLine}
       onOdometer={onOdometer}
@@ -852,7 +855,6 @@ function Board({ session }: { session: Session }) {
     handle: user.username,
     isAdmin,
     onAccount: () => show('account'),
-    onCompanyCars: openAdmin,
     onPeople: () => show('people'),
     onPlaces: () => show('places'),
     onRideLog: () => show('rideLog'),
@@ -865,7 +867,7 @@ function Board({ session }: { session: Session }) {
     onFeedback: () => show('feedback'),
     onMyRides: () => show('myRides'),
     onNotifications: () => show('notif'),
-    onCarState: () => show('carState'),
+    onSharedCars: () => openSharedCars(),
     onInstall: installMode
       ? () => {
           if (installMode === 'prompt') void promptInstall().then((ok) => ok && installDone())
@@ -1017,7 +1019,6 @@ function Board({ session }: { session: Session }) {
 
         {is('howTo') && <HowTo isAdmin={isAdmin} onSupport={() => show('support')} onClose={closer('howTo')} />}
 
-        {is('carState') && <CarStatus states={carStates} onNotice={notice} onReported={() => reloadCarStates().catch(() => undefined)} onClose={closer('carState')} />}
 
         {is('support') && <SupportSheet onFeedback={() => show('feedback')} onClose={closer('support')} />}
 
@@ -1073,8 +1074,14 @@ function Board({ session }: { session: Session }) {
 
         {askDate !== null && <RequestForm date={askDate} submitting={submitting} error={askError} onSubmit={onSubmitAsk} onClose={closeAsk} />}
 
-        {is('cars') && isAdmin && (
-          <CarAdmin
+        {is('cars') && (
+          <SharedCars
+            isAdmin={isAdmin}
+            states={carStates}
+            onNotice={notice}
+            onReported={() => reloadCarStates().catch(() => undefined)}
+            tab={carsTab}
+            onTab={setCarsTab}
             cars={adminCars}
             loading={adminCars.length === 0}
             error={adminError}

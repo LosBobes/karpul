@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
-import type { CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
+import type { CarState, CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { CarStatusList } from './CarStatus'
+import { CarIcon, ChartIcon, InfoIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { PlaceDialog } from './PlaceDialog'
 import { Menu } from './Menu'
 import { PlaceInput } from './PlaceInput'
@@ -13,6 +14,16 @@ import { Sheet } from './Sheet'
 type CarPatch = Partial<CorporateCarInput & { active: boolean }>
 
 interface Props {
+  /** Everyone sees the Status tab; an admin also the pool and its usage. */
+  isAdmin: boolean
+  /** How each car stands (lib/useBoard.ts), null until loaded. */
+  states: CarState[] | null
+  onNotice: (text: string) => void
+  /** A report went in or changed: the board fetches the state again. */
+  onReported: () => void
+  /** The tab on screen, held by the board so a ride card can open Status. */
+  tab: SharedCarsTab
+  onTab: (tab: SharedCarsTab) => void
   cars: CorporateCar[]
   loading: boolean
   error: string | null
@@ -30,17 +41,24 @@ interface Props {
 /** Sentinel id for the "add a car" row, which has no car id of its own. */
 export const NEW_CAR_BUSY_ID = -1
 
-type Tab = 'cars' | 'usage'
+export type SharedCarsTab = 'status' | 'cars' | 'usage'
+type Tab = SharedCarsTab
+const TABS: Tab[] = ['status', 'cars', 'usage']
 
-/** The company-car pool, for admins (the drawer only offers it to them), with a usage tab. */
-export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onDelete, onLoadUsage, onDownloadUsage, onClose }: Props) {
+/**
+ * The shared cars, in one sheet: how each one stands (components/CarStatus.tsx)
+ * for everyone, and for admins the pool itself and how it is used.
+ */
+export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked, onTab: setTab, cars, loading, error, busyId, onCreate, onUpdate, onDelete, onLoadUsage, onDownloadUsage, onClose }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
-  const [tab, setTab] = useState<Tab>('cars')
+  const tab: Tab = isAdmin ? picked : 'status'
+  const tabIcon = { status: <InfoIcon size={16} />, cars: <CarIcon size={16} />, usage: <ChartIcon size={16} /> }
+  const tabLabel = { status: t.usage.statusTab, cars: t.usage.carsTab, usage: t.usage.tab }
 
   return (
     <Sheet
-      id="car-admin-title"
+      id="shared-cars-title"
       title={t.admin.title}
       onClose={onClose}
       footer={
@@ -49,15 +67,18 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
         </button>
       }
     >
-      <div className="segmented admin-tabs" role="radiogroup" aria-label={t.admin.title}>
-        <SegThumb count={2} index={tab === 'cars' ? 0 : 1} />
-        <button type="button" role="radio" aria-checked={tab === 'cars'} className={tab === 'cars' ? 'seg seg-on' : 'seg'} onClick={() => setTab('cars')}>
-          <CarIcon size={16} /> {t.usage.carsTab}
-        </button>
-        <button type="button" role="radio" aria-checked={tab === 'usage'} className={tab === 'usage' ? 'seg seg-on' : 'seg'} onClick={() => setTab('usage')}>
-          <ChartIcon size={16} /> {t.usage.tab}
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="segmented admin-tabs" role="radiogroup" aria-label={t.admin.title}>
+          <SegThumb count={TABS.length} index={TABS.indexOf(tab)} />
+          {TABS.map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={tab === k} className={tab === k ? 'seg seg-on' : 'seg'} onClick={() => setTab(k)}>
+              {tabIcon[k]} {tabLabel[k]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === 'status' && <CarStatusList states={states} isAdmin={isAdmin} onNotice={onNotice} onReported={onReported} />}
 
       {tab === 'usage' && <Usage load={onLoadUsage} download={onDownloadUsage} />}
 

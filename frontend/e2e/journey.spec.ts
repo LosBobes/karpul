@@ -85,10 +85,13 @@ test('offer a ride, get in, leave, and the driver removes it', async ({ browser 
   await expect(row).toBeHidden()
 })
 
-test('the car status sheet opens for everyone', async ({ browser }, info) => {
+test('the shared cars sheet opens on the status for everyone', async ({ browser }, info) => {
   const tag = attempt(info).toLowerCase()
   const page = await register(browser, { username: `vuk.${tag}`, first: 'Vuk', last: `Perić ${tag}` }, info.project.use)
   if (info.project.name === 'phone') await page.getByRole('button', { name: 'Menu' }).click()
-  await page.getByRole('button', { name: 'Car status' }).click()
-  await expect(page.getByRole('dialog', { name: 'Car status' })).toBeVisible()
+  await page.getByRole('button', { name: 'Shared cars' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Shared cars' })
+  await expect(sheet).toBeVisible()
+  // Not an admin: the status only, no pool or usage tabs.
+  await expect(sheet.getByRole('radio', { name: 'Usage' })).toHaveCount(0)
 })

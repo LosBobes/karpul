@@ -25,6 +25,8 @@ ACTIONS = (
     "car_added",
     "car_edited",
     "car_removed",
+    "car_report_edited",  # a report on how a shared car stands, put right
+    "car_report_removed",
     "admin_granted",
     "admin_revoked",
     "reset_link",
