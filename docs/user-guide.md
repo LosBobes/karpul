@@ -405,12 +405,14 @@ ride, the driver is notified.
   if the car got booked meanwhile); **Decline** removes the ride and tells the driver.
 - **Adding a ride for someone else:** in the ride form, tap the driver line and pick a person.
   They become the driver and are notified. Rides an admin adds are never held for approval.
-- **Shared cars:** an admin sees three tabs there. On **Status**, **Mark as fixed** clears a
-  reported problem, and ⋮ on a report under *Recent reports* puts a wrong reading right
-  (**Edit**) or takes the report out (**Remove**), so the car's status falls back on the one
-  before; both go in the admin log. On **Cars**, add a car (name, plate, seats), change it, **Retire** a car that left the
-  pool (its history stays) or delete one never used. The **Usage** tab shows how each car was
-  used over 30, 90 or 365 days and can be downloaded as a spreadsheet.
+- **Shared cars:** an admin manages the pool on the same car cards everyone sees. ⋮ on a car
+  edits it (name, plate, seats, where it departs from), **Retire**s a car that left the pool
+  (its history stays; retired cars are listed under the others, where **Restore** brings one
+  back) or deletes one never used, and **Add shared car** is at the foot of the list. On a
+  card, **Mark as fixed** clears a reported problem, and ⋮ on a report under *Recent reports*
+  puts a wrong reading right (**Edit**) or takes the report out (**Remove**), so the car's
+  status falls back on the one before; both go in the admin log. The **Usage** tab shows how
+  each car was used over 30, 90 or 365 days and can be downloaded as a spreadsheet.
 - **People:** search accounts, **Make admin** / **Remove admin**, create a **Password reset
   link** (pass it on yourself; there is no email), remove someone's photo, or **Delete
   account** (their coming rides are cancelled; past rides keep the name).

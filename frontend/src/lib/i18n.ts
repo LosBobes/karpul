@@ -558,7 +558,6 @@ const en = {
   usage: {
     tab: 'Usage',
     carsTab: 'Cars',
-    statusTab: 'Status',
     window: (days: number) => (days === 365 ? 'Last year' : `Last ${days} days`),
     ridesLabel: 'Rides',
     daysOut: 'Days out',
@@ -1102,7 +1101,7 @@ const en = {
         steps: [
           '**Approvals** lists shared-car rides waiting for an answer. **Approve** books the car; **Decline** removes the ride.',
           'An admin can edit or remove any ride and manage its seats. In the ride form, tap the driver line to add a ride in someone else\'s name.',
-          'In **Shared cars**, **Mark as fixed** clears a reported problem and ⋮ on a report puts it right or removes it; the **Cars** tab adds, edits and retires pool cars, and **Usage** shows how they are used.',
+          'In **Shared cars**, ⋮ on a car edits, retires or deletes it and **Add shared car** is at the foot. **Mark as fixed** clears a reported problem, ⋮ on a report puts it right or removes it, and **Usage** shows how the cars are used.',
           '**People** makes admins, issues a password reset link (pass it on yourself) and deletes accounts.',
           '**All rides** is every ride in a date range, with a spreadsheet download. **Admin log** lists every change made to someone else\'s ride, a car or an account.',
         ],
@@ -1888,7 +1887,6 @@ const sr: Messages = {
   usage: {
     tab: 'Korišćenje',
     carsTab: 'Automobili',
-    statusTab: 'Stanje',
     window: (days) => (days === 365 ? 'Poslednjih godinu dana' : `Poslednjih ${days} dana`),
     ridesLabel: 'Vožnje',
     daysOut: 'Dana u vožnji',
@@ -2425,7 +2423,7 @@ const sr: Messages = {
         steps: [
           '**Odobrenja** prikazuje vožnje zajedničkim autom koje čekaju odgovor. **Odobri** rezerviše auto; **Odbij** uklanja vožnju.',
           'Administrator može da izmeni ili ukloni bilo koju vožnju i upravlja njenim mestima. U formi za vožnju dodirni red sa vozačem da dodaš vožnju u nečije ime.',
-          'U **Zajedničkim automobilima**, **Označi kao rešeno** briše prijavljeni problem, a ⋮ na prijavi je ispravlja ili uklanja; kartica **Automobili** služi za dodavanje, izmenu i povlačenje automobila, a **Korišćenje** pokazuje kako se koriste.',
+          'U **Zajedničkim automobilima**, ⋮ na autu ga menja, povlači ili briše, a dodavanje je na dnu liste. **Označi kao rešeno** briše prijavljeni problem, ⋮ na prijavi je ispravlja ili uklanja, a **Korišćenje** pokazuje kako se automobili koriste.',
           '**Ljudi** služi da postaviš administratore, napraviš link za novu lozinku (prosleđuješ ga lično) i obrišeš naloge.',
           '**Sve vožnje** su sve vožnje u izabranom periodu, uz preuzimanje kao tabelu. **Dnevnik administratora** beleži svaku izmenu tuđe vožnje, auta ili naloga.',
         ],

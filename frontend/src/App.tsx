@@ -135,8 +135,8 @@ function Board({ session }: { session: Session }) {
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useKept<number | null>('board.ride', null)
-  // The Shared cars sheet's tab: a ride card opens it on Status, the drawer where it was.
-  const [carsTab, setCarsTab] = useKept<SharedCarsTab>('sharedCars.tab', 'status')
+  // The Shared cars sheet's tab: a ride card opens it on the cars, the drawer where it was.
+  const [carsTab, setCarsTab] = useKept<SharedCarsTab>('sharedCars.tab', 'cars')
   // The sheets and drawers: your account (AccountSheet), the app menu
   // (Sidebar, under the ☰), the company-car help (CarGuide, from the drawer
   // or a ride's driver card), the shared cars (SharedCars: how they stand,
@@ -743,7 +743,7 @@ function Board({ session }: { session: Session }) {
       onLate={(r, minutes) => void onLate(r, minutes)}
       onGuide={() => show('guide')}
       carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}
-      onCarState={() => openSharedCars('status')}
+      onCarState={() => openSharedCars('cars')}
       onWait={onWait}
       onLeaveLine={onLeaveLine}
       onOdometer={onOdometer}

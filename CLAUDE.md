@@ -226,11 +226,13 @@ connect). **An admin puts the state right**: `PATCH /api/cars/corporate/reports/
 sent replace the report's, null clears one, a report left saying nothing is a 422; author and time stay)
 and `DELETE` of the same (the state falls back on the report before), both in the admin's log
 (`car_report_edited` / `car_report_removed`); *Mark as fixed* is an ordinary report with `issues: ""`.
-On screen: *Shared cars* in the drawer for everyone (`components/SharedCars.tsx`), whose *Status*
-tab is `CarStatusList` (`components/CarStatus.tsx`: a card per car, the report form inline on it,
-and for admins *Mark as fixed* on a problem and a ⋮ with *Edit* / *Remove* on each recent report;
-the text helpers in `lib/carState.ts`); admins also get its *Cars* and *Usage* tabs (the tab is
-`sharedCars.tab` in `App.tsx`, so the driver card's car line opens it on *Status*). One line under
+On screen: *Shared cars* in the drawer for everyone (`components/SharedCars.tsx`), one list of the
+cars: `CarStatusList` (`components/CarStatus.tsx`: a card per car with its state, the report form inline
+on it; the text helpers in `lib/carState.ts`). The pool is managed on the same cards, not a list of its
+own: an admin gets the car's ⋮ (edit, retire, delete) and its `CarEditor` handed in through `carMenu` /
+`carEditor`, *Mark as fixed* on a problem, a ⋮ with *Edit* / *Remove* on each recent report, *Add
+shared car* at the foot and the retired cars listed under it; the one other tab, admins only, is
+*Usage* (the tab is `sharedCars.tab` in `App.tsx`, so the driver card's car line opens it on the cars). One line under
 the car's name on the driver card of a shared-car ride (`.driver-car-state`). Tests:
 `tests/test_car_state.py`.
 
@@ -307,8 +309,8 @@ cancelled them, its coming seats and queue places go with `promote_waitlist`, it
 withdrawn; the past keeps the names with the ids nulled, messages keep their text; its open sockets
 are closed through `events.disconnect`, which the hub sends only to that account's subscriptions). `UserRead.is_admin`
 is the effective value (`routers/auth.user_read`). The drawer shows *People* and
-*All rides* (`PeopleAdmin`, `RideLog`) to admins only, and *Shared cars* (`SharedCars`) to everyone
-with its *Cars* and *Usage* tabs to admins only. *All rides* is a spreadsheet-style
+*All rides* (`PeopleAdmin`, `RideLog`) to admins only, and *Shared cars* (`SharedCars`) to everyone,
+with the pool's controls and the *Usage* tab to admins only. *All rides* is a spreadsheet-style
 table for an office manager: `GET /api/admin/rides?from&to` (any window up to `MAX_LOG_DAYS`, past
 included, unlike the board's 92), shown in a wide sheet (`.panel-wide`, sticky header row and date
 column). It also carries each shared car's odometer (below). Filtering, sorting and the CSV download all happen in the browser (`lib/rideLog.ts`, tested in
@@ -626,8 +628,8 @@ row in the text's ink, a leading chevron in its own small well that turns down w
 a tint under a mouse and a darker one when pressed, and the open group's rows hanging off a hairline
 under the chevron. The items are one label each, no hint line. Your account is the
 identity block on top (it opens `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
-*Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`SharedCars`: *Status* for everyone, and for admins a
-*Cars* tab and a *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
+*Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`SharedCars`: the cars and how they stand for everyone, managed on
+the same cards by admins, who also get a *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn like Fluent's
 own icons only bigger (a 120×80 box at 96px, so the 1.875 stroke lands on 1.5px, round corners, soft

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useKept } from '../lib/keep'
 import { api } from '../lib/api'
 import { factText, fmtWhen } from '../lib/carState'
@@ -21,6 +21,9 @@ interface Props {
   onNotice: (text: string) => void
   /** A report went in or changed: the board fetches the state again (the socket brings it too). */
   onReported: () => void
+  /** Admins: the pool's controls for a car (its ⋮ menu, and its editor while open), from SharedCars. */
+  carMenu?: (carId: number) => ReactNode
+  carEditor?: (carId: number) => ReactNode
 }
 
 type Cleanness = '' | 'clean' | 'dirty'
@@ -35,10 +38,11 @@ const errText = (err: unknown) => messages().apiError(err instanceof Error ? err
  * nobody noted them, whether it is clean and what is wrong. For everyone:
  * the next driver wants to know before they go. A report can be written
  * here for any car (the one who finds it dirty is not the one who left it
- * so); bringing a car back on its ride card writes one too. The *Status*
- * tab of the Shared cars sheet (components/SharedCars.tsx).
+ * so); bringing a car back on its ride card writes one too. The body of
+ * the Shared cars sheet (components/SharedCars.tsx), which hands an admin's
+ * pool controls in through `carMenu` / `carEditor`.
  */
-export function CarStatusList({ states, isAdmin, onNotice, onReported }: Props) {
+export function CarStatusList({ states, isAdmin, onNotice, onReported, carMenu, carEditor }: Props) {
   const t = useT()
   // The car whose card has the form open, and the report it edits (null: a new one).
   const [reporting, setReporting] = useKept<number | null>('carState.reporting', null)
@@ -87,6 +91,8 @@ export function CarStatusList({ states, isAdmin, onNotice, onReported }: Props) 
               key={s.car.id}
               state={s}
               isAdmin={isAdmin}
+              menu={carMenu?.(s.car.id)}
+              editor={carEditor?.(s.car.id)}
               busy={busy}
               reporting={open}
               editing={edited}
@@ -130,6 +136,8 @@ export function CarStatusList({ states, isAdmin, onNotice, onReported }: Props) 
 interface CardProps {
   state: CarState
   isAdmin: boolean
+  menu?: ReactNode
+  editor?: ReactNode
   busy: boolean
   reporting: boolean
   /** The report being put right, when the open form edits one. */
@@ -141,7 +149,7 @@ interface CardProps {
   onDone: (sent: boolean) => void
 }
 
-function CarStateCard({ state, isAdmin, busy, reporting, editing, onReport, onEdit, onRemove, onFix, onDone }: CardProps) {
+function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, onReport, onEdit, onRemove, onFix, onDone }: CardProps) {
   const t = useT()
   const odo = factText(state.odometer, (v) => t.carState.km(km(v)))
   const soc = factText(state.soc, (v) => t.carState.pct(v))
@@ -159,9 +167,14 @@ function CarStateCard({ state, isAdmin, busy, reporting, editing, onReport, onEd
             {state.car.name}
             <PowertrainMark carName={state.car.name} />
           </strong>
-          <span className="mono">{state.car.plate}</span>
+          <span>
+            <span className="mono">{state.car.plate}</span> · {t.admin.seats(state.car.passenger_seats)}
+            {state.car.home && ` · ${state.car.home}`}
+          </span>
         </span>
+        {menu}
       </header>
+      {editor}
 
       {state.car.home && state.car.home_lat != null && state.car.home_lng != null && (
         <MapView

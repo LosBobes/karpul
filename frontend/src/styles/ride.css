@@ -609,9 +609,15 @@
   gap: 0.3rem;
   font-size: 1rem;
 }
-.car-state-name .mono {
+.car-state-name > span {
   font-size: 0.8rem;
   color: var(--muted);
+}
+.car-state-head > .menu {
+  margin-left: auto;
+}
+.retired-cars {
+  margin-top: 1rem;
 }
 .car-facts {
   display: grid;
