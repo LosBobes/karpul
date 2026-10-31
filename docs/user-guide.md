@@ -293,7 +293,7 @@ shared-car ride.
 Found the car dirty, low on battery or with a warning light? Use **Report on this car** on its
 card. It opens a window of its own: type the odometer, or add to the last reading what the rides
 since then come to, a trip between the offices (90 km Beograd to Novi Sad, 92 back) or 10 or
-100 km, drag the battery to its charge, pick the picture of the car as you found it (clean,
+100 km, drag the battery to its charge (or tap its figure and type it), pick the picture of the car as you found it (clean,
 needs a wash, or not checked) and say what is wrong, with chips for the usual problems. Fill in
 only what you checked. A report of a problem goes straight to the admins.
 
@@ -304,8 +304,10 @@ People in a shared car (and admins) see a **Kilometres** box on the ride:
 1. **Note the start:** the driver types the odometer reading when they take the car.
 2. **Hand over:** if someone else takes the wheel on the way, enter the reading and pick
    **Who takes the wheel**. The log then shows who drove how far.
-3. **Car is back:** the reading when the car is returned, plus **How you leave it**: battery
-   %, clean or needs a wash, and **Anything wrong?** This updates the car's status in *Shared cars*.
+3. **Car is back:** the reading when the car is returned (the green chip adds this ride's
+   length to the start), plus **How you leave it**: drag the battery or tap its figure to type
+   it, pick the picture of the car as you leave it, and say what is wrong. This updates the
+   car's status in *Shared cars*.
 
 **Undo the last entry** fixes a typo. If you forget, Karpul reminds you a little after the
 return time.

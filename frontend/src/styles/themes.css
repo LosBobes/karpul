@@ -659,9 +659,9 @@
   .bolt-current-aura,
   .bolt-halo,
   .bolt-start,
-  .report-sheet *,
-  .report-sheet *::before,
-  .report-sheet *::after {
+  .report-parts *,
+  .report-parts *::before,
+  .report-parts *::after {
     animation: none !important;
   }
 }
