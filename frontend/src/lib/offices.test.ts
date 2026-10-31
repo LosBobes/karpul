@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { officeDistance, officeOf } from './offices'
+import { officeDistance, officeOf, rideKm } from './offices'
 
 describe('the road between the offices', () => {
   it('knows both directions', () => {
@@ -11,5 +11,14 @@ describe('the road between the offices', () => {
     expect(officeDistance('Novi Sad', 'Niš')).toBeNull()
     expect(officeDistance('Office', 'Novi Sad')).toBeNull()
     expect(officeOf('Zrenjanin')).toBeNull()
+  })
+})
+
+describe('rideKm', () => {
+  it('counts the office road each way and doubles any other', () => {
+    expect(rideKm('Beograd', 'Novi Sad', null, false)).toBe(90)
+    expect(rideKm('Beograd', 'Novi Sad', null, true)).toBe(182)
+    expect(rideKm('Beograd', 'Niš', 240, true)).toBe(480)
+    expect(rideKm('Beograd', 'Niš', null, true)).toBeNull()
   })
 })

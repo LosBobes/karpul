@@ -497,14 +497,8 @@
   align-items: flex-end;
   gap: 0.6rem;
 }
-.odo-reading {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  flex: 1 1 9rem;
-}
-.odo-reading input {
-  font-variant-numeric: tabular-nums;
+.odo-form > .report-part {
+  flex: 1 1 100%;
 }
 .odo-who-pick {
   flex: 1 1 12rem;
@@ -530,7 +524,7 @@
   flex: 1 1 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 1rem;
   padding: 0.7rem 0.75rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -539,23 +533,6 @@
 .odo-left > .subfield-label {
   font-weight: 600;
   color: var(--text);
-}
-.odo-left-grid {
-  display: grid;
-  grid-template-columns: minmax(6rem, 1fr) minmax(0, 2fr);
-  gap: 0.6rem;
-  align-items: end;
-}
-.odo-soc,
-.odo-clean,
-.odo-issues {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  min-width: 0;
-}
-.odo-soc input {
-  font-variant-numeric: tabular-nums;
 }
 .segmented-sm .seg {
   min-height: 32px;
@@ -566,7 +543,7 @@
 /* --- The shared cars' state (components/CarStatus.tsx) ----------------------
    One card per car: three facts in a row (a guessed one in italics, a car
    that needs a wash in amber), the reported problem on a tinted line, the
-   recent reports folded away, and the report form inline at the foot. */
+   recent reports folded away, and the button that opens the report window. */
 .car-states {
   display: flex;
   flex-direction: column;
@@ -808,13 +785,13 @@
   color: var(--muted);
 }
 /* The likeliest figure, in green. */
-.report-chip-main {
+.chip.report-chip-main {
   border-color: var(--green-line);
   background: var(--green-soft);
   color: var(--green-dark);
   font-weight: 600;
 }
-.report-chip-main small {
+.chip.report-chip-main small {
   color: inherit;
   opacity: 0.8;
 }
@@ -833,6 +810,9 @@
   background: linear-gradient(180deg, #2a3038, #14181d);
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border);
   transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.odo-drum-invalid {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--red);
 }
 .odo-drum:focus-within {
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--green);
@@ -986,6 +966,43 @@
   gap: 0.15rem;
   color: var(--text);
   pointer-events: none;
+}
+/* The figure is a button of its own, drawn as plain text on the battery: a tap
+   types over it in place, the rest of the battery drags. */
+.battery-figure,
+.battery-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  pointer-events: auto;
+  cursor: text;
+}
+.battery-figure:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.battery .battery-input {
+  width: 3.2ch;
+  min-height: 0;
+  box-shadow: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  caret-color: var(--text);
+  color: var(--text);
+  font-size: 1.7rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .battery-read strong {
   font-size: 1.7rem;
@@ -1247,7 +1264,7 @@
 /* Idle: once the form has sat untouched a few seconds (useIdle in
    CarReportSheet), it fidgets, and the next touch stills it. A light runs
    along the drum and the last wheel nudges as if the car were rolling; an
-   empty battery shows itself being filled, a set one pulses its bolt; the
+   empty battery shows itself being filled; the
    cars not picked rock on their springs, one after the other. */
 .odo-drum::before {
   content: '';
@@ -1272,10 +1289,6 @@
   border-radius: 7px;
   background: linear-gradient(90deg, hsl(0 72% 44% / 0.35), hsl(45 72% 44% / 0.35), hsl(140 72% 44% / 0.35));
   animation: battery-hint 2.8s var(--ease-smooth) infinite;
-}
-.report-idle .battery:not(.battery-none) .battery-read svg {
-  animation: bolt-throb 1.6s var(--ease-smooth) infinite;
-  color: var(--charge);
 }
 .report-idle .wash-card:not(.wash-card-on) .wash-car {
   animation: wash-rock 2.4s var(--ease-smooth) infinite;
@@ -1328,15 +1341,6 @@
   100% {
     width: calc(80% - 6px);
     opacity: 0;
-  }
-}
-@keyframes bolt-throb {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.25);
   }
 }
 @keyframes wash-rock {

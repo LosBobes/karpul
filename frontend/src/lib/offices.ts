@@ -31,6 +31,18 @@ export function officeDistance(origin: string, destination: string): number | nu
   return DISTANCES[`${a}>${b}`] ?? null
 }
 
+/**
+ * How far a ride takes a car (backend: offices.ride_km): the way there, and
+ * the way back when it returns. Between the offices each direction is its own
+ * figure; any other route is the driver's one-way distance, doubled.
+ */
+export function rideKm(origin: string, destination: string, distanceKm: number | null, withReturn: boolean): number | null {
+  const there = officeDistance(origin, destination) ?? distanceKm
+  if (there === null) return null
+  if (!withReturn) return there
+  return there + (officeDistance(destination, origin) ?? there)
+}
+
 /** The trips between the offices as the car report offers them (components/CarReportSheet.tsx). */
 export const OFFICE_TRIPS: { from: string; to: string; km: number }[] = [
   { from: 'Beograd', to: 'Novi Sad', km: DISTANCES['beograd>novi sad'] },
