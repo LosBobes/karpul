@@ -1,30 +1,36 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useKept } from '../lib/keep'
 import { api } from '../lib/api'
 import { factText, fmtWhen } from '../lib/carState'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import type { CarReportInput, CarState } from '../lib/types'
+import type { CarReport, CarReportInput, CarState } from '../lib/types'
 import { Avatar } from './Avatar'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { BoltIcon, DropIcon, InfoIcon, RoadIcon, XIcon } from './icons'
+import { CheckIcon, BoltIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, RoadIcon, TrashIcon, XIcon } from './icons'
+import { ConfirmDialog } from './ConfirmDialog'
+import { Menu } from './Menu'
 import { SegThumb } from './Segmented'
-import { Sheet } from './Sheet'
 import { MapView } from './MapView'
 
 interface Props {
   /** The board's copy, kept live (lib/useBoard.ts); null until loaded. */
   states: CarState[] | null
+  /** An admin may also mark a problem fixed and put a report right or take it out. */
+  isAdmin: boolean
   onNotice: (text: string) => void
-  /** A report went in: the board fetches the state again (the socket brings it too). */
+  /** A report went in or changed: the board fetches the state again (the socket brings it too). */
   onReported: () => void
-  onClose: () => void
+  /** Admins: the pool's controls for a car (its ⋮ menu, and its editor while open), from SharedCars. */
+  carMenu?: (carId: number) => ReactNode
+  carEditor?: (carId: number) => ReactNode
 }
 
 type Cleanness = '' | 'clean' | 'dirty'
 const CLEANNESS: Cleanness[] = ['', 'clean', 'dirty']
 
 const km = (n: number) => n.toLocaleString(intlTag())
+const errText = (err: unknown) => messages().apiError(err instanceof Error ? err.message : String(err))
 
 /**
  * Every shared car as it stands (backend: app/carstate.py): the odometer and
@@ -32,54 +38,118 @@ const km = (n: number) => n.toLocaleString(intlTag())
  * nobody noted them, whether it is clean and what is wrong. For everyone:
  * the next driver wants to know before they go. A report can be written
  * here for any car (the one who finds it dirty is not the one who left it
- * so); bringing a car back on its ride card writes one too.
+ * so); bringing a car back on its ride card writes one too. The body of
+ * the Shared cars sheet (components/SharedCars.tsx), which hands an admin's
+ * pool controls in through `carMenu` / `carEditor`.
  */
-export function CarStatus({ states, onNotice, onReported, onClose }: Props) {
+export function CarStatusList({ states, isAdmin, onNotice, onReported, carMenu, carEditor }: Props) {
   const t = useT()
+  // The car whose card has the form open, and the report it edits (null: a new one).
   const [reporting, setReporting] = useKept<number | null>('carState.reporting', null)
+  const [editing, setEditing] = useKept<number | null>('carState.editing', null)
+  const [doomed, setDoomed] = useState<CarReport | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function fixIssue(carId: number) {
+    setBusy(true)
+    try {
+      await api.reportCar(carId, { odometer_km: null, soc: null, clean: null, issues: '' })
+      onNotice(t.carState.fixedSent)
+      onReported()
+    } catch (err) {
+      onNotice(errText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove(report: CarReport) {
+    setBusy(true)
+    try {
+      await api.removeCarReport(report.id)
+      setDoomed(null)
+      onNotice(t.carState.reportRemoved)
+      onReported()
+    } catch (err) {
+      setDoomed(null)
+      onNotice(errText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
-    <Sheet
-      id="car-status-title"
-      title={t.carState.title}
-      onClose={onClose}
-      footer={
-        <button type="button" className="btn btn-primary btn-block" onClick={onClose}>
-          {t.common.done}
-        </button>
-      }
-    >
+    <>
       {states === null && <p className="hint">{t.common.loading}</p>}
       {states !== null && states.length === 0 && <p className="hint">{t.carState.noCars}</p>}
       <div className="car-states">
-        {states?.map((s) => (
-          <CarStateCard
-            key={s.car.id}
-            state={s}
-            reporting={reporting === s.car.id}
-            onReport={() => setReporting(s.car.id)}
-            onDone={(sent) => {
-              setReporting(null)
-              if (sent) {
-                onNotice(t.carState.reportSent)
-                onReported()
-              }
-            }}
-          />
-        ))}
+        {states?.map((s) => {
+          const open = reporting === s.car.id
+          const edited = open && editing !== null ? (s.recent.find((r) => r.id === editing) ?? null) : null
+          return (
+            <CarStateCard
+              key={s.car.id}
+              state={s}
+              isAdmin={isAdmin}
+              menu={carMenu?.(s.car.id)}
+              editor={carEditor?.(s.car.id)}
+              busy={busy}
+              reporting={open}
+              editing={edited}
+              onReport={() => {
+                setEditing(null)
+                setReporting(s.car.id)
+              }}
+              onEdit={(r) => {
+                setEditing(r.id)
+                setReporting(s.car.id)
+              }}
+              onRemove={setDoomed}
+              onFix={() => void fixIssue(s.car.id)}
+              onDone={(sent) => {
+                const wasEdit = editing !== null
+                setReporting(null)
+                setEditing(null)
+                if (sent) {
+                  onNotice(wasEdit ? t.carState.reportSaved : t.carState.reportSent)
+                  onReported()
+                }
+              }}
+            />
+          )
+        })}
       </div>
-    </Sheet>
+      {doomed && (
+        <ConfirmDialog
+          title={t.carState.removeTitle}
+          body={t.carState.removeBody(doomed.user_name, fmtWhen(doomed.created_at))}
+          confirmLabel={t.carState.removeReport}
+          busy={busy}
+          onConfirm={() => void remove(doomed)}
+          onCancel={() => setDoomed(null)}
+        />
+      )}
+    </>
   )
 }
 
 interface CardProps {
   state: CarState
+  isAdmin: boolean
+  menu?: ReactNode
+  editor?: ReactNode
+  busy: boolean
   reporting: boolean
+  /** The report being put right, when the open form edits one. */
+  editing: CarReport | null
   onReport: () => void
+  onEdit: (report: CarReport) => void
+  onRemove: (report: CarReport) => void
+  onFix: () => void
   onDone: (sent: boolean) => void
 }
 
-function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
+function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, onReport, onEdit, onRemove, onFix, onDone }: CardProps) {
   const t = useT()
   const odo = factText(state.odometer, (v) => t.carState.km(km(v)))
   const soc = factText(state.soc, (v) => t.carState.pct(v))
@@ -97,9 +167,14 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
             {state.car.name}
             <PowertrainMark carName={state.car.name} />
           </strong>
-          <span className="mono">{state.car.plate}</span>
+          <span>
+            <span className="mono">{state.car.plate}</span> · {t.admin.seats(state.car.passenger_seats)}
+            {state.car.home && ` · ${state.car.home}`}
+          </span>
         </span>
+        {menu}
       </header>
+      {editor}
 
       {state.car.home && state.car.home_lat != null && state.car.home_lng != null && (
         <MapView
@@ -140,6 +215,11 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
           <strong>{issues ? issues.value : t.carState.noIssues}</strong>
           {issues && issues.by && issues.at && <small>{t.carState.noted(issues.by, fmtWhen(issues.at))}</small>}
         </span>
+        {issues && isAdmin && (
+          <button type="button" className="btn car-issues-fix" disabled={busy} onClick={onFix}>
+            <CheckIcon size={16} /> {t.carState.fixed}
+          </button>
+        )}
       </div>
 
       {state.recent.length > 0 && !reporting && (
@@ -165,6 +245,16 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
                       .join(' · ')}
                   </small>
                 </span>
+                {isAdmin && (
+                  <Menu
+                    trigger={<KebabIcon />}
+                    label={t.carState.reportOptions(r.user_name)}
+                    items={[
+                      { label: t.carState.editReport, icon: <PencilIcon size={18} />, onSelect: () => onEdit(r), disabled: busy },
+                      { label: t.carState.removeReport, icon: <TrashIcon size={18} />, onSelect: () => onRemove(r), danger: true, disabled: busy },
+                    ]}
+                  />
+                )}
               </li>
             ))}
           </ul>
@@ -172,7 +262,7 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
       )}
 
       {reporting ? (
-        <ReportForm carId={state.car.id} onDone={onDone} />
+        <ReportForm key={editing?.id ?? 'new'} carId={state.car.id} report={editing} onDone={onDone} />
       ) : (
         <button type="button" className="add-row add-row-quiet" onClick={onReport}>
           <InfoIcon size={18} /> {t.carState.report}
@@ -183,12 +273,14 @@ function CarStateCard({ state, reporting, onReport, onDone }: CardProps) {
 }
 
 /** The report, inline on the car's card (not a second overlay). */
-function ReportForm({ carId, onDone }: { carId: number; onDone: (sent: boolean) => void }) {
+function ReportForm({ carId, report, onDone }: { carId: number; report: CarReport | null; onDone: (sent: boolean) => void }) {
   const t = useT()
-  const [odometer, setOdometer] = useKept(`carState.${carId}.odometer`, '')
-  const [soc, setSoc] = useKept(`carState.${carId}.soc`, '')
-  const [cleanness, setCleanness] = useKept<Cleanness>(`carState.${carId}.cleanness`, '')
-  const [issues, setIssues] = useKept(`carState.${carId}.issues`, '')
+  // A new report's draft is kept per car, an edit's per report.
+  const k = report ? `carState.report${report.id}` : `carState.${carId}`
+  const [odometer, setOdometer] = useKept(`${k}.odometer`, report?.odometer_km != null ? String(report.odometer_km) : '')
+  const [soc, setSoc] = useKept(`${k}.soc`, report?.soc != null ? String(report.soc) : '')
+  const [cleanness, setCleanness] = useKept<Cleanness>(`${k}.cleanness`, report?.clean == null ? '' : report.clean ? 'clean' : 'dirty')
+  const [issues, setIssues] = useKept(`${k}.issues`, report?.issues ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -200,19 +292,21 @@ function ReportForm({ carId, onDone }: { carId: number; onDone: (sent: boolean) 
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (empty || socBad) return
-    const report: CarReportInput = {
+    const input: CarReportInput = {
       odometer_km: odoNum,
       soc: socNum,
       clean: cleanness === '' ? null : cleanness === 'clean',
-      issues: issues.trim() === '' ? null : issues.trim(),
+      // Editing a report that said "nothing wrong" keeps saying so while the field stays empty.
+      issues: issues.trim() === '' ? (report?.issues === '' ? '' : null) : issues.trim(),
     }
     setBusy(true)
     setError(null)
     try {
-      await api.reportCar(carId, report)
+      if (report === null) await api.reportCar(carId, input)
+      else await api.editCarReport(report.id, input)
       onDone(true)
     } catch (err) {
-      setError(messages().apiError(err instanceof Error ? err.message : String(err)))
+      setError(errText(err))
     } finally {
       setBusy(false)
     }

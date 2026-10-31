@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
-import type { CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
+import type { CarState, CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { CarStatusList } from './CarStatus'
+import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { PlaceDialog } from './PlaceDialog'
 import { Menu } from './Menu'
 import { PlaceInput } from './PlaceInput'
@@ -13,6 +14,16 @@ import { Sheet } from './Sheet'
 type CarPatch = Partial<CorporateCarInput & { active: boolean }>
 
 interface Props {
+  /** Everyone sees the Status tab; an admin also the pool and its usage. */
+  isAdmin: boolean
+  /** How each car stands (lib/useBoard.ts), null until loaded. */
+  states: CarState[] | null
+  onNotice: (text: string) => void
+  /** A report went in or changed: the board fetches the state again. */
+  onReported: () => void
+  /** The tab on screen, held by the board so a ride card can open Status. */
+  tab: SharedCarsTab
+  onTab: (tab: SharedCarsTab) => void
   cars: CorporateCar[]
   loading: boolean
   error: string | null
@@ -30,17 +41,65 @@ interface Props {
 /** Sentinel id for the "add a car" row, which has no car id of its own. */
 export const NEW_CAR_BUSY_ID = -1
 
-type Tab = 'cars' | 'usage'
+export type SharedCarsTab = 'cars' | 'usage'
+const TABS: SharedCarsTab[] = ['cars', 'usage']
 
-/** The company-car pool, for admins (the drawer only offers it to them), with a usage tab. */
-export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onDelete, onLoadUsage, onDownloadUsage, onClose }: Props) {
+/**
+ * The shared cars, in one sheet: a card per car with how it stands
+ * (components/CarStatus.tsx), for everyone. An admin manages the pool on the
+ * same cards (edit, retire, delete, add one at the foot, the retired ones
+ * under them) and has a second tab with how the cars are used.
+ */
+export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked, onTab: setTab, cars, loading, error, busyId, onCreate, onUpdate, onDelete, onLoadUsage, onDownloadUsage, onClose }: Props) {
   const t = useT()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
-  const [tab, setTab] = useState<Tab>('cars')
+  const tab: SharedCarsTab = isAdmin ? picked : 'cars'
+  const tabIcon = { cars: <CarIcon size={16} />, usage: <ChartIcon size={16} /> }
+  const tabLabel = { cars: t.usage.carsTab, usage: t.usage.tab }
+  const byId = new Map(cars.map((c) => [c.id, c]))
+  const retired = cars.filter((c) => !c.active)
+
+  const menuFor = (car: CorporateCar) => (
+    <Menu
+      trigger={<KebabIcon />}
+      label={t.admin.optionsFor(car.name)}
+      items={[
+        { label: t.common.edit, icon: <PencilIcon size={18} />, onSelect: () => setEditing(car.id), disabled: busyId === car.id },
+        {
+          label: car.active ? t.admin.retire : t.admin.restore,
+          icon: <CarIcon size={18} />,
+          onSelect: () => onUpdate(car.id, { active: !car.active }),
+          disabled: busyId === car.id,
+        },
+        { label: t.common.delete, icon: <TrashIcon size={18} />, onSelect: () => onDelete(car), danger: true, disabled: busyId === car.id },
+      ]}
+    />
+  )
+
+  const editorFor = (car: CorporateCar) =>
+    editing === car.id ? (
+      <CarEditor
+        key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}:${car.home}:${car.home_lat}:${car.home_lng}`}
+        initial={{
+          name: car.name,
+          plate: car.plate,
+          passenger_seats: car.passenger_seats,
+          home: car.home,
+          home_point: car.home_lat != null && car.home_lng != null ? { lat: car.home_lat, lng: car.home_lng } : null,
+        }}
+        busy={busyId === car.id}
+        submitLabel={t.common.save}
+        onSubmit={(input) => {
+          onUpdate(car.id, input)
+          setEditing(null)
+        }}
+        onCancel={() => setEditing(null)}
+      />
+    ) : null
 
   return (
     <Sheet
-      id="car-admin-title"
+      id="shared-cars-title"
       title={t.admin.title}
       onClose={onClose}
       footer={
@@ -49,100 +108,80 @@ export function CarAdmin({ cars, loading, error, busyId, onCreate, onUpdate, onD
         </button>
       }
     >
-      <div className="segmented admin-tabs" role="radiogroup" aria-label={t.admin.title}>
-        <SegThumb count={2} index={tab === 'cars' ? 0 : 1} />
-        <button type="button" role="radio" aria-checked={tab === 'cars'} className={tab === 'cars' ? 'seg seg-on' : 'seg'} onClick={() => setTab('cars')}>
-          <CarIcon size={16} /> {t.usage.carsTab}
-        </button>
-        <button type="button" role="radio" aria-checked={tab === 'usage'} className={tab === 'usage' ? 'seg seg-on' : 'seg'} onClick={() => setTab('usage')}>
-          <ChartIcon size={16} /> {t.usage.tab}
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="segmented admin-tabs" role="radiogroup" aria-label={t.admin.title}>
+          <SegThumb count={TABS.length} index={TABS.indexOf(tab)} />
+          {TABS.map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={tab === k} className={tab === k ? 'seg seg-on' : 'seg'} onClick={() => setTab(k)}>
+              {tabIcon[k]} {tabLabel[k]}
+            </button>
+          ))}
+        </div>
+      )}
 
       {tab === 'usage' && <Usage load={onLoadUsage} download={onDownloadUsage} />}
 
       {tab === 'cars' && (
         <>
+          {isAdmin && error && <p className="error">{error}</p>}
 
-      {error && <p className="error">{error}</p>}
+          <CarStatusList
+            states={states}
+            isAdmin={isAdmin}
+            onNotice={onNotice}
+            onReported={onReported}
+            carMenu={isAdmin ? (id) => { const car = byId.get(id); return car ? menuFor(car) : null } : undefined}
+            carEditor={isAdmin ? (id) => { const car = byId.get(id); return car ? editorFor(car) : null } : undefined}
+          />
 
-      <ul className="admin-list">
-        {loading && cars.length === 0 && <li className="hint">{t.common.loading}</li>}
-        {cars.map((car) => (
-          <li key={car.id} className={car.active ? 'admin-row' : 'admin-row admin-row-retired'}>
-            <span className="admin-car-icon" aria-hidden="true">
-              <CarGlyph carName={car.name} size={16} />
-            </span>
-            <span className="admin-row-text">
-              <strong>
-                {car.name}
-                <PowertrainMark carName={car.name} />
-              </strong>
-              <span>
-                <span className="mono">{car.plate}</span> · {t.admin.seats(car.passenger_seats)}
-                {car.home && (
-                  <>
-                    {' · '}
-                    {car.home}
-                    {car.home_lat != null && <PinIcon size={12} className="admin-pin" aria-label={t.map.homePin} />}
-                  </>
-                )}
-                {!car.active && <span className="tag">{t.admin.retired}</span>}
-              </span>
-            </span>
-            <Menu
-              trigger={<KebabIcon />}
-              label={t.admin.optionsFor(car.name)}
-              items={[
-                { label: t.common.edit, icon: <PencilIcon size={18} />, onSelect: () => setEditing(car.id), disabled: busyId === car.id },
-                {
-                  label: car.active ? t.admin.retire : t.admin.restore,
-                  icon: <CarIcon size={18} />,
-                  onSelect: () => onUpdate(car.id, { active: !car.active }),
-                  disabled: busyId === car.id,
-                },
-                { label: t.common.delete, icon: <TrashIcon size={18} />, onSelect: () => onDelete(car), danger: true, disabled: busyId === car.id },
-              ]}
-            />
-            {editing === car.id && (
-              <CarEditor
-                key={`${car.id}:${car.name}:${car.plate}:${car.passenger_seats}:${car.home}:${car.home_lat}:${car.home_lng}`}
-                initial={{
-                  name: car.name,
-                  plate: car.plate,
-                  passenger_seats: car.passenger_seats,
-                  home: car.home,
-                  home_point: car.home_lat != null && car.home_lng != null ? { lat: car.home_lat, lng: car.home_lng } : null,
-                }}
-                busy={busyId === car.id}
-                submitLabel={t.common.save}
-                onSubmit={(input) => {
-                  onUpdate(car.id, input)
-                  setEditing(null)
-                }}
-                onCancel={() => setEditing(null)}
-              />
-            )}
-          </li>
-        ))}
-      </ul>
+          {isAdmin && (
+            <>
+              {editing === 'new' ? (
+                <CarEditor
+                  initial={{ name: '', plate: '', passenger_seats: 4, home: '', home_point: null }}
+                  busy={busyId === NEW_CAR_BUSY_ID}
+                  submitLabel={t.admin.addCar}
+                  onSubmit={(input) => {
+                    onCreate(input)
+                    setEditing(null)
+                  }}
+                  onCancel={() => setEditing(null)}
+                />
+              ) : (
+                <button type="button" className="add-row" onClick={() => setEditing('new')}>
+                  <PlusIcon size={18} /> {t.admin.addCompanyCar}
+                </button>
+              )}
 
-      {editing === 'new' ? (
-        <CarEditor
-          initial={{ name: '', plate: '', passenger_seats: 4, home: '', home_point: null }}
-          busy={busyId === NEW_CAR_BUSY_ID}
-          submitLabel={t.admin.addCar}
-          onSubmit={(input) => {
-            onCreate(input)
-            setEditing(null)
-          }}
-          onCancel={() => setEditing(null)}
-        />
-      ) : (
-        <button type="button" className="add-row" onClick={() => setEditing('new')}>
-          <PlusIcon size={18} /> {t.admin.addCompanyCar}
-        </button>
-      )}
+              {loading && cars.length === 0 && <p className="hint">{t.common.loading}</p>}
+              {retired.length > 0 && (
+                <section className="retired-cars" aria-label={t.admin.retired}>
+                  <h3 className="section-title">{t.admin.retired}</h3>
+                  <ul className="admin-list">
+                    {retired.map((car) => (
+                      <li key={car.id} className="admin-row admin-row-retired">
+                        <span className="admin-car-icon" aria-hidden="true">
+                          <CarGlyph carName={car.name} size={16} />
+                        </span>
+                        <span className="admin-row-text">
+                          <strong>
+                            {car.name}
+                            <PowertrainMark carName={car.name} />
+                          </strong>
+                          <span>
+                            <span className="mono">{car.plate}</span> · {t.admin.seats(car.passenger_seats)}
+                            {car.home && ` · ${car.home}`}
+                          </span>
+                        </span>
+                        {menuFor(car)}
+                        {editorFor(car)}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </>
+          )}
         </>
       )}
     </Sheet>

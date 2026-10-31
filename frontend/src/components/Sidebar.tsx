@@ -16,7 +16,6 @@ interface Content {
   /** An admin also sees the company-car pool and the people (backend: app/admin.py). */
   isAdmin: boolean
   onAccount: () => void
-  onCompanyCars: () => void
   onPeople: () => void
   /** The places Karpul knows: the offices, the cars' homes, the suggestions. */
   onPlaces: () => void
@@ -34,8 +33,8 @@ interface Content {
   onNotifications: () => void
   /** Present while this browser can install the app (lib/install.ts). */
   onInstall?: () => void
-  /** How the shared cars stand (components/CarStatus.tsx), for everyone. */
-  onCarState: () => void
+  /** The shared cars (components/SharedCars.tsx): how they stand, for everyone; the pool and its usage for admins. */
+  onSharedCars: () => void
 }
 
 interface Props extends Content {
@@ -73,7 +72,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onCarState, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -95,9 +94,9 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
       onSelect: pick(onMyRides),
     },
     {
-      label: t.sidebar.carState,
+      label: t.sidebar.cars,
       icon: 'car',
-      onSelect: pick(onCarState),
+      onSelect: pick(onSharedCars),
     },
     {
       label: t.sidebar.guide,
@@ -139,11 +138,6 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onCompanyCars, onPe
             icon: 'approvals',
             onSelect: pick(onApprovals),
             count: approvals,
-          },
-          {
-            label: t.sidebar.cars,
-            icon: 'car',
-            onSelect: pick(onCompanyCars),
           },
           {
             label: t.sidebar.people,

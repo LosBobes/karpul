@@ -140,3 +140,43 @@ def test_the_state_goes_out_live(client, car):
         assert ws.receive_json()["type"] == "hello"
         client.post(f"/api/cars/corporate/{car['id']}/reports", json={"soc": 40}, headers=ANA)
         assert ws.receive_json() == {"type": "cars.state"}
+
+
+def test_an_admin_puts_a_report_right_or_takes_it_out(client, car, session_factory, admin_auth):
+    url = f"/api/cars/corporate/{car['id']}/reports"
+    first = client.post(url, json={"odometer_km": 700, "soc": 80, "clean": True}, headers=ANA).json()
+    wrong = client.post(url, json={"odometer_km": 7100, "issues": "Warning light"}, headers={"X-User-Name": "Marko"}).json()
+    assert state_of(session_factory, car)["odometer"]["value"] == 7100
+
+    edit = f"/api/cars/corporate/reports/{wrong['id']}"
+    # Not for a plain user.
+    assert client.patch(edit, json={"odometer_km": 710}, headers=ANA).status_code == 403
+    assert client.delete(edit, headers=ANA).status_code == 403
+
+    # The reading fixed, the problem cleared; author and time stay.
+    r = client.patch(edit, json={"odometer_km": 710, "issues": None}, headers=admin_auth)
+    assert r.status_code == 200, r.text
+    assert r.json()["odometer_km"] == 710 and r.json()["issues"] is None and r.json()["user_name"] == "Marko"
+    state = state_of(session_factory, car)
+    assert state["odometer"]["value"] == 710 and state["odometer"]["by"] == "Marko"
+    assert state["issues"]["value"] == ""
+    # Left saying nothing is a 422: remove it instead.
+    assert client.patch(edit, json={"odometer_km": None}, headers=admin_auth).status_code == 422
+
+    assert client.delete(edit, headers=admin_auth).status_code == 204
+    state = state_of(session_factory, car)
+    assert state["odometer"]["value"] == 700 and state["odometer"]["by"] == "Ana"
+    assert client.delete(edit, headers=admin_auth).status_code == 404
+
+    log = client.get("/api/admin/log", headers=admin_auth).json()
+    assert [line["action"] for line in log[:2]] == ["car_report_removed", "car_report_edited"]
+    assert {c[0] for c in log[1]["changes"]} == {"odometer_km", "issues"}
+    assert first["id"] != wrong["id"]
+
+
+def test_an_edited_report_goes_out_live(client, car, admin_auth):
+    report = client.post(f"/api/cars/corporate/{car['id']}/reports", json={"soc": 50}, headers=ANA).json()
+    with client.websocket_connect("/api/ws") as ws:
+        assert ws.receive_json()["type"] == "hello"
+        client.patch(f"/api/cars/corporate/reports/{report['id']}", json={"soc": 55}, headers=admin_auth)
+        assert ws.receive_json()["type"] == "cars.state"

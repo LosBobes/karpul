@@ -609,9 +609,15 @@
   gap: 0.3rem;
   font-size: 1rem;
 }
-.car-state-name .mono {
+.car-state-name > span {
   font-size: 0.8rem;
   color: var(--muted);
+}
+.car-state-head > .menu {
+  margin-left: auto;
+}
+.retired-cars {
+  margin-top: 1rem;
 }
 .car-facts {
   display: grid;
@@ -692,6 +698,18 @@
 }
 .car-issues-on strong {
   font-weight: 600;
+}
+.car-issues-fix {
+  flex: none;
+  margin-left: auto;
+  align-self: center;
+  gap: 0.3rem;
+  min-height: 0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+}
+.car-recent li > .menu {
+  margin-left: auto;
 }
 .car-recent summary {
   cursor: pointer;

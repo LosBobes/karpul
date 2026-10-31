@@ -252,6 +252,10 @@ export const api = {
   /** Say how a shared car is, with or without a ride. */
   reportCar: (carId: number, report: CarReportInput) => request<CarReport>(`/api/cars/corporate/${carId}/reports`, json('POST', report)),
 
+  /** Admin: put a report right (every field sent, null clears one) or take it out. */
+  editCarReport: (id: number, report: CarReportInput) => request<CarReport>(`/api/cars/corporate/reports/${id}`, json('PATCH', report)),
+  removeCarReport: (id: number) => request<void>(`/api/cars/corporate/reports/${id}`, { method: 'DELETE' }),
+
   rides: (from: string, to: string) => request<Ride[]>(`/api/rides?from=${from}&to=${to}`),
 
   ride: (id: number) => request<Ride>(`/api/rides/${id}`),

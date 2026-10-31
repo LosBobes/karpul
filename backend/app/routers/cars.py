@@ -120,6 +120,60 @@ def report_corporate_car(car_id: int, payload: CarReportIn, session: WriteSessio
     return report
 
 
+def _get_report_or_404(session: Session, report_id: int) -> CarReport:
+    report = session.get(CarReport, report_id)
+    if report is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Report not found")
+    return report
+
+
+def _report_subject(session: Session, report: CarReport) -> str:
+    """The log's subject for a report: the car, and whose report from when."""
+    car = session.get(CorporateCar, report.car_id)
+    label = corporate_car_label(car) if car is not None else f"#{report.car_id}"
+    return f"{label}, {report.user_name} {report.created_at:%Y-%m-%d %H:%M}"
+
+
+REPORT_FIELDS = ("odometer_km", "soc", "clean", "issues")
+
+
+@router.patch("/corporate/reports/{report_id}", response_model=CarReportRead)
+def edit_car_report(report_id: int, payload: CarReportIn, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: put a report right (a mistyped reading, a problem that was
+    never there). The fields sent replace the report's, null clears one; a
+    report left saying nothing is a 422 (remove it instead). It keeps its
+    author and time, so the car's state reads as before, only right."""
+    admin = require_admin(session, creds)
+    report = _get_report_or_404(session, report_id)
+    data = payload.model_dump(exclude_unset=True)
+    after = {k: data.get(k, getattr(report, k)) for k in REPORT_FIELDS}
+    if all(v is None for v in after.values()):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Say at least one thing about the car")
+    changes = audit.diff(report, after)
+    if changes:
+        audit.record(session, admin, "car_report_edited", _report_subject(session, report), changes=changes)
+        for key, value in after.items():
+            setattr(report, key, value)
+        session.add(report)
+    session.commit()
+    session.refresh(report)
+    if changes:
+        cars_state_changed()
+    return report
+
+
+@router.delete("/corporate/reports/{report_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_car_report(report_id: int, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: take a wrong report out; the car's state falls back on the
+    one before it. A ride's odometer is its legs, not this, so it stays."""
+    admin = require_admin(session, creds)
+    report = _get_report_or_404(session, report_id)
+    audit.record(session, admin, "car_report_removed", _report_subject(session, report))
+    session.delete(report)
+    session.commit()
+    cars_state_changed()
+
+
 @router.get("/corporate/usage")
 def corporate_car_usage(session: SessionDep, creds: CredsDep, days: int = Query(default=90, ge=7, le=730)):
     """Admin-only: how the pool cars were used over the last `days` days, per

@@ -84,8 +84,8 @@ adds a ride. It is the only add button in the app.
 **The ☰ menu** holds everything that is not about one ride:
 
 - your name at the top: **Your account**,
-- **Your rides**, **Car status** and the **Shared car guide**,
-- **Manage** (admins only): approvals, shared cars, people, all rides, the admin log,
+- **Your rides**, **Shared cars** and the **Shared car guide**,
+- **Manage** (admins only): approvals, people, places, all rides, the admin log,
 - **Help**: the guide, **Contact support**, **Report a bug or send feedback**,
 - **Settings** at the foot: **Notifications**, **Install the app**, theme and language.
 
@@ -285,7 +285,7 @@ with pictures:
 
 ### Car status
 
-☰ → **Car status** shows every shared car's **odometer**, **battery**, whether it is **clean**
+☰ → **Shared cars** shows every shared car's **odometer**, **battery**, whether it is **clean**
 and any **reported** problems, with who said so and when. Figures marked *about* are guessed
 from the rides since the last reading. The same summary appears under the car's name on a
 shared-car ride.
@@ -301,7 +301,7 @@ People in a shared car (and admins) see a **Kilometres** box on the ride:
 2. **Hand over:** if someone else takes the wheel on the way, enter the reading and pick
    **Who takes the wheel**. The log then shows who drove how far.
 3. **Car is back:** the reading when the car is returned, plus **How you leave it**: battery
-   %, clean or needs a wash, and **Anything wrong?** This updates *Car status*.
+   %, clean or needs a wash, and **Anything wrong?** This updates the car's status in *Shared cars*.
 
 **Undo the last entry** fixes a typo. If you forget, Karpul reminds you a little after the
 return time.
@@ -405,9 +405,14 @@ ride, the driver is notified.
   if the car got booked meanwhile); **Decline** removes the ride and tells the driver.
 - **Adding a ride for someone else:** in the ride form, tap the driver line and pick a person.
   They become the driver and are notified. Rides an admin adds are never held for approval.
-- **Shared cars:** add a car (name, plate, seats), change it, **Retire** a car that left the
-  pool (its history stays) or delete one never used. The **Usage** tab shows how each car was
-  used over 30, 90 or 365 days and can be downloaded as a spreadsheet.
+- **Shared cars:** an admin manages the pool on the same car cards everyone sees. ⋮ on a car
+  edits it (name, plate, seats, where it departs from), **Retire**s a car that left the pool
+  (its history stays; retired cars are listed under the others, where **Restore** brings one
+  back) or deletes one never used, and **Add shared car** is at the foot of the list. On a
+  card, **Mark as fixed** clears a reported problem, and ⋮ on a report under *Recent reports*
+  puts a wrong reading right (**Edit**) or takes the report out (**Remove**), so the car's
+  status falls back on the one before; both go in the admin log. The **Usage** tab shows how
+  each car was used over 30, 90 or 365 days and can be downloaded as a spreadsheet.
 - **People:** search accounts, **Make admin** / **Remove admin**, create a **Password reset
   link** (pass it on yourself; there is no email), remove someone's photo, or **Delete
   account** (their coming rides are cancelled; past rides keep the name).

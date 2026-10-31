@@ -124,7 +124,6 @@ const en = {
 
   sidebar: {
     cars: 'Shared cars',
-    carState: 'Car status',
     people: 'People',
     places: 'Places',
     guide: 'Shared car guide',
@@ -563,7 +562,7 @@ const en = {
     ridesLabel: 'Rides',
     daysOut: 'Days out',
     useRate: 'Use rate',
-    useRateHint: (days: number) => `Days the car went out, over the ${days} working days in this window.`,
+    useRateHint: (days: number) => `Days the car went out, over the ${days} working days in this window and any weekend day it went out.`,
     drivers: 'Drivers',
     passengers: 'Passengers',
     km: 'km',
@@ -637,6 +636,10 @@ const en = {
           return `${admin} changed the shared car ${subject}`
         case 'car_removed':
           return `${admin} deleted the shared car ${subject}`
+        case 'car_report_edited':
+          return `${admin} put right a report on ${subject}`
+        case 'car_report_removed':
+          return `${admin} removed a report on ${subject}`
         case 'admin_granted':
           return `${admin} made ${subject} an admin`
         case 'admin_revoked':
@@ -683,6 +686,10 @@ const en = {
       home_pin: 'Pin of where it departs from',
       pin: 'Pin moved',
       rides: 'Coming rides moved with it',
+      odometer_km: 'Odometer (km)',
+      soc: 'Battery (%)',
+      clean: 'Clean',
+      issues: 'Wrong with it',
     } as Record<string, string>,
   },
 
@@ -762,7 +769,6 @@ const en = {
 
   /** The state of each shared car: components/CarStatus.tsx (backend: app/carstate.py). */
   carState: {
-    title: 'Car status',
     odometer: 'Odometer',
     battery: 'Battery',
     cleanTitle: 'Clean',
@@ -784,6 +790,15 @@ const en = {
     recent: 'Recent reports',
     fromRide: 'with the return',
     nothingSaid: 'Say at least one thing.',
+    fixed: 'Mark as fixed',
+    fixedSent: 'Marked as fixed.',
+    editReport: 'Edit',
+    removeReport: 'Remove',
+    reportOptions: (name: string) => `Options for the report of ${name}`,
+    reportSaved: 'Report updated.',
+    removeTitle: 'Remove this report?',
+    removeBody: (name: string, when: string) => `The report of ${name} from ${when} goes. The car's status falls back on the one before it.`,
+    reportRemoved: 'Report removed.',
   },
 
   upcoming: {
@@ -995,7 +1010,7 @@ const en = {
         steps: [
           '**Upcoming** lists every ride for the next 90 days, a heading per day. **Week** is one week, a day at a time. **Day** shows who has which shared car when.',
           'The green **+** (on a computer, **Add ride** at the top right) adds a ride.',
-          'The ☰ menu holds your account, **Your rides**, **Car status**, help and settings.',
+          'The ☰ menu holds your account, **Your rides**, **Shared cars**, help and settings.',
           'The lamp in the top bar is lit while the board is live: what colleagues do shows up as it happens.',
         ],
       },
@@ -1044,7 +1059,7 @@ const en = {
           'Each person gets one shared-car ride a day and one a week, and no more than 24 hours in a row. Past that, **Ask an admin to approve it**. A ride awaiting approval does not hold the car.',
           'Before your first drive, read the **Shared car guide**: charging with the company card and the Mazda 6e.',
           'In the car, note the odometer: **Note the start**, **Hand over** when someone else drives, **Car is back** with the battery and anything wrong.',
-          '**Car status** shows each car\'s odometer, battery and reported problems. **Report on this car** tells the admins.',
+          '**Shared cars** shows each car\'s odometer, battery and reported problems. **Report on this car** tells the admins.',
           'Can\'t drive after all? Remove the ride: if colleagues are in it, it keeps the car and asks them. The first to tap **I\'ll drive** takes it over.',
         ],
       },
@@ -1086,7 +1101,7 @@ const en = {
         steps: [
           '**Approvals** lists shared-car rides waiting for an answer. **Approve** books the car; **Decline** removes the ride.',
           'An admin can edit or remove any ride and manage its seats. In the ride form, tap the driver line to add a ride in someone else\'s name.',
-          '**Shared cars** adds, edits and retires pool cars; its **Usage** tab shows how they are used.',
+          'In **Shared cars**, ⋮ on a car edits, retires or deletes it and **Add shared car** is at the foot. **Mark as fixed** clears a reported problem, ⋮ on a report puts it right or removes it, and **Usage** shows how the cars are used.',
           '**People** makes admins, issues a password reset link (pass it on yourself) and deletes accounts.',
           '**All rides** is every ride in a date range, with a spreadsheet download. **Admin log** lists every change made to someone else\'s ride, a car or an account.',
         ],
@@ -1182,6 +1197,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^No connection to the server$/, () => 'Nema veze sa serverom'],
   [/^Booking not found$/, () => 'Rezervacija nije pronađena'],
   [/^Corporate car not found$/, () => 'Zajednički auto nije pronađen'],
+  [/^Report not found$/, () => 'Prijava nije pronađena'],
   [/^This point is outside the area Karpul covers$/, () => 'Ova tačka je van područja koje Karpul pokriva'],
   [/^Place not found$/, () => 'Mesto nije pronađeno'],
   [/^Maps are not switched on for you yet$/, () => 'Mape ti još nisu uključene'],
@@ -1449,7 +1465,6 @@ const sr: Messages = {
 
   sidebar: {
     cars: 'Zajednički automobili',
-    carState: 'Stanje auta',
     people: 'Ljudi',
     places: 'Mesta',
     guide: 'Vodič za zajednički auto',
@@ -1876,7 +1891,7 @@ const sr: Messages = {
     ridesLabel: 'Vožnje',
     daysOut: 'Dana u vožnji',
     useRate: 'Iskorišćenost',
-    useRateHint: (days) => `Dani kad je auto išao, u odnosu na ${srPlural(days, 'radni dan', 'radna dana', 'radnih dana')} u ovom periodu.`,
+    useRateHint: (days) => `Dani kad je auto išao, u odnosu na ${srPlural(days, 'radni dan', 'radna dana', 'radnih dana')} u ovom periodu i dane vikenda kad je išao.`,
     drivers: 'Vozača',
     passengers: 'Putnika',
     km: 'km',
@@ -1927,6 +1942,10 @@ const sr: Messages = {
           return `${admin} je izmenio/la zajednički auto ${subject}`
         case 'car_removed':
           return `${admin} je obrisao/la zajednički auto ${subject}`
+        case 'car_report_edited':
+          return `${admin} je ispravio/la prijavu o stanju: ${subject}`
+        case 'car_report_removed':
+          return `${admin} je uklonio/la prijavu o stanju: ${subject}`
         case 'admin_granted':
           return `${admin} je dodelio/la administratorska prava: ${subject}`
         case 'admin_revoked':
@@ -1973,6 +1992,10 @@ const sr: Messages = {
       home_pin: 'Tačka mesta polaska',
       pin: 'Pomerena tačka',
       rides: 'Pomerene buduće vožnje',
+      odometer_km: 'Kilometar-sat (km)',
+      soc: 'Baterija (%)',
+      clean: 'Čist',
+      issues: 'Kvar',
     },
   },
 
@@ -2049,7 +2072,6 @@ const sr: Messages = {
   },
 
   carState: {
-    title: 'Stanje auta',
     odometer: 'Kilometar-sat',
     battery: 'Baterija',
     cleanTitle: 'Čistoća',
@@ -2071,6 +2093,15 @@ const sr: Messages = {
     recent: 'Poslednje prijave',
     fromRide: 'uz povratak',
     nothingSaid: 'Napiši bar nešto.',
+    fixed: 'Označi kao rešeno',
+    fixedSent: 'Označeno kao rešeno.',
+    editReport: 'Izmeni',
+    removeReport: 'Ukloni',
+    reportOptions: (name) => `Opcije za prijavu: ${name}`,
+    reportSaved: 'Prijava je izmenjena.',
+    removeTitle: 'Ukloniti ovu prijavu?',
+    removeBody: (name, when) => `Prijava (${name}, ${when}) se briše. Stanje auta se vraća na prethodnu prijavu.`,
+    reportRemoved: 'Prijava je uklonjena.',
   },
 
   people: {
@@ -2301,7 +2332,7 @@ const sr: Messages = {
         steps: [
           '**Predstojeće** prikazuje sve vožnje u narednih 90 dana, po danima. **Sedmica** prikazuje jednu sedmicu, dan po dan. **Dan** pokazuje ko ima koji zajednički auto i kada.',
           'Zeleno **+** (na računaru, **Dodaj vožnju** gore desno) dodaje vožnju.',
-          'U meniju ☰ su tvoj nalog, **Tvoje vožnje**, **Stanje auta**, pomoć i podešavanja.',
+          'U meniju ☰ su tvoj nalog, **Tvoje vožnje**, **Zajednički automobili**, pomoć i podešavanja.',
           'Lampica u gornjoj traci svetli dok je tabla uživo: šta kolege urade, vidiš odmah.',
         ],
       },
@@ -2350,7 +2381,7 @@ const sr: Messages = {
           'Svako ima jednu vožnju zajedničkim autom dnevno i jednu sedmično, i ne duže od 24 sata zaredom. Preko toga, **Zatraži odobrenje administratora**. Vožnja koja čeka odobrenje ne drži auto.',
           'Pre prve vožnje pročitaj **Vodič za zajednički auto**: punjenje službenom karticom i Mazda 6e.',
           'U autu upisuj kilometražu: **Upiši početnu**, **Predaj volan** kad vozi neko drugi, **Auto je vraćen** sa stanjem baterije i eventualnim problemima.',
-          '**Stanje auta** pokazuje kilometražu, bateriju i prijavljene probleme svakog auta. **Prijavi stanje auta** javlja administratorima.',
+          '**Zajednički automobili** pokazuju kilometražu, bateriju i prijavljene probleme svakog auta. **Prijavi stanje auta** javlja administratorima.',
           'Ipak ne možeš da voziš? Ukloni vožnju: ako u njoj ima kolega, auto ostaje rezervisan, a putnici dobijaju pitanje da li neko od njih vozi. Ko prvi dodirne **Ja ću voziti** preuzima vožnju.',
         ],
       },
@@ -2392,7 +2423,7 @@ const sr: Messages = {
         steps: [
           '**Odobrenja** prikazuje vožnje zajedničkim autom koje čekaju odgovor. **Odobri** rezerviše auto; **Odbij** uklanja vožnju.',
           'Administrator može da izmeni ili ukloni bilo koju vožnju i upravlja njenim mestima. U formi za vožnju dodirni red sa vozačem da dodaš vožnju u nečije ime.',
-          '**Zajednički automobili** služi za dodavanje, izmenu i povlačenje automobila; kartica **Korišćenje** pokazuje kako se koriste.',
+          'U **Zajedničkim automobilima**, ⋮ na autu ga menja, povlači ili briše, a dodavanje je na dnu liste. **Označi kao rešeno** briše prijavljeni problem, ⋮ na prijavi je ispravlja ili uklanja, a **Korišćenje** pokazuje kako se automobili koriste.',
           '**Ljudi** služi da postaviš administratore, napraviš link za novu lozinku (prosleđuješ ga lično) i obrišeš naloge.',
           '**Sve vožnje** su sve vožnje u izabranom periodu, uz preuzimanje kao tabelu. **Dnevnik administratora** beleži svaku izmenu tuđe vožnje, auta ili naloga.',
         ],

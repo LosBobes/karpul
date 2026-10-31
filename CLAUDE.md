@@ -222,9 +222,18 @@ odometer reading with no closed reading of its own is assumed driven its length
 kilometre; a guessed figure is `estimated` and the screen says *about*. A report naming a problem
 is pushed to the admins (`car_issue`, category `cars`, `notify` with no ride: `body` and `url`).
 Every report publishes `cars.state`, on which `useBoard` fetches the state again (also on every
-connect). On screen: *Car status* in the drawer for everyone (`components/CarStatus.tsx`: a card per
-car, the report form inline on it; the text helpers in `lib/carState.ts`), and one line under the
-car's name on the driver card of a shared-car ride (`.driver-car-state`). Tests:
+connect). **An admin puts the state right**: `PATCH /api/cars/corporate/reports/{id}` (the fields
+sent replace the report's, null clears one, a report left saying nothing is a 422; author and time stay)
+and `DELETE` of the same (the state falls back on the report before), both in the admin's log
+(`car_report_edited` / `car_report_removed`); *Mark as fixed* is an ordinary report with `issues: ""`.
+On screen: *Shared cars* in the drawer for everyone (`components/SharedCars.tsx`), one list of the
+cars: `CarStatusList` (`components/CarStatus.tsx`: a card per car with its state, the report form inline
+on it; the text helpers in `lib/carState.ts`). The pool is managed on the same cards, not a list of its
+own: an admin gets the car's ⋮ (edit, retire, delete) and its `CarEditor` handed in through `carMenu` /
+`carEditor`, *Mark as fixed* on a problem, a ⋮ with *Edit* / *Remove* on each recent report, *Add
+shared car* at the foot and the retired cars listed under it; the one other tab, admins only, is
+*Usage* (the tab is `sharedCars.tab` in `App.tsx`, so the driver card's car line opens it on the cars). One line under
+the car's name on the driver card of a shared-car ride (`.driver-car-state`). Tests:
 `tests/test_car_state.py`.
 
 **The road between the offices** (`app/offices.py`, `lib/offices.ts`, keep in step): Beograd to
@@ -299,8 +308,9 @@ signed out, 403 for a non-admin. `routers/admin.py`: list accounts, make or unma
 cancelled them, its coming seats and queue places go with `promote_waitlist`, its requests are
 withdrawn; the past keeps the names with the ids nulled, messages keep their text; its open sockets
 are closed through `events.disconnect`, which the hub sends only to that account's subscriptions). `UserRead.is_admin`
-is the effective value (`routers/auth.user_read`). The drawer shows *Shared cars*, *People* and
-*All rides* (`CarAdmin`, `PeopleAdmin`, `RideLog`) to admins only. *All rides* is a spreadsheet-style
+is the effective value (`routers/auth.user_read`). The drawer shows *People* and
+*All rides* (`PeopleAdmin`, `RideLog`) to admins only, and *Shared cars* (`SharedCars`) to everyone,
+with the pool's controls and the *Usage* tab to admins only. *All rides* is a spreadsheet-style
 table for an office manager: `GET /api/admin/rides?from&to` (any window up to `MAX_LOG_DAYS`, past
 included, unlike the board's 92), shown in a wide sheet (`.panel-wide`, sticky header row and date
 column). It also carries each shared car's odometer (below). Filtering, sorting and the CSV download all happen in the browser (`lib/rideLog.ts`, tested in
@@ -400,7 +410,7 @@ writes nothing) and the public Nominatim asked once a second at most; tests repl
 by default, "" no map at all: only *Open in Maps*). `requests.drivers_for` also matches a pinned request
 whose start is within `geo.NEAR_KM` of a ride's pinned pickup point, and the calendar's `LOCATION`/`GEO`
 are the reader's own pickup. On screen: `PlaceInput` (suggestions in a `Popover`, which opens only when
-something is found, and a labelled *Map* / *Pinned* chip, `.place-pin`) in `RideForm`, `RequestForm` and `CarAdmin`,
+something is found, and a labelled *Map* / *Pinned* chip, `.place-pin`) in `RideForm`, `RequestForm` and `SharedCars`,
 whose chip opens `PlaceDialog` (portalled to `<body>`, the whole screen on a phone, a tall panel on a desktop,
 Escape captured so the form behind stays open): a search on top, the *Saved places* below it before anything is
 typed (`GET /api/places/saved`: every `KnownPlace`, offices first, then car homes, then the most used), the matches
@@ -415,7 +425,7 @@ in `.map-pin-body` because Leaflet owns the marker's transform; dark tiles by a 
 each place opens in Google Maps (`mapsSearchUrl`), *Show on map* opens `RouteMapSheet` (portalled to
 `<body>`: the card may clip) or, in a wide pane, `RideMap` inline; *Open the route in Maps* in the ⋮ menu
 (`routeUrl`); the "on your way" hint (`stopHint`) offers your open request's pinned start as a new stop;
-Day has a *Map* shape (`DayMap`); *Car status* shows a pinned car's home. The service worker keeps map
+Day has a *Map* shape (`DayMap`); *Shared cars* shows a pinned car's home. The service worker keeps map
 tiles (`karpul-tiles`, never anything under `/api`). Tests: `tests/test_places.py`, `maps.test.ts`.
 
 **Push notifications.** `app/webpush.py` does RFC 8291 encryption and VAPID (RFC 8292) on the
@@ -456,7 +466,7 @@ A calendar app cannot sign in, so `User.calendar_token` in the address is the cr
 `main.py`); the app reads the path on load, opens the ride and `replaceState`s to `/`.
 `person_stats` and `corporate_usage` in `services.py` are the *Your rides* and admin *Usage*
 figures: "km shared" is the one-way distance of every ride the person was in, a floor not a
-claim, and a car's use rate is days out over working days in the window.
+claim, and a car's use rate is days out over the working days in the window plus the weekend days it went out (so never past 100%).
 
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings`, `waitlist`, `message_count`, `driver_phone` and the computed `free_seats`. Every ride-returning endpoint goes through it (pass `board_extras` for a list).
 
@@ -607,8 +617,8 @@ says something the control cannot (a consequence, a privacy risk, a format).
 **Screen structure.** The top bar is the ☰ button, the title and the live lamp; the ☰ opens
 `Sidebar` (`components/Sidebar.tsx`), a drawer from the left edge that holds everything not
 about one particular ride: under your account, the things opened most with no heading over them
-(*Your rides*, *Car status*, the *Shared car guide*), then collapsible groups, *Manage* for admins (approvals, the
-pool, the people, every ride, the log), *Help* (support, feedback), and *Settings*: not a group but a card of its
+(*Your rides*, *Shared cars*, the *Shared car guide*), then collapsible groups, *Manage* for admins (approvals, the
+people, the places, every ride, the log), *Help* (support, feedback), and *Settings*: not a group but a card of its
 own pinned to the foot (`.settings-card`, a gear, a chevron pointing up), folded by default, that unfolds
 *upwards* out of its head (the body is a grid row above the head, 0fr to 1fr; the rest of the menu is
 `.drawer-scroll` and gives way), holding *Notifications*, *Install the app* while the browser can, the
@@ -618,8 +628,8 @@ row in the text's ink, a leading chevron in its own small well that turns down w
 a tint under a mouse and a darker one when pressed, and the open group's rows hanging off a hairline
 under the chevron. The items are one label each, no hint line. Your account is the
 identity block on top (it opens `AccountSheet`, which is also where you sign out), *Your rides* (`MyRides`: figures, history, the calendar feed address),
-*Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`CarAdmin`, with a
-*Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
+*Notifications* (`NotificationsSheet`, the push switch), *Approvals* and *Admin log* (admins only, `Approvals`, `AdminLog`), *Shared cars* (`SharedCars`: the cars and how they stand for everyone, managed on
+the same cards by admins, who also get a *Usage* tab that reads `/api/cars/corporate/usage`) and the *Shared car guide* (`CarGuide`: how to charge
 with the company card, and a Mazda 6e primer for first-time EV drivers, frunk included. The words are the `guide`
 entries in `lib/i18n.ts`, one picture per entry in `components/GuideArt.tsx`, drawn like Fluent's
 own icons only bigger (a 120×80 box at 96px, so the 1.875 stroke lands on 1.5px, round corners, soft
@@ -839,7 +849,7 @@ tray spreads `dropZone(...)` *only while it can receive*, so validity lives in t
 the ride list can change under a drag via live updates. Dropping on another car issues `leave`
 then `join`; dropping on the tray issues `leave`.
 
-**Company cars** are seeded from `CORPORATE_CARS` (`Name|PLATE|seats[|home];…`) only while the `corporatecar` table is empty (`seed.py`); after that the pool is managed through the admin endpoints, and nothing on start touches a car again. `CorporateCar.home` (an `ADDED_COLUMNS` column, *Departs from* in `CarAdmin`) is where a car is kept: `RideForm` starts a new ride in it there, and picking another car moves the start along unless the driver typed their own. `GET /api/cars/corporate` stays public and active-only, so `App.tsx` keeps the admin list (`adminCars`, everything) and the ride-form list (`cars`, `active` only) as two views of one fetch — `applyCars()`.
+**Company cars** are seeded from `CORPORATE_CARS` (`Name|PLATE|seats[|home];…`) only while the `corporatecar` table is empty (`seed.py`); after that the pool is managed through the admin endpoints, and nothing on start touches a car again. `CorporateCar.home` (an `ADDED_COLUMNS` column, *Departs from* in `SharedCars`) is where a car is kept: `RideForm` starts a new ride in it there, and picking another car moves the start along unless the driver typed their own. `GET /api/cars/corporate` stays public and active-only, so `App.tsx` keeps the admin list (`adminCars`, everything) and the ride-form list (`cars`, `active` only) as two views of one fetch — `applyCars()`.
 
 Tests (`backend/tests/conftest.py`) use an in-memory SQLite engine (`make_engine("sqlite://", poolclass=StaticPool)`) and override `get_session`; `get_write_session` wraps it, so the override covers both. `TestClient` is intentionally used **without** a context manager so the lifespan never runs and the on-disk DB is never touched. The `client` fixture is a `BoardClient`: it signs requests in as accounts made per name on first use (`headers={"X-User-Name": "Ana"}`, or the payload's `driver_name` / `passenger_name`, else "Test Viewer"), so tests read in names while the API only sees bearer tokens; `client.anon` is a plain client, `client.auth(name)` the headers, and `websocket_connect` sends the auth message itself.
 
