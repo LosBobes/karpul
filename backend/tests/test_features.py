@@ -393,3 +393,31 @@ def test_similar_names_forgive_diacritics_order_and_a_typo_but_not_another_perso
     # No two people in the paper log pass for each other.
     names = sorted({e.driver for e in LOG})
     assert not [(a, b) for a in names for b in names if a < b and similar_names(a, b)]
+
+
+def test_usage_rate_counts_weekend_days_in_the_denominator(session_factory):
+    """A car out every weekday and on two weekend days was 23 days out over 21
+    working days, a rate of 110%. Weekend days it went out join the working
+    days, so it reads 100% and never more."""
+    from datetime import time
+
+    from sqlmodel import select
+
+    from app.models import CarType, CorporateCar, Ride
+    from app.services import corporate_usage
+
+    today = date(2026, 10, 31)  # a Saturday; 30 days back is Fri 2 Oct
+    with session_factory() as s:
+        car = s.exec(select(CorporateCar)).first()
+        days = [today - timedelta(days=n) for n in range(30)]
+        out = [d for d in days if d.weekday() < 5] + [date(2026, 10, 10), date(2026, 10, 18)]
+        for d in out:
+            s.add(Ride(ride_date=d, car_type=CarType.corporate, car_name=car.name, corporate_car_id=car.id,
+                       driver_name="Milan", origin="Beograd", destination="Novi Sad",
+                       departure_time=time(8), return_time=time(18), seats=4))
+        s.commit()
+        report = corporate_usage(s, 30, today=today)
+    row = next(r for r in report["cars"] if r["car"]["id"] == car.id)
+    assert report["working_days"] == 21
+    assert row["days_used"] == 23
+    assert row["use_rate"] == 1.0

@@ -633,7 +633,9 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
     """How the pool cars were used over the last `days` days (today included):
     per car the rides, the days it went out, the drivers and passengers, the
     kilometres, when it last went out, what is booked ahead, and its use rate
-    (days out over working days in the window). Plus the recent rides as history.
+    (days out over the working days in the window plus the weekend days it went
+    out, so a car out at the weekend counts as used and the rate never passes
+    100%). Plus the recent rides as history.
     """
     today = today or date.today()
     start = today - timedelta(days=days - 1)
@@ -655,13 +657,15 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
     rows = []
     for car in cars:
         rides = by_car.get(car.id, [])
-        days_used = len({r.ride_date for r in rides})
+        dates = {r.ride_date for r in rides}
+        days_used = len(dates)
+        weekend_days = sum(1 for d in dates if d.weekday() >= 5)
         rows.append(
             {
                 "car": {"id": car.id, "name": car.name, "plate": car.plate, "passenger_seats": car.passenger_seats, "active": car.active, "home": car.home},
                 "rides": len(rides),
                 "days_used": days_used,
-                "use_rate": round(days_used / working, 3),
+                "use_rate": round(days_used / (working + weekend_days), 3),
                 "drivers": len({r.driver_id or norm_name(r.driver_name) for r in rides}),
                 "passengers": sum(len(r.bookings) for r in rides),
                 "seats_offered": sum(r.seats for r in rides),

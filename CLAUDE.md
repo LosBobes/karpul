@@ -456,7 +456,7 @@ A calendar app cannot sign in, so `User.calendar_token` in the address is the cr
 `main.py`); the app reads the path on load, opens the ride and `replaceState`s to `/`.
 `person_stats` and `corporate_usage` in `services.py` are the *Your rides* and admin *Usage*
 figures: "km shared" is the one-way distance of every ride the person was in, a floor not a
-claim, and a car's use rate is days out over working days in the window.
+claim, and a car's use rate is days out over the working days in the window plus the weekend days it went out (so never past 100%).
 
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings`, `waitlist`, `message_count`, `driver_phone` and the computed `free_seats`. Every ride-returning endpoint goes through it (pass `board_extras` for a list).
 
