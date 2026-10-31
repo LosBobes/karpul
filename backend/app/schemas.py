@@ -460,6 +460,9 @@ class CarStateRead(BaseModel):
 
     car: CorporateCarRead
     odometer: FactRead
+    # The last real odometer reading, and the km the rides since add up to (0: none).
+    odometer_read: int | None = None
+    km_since: int = 0
     soc: FactRead
     clean: FactRead
     issues: FactRead

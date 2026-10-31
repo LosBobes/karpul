@@ -1,16 +1,16 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useKept } from '../lib/keep'
 import { api } from '../lib/api'
 import { factText, fmtWhen } from '../lib/carState'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import type { CarReport, CarReportInput, CarState } from '../lib/types'
+import type { CarReport, CarState } from '../lib/types'
 import { Avatar } from './Avatar'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CheckIcon, BoltIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, RoadIcon, TrashIcon, XIcon } from './icons'
+import { CheckIcon, BoltIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, RoadIcon, TrashIcon } from './icons'
+import { CarReportSheet } from './CarReportSheet'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Menu } from './Menu'
-import { SegThumb } from './Segmented'
 import { MapView } from './MapView'
 
 interface Props {
@@ -26,9 +26,6 @@ interface Props {
   carEditor?: (carId: number) => ReactNode
 }
 
-type Cleanness = '' | 'clean' | 'dirty'
-const CLEANNESS: Cleanness[] = ['', 'clean', 'dirty']
-
 const km = (n: number) => n.toLocaleString(intlTag())
 const errText = (err: unknown) => messages().apiError(err instanceof Error ? err.message : String(err))
 
@@ -37,14 +34,14 @@ const errText = (err: unknown) => messages().apiError(err instanceof Error ? err
  * the battery from the last reading, guessed on from the rides since when
  * nobody noted them, whether it is clean and what is wrong. For everyone:
  * the next driver wants to know before they go. A report can be written
- * here for any car (the one who finds it dirty is not the one who left it
- * so); bringing a car back on its ride card writes one too. The body of
+ * for any car in its own window (components/CarReportSheet.tsx; the one who
+ * finds it dirty is not the one who left it so); bringing a car back on its ride card writes one too. The body of
  * the Shared cars sheet (components/SharedCars.tsx), which hands an admin's
  * pool controls in through `carMenu` / `carEditor`.
  */
 export function CarStatusList({ states, isAdmin, onNotice, onReported, carMenu, carEditor }: Props) {
   const t = useT()
-  // The car whose card has the form open, and the report it edits (null: a new one).
+  // The car whose report window is open, and the report it edits (null: a new one).
   const [reporting, setReporting] = useKept<number | null>('carState.reporting', null)
   const [editing, setEditing] = useKept<number | null>('carState.editing', null)
   const [doomed, setDoomed] = useState<CarReport | null>(null)
@@ -222,7 +219,7 @@ function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, 
         )}
       </div>
 
-      {state.recent.length > 0 && !reporting && (
+      {state.recent.length > 0 && (
         <details className="car-recent">
           <summary>{t.carState.recent}</summary>
           <ul>
@@ -261,93 +258,10 @@ function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, 
         </details>
       )}
 
-      {reporting ? (
-        <ReportForm key={editing?.id ?? 'new'} carId={state.car.id} report={editing} onDone={onDone} />
-      ) : (
-        <button type="button" className="add-row add-row-quiet" onClick={onReport}>
-          <InfoIcon size={18} /> {t.carState.report}
-        </button>
-      )}
+      <button type="button" className="add-row add-row-quiet" onClick={onReport}>
+        <InfoIcon size={18} /> {t.carState.report}
+      </button>
+      {reporting && <CarReportSheet key={editing?.id ?? 'new'} state={state} report={editing} onDone={onDone} />}
     </article>
-  )
-}
-
-/** The report, inline on the car's card (not a second overlay). */
-function ReportForm({ carId, report, onDone }: { carId: number; report: CarReport | null; onDone: (sent: boolean) => void }) {
-  const t = useT()
-  // A new report's draft is kept per car, an edit's per report.
-  const k = report ? `carState.report${report.id}` : `carState.${carId}`
-  const [odometer, setOdometer] = useKept(`${k}.odometer`, report?.odometer_km != null ? String(report.odometer_km) : '')
-  const [soc, setSoc] = useKept(`${k}.soc`, report?.soc != null ? String(report.soc) : '')
-  const [cleanness, setCleanness] = useKept<Cleanness>(`${k}.cleanness`, report?.clean == null ? '' : report.clean ? 'clean' : 'dirty')
-  const [issues, setIssues] = useKept(`${k}.issues`, report?.issues ?? '')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  const odoNum = odometer.trim() === '' ? null : Number(odometer)
-  const socNum = soc.trim() === '' ? null : Number(soc)
-  const socBad = socNum !== null && (socNum < 0 || socNum > 100)
-  const empty = odoNum === null && socNum === null && cleanness === '' && issues.trim() === ''
-
-  async function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    if (empty || socBad) return
-    const input: CarReportInput = {
-      odometer_km: odoNum,
-      soc: socNum,
-      clean: cleanness === '' ? null : cleanness === 'clean',
-      // Editing a report that said "nothing wrong" keeps saying so while the field stays empty.
-      issues: issues.trim() === '' ? (report?.issues === '' ? '' : null) : issues.trim(),
-    }
-    setBusy(true)
-    setError(null)
-    try {
-      if (report === null) await api.reportCar(carId, input)
-      else await api.editCarReport(report.id, input)
-      onDone(true)
-    } catch (err) {
-      setError(errText(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <form className="car-report" onSubmit={submit}>
-      <div className="odo-left-grid">
-        <label className="odo-reading">
-          <span className="subfield-label">{t.carState.odometerField}</span>
-          <input inputMode="numeric" pattern="[0-9]*" placeholder="0" value={odometer} onChange={(e) => setOdometer(e.target.value.replace(/\D/g, ''))} />
-        </label>
-        <label className="odo-soc">
-          <span className="subfield-label">{t.odo.soc}</span>
-          <input inputMode="numeric" pattern="[0-9]*" maxLength={3} placeholder="80" aria-invalid={socBad || undefined} value={soc} onChange={(e) => setSoc(e.target.value.replace(/\D/g, ''))} />
-        </label>
-      </div>
-      <div className="odo-clean">
-        <span className="subfield-label">{t.odo.cleanness}</span>
-        <div className="segmented segmented-sm" role="radiogroup" aria-label={t.odo.cleanness}>
-          <SegThumb count={CLEANNESS.length} index={CLEANNESS.indexOf(cleanness)} />
-          {CLEANNESS.map((c) => (
-            <button key={c} type="button" role="radio" aria-checked={cleanness === c} className={cleanness === c ? 'seg seg-on' : 'seg'} onClick={() => setCleanness(c)}>
-              {c === '' ? t.odo.notChecked : c === 'clean' ? t.odo.clean : t.odo.dirty}
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className="odo-issues">
-        <span className="subfield-label">{t.odo.issues}</span>
-        <input autoFocus maxLength={300} placeholder={t.odo.issuesPlaceholder} value={issues} onChange={(e) => setIssues(e.target.value)} />
-      </label>
-      {error && <p className="error">{error}</p>}
-      <div className="odo-actions">
-        <button type="button" className="icon-btn" aria-label={t.common.cancel} disabled={busy} onClick={() => onDone(false)}>
-          <XIcon size={18} />
-        </button>
-        <button type="submit" className="btn btn-primary" disabled={busy || empty || socBad} title={empty ? t.carState.nothingSaid : undefined}>
-          {busy ? t.common.saving : t.common.save}
-        </button>
-      </div>
-    </form>
   )
 }

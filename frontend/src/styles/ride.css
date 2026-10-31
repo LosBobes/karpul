@@ -741,15 +741,628 @@
   color: var(--muted);
   overflow-wrap: anywhere;
 }
-.car-report {
+/* --- The car report (components/CarReportSheet.tsx) ----------------------- */
+/* A window of its own over Shared cars: the odometer as a drum of rolling
+   wheels, the battery as a battery you drag, the car clean or muddy as a
+   picture, and what is wrong. */
+.report-sheet .panel-body {
+  gap: 1.1rem;
+}
+.report-part {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  padding-top: 0.3rem;
-  border-top: 1px solid var(--border);
+  gap: 0.5rem;
 }
-.car-report .odo-actions {
-  flex-basis: auto;
+.report-part-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+}
+.report-part-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.report-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.8rem;
+}
+.report-chip-row {
+  display: flex;
+  gap: 0.35rem;
+}
+.report-chip-wrap {
+  flex-wrap: wrap;
+}
+.report-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 30px;
+  padding: 0.2rem 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+.report-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.report-note-strong {
+  color: hsl(var(--charge-hue, 140) 70% 32%);
+  font-weight: 600;
+}
+:root[data-resolved='dark'] .report-note-strong {
+  color: hsl(var(--charge-hue, 140) 65% 62%);
+}
+.report-chip small {
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+/* The likeliest figure, in green. */
+.report-chip-main {
+  border-color: var(--green-line);
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.report-chip-main small {
+  color: inherit;
+  opacity: 0.8;
+}
+.report-part textarea {
+  resize: vertical;
+}
+
+/* The odometer: dark drum, white wheels rolling to their digit. The real
+   input lies over it, invisible, so a tap types and the caret is not drawn. */
+.odo-drum {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding: 0.7rem;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #2a3038, #14181d);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--border);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.odo-drum:focus-within {
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--green);
+}
+.odo-wheels {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.odo-wheel {
+  position: relative;
+  width: 1.15em;
+  height: 1.4em;
+  overflow: hidden;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #c9ced4 0%, #fff 30%, #fff 70%, #c9ced4 100%);
+  color: #14181d;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+/* The light from above and below the drum's window, over the digit. */
+.odo-wheel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.28), transparent 28%, transparent 72%, rgba(0, 0, 0, 0.28));
+  pointer-events: none;
+}
+.odo-wheel-lead {
+  color: #9aa3ad;
+}
+.odo-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 450ms var(--ease-bounce);
+}
+.odo-strip > span {
+  display: grid;
+  place-items: center;
+  height: 1.4em;
+}
+.odo-unit {
+  margin-left: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #c9ced4;
+}
+.odo-drum-ghost .odo-wheels {
+  opacity: 0.45;
+}
+.odo-drum-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
+  cursor: text;
+}
+
+/* The battery: a cell you press or drag, the cap on its right. */
+.battery {
+  --charge: hsl(var(--charge-hue, 140) 72% 44%);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: ew-resize;
+  border-radius: var(--radius);
+  outline: none;
+}
+.battery-cell {
+  position: relative;
+  flex: 1;
+  height: 64px;
+  overflow: hidden;
+  border: 3px solid var(--text);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.battery:focus-visible .battery-cell {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 45%, transparent);
+}
+.battery-cap {
+  width: 7px;
+  height: 24px;
+  border-radius: 0 4px 4px 0;
+  background: var(--text);
+}
+.battery-fill {
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  max-width: calc(100% - 6px);
+  border-radius: 7px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--charge) 70%, #fff), var(--charge));
+  transition: width 260ms var(--ease-out);
+}
+.battery-dragging .battery-fill {
+  transition: none;
+}
+/* A sheen that runs along the charge, so it reads as live. */
+.battery-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: battery-flow 2.4s var(--ease-smooth) infinite;
+}
+@keyframes battery-flow {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+.battery-none .battery-fill::after {
+  display: none;
+}
+.battery-last {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  width: 0;
+  border-left: 2px dashed color-mix(in srgb, var(--text) 35%, transparent);
+}
+.battery-ticks {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-evenly;
+  pointer-events: none;
+}
+.battery-ticks > span {
+  width: 1px;
+  margin: 18px 0;
+  background: color-mix(in srgb, var(--text) 12%, transparent);
+}
+.battery-read {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  color: var(--text);
+  pointer-events: none;
+}
+.battery-read strong {
+  font-size: 1.7rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--surface) 70%, transparent);
+}
+.battery-read small {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.battery-empty {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* Clean or dirty: three cards, each a picture of the car in that mood. */
+.wash-pick {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+.wash-card {
+  /* The dust and the stink stay inside their card. */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: background var(--hover), border-color var(--hover), transform var(--dur-fast) var(--ease-out);
+}
+.wash-card:active {
+  transform: scale(0.97);
+}
+.wash-card-on {
+  border-color: var(--green-line);
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.wash-dirty.wash-card-on {
+  border-color: #c8a46a;
+  background: color-mix(in srgb, #a07a3c 16%, var(--surface));
+  color: color-mix(in srgb, #7a5520 80%, var(--text));
+}
+.wash-art {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  overflow: visible;
+}
+.wash-shadow {
+  fill: currentColor;
+  opacity: 0.12;
+}
+.wash-lamp {
+  fill: #ffd76a;
+}
+.wash-mud {
+  fill: #7a5a33;
+  opacity: 0.85;
+}
+.wash-smear {
+  fill: none;
+  stroke: #7a5a33;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.wash-dust circle {
+  fill: #b9a888;
+  opacity: 0.5;
+}
+.wash-sparkle {
+  fill: #ffd76a;
+  stroke: #f2b300;
+  stroke-width: 0.4;
+}
+/* Each mood keeps its own loop going, picked or not; the picked one also pops. */
+.wash-sparkle {
+  animation: wash-twinkle 1.8s var(--ease-smooth) infinite;
+}
+.wash-sweep {
+  animation: wash-sweep 2.6s var(--ease-smooth) infinite;
+}
+.wash-fly-a {
+  animation: wash-buzz-a 1.1s linear infinite;
+}
+.wash-fly-b {
+  animation: wash-buzz-b 0.9s linear infinite;
+}
+.wash-wing {
+  fill: color-mix(in srgb, var(--surface) 30%, #cfe3f2);
+  opacity: 0.85;
+  animation: wash-flap 0.12s linear infinite alternate;
+}
+.wash-fly-body {
+  fill: #2a2f35;
+}
+:root[data-resolved='dark'] .wash-fly-body {
+  fill: #d8dde3;
+}
+.wash-dust {
+  animation: wash-dust 2.2s var(--ease-out) infinite;
+}
+.wash-stink path {
+  fill: none;
+  stroke: #8fa53a;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: wash-stink 2.1s var(--ease-smooth) infinite;
+}
+/* The car that is not there: its outline in dots, with question marks
+   floating up out of where it should be. */
+.wash-missing path,
+.wash-missing circle {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 1.5 2.6;
+  stroke-linecap: round;
+}
+.wash-missing path:first-child {
+  animation: wash-march 1.6s linear infinite;
+}
+.wash-q {
+  font-size: 11px;
+  font-weight: 700;
+  fill: var(--muted);
+  text-anchor: middle;
+  opacity: 0;
+  animation: wash-float 2.7s var(--ease-out) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.wash-q-big {
+  font-size: 15px;
+}
+.wash-card-on .wash-q {
+  fill: var(--green-dark);
+}
+.wash-card-on .wash-car {
+  animation: wash-pop 400ms var(--ease-bounce);
+  transform-origin: 62px 42px;
+  transform-box: view-box;
+}
+@keyframes wash-pop {
+  40% {
+    transform: translateY(-3px) scale(1.04);
+  }
+}
+@keyframes wash-twinkle {
+  0%,
+  100% {
+    transform: scale(0.4) rotate(0deg);
+    opacity: 0.3;
+  }
+  50% {
+    transform: scale(1.15) rotate(45deg);
+    opacity: 1;
+  }
+}
+@keyframes wash-sweep {
+  0% {
+    transform: skewX(-20deg) translateX(0);
+  }
+  60%,
+  100% {
+    transform: skewX(-20deg) translateX(190px);
+  }
+}
+@keyframes wash-buzz-a {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(5px, -4px);
+  }
+  50% {
+    transform: translate(9px, 1px);
+  }
+  75% {
+    transform: translate(3px, 3px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes wash-buzz-b {
+  0% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-6px, 3px);
+  }
+  60% {
+    transform: translate(-2px, -4px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+@keyframes wash-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(0.3);
+  }
+}
+@keyframes wash-stink {
+  0% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-5px);
+    opacity: 0;
+  }
+}
+@keyframes wash-march {
+  to {
+    stroke-dashoffset: -8.2;
+  }
+}
+@keyframes wash-float {
+  0% {
+    transform: translateY(4px) rotate(-8deg) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-22px) rotate(10deg) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes wash-dust {
+  from {
+    transform: translate(0, 0) scale(0.8);
+    opacity: 0.7;
+  }
+  to {
+    transform: translate(8px, -4px) scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Idle: once the form has sat untouched a few seconds (useIdle in
+   CarReportSheet), it fidgets, and the next touch stills it. A light runs
+   along the drum and the last wheel nudges as if the car were rolling; an
+   empty battery shows itself being filled, a set one pulses its bolt; the
+   cars not picked rock on their springs, one after the other. */
+.odo-drum::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.12) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-position: 120% 0;
+  pointer-events: none;
+}
+.report-idle .odo-drum::before {
+  animation: odo-glint 3.2s var(--ease-smooth) infinite;
+}
+.report-idle .odo-wheel:nth-last-child(2) {
+  animation: odo-nudge 3.2s var(--ease-bounce) infinite;
+}
+.report-idle .battery-none .battery-cell::before {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, hsl(0 72% 44% / 0.35), hsl(45 72% 44% / 0.35), hsl(140 72% 44% / 0.35));
+  animation: battery-hint 2.8s var(--ease-smooth) infinite;
+}
+.report-idle .battery:not(.battery-none) .battery-read svg {
+  animation: bolt-throb 1.6s var(--ease-smooth) infinite;
+  color: var(--charge);
+}
+.report-idle .wash-card:not(.wash-card-on) .wash-car {
+  animation: wash-rock 2.4s var(--ease-smooth) infinite;
+  transform-box: view-box;
+  transform-origin: 62px 50px;
+}
+.report-idle .wash-card:nth-child(2):not(.wash-card-on) .wash-car {
+  animation-delay: 0.4s;
+}
+.report-idle .wash-card:nth-child(3):not(.wash-card-on) .wash-car {
+  animation-delay: 0.8s;
+}
+.report-idle .report-chip-main {
+  animation: chip-beckon 2.4s var(--ease-smooth) infinite;
+}
+@keyframes odo-glint {
+  from {
+    background-position: 120% 0;
+  }
+  60%,
+  to {
+    background-position: -20% 0;
+  }
+}
+@keyframes odo-nudge {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  78% {
+    transform: translateY(-3px);
+  }
+  86% {
+    transform: translateY(1px);
+  }
+}
+@keyframes battery-hint {
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  65% {
+    width: calc(80% - 6px);
+    opacity: 1;
+  }
+  100% {
+    width: calc(80% - 6px);
+    opacity: 0;
+  }
+}
+@keyframes bolt-throb {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+@keyframes wash-rock {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  70% {
+    transform: translateY(-1.5px) rotate(-1.5deg);
+  }
+  80% {
+    transform: translateY(0) rotate(1deg);
+  }
+  90% {
+    transform: translateY(-0.5px) rotate(-0.4deg);
+  }
+}
+@keyframes chip-beckon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 22%, transparent);
+  }
 }
 /* On the driver card: one line under the car's name, with the problem in amber. */
 .driver-car-state {

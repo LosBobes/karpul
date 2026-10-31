@@ -106,6 +106,7 @@ def car_state(car: CorporateCar, rides: list[Ride], reports: list[CarReport], no
         after_ride = next((r for r in rides if r.id == last_read.ride_id), None)
         after_day = after_ride.ride_date if after_ride is not None else _utc(last_read.created_at).date()
     guessed_km = _km_since(rides, after_ride, after_day, now) if odometer.value is not None else 0.0
+    read_km = odometer.value
     if guessed_km > 0:
         odometer = Fact(round(odometer.value + guessed_km), odometer.at, odometer.by, estimated=True)
 
@@ -133,6 +134,10 @@ def car_state(car: CorporateCar, rides: list[Ride], reports: list[CarReport], no
     return {
         "car": car,
         "odometer": odometer.as_dict(),
+        # The reading the guess starts from and the km the rides since add to it,
+        # so the report can offer "what was driven since" on top of the last reading.
+        "odometer_read": read_km,
+        "km_since": round(guessed_km),
         "soc": soc.as_dict(),
         "clean": clean.as_dict(),
         "issues": issues.as_dict(),

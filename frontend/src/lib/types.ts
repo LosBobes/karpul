@@ -379,6 +379,9 @@ export interface Fact<T> {
 export interface CarState {
   car: CorporateCar
   odometer: Fact<number>
+  /** The last real odometer reading, and the km the rides since add up to (0: none). */
+  odometer_read: number | null
+  km_since: number
   soc: Fact<number>
   clean: Fact<boolean>
   issues: Fact<string>

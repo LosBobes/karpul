@@ -93,6 +93,8 @@ def test_a_one_way_ride_counts_once_and_the_drivers_distance_elsewhere(client, c
     state = state_of(session_factory, car)
     # 90 one way between the offices, 150 there and 150 back to Niš.
     assert state["odometer"]["value"] == 682 + 90 + 300 and state["odometer"]["estimated"] is True
+    # What the guess is made of, for the report's "driven since".
+    assert state["odometer_read"] == 682 and state["km_since"] == 90 + 300
 
 
 def test_a_report_on_its_own_and_what_it_tells_the_admins(client, car, session_factory, admin_auth, monkeypatch):
