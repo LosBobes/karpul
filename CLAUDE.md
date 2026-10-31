@@ -234,8 +234,9 @@ input, with chips on top of the last real reading (the state's `odometer_read`):
 to (`km_since`, the guess's own figure, in green when there is any), else the office road first (`OFFICE_TRIPS`
 in `lib/offices.ts`, +90 / +92 / both ways), then +10 / +100; the battery as a battery dragged or arrow-keyed
 (`role="slider"`, its colour sliding red to amber to green with the charge, `socHue`, the range at
-`SOC_PER_KM` on an electric car), clean / needs a wash / not checked as pictures of the car (sparkles, mud and
-flies, moving only when picked), and quick problems as chips. Left untouched for a few seconds the form idles
+`SOC_PER_KM` on an electric car), clean / needs a wash / not checked as pictures of the car, each with a loop always running (sparkles and a
+shine; mud, rising stink, dust and two flies; a dotted outline of the missing car with question marks floating
+out of it), the picked one popping, and quick problems as chips. Left untouched for a few seconds the form idles
 (`useIdle`, `.report-idle`: a light along the drum, an empty battery filling itself, the cars rocking); every
 animation in it stops under reduced motion; the arithmetic in `lib/carReport.ts`, tested in
 `carReport.test.ts`. The pool is managed on the same cards, not a list of its

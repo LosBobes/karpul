@@ -332,8 +332,11 @@ const BODY =
   'M8 38Q6.5 30.5 12 29.3L30 25.6Q40 15 54 14H76Q89 14.6 99 24.3L109 26Q116 27 116 33V37.5Q116 41 112.5 41H100A10 10 0 0 0 80 41H40A10 10 0 0 0 20 41H11Q8.3 41 8 38Z'
 
 /**
- * A car side-on in three moods: gleaming with sparkles that twinkle, caked in
- * mud with a cloud of dust and two flies, or faded under a question mark.
+ * A car side-on in three moods, each with a loop of its own going on all the
+ * time: gleaming, with sparkles that twinkle and a shine across the paint;
+ * caked in mud, with stink rising off it, a cloud of dust and two buzzing
+ * flies; or not there at all, a dotted outline where the car should be with
+ * question marks floating up out of it.
  */
 function WashArt({ kind }: { kind: Cleanness }) {
   const id = useId()
@@ -368,7 +371,16 @@ function WashArt({ kind }: { kind: Cleanness }) {
           <circle cx="106" cy="47" r="3" />
         </g>
       )}
-      <g className={kind === '' ? 'wash-car wash-car-faded' : 'wash-car'}>
+      {kind === '' ? (
+        <g className="wash-car wash-missing">
+          <path d={BODY} />
+          <path d="M37 25.4Q44 17.6 54 17H63.5V25Z" />
+          <path d="M67.5 17H76Q86 17.6 93.5 25H67.5Z" />
+          <circle cx="30" cy="42" r="7.5" />
+          <circle cx="90" cy="42" r="7.5" />
+        </g>
+      ) : (
+      <g className="wash-car">
         <path d={BODY} fill={u('paint')} />
         <path d="M37 25.4Q44 17.6 54 17H63.5V25Z" fill={u('glass')} />
         <path d="M67.5 17H76Q86 17.6 93.5 25H67.5Z" fill={u('glass')} />
@@ -394,6 +406,7 @@ function WashArt({ kind }: { kind: Cleanness }) {
         <Wheel cx={30} dirty={dirty} />
         <Wheel cx={90} dirty={dirty} />
       </g>
+      )}
       {kind === 'clean' && (
         <g className="wash-sparkles">
           <Sparkle x={26} y={12} s={5} d={0} />
@@ -403,20 +416,43 @@ function WashArt({ kind }: { kind: Cleanness }) {
         </g>
       )}
       {dirty && (
+        <g className="wash-stink">
+          <path d="M44 14C41 11 47 9 44 6S47 1 44 -2" />
+          <path d="M62 12C59 9 65 7 62 4S65 -1 62 -4" style={{ animationDelay: '0.7s' }} />
+          <path d="M80 14C77 11 83 9 80 6S83 1 80 -2" style={{ animationDelay: '1.4s' }} />
+        </g>
+      )}
+      {dirty && (
         <g className="wash-flies">
-          <circle className="wash-fly wash-fly-a" cx="60" cy="9" r="1.3" />
-          <circle className="wash-fly wash-fly-b" cx="70" cy="7" r="1.1" />
+          <Fly x={56} y={8} className="wash-fly wash-fly-a" />
+          <Fly x={72} y={4} className="wash-fly wash-fly-b" />
         </g>
       )}
       {kind === '' && (
         <g className="wash-ask">
-          <circle cx="62" cy="12" r="9" />
-          <text x="62" y="16" textAnchor="middle">
+          <text className="wash-q" x="48" y="30" style={{ animationDelay: '0s' }}>
+            ?
+          </text>
+          <text className="wash-q wash-q-big" x="62" y="30" style={{ animationDelay: '0.9s' }}>
+            ?
+          </text>
+          <text className="wash-q" x="76" y="30" style={{ animationDelay: '1.8s' }}>
             ?
           </text>
         </g>
       )}
     </svg>
+  )
+}
+
+/** A fly: a dark body and two pale wings that beat. */
+function Fly({ x, y, className }: { x: number; y: number; className: string }) {
+  return (
+    <g className={className}>
+      <ellipse className="wash-wing" cx={x - 1.2} cy={y - 1.4} rx="1.4" ry="0.8" style={{ transformOrigin: `${x}px ${y}px` }} />
+      <ellipse className="wash-wing" cx={x + 1.2} cy={y - 1.4} rx="1.4" ry="0.8" style={{ transformOrigin: `${x}px ${y}px` }} />
+      <ellipse cx={x} cy={y} rx="1.4" ry="1" className="wash-fly-body" />
+    </g>
   )
 }
 
