@@ -1,7 +1,8 @@
-import { useId, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { api } from '../lib/api'
 import { carPowertrain } from '../lib/carModels'
-import { addIssue, odoNudge, odoWheels, rangeKm, socAt, socStep, socTone } from '../lib/carReport'
+import { addIssue, odoNudge, odoWheels, rangeKm, socAt, socHue, socStep } from '../lib/carReport'
+import { OFFICE_TRIPS } from '../lib/offices'
 import { messages, useT } from '../lib/i18n'
 import { useKept } from '../lib/keep'
 import { intlTag } from '../lib/locale'
@@ -11,7 +12,9 @@ import { Sheet } from './Sheet'
 
 type Cleanness = '' | 'clean' | 'dirty'
 const CLEANNESS: Cleanness[] = ['clean', 'dirty', '']
-const NUDGES = [10, 100, 1000]
+const NUDGES = [10, 100]
+/** How long the form sits untouched before it starts to fidget. */
+const IDLE_MS = 4000
 
 const km = (n: number) => n.toLocaleString(intlTag())
 const errText = (err: unknown) => messages().apiError(err instanceof Error ? err.message : String(err))
@@ -41,6 +44,7 @@ export function CarReportSheet({ state, report, onDone }: Props) {
   const [issues, setIssues] = useKept(`${k}.issues`, report?.issues ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const idle = useIdle(IDLE_MS)
 
   const odoNum = odometer.trim() === '' ? null : Number(odometer)
   const empty = odoNum === null && soc === null && cleanness === '' && issues.trim() === ''
@@ -73,7 +77,7 @@ export function CarReportSheet({ state, report, onDone }: Props) {
       title={report ? t.carState.editTitle : t.carState.reportTitle(state.car.name)}
       as="form"
       stacked
-      className="report-sheet"
+      className={idle ? 'report-sheet report-idle' : 'report-sheet'}
       onSubmit={submit}
       onClose={() => onDone(false)}
       footer={
@@ -87,7 +91,7 @@ export function CarReportSheet({ state, report, onDone }: Props) {
         </div>
       }
     >
-      <OdometerWheels value={odometer} last={state.odometer.value} onChange={setOdometer} />
+      <OdometerWheels value={odometer} last={state.odometer.value} read={state.odometer_read ?? null} since={state.km_since ?? 0} onChange={setOdometer} />
       <BatteryGauge value={soc} last={state.soc.value} electric={carPowertrain(state.car.name) === 'electric'} onChange={setSoc} />
       <CleanPicker value={cleanness} onChange={setCleanness} />
       <IssuesField value={issues} onChange={setIssues} />
@@ -101,16 +105,35 @@ export function CarReportSheet({ state, report, onDone }: Props) {
 /**
  * The reading as an odometer's drum: one wheel per digit that rolls to its
  * number. The wheels are a picture of a real input laid over them, so typing
- * works as anywhere else; with nothing typed they show the last known reading,
- * faded. The chips add to it, from the last known reading when it is empty.
+ * works as anywhere else; with nothing typed they show the last known reading
+ * (the guess included), faded. The chips put a figure on it: what the rides
+ * since the last reading add up to, a trip between the offices, or a round
+ * number, each on top of what is typed, else of the last real reading.
  */
-function OdometerWheels({ value, last, onChange }: { value: string; last: number | null; onChange: (v: string) => void }) {
+function OdometerWheels({
+  value,
+  last,
+  read,
+  since,
+  onChange,
+}: {
+  value: string
+  last: number | null
+  read: number | null
+  since: number
+  onChange: (v: string) => void
+}) {
   const t = useT()
   const id = useId()
   const num = value === '' ? null : Number(value)
   const wheels = odoWheels(num ?? last)
   // The zeros in front of the first real digit are dimmed, like a worn drum.
   const lead = num === null ? wheels.length : Math.max(0, wheels.length - String(num).length)
+  const base = read ?? last
+  const add = (by: number) => onChange(String(odoNudge(num, base, by)))
+  const roundTrip = OFFICE_TRIPS.reduce((sum, trip) => sum + trip.km, 0)
+  // The likeliest figure leads, in green: the rides since, else the road between the offices.
+  const driven = read !== null && since > 0
   return (
     <section className="report-part">
       <div className="report-part-head">
@@ -148,15 +171,32 @@ function OdometerWheels({ value, last, onChange }: { value: string; last: number
           onChange={(e) => onChange(e.target.value.replace(/\D/g, '').replace(/^0+(?=\d)/, ''))}
         />
       </div>
-      <div className="report-chips">
-        {last !== null && <span className="report-note">{t.carState.lastRead(t.carState.km(km(last)))}</span>}
-        <span className="report-chip-row">
-          {NUDGES.map((n) => (
-            <button key={n} type="button" className="chip report-chip" aria-label={t.carState.addKm(n)} onClick={() => onChange(String(odoNudge(num, last, n)))}>
-              <PlusIcon size={12} /> {km(n)}
-            </button>
-          ))}
-        </span>
+      {base !== null && <span className="report-note">{t.carState.lastRead(t.carState.km(km(base)))}</span>}
+      <div className="report-chip-row report-chip-wrap">
+        {driven && (
+          <button type="button" className="chip report-chip report-chip-main" onClick={() => onChange(String(read + since))}>
+            <PlusIcon size={12} /> {t.carState.drivenSince(km(since))}
+          </button>
+        )}
+        {OFFICE_TRIPS.map((trip, i) => (
+          <button
+            key={trip.from}
+            type="button"
+            className={!driven && i === 0 ? 'chip report-chip report-chip-main' : 'chip report-chip'}
+            aria-label={t.carState.addTrip(km(trip.km), trip.from, trip.to)}
+            onClick={() => add(trip.km)}
+          >
+            <PlusIcon size={12} /> {km(trip.km)} <small>{trip.from} → {trip.to}</small>
+          </button>
+        ))}
+        <button type="button" className="chip report-chip" aria-label={t.carState.addKm(roundTrip)} onClick={() => add(roundTrip)}>
+          <PlusIcon size={12} /> {km(roundTrip)} <small>{t.carState.thereAndBack}</small>
+        </button>
+        {NUDGES.map((n) => (
+          <button key={n} type="button" className="chip report-chip" aria-label={t.carState.addKm(n)} onClick={() => add(n)}>
+            <PlusIcon size={12} /> {km(n)}
+          </button>
+        ))}
       </div>
     </section>
   )
@@ -166,8 +206,9 @@ function OdometerWheels({ value, last, onChange }: { value: string; last: number
 
 /**
  * The charge as a battery: press or drag along it to fill it, arrow keys step
- * it (Page Up / Down by ten). Red when it wants a charger, amber when it is
- * worth a word, green otherwise; the last known charge stays as a faint tick.
+ * it (Page Up / Down by ten). Its colour slides from red when empty through
+ * amber to green when full (`socHue`); the last known charge stays as a
+ * faint tick.
  */
 function BatteryGauge({ value, last, electric, onChange }: { value: number | null; last: number | null; electric: boolean; onChange: (v: number | null) => void }) {
   const t = useT()
@@ -190,7 +231,6 @@ function BatteryGauge({ value, last, electric, onChange }: { value: number | nul
     e.preventDefault()
   }
 
-  const tone = value === null ? 'none' : socTone(value)
   return (
     <section className="report-part">
       <div className="report-part-head">
@@ -204,7 +244,8 @@ function BatteryGauge({ value, last, electric, onChange }: { value: number | nul
         )}
       </div>
       <div
-        className={`battery battery-${tone}${dragging ? ' battery-dragging' : ''}`}
+        className={['battery', value === null && 'battery-none', dragging && 'battery-dragging'].filter(Boolean).join(' ')}
+        style={value === null ? undefined : ({ '--charge-hue': socHue(value) } as CSSProperties)}
         role="slider"
         tabIndex={0}
         aria-labelledby={labelId}
@@ -245,7 +286,11 @@ function BatteryGauge({ value, last, electric, onChange }: { value: number | nul
       </div>
       <div className="report-chips">
         {last !== null && <span className="report-note">{t.carState.lastSoc(last)}</span>}
-        {electric && value !== null && <span className="report-note report-note-strong">{t.carState.range(rangeKm(value))}</span>}
+        {electric && value !== null && (
+          <span className="report-note report-note-strong" style={{ '--charge-hue': socHue(value) } as CSSProperties}>
+            {t.carState.range(rangeKm(value))}
+          </span>
+        )}
       </div>
     </section>
   )
@@ -419,4 +464,27 @@ function IssuesField({ value, onChange }: { value: string; onChange: (v: string)
       <textarea id={id} rows={2} maxLength={300} placeholder={t.odo.issuesPlaceholder} value={value} onChange={(e) => onChange(e.target.value)} />
     </section>
   )
+}
+
+/**
+ * True once nothing has been pressed, typed or dragged for `ms`: the form then
+ * fidgets a little (styles under `.report-idle`), and stops at the next touch.
+ */
+function useIdle(ms: number): boolean {
+  const [idle, setIdle] = useState(false)
+  useEffect(() => {
+    let timer = window.setTimeout(() => setIdle(true), ms)
+    const wake = () => {
+      window.clearTimeout(timer)
+      setIdle(false)
+      timer = window.setTimeout(() => setIdle(true), ms)
+    }
+    const events = ['pointerdown', 'keydown', 'input', 'wheel'] as const
+    for (const e of events) window.addEventListener(e, wake, true)
+    return () => {
+      window.clearTimeout(timer)
+      for (const e of events) window.removeEventListener(e, wake, true)
+    }
+  }, [ms])
+  return idle
 }

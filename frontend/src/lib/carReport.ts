@@ -14,13 +14,13 @@ export function socAt(x: number, left: number, width: number): number {
   return Math.max(0, Math.min(100, Math.round(raw)))
 }
 
-export type SocTone = 'low' | 'mid' | 'high'
-
-/** Under 20 % wants a charger before the next ride; under 50 % is worth a word. */
-export function socTone(soc: number): SocTone {
-  if (soc < 20) return 'low'
-  if (soc < 50) return 'mid'
-  return 'high'
+/**
+ * The charge's colour, sliding from red at empty through amber at half to
+ * green at full, so every percent reads a little different.
+ */
+export function socHue(soc: number): number {
+  const v = Math.max(0, Math.min(100, soc))
+  return Math.round(v < 50 ? v * 0.9 : 45 + (v - 50) * 1.9)
 }
 
 /** A step of the battery under the keyboard, kept in 0..100. */

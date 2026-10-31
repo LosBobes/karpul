@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addIssue, odoNudge, odoWheels, rangeKm, socAt, socStep, socTone } from './carReport'
+import { addIssue, odoNudge, odoWheels, rangeKm, socAt, socHue, socStep } from './carReport'
 
 describe('socAt', () => {
   it('reads the pointer across the battery as a percentage', () => {
@@ -13,17 +13,6 @@ describe('socAt', () => {
   })
   it('survives a battery with no width yet', () => {
     expect(socAt(50, 0, 0)).toBe(0)
-  })
-})
-
-describe('socTone', () => {
-  it('turns red under 20 and amber under 50', () => {
-    expect(socTone(0)).toBe('low')
-    expect(socTone(19)).toBe('low')
-    expect(socTone(20)).toBe('mid')
-    expect(socTone(49)).toBe('mid')
-    expect(socTone(50)).toBe('high')
-    expect(socTone(100)).toBe('high')
   })
 })
 
@@ -66,5 +55,17 @@ describe('addIssue', () => {
     expect(addIssue('', 'Warning light')).toBe('Warning light')
     expect(addIssue('Warning light', 'Low tyre')).toBe('Warning light, Low tyre')
     expect(addIssue('Warning light, Low tyre', 'low tyre')).toBe('Warning light, Low tyre')
+  })
+})
+
+describe('socHue', () => {
+  it('runs red to amber to green', () => {
+    expect(socHue(0)).toBe(0)
+    expect(socHue(50)).toBe(45)
+    expect(socHue(100)).toBe(140)
+    expect(socHue(150)).toBe(140)
+  })
+  it('never goes back as the charge rises', () => {
+    for (let s = 1; s <= 100; s++) expect(socHue(s)).toBeGreaterThanOrEqual(socHue(s - 1))
   })
 })

@@ -30,3 +30,9 @@ export function officeDistance(origin: string, destination: string): number | nu
   if (a === null || b === null) return null
   return DISTANCES[`${a}>${b}`] ?? null
 }
+
+/** The trips between the offices as the car report offers them (components/CarReportSheet.tsx). */
+export const OFFICE_TRIPS: { from: string; to: string; km: number }[] = [
+  { from: 'Beograd', to: 'Novi Sad', km: DISTANCES['beograd>novi sad'] },
+  { from: 'Novi Sad', to: 'Beograd', km: DISTANCES['novi sad>beograd'] },
+]

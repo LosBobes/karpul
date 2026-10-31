@@ -659,10 +659,9 @@
   .bolt-current-aura,
   .bolt-halo,
   .bolt-start,
-  .wash-sparkle,
-  .wash-sweep,
-  .wash-fly,
-  .wash-dust {
+  .report-sheet *,
+  .report-sheet *::before,
+  .report-sheet *::after {
     animation: none !important;
   }
 }

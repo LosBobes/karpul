@@ -796,8 +796,27 @@
   color: var(--muted);
 }
 .report-note-strong {
+  color: hsl(var(--charge-hue, 140) 70% 32%);
+  font-weight: 600;
+}
+:root[data-resolved='dark'] .report-note-strong {
+  color: hsl(var(--charge-hue, 140) 65% 62%);
+}
+.report-chip small {
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+/* The likeliest figure, in green. */
+.report-chip-main {
+  border-color: var(--green-line);
+  background: var(--green-soft);
   color: var(--green-dark);
   font-weight: 600;
+}
+.report-chip-main small {
+  color: inherit;
+  opacity: 0.8;
 }
 .report-part textarea {
   resize: vertical;
@@ -878,7 +897,7 @@
 
 /* The battery: a cell you press or drag, the cap on its right. */
 .battery {
-  --charge: var(--green);
+  --charge: hsl(var(--charge-hue, 140) 72% 44%);
   position: relative;
   display: flex;
   align-items: center;
@@ -889,12 +908,6 @@
   cursor: ew-resize;
   border-radius: var(--radius);
   outline: none;
-}
-.battery-low {
-  --charge: var(--red);
-}
-.battery-mid {
-  --charge: #e0a100;
 }
 .battery-cell {
   position: relative;
@@ -920,10 +933,10 @@
   max-width: calc(100% - 6px);
   border-radius: 7px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--charge) 70%, #fff), var(--charge));
-  transition: width 260ms var(--ease-out), background var(--dur-normal);
+  transition: width 260ms var(--ease-out);
 }
 .battery-dragging .battery-fill {
-  transition: background var(--dur-normal);
+  transition: none;
 }
 /* A sheen that runs along the charge, so it reads as live. */
 .battery-fill::after {
@@ -1155,6 +1168,127 @@
   to {
     transform: translate(8px, -4px) scale(1.4);
     opacity: 0;
+  }
+}
+
+/* Idle: once the form has sat untouched a few seconds (useIdle in
+   CarReportSheet), it fidgets, and the next touch stills it. A light runs
+   along the drum and the last wheel nudges as if the car were rolling; an
+   empty battery shows itself being filled, a set one pulses its bolt; the
+   cars not picked rock on their springs, one after the other. */
+.odo-drum::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.12) 50%, transparent 70%);
+  background-size: 250% 100%;
+  background-position: 120% 0;
+  pointer-events: none;
+}
+.report-idle .odo-drum::before {
+  animation: odo-glint 3.2s var(--ease-smooth) infinite;
+}
+.report-idle .odo-wheel:nth-last-child(2) {
+  animation: odo-nudge 3.2s var(--ease-bounce) infinite;
+}
+.report-idle .battery-none .battery-cell::before {
+  content: '';
+  position: absolute;
+  inset: 3px auto 3px 3px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, hsl(0 72% 44% / 0.35), hsl(45 72% 44% / 0.35), hsl(140 72% 44% / 0.35));
+  animation: battery-hint 2.8s var(--ease-smooth) infinite;
+}
+.report-idle .battery:not(.battery-none) .battery-read svg {
+  animation: bolt-throb 1.6s var(--ease-smooth) infinite;
+  color: var(--charge);
+}
+.report-idle .wash-card:not(.wash-card-on) .wash-car {
+  animation: wash-rock 2.4s var(--ease-smooth) infinite;
+  transform-box: view-box;
+  transform-origin: 62px 50px;
+}
+.report-idle .wash-card:nth-child(2):not(.wash-card-on) .wash-car {
+  animation-delay: 0.4s;
+}
+.report-idle .wash-card:nth-child(3):not(.wash-card-on) .wash-car {
+  animation-delay: 0.8s;
+}
+.report-idle .report-chip-main {
+  animation: chip-beckon 2.4s var(--ease-smooth) infinite;
+}
+@keyframes odo-glint {
+  from {
+    background-position: 120% 0;
+  }
+  60%,
+  to {
+    background-position: -20% 0;
+  }
+}
+@keyframes odo-nudge {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  78% {
+    transform: translateY(-3px);
+  }
+  86% {
+    transform: translateY(1px);
+  }
+}
+@keyframes battery-hint {
+  0% {
+    width: 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  65% {
+    width: calc(80% - 6px);
+    opacity: 1;
+  }
+  100% {
+    width: calc(80% - 6px);
+    opacity: 0;
+  }
+}
+@keyframes bolt-throb {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.25);
+  }
+}
+@keyframes wash-rock {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  70% {
+    transform: translateY(-1.5px) rotate(-1.5deg);
+  }
+  80% {
+    transform: translateY(0) rotate(1deg);
+  }
+  90% {
+    transform: translateY(-0.5px) rotate(-0.4deg);
+  }
+}
+@keyframes chip-beckon {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--green) 0%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 22%, transparent);
   }
 }
 /* On the driver card: one line under the car's name, with the problem in amber. */

@@ -291,8 +291,9 @@ from the rides since the last reading. The same summary appears under the car's 
 shared-car ride.
 
 Found the car dirty, low on battery or with a warning light? Use **Report on this car** on its
-card. It opens a window of its own: type the odometer (or add 10, 100 or 1,000 km to the last
-reading), drag the battery to its charge, pick the picture of the car as you found it (clean,
+card. It opens a window of its own: type the odometer, or add to the last reading what the rides
+since then come to, a trip between the offices (90 km Beograd to Novi Sad, 92 back) or 10 or
+100 km, drag the battery to its charge, pick the picture of the car as you found it (clean,
 needs a wash, or not checked) and say what is wrong, with chips for the usual problems. Fill in
 only what you checked. A report of a problem goes straight to the admins.
 
