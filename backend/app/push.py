@@ -66,7 +66,7 @@ class Target:
 # Notifications sheet). Every `kind` notify() sends belongs to exactly one.
 CATEGORIES: dict[str, tuple[str, ...]] = {
     "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
-    "changes": ("running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
+    "changes": ("change_asked", "change_agreed", "change_declined", "time_suggested", "suggestion_accepted", "suggestion_declined", "running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
     "reminders": ("leaving_soon", "note_km"),
     "messages": ("message",),
     "requests": ("request_made", "request_answered"),
@@ -102,6 +102,12 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver, alternatives=0: f"{driver} removed the ride"
         + ("" if not alternatives else f". {alternatives} other car{'s' if alternatives > 1 else ''} with free seats that day"),
         "ride_changed": lambda driver: f"{driver} changed the ride",
+        "change_asked": lambda driver: f"{driver} wants to change the ride. Do you agree?",
+        "change_agreed": lambda: "Your passengers agreed: the ride is changed",
+        "change_declined": lambda name: f"{name} did not agree to the change; the ride stays as it was",
+        "time_suggested": lambda name: f"{name} suggests another time for your ride",
+        "suggestion_accepted": lambda name: f"{name} took your suggested time",
+        "suggestion_declined": lambda name: f"{name} keeps the time as it was",
         "driver_needed": lambda driver: f"{driver} can't drive. Will you take the car?",
         "driver_found": lambda name: f"{name} drives now",
         "no_driver": lambda alternatives=0: "Nobody took over the ride, it is off"
@@ -133,6 +139,12 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_removed": lambda driver, alternatives=0: f"{driver} je uklonio/la vožnju"
         + ("" if not alternatives else f". Tog dana ima mesta u još {_sr_cars(alternatives)}"),
         "ride_changed": lambda driver: f"{driver} je izmenio/la vožnju",
+        "change_asked": lambda driver: f"{driver} želi da izmeni vožnju. Da li se slažeš?",
+        "change_agreed": lambda: "Putnici su se složili: vožnja je izmenjena",
+        "change_declined": lambda name: f"{name} se ne slaže sa izmenom; vožnja ostaje kakva je bila",
+        "time_suggested": lambda name: f"{name} predlaže drugo vreme za tvoju vožnju",
+        "suggestion_accepted": lambda name: f"{name} je prihvatio/la predloženo vreme",
+        "suggestion_declined": lambda name: f"{name} zadržava vreme kakvo je bilo",
         "driver_needed": lambda driver: f"{driver} ne može da vozi. Hoćeš li ti da preuzmeš auto?",
         "driver_found": lambda name: f"Sada vozi {name}",
         "no_driver": lambda alternatives=0: "Niko nije preuzeo vožnju, otkazana je"

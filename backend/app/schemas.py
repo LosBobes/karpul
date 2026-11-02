@@ -716,6 +716,25 @@ class RideUpdate(BaseModel):
     points: Points | None = None
 
 
+class TimeSuggestion(BaseModel):
+    """A passenger's suggestion: another departure or return time, or both."""
+
+    departure_time: time | None = None
+    return_time: time | None = None
+
+
+class ProposalRead(BaseModel):
+    by: str
+    by_id: int | None = None
+    # A passenger's suggestion still waiting for the driver; once the driver
+    # accepts it, `suggested_by` names the passenger it came from.
+    suggested: bool = False
+    suggested_by: str | None = None
+    # The fields the driver wants changed, as they would be (RideUpdate, JSON).
+    fields: dict
+    agreed: list[int] = []
+
+
 class GaragePlateUpdate(BaseModel):
     """An admin's tick: the plate is on the garage's list, or not after all."""
 
@@ -744,6 +763,9 @@ class RideRead(BaseModel):
     # it on the garage's list yet.
     plate: str = ""
     plate_registered: bool = False
+    # A change the driver is asking the passengers to agree to: who asks, the
+    # fields as they would be, and the accounts that agreed so far.
+    proposal: ProposalRead | None = None
     stops: list[str]
     # Pickup points before `origin`, in the order the car reaches them.
     stops_before: list[str] = []

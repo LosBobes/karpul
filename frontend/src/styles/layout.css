@@ -480,6 +480,39 @@ main,
   font-size: 0.82rem;
   color: var(--muted);
 }
+/* The driver's change waiting for the passengers (CarDetail's ChangeAsk):
+   each field struck through and then as it would be. */
+.change-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+}
+.change-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.86rem;
+}
+.change-item dt {
+  min-width: 4.5rem;
+  color: var(--muted);
+}
+.change-item dd {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.change-item s {
+  color: var(--muted);
+}
+.change-waiting {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
 /* The garage list (components/GarageList.tsx): the plate is what an admin
    copies onto the garage's list, so it reads like one; a ticked one recedes. */
 .garage-plate {

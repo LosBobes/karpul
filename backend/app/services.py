@@ -1,5 +1,6 @@
 """Business rules shared by routers."""
 
+import json
 import secrets
 import unicodedata
 from collections import defaultdict
@@ -149,6 +150,7 @@ def to_ride_read_dict(ride: Ride, extras: BoardExtras | None = None) -> dict:
     data["free_seats"] = max(ride.seats - len(ride.bookings), 0)
     data["legs"] = ride.legs
     data["points"] = load_points(ride.points)
+    data["proposal"] = json.loads(ride.proposal) if ride.proposal else None
     return data
 
 

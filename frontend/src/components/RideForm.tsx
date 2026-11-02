@@ -224,6 +224,10 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const knownKm = officeDistance(origin, destination)
   // An own car to the Beograd office: the garage lets in only the plates on its list.
   const askPlate = goesToGarage(carType, destination)
+  // The driver's change to the day, times or route of a ride with passengers
+  // waits for them to agree (backend: rides.update_ride); an admin's does not.
+  const asksPassengers =
+    !!existing && drives(existing, me) && existing.bookings.some((b) => b.passenger_id !== null && b.passenger_id !== existing.driver_id)
   // Elsewhere, with the two ends pinned and a road finder on the server, the
   // road's length is the placeholder, and what a blank distance is sent as.
   const roadPins = [pinOf(origin), ...stops.map(pinOf), pinOf(destination)]
@@ -511,6 +515,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             </div>
           )}
         </div>
+        {asksPassengers && <p className="hint">{t.form.consentHint}</p>}
       </div>
 
       {offersWayBack && (

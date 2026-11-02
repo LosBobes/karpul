@@ -147,6 +147,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
                           <small>{r.return_time ? t.upcoming.back(fmtTime(r.return_time)) : t.upcoming.oneWay}</small>
                         </span>
                         {r.needs_driver && <span className="tag tag-amber">{t.upcoming.needsDriver}</span>}
+                        {r.proposal && <span className="tag tag-amber">{t.upcoming.changeAsked}</span>}
                         {r.approval === 'pending' && <span className="tag tag-amber">{t.upcoming.awaiting}</span>}
                         {driving ? (
                           <span className="tag tag-green">{t.upcoming.driving}</span>

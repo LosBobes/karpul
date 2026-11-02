@@ -82,6 +82,11 @@ type Overlay =
   | 'approvals'
   | 'garage'
 
+/** An edit came back as a new ask of the passengers rather than made (backend: rides.update_ride). */
+function newlyAsked(before: Ride, after: Ride): boolean {
+  return !!after.proposal && JSON.stringify(after.proposal) !== JSON.stringify(before.proposal)
+}
+
 function loadView(): View {
   try {
     const v = localStorage.getItem(VIEW_KEY)
@@ -301,8 +306,9 @@ function Board({ session }: { session: Session }) {
   const onSaveRoute = async (ride: Ride, patch: Partial<RideInput>) => {
     let saved = false
     await withBusy(ride.id, async () => {
-      upsertRide(await api.updateRide(ride.id, patch))
-      setToast({ kind: 'ok', text: t.toasts.routeSaved })
+      const updated = await api.updateRide(ride.id, patch)
+      upsertRide(updated)
+      setToast({ kind: 'ok', text: newlyAsked(ride, updated) ? t.toasts.changeAsked : t.toasts.routeSaved })
       saved = true
     })
     return saved
@@ -463,8 +469,9 @@ function Board({ session }: { session: Session }) {
         void _driver
         void _driverId
         void _request
-        upsertRide(await api.updateRide(form.ride.id, patch))
-        setToast({ kind: 'ok', text: t.toasts.rideUpdated })
+        const updated = await api.updateRide(form.ride.id, patch)
+        upsertRide(updated)
+        setToast({ kind: 'ok', text: newlyAsked(form.ride, updated) ? t.toasts.changeAsked : t.toasts.rideUpdated })
         setCarSel(form.ride.id)
       } else {
         const created = await api.createRide(input)
@@ -532,6 +539,35 @@ function Board({ session }: { session: Session }) {
   // --- a ride under a name with no account: "this is me" ---
 
   // --- a shared car whose driver cancelled: a passenger takes the wheel ---
+
+  // --- a change to the ride that waits on people (`Ride.proposal`) ---
+
+  const onAnswerChange = (ride: Ride, agree: boolean) =>
+    withBusy(ride.id, async () => {
+      const updated = await api.answerChange(ride.id, agree)
+      upsertRide(updated)
+      const made = !updated.proposal && agree
+      // Taking a passenger's suggestion asks the others, unless nobody is left to ask.
+      const took = agree && !!ride.proposal?.suggested
+      const text = made ? t.toasts.changeMade : took ? t.toasts.changeAsked : agree ? t.toasts.changeAgreed : t.toasts.changeDropped
+      setToast({ kind: 'ok', text })
+    })
+
+  const onWithdrawChange = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.withdrawChange(ride.id))
+      setToast({ kind: 'ok', text: t.toasts.changeWithdrawn })
+    })
+
+  const onSuggestTime = async (ride: Ride, times: { departure_time?: string; return_time?: string }) => {
+    let sent = false
+    await withBusy(ride.id, async () => {
+      upsertRide(await api.suggestTime(ride.id, times))
+      setToast({ kind: 'ok', text: t.toasts.suggestionSent })
+      sent = true
+    })
+    return sent
+  }
 
   const onTakeOver = (ride: Ride) =>
     withBusy(ride.id, async () => {
@@ -764,6 +800,9 @@ function Board({ session }: { session: Session }) {
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}
       onTakeOver={(r) => void onTakeOver(r)}
+      onAnswerChange={(r, agree) => void onAnswerChange(r, agree)}
+      onWithdrawChange={(r) => void onWithdrawChange(r)}
+      onSuggestTime={onSuggestTime}
       onLate={(r, minutes) => void onLate(r, minutes)}
       onGuide={() => show('guide')}
       carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { carBrand, carModel, carPowertrain, powertrainLabel } from '../lib/carModels'
 import { factText } from '../lib/carState'
-import { firstName, fmtTime, toISODate } from '../lib/dates'
+import { firstName, fmtShortDate, fmtTime, toISODate } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
@@ -12,7 +12,7 @@ import { goesToGarage } from '../lib/offices'
 import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
-import type { CarState, Ride, RideInput, RideRequest } from '../lib/types'
+import type { CarState, ProposalField, Ride, RideInput, RideRequest } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { useWide } from '../lib/useWide'
 import { AddStop } from './AddStop'
@@ -24,6 +24,7 @@ import {
   CalendarIcon,
   CheckIcon,
   CarIcon,
+  ClockIcon,
   ChevronRightIcon,
   CoffeeIcon,
   CoinsIcon,
@@ -52,6 +53,8 @@ import { Odometer } from './Odometer'
 import { RideThread } from './RideThread'
 import { RideMap, RouteMapSheet } from './RouteMap'
 import { Select } from './Select'
+import { Sheet } from './Sheet'
+import { TimePicker } from './TimePicker'
 
 interface Props {
   ride: Ride
@@ -92,6 +95,12 @@ interface Props {
   onClaim: (ride: Ride) => void
   /** A passenger drives a shared car whose driver cancelled (`needs_driver`). */
   onTakeOver: (ride: Ride) => void
+  /** A passenger's yes or no to the driver's change (`Ride.proposal`). */
+  onAnswerChange: (ride: Ride, agree: boolean) => void
+  /** Whoever asked takes it back: the driver a change, a passenger a suggestion. */
+  onWithdrawChange: (ride: Ride) => void
+  /** A passenger suggests another departure or return time (it goes to the driver first). */
+  onSuggestTime: (ride: Ride, times: { departure_time?: string; return_time?: string }) => Promise<boolean>
   /** The driver's one tap on the day: tell the car the ride leaves `minutes` late. */
   onLate: (ride: Ride, minutes: number) => void
   /** Opens the company-car guide (charging, the Mazda 6e); shown on company-car rides only. */
@@ -172,6 +181,9 @@ export function CarDetail({
   onDecline,
   onClaim,
   onTakeOver,
+  onAnswerChange,
+  onWithdrawChange,
+  onSuggestTime,
   onLate,
   onGuide,
   carState = null,
@@ -218,6 +230,8 @@ export function CarDetail({
   const canWait = full && !isDriver && !myBooking && !myEntry && !isPast && ride.seats > 0
 
   const [adding, setAdding] = useState(false)
+  // A passenger's "Suggest another time" sheet.
+  const [suggesting, setSuggesting] = useState(false)
   const arrived = useArrivals(ride.bookings.map((b) => b.id))
   const [newName, setNewName] = useState('')
   // Where you get in: the start, one of the stops, or somewhere new you put on the route.
@@ -370,6 +384,31 @@ export function CarDetail({
               </button>
             </span>
           </div>
+        )}
+
+        {ride.proposal && !isPast && (
+          <ChangeAsk
+            ride={ride}
+            busy={busy}
+            onAnswer={(agree) => onAnswerChange(ride, agree)}
+            onWithdraw={runsIt || ride.proposal.by_id === me.id ? () => onWithdrawChange(ride) : undefined}
+          />
+        )}
+
+        {!ride.proposal && !isPast && !isDriver && myBooking?.passenger_id != null && (
+          <button type="button" className="link suggest-link" onClick={() => setSuggesting(true)}>
+            <ClockIcon size={15} /> {t.detail.suggest}
+          </button>
+        )}
+        {suggesting && (
+          <SuggestTime
+            ride={ride}
+            busy={busy}
+            onClose={() => setSuggesting(false)}
+            onSend={(times) => {
+              void onSuggestTime(ride, times).then((ok) => ok && setSuggesting(false))
+            }}
+          />
         )}
 
         {ride.needs_driver && !isPast && (
@@ -903,5 +942,117 @@ export function CarDetail({
 
       <RideThread ride={ride} isDriver={isDriver} onError={onError} />
     </div>
+  )
+}
+
+const CHANGE_FIELDS: ProposalField[] = ['ride_date', 'departure_time', 'return_time', 'origin', 'destination']
+
+/**
+ * A change to the ride waiting on people (backend: `Ride.proposal`), each
+ * field before and after. The driver's own change waits for the passengers:
+ * one who has not answered gets *Decline* / *Agree*, and whoever runs the
+ * ride sees who is still to answer and can *Withdraw*. A passenger's
+ * suggested time waits for the driver first: whoever runs the ride gets
+ * *Decline* / *Accept*, the suggester *Withdraw*.
+ */
+function ChangeAsk({ ride, busy, onAnswer, onWithdraw }: { ride: Ride; busy: boolean; onAnswer: (agree: boolean) => void; onWithdraw?: () => void }) {
+  const t = useT()
+  const me = useMe()
+  const proposal = ride.proposal!
+  const asked = ride.bookings.filter((b) => b.passenger_id !== null && b.passenger_id !== ride.driver_id)
+  const mine = asked.find((b) => b.passenger_id === me.id)
+  const agreed = new Set(proposal.agreed)
+  const waiting = asked.filter((b) => !agreed.has(b.passenger_id as number)).map((b) => firstName(b.passenger_name))
+  const suggested = !!proposal.suggested
+  const myAsk = proposal.by_id === me.id
+  const shown = (field: ProposalField, value: string | null | undefined) => {
+    if (field === 'ride_date') return value ? fmtShortDate(value) : ''
+    if (field === 'departure_time') return fmtTime(value ?? null)
+    if (field === 'return_time') return value ? fmtTime(value) : t.detail.noReturn
+    return value ?? ''
+  }
+  const changes = CHANGE_FIELDS.filter((f) => f in proposal.fields)
+  const head = suggested
+    ? myAsk
+      ? t.detail.suggestYours
+      : t.detail.suggestAsk(proposal.by)
+    : onWithdraw && !mine
+      ? t.detail.changeYours
+      : t.detail.changeAsk(proposal.by)
+  // Who answers now: on a suggestion whoever runs the ride, else a passenger who has not.
+  const answers = suggested ? !!onWithdraw && !myAsk : !!mine && !agreed.has(me.id)
+  const takesBack = suggested ? myAsk || (!!onWithdraw && !answers) : !!onWithdraw && !mine
+  return (
+    <div className="approval-row change-ask">
+      <span className="approval-ask">{head}</span>
+      <dl className="change-list">
+        {changes.map((f) => (
+          <div key={f} className="change-item">
+            <dt>{t.adminLog.fields[f]}</dt>
+            <dd>
+              <s>{shown(f, ride[f] as string | null)}</s>
+              <ArrowRightIcon size={12} />
+              <strong>{shown(f, proposal.fields[f])}</strong>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {proposal.suggested_by && <span className="change-waiting">{t.detail.suggestFrom(proposal.suggested_by)}</span>}
+      {!suggested && mine && agreed.has(me.id) && <span className="approval-ask">{t.detail.changeYouAgreed}</span>}
+      {suggested && !answers && <span className="change-waiting">{t.detail.suggestWaiting(firstName(ride.driver_name))}</span>}
+      {!suggested && waiting.length > 0 && !answers && <span className="change-waiting">{t.detail.changeWaiting(waiting.join(', '))}</span>}
+      {answers && (
+        <span className="approval-actions">
+          <button type="button" className="btn btn-outline-danger" disabled={busy} onClick={() => onAnswer(false)}>
+            {t.detail.decline}
+          </button>
+          <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onAnswer(true)}>
+            <CheckIcon size={16} /> {suggested ? t.detail.accept : t.detail.agree}
+          </button>
+        </span>
+      )}
+      {takesBack && (
+        <span className="approval-actions">
+          <button type="button" className="btn" disabled={busy} onClick={onWithdraw}>
+            {t.detail.withdraw}
+          </button>
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** A passenger's "Suggest another time": the departure and, when the ride comes back, the return. */
+function SuggestTime({ ride, busy, onSend, onClose }: { ride: Ride; busy: boolean; onSend: (times: { departure_time?: string; return_time?: string }) => void; onClose: () => void }) {
+  const t = useT()
+  const [departure, setDeparture] = useState(fmtTime(ride.departure_time))
+  const [back, setBack] = useState(fmtTime(ride.return_time))
+  const times: { departure_time?: string; return_time?: string } = {}
+  if (departure !== fmtTime(ride.departure_time)) times.departure_time = departure
+  if (ride.return_time && back !== fmtTime(ride.return_time)) times.return_time = back
+  const changed = Object.keys(times).length > 0
+  return (
+    <Sheet
+      id="suggest-title"
+      title={t.detail.suggestTitle}
+      as="form"
+      stacked
+      onClose={onClose}
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (changed) onSend(times)
+      }}
+      footer={
+        <button type="submit" className="btn btn-primary btn-block" disabled={busy || !changed}>
+          {t.detail.suggestSend}
+        </button>
+      }
+    >
+      <div className={ride.return_time ? 'grid-2' : undefined}>
+        <TimePicker label={t.form.departs} value={departure} onChange={setDeparture} />
+        {ride.return_time && <TimePicker label={t.form.returns} value={back} onChange={setBack} />}
+      </div>
+      <p className="hint">{t.detail.suggestHint}</p>
+    </Sheet>
   )
 }

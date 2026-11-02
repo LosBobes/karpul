@@ -33,6 +33,7 @@ const ride = (legs: DriveLeg[], over: Partial<Ride> = {}): Ride =>
     coffee_please: false,
     plate: '',
     plate_registered: false,
+    proposal: null,
     seats: 3,
     bookings: [],
     waitlist: [],

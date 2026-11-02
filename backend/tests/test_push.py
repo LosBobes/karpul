@@ -153,16 +153,16 @@ def test_passengers_are_told_in_their_language_when_the_ride_moves_or_goes(clien
     client.post(f"/api/rides/{rid}/bookings", json={"passenger_name": "Mila"})
     assert sent == []  # the driver has no subscription
 
-    # A note is not a change worth a push; a new departure time is.
+    # A note is not a change worth a push; a new departure time is, and the
+    # driver's asks the passengers first (tests/test_consent.py).
     client.patch(f"/api/rides/{rid}", json={"notes": "coffee first"}, headers={"X-User-Name": "Ana"})
     assert sent == []
     client.patch(f"/api/rides/{rid}", json={"departure_time": "08:00"}, headers={"X-User-Name": "Ana"})
     titles = sorted((t.endpoint, m["title"]) for t, m in sent)
     assert titles == [
-        ("https://push.example/bojan", "Ana je izmenio/la vožnju"),
-        ("https://push.example/mila", "Ana changed the ride"),
+        ("https://push.example/bojan", "Ana želi da izmeni vožnju. Da li se slažeš?"),
+        ("https://push.example/mila", "Ana wants to change the ride. Do you agree?"),
     ]
-    assert "08:00" in sent[0][1]["body"]
 
     sent.clear()
     client.delete(f"/api/rides/{rid}", headers={"X-User-Name": "Ana"})

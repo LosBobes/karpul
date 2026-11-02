@@ -1,9 +1,12 @@
+import json
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Annotated, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
+from pydantic import ValidationError
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, select
 
@@ -17,7 +20,18 @@ from ..events import request_saved, ride_deleted, ride_saved
 from ..models import Booking, CarType, Ride, RideRequest, User
 from ..offices import garage_task, office_distance
 from ..push import notify
-from ..schemas import BookingCreate, BookingRead, BookingUpdate, NewStop, Point, RideCreate, RideRead, RideUpdate, StopCreate
+from ..schemas import (
+    BookingCreate,
+    BookingRead,
+    BookingUpdate,
+    NewStop,
+    Point,
+    RideCreate,
+    RideRead,
+    RideUpdate,
+    StopCreate,
+    TimeSuggestion,
+)
 from ..services import (
     account_for_name,
     add_stop,
@@ -271,19 +285,36 @@ def ride_calendar(ride_id: int, session: SessionDep, creds: CredsDep):
     )
 
 
-@router.patch("/{ride_id}", response_model=RideRead)
-def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, creds: CredsDep):
-    user = require_user(session, creds)
-    ride = get_ride_or_404(session, ride_id)
-    if not may_run(user, ride):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can edit this ride")
+# A driver's change to these moves the plan the passengers got in for: it
+# waits for each of them to agree (`Ride.proposal`) before it is made. An
+# admin changing someone's ride is the office deciding, and applies at once.
+CONSENT_FIELDS = ("ride_date", "departure_time", "return_time", "origin", "destination")
 
+
+def _consenting(ride: Ride) -> list[int]:
+    """Who has to agree to the driver's change: the passengers with an account."""
+    return [b.passenger_id for b in ride.bookings if b.passenger_id is not None and b.passenger_id != ride.driver_id]
+
+
+def proposal_of(ride: Ride) -> dict | None:
+    return json.loads(ride.proposal) if ride.proposal else None
+
+
+def _plan(session: Session, user: User, ride: Ride, sent: dict) -> tuple[RideCreate, dict]:
+    """`sent` (a RideUpdate, as set) merged onto the ride and held to the full
+    creation rules: the column values it would leave, or the HTTPException
+    that refuses it. Writes nothing."""
     merged = ride_to_create_dict(ride)
-    merged.update(payload.model_dump(exclude_unset=True))
+    merged.update(sent)
     # Re-run the creation rules on the merged state.
-    validated = RideCreate.model_validate(
-        {k: merged[k] for k in RideCreate.model_fields if k in merged}
-    )
+    try:
+        validated = RideCreate.model_validate({k: merged[k] for k in RideCreate.model_fields if k in merged})
+    except ValidationError as exc:
+        # The merged ride breaks a rule (a return before the departure): the
+        # same 422 a request body gets, not a crash.
+        raise HTTPException(
+            422, [{"loc": list(e["loc"]), "msg": e["msg"], "type": e["type"]} for e in exc.errors()]
+        ) from exc
     data = _prepare(session, validated, exclude_ride_id=ride.id)
     # Moving an unapproved ride into a week (or onto a day) that already has
     # the driver's shared car, or stretching it into their next one, is the
@@ -302,13 +333,25 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
             status.HTTP_409_CONFLICT,
             f"{len(ride.bookings)} passengers already joined; seats cannot go below that",
         )
+    return validated, data
+
+
+@dataclass
+class _Applied:
+    moved: bool
+    promoted: list[Booking]
+    garage_task: bool
+
+
+def _apply(session: Session, user: User, ride: Ride, sent: dict) -> _Applied:
+    """Make the edit `sent` on the ride (not committed): the rules of
+    `_plan`, the admin's log, the garage list and the queue moving up."""
+    validated, data = _plan(session, user, ride, sent)
     # The passengers are told when the plan itself moves, not about a note;
     # a pin put somewhere else is the route moving.
     pins_before, pins_after = geo.load(ride.points), geo.load(data["points"])
     pins_moved = geo.moved(pins_before, pins_after)
-    moved = bool(pins_moved) or any(
-        getattr(ride, key) != data[key] for key in ("ride_date", "departure_time", "return_time", "origin", "destination")
-    )
+    moved = bool(pins_moved) or any(getattr(ride, key) != data[key] for key in CONSENT_FIELDS)
     changes = audit.diff(ride, data, skip=("corporate_car_id", "driver_name", "points")) if on_behalf(user, ride) else []
     if pins_moved and on_behalf(user, ride):
         names = {geo.fold(p): p for p in geo.route_places(validated)}
@@ -316,13 +359,17 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
     geo.learn(
         session,
         geo.route_places(validated),
-        {k: v for k, v in pins_after.items() if pins_before.get(k) != v and k in geo.folded(payload.points)},
+        {k: v for k, v in pins_after.items() if pins_before.get(k) != v and k in geo.folded(sent.get("points"))},
     )
     # The garage's list is of a plate on a day: a new plate or another day is
     # a new task for the admins, however the old one stood.
     was_task = garage_task(ride)
     if data["plate"] != ride.plate or data["ride_date"] != ride.ride_date:
         data["plate_registered"] = False
+    # Whatever the driver had asked the passengers is overtaken by a change
+    # made outright.
+    if moved:
+        data["proposal"] = ""
     for key, value in data.items():
         setattr(ride, key, value)
     new_task = garage_task(ride) and (not was_task or "plate_registered" in data)
@@ -332,20 +379,219 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
     # More seats than before: the queue moves up into them.
     promoted = promote_waitlist(session, ride)
     session.add(ride)
+    return _Applied(moved, promoted, new_task)
+
+
+def _settle(session: Session, ride: Ride) -> _Applied | None:
+    """Make the driver's held change once every passenger it waits for has
+    agreed (or none is left to ask). None while it still waits, or when there
+    is nothing to make; a driver whose account is gone takes the ask with it."""
+    asked = proposal_of(ride)
+    # A passenger's suggestion waits for the driver, not the others.
+    if asked is None or asked.get("suggested"):
+        return None
+    waiting = set(_consenting(ride)) - set(asked["agreed"])
+    if waiting:
+        return None
+    proposer = session.get(User, asked["by_id"]) if asked.get("by_id") is not None else None
+    ride.proposal = ""
+    if proposer is None:
+        return None
+    sent = RideUpdate.model_validate(asked["fields"]).model_dump(exclude_unset=True)
+    return _apply(session, proposer, ride, sent)
+
+
+@router.patch("/{ride_id}", response_model=RideRead)
+def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, creds: CredsDep):
+    """Edit a ride. When its driver moves the day, a time, the start or the
+    destination of a ride with passengers in it, that part is not made but
+    asked (`proposal` on the ride, the passengers pushed `change_asked`): it
+    is made once each of them agrees, and dropped when one declines. The
+    rest of the edit is made at once. An admin's change to someone else's
+    ride is made at once, all of it."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    if not may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can edit this ride")
+
+    sent = payload.model_dump(exclude_unset=True)
+    held: dict = {}
+    if is_driver(user, ride) and _consenting(ride):
+        moving = [k for k in CONSENT_FIELDS if k in sent and sent[k] != getattr(ride, k)]
+        if moving:
+            # Refused now rather than after everyone agreed.
+            _plan(session, user, ride, sent)
+            held = {k: sent.pop(k) for k in moving}
+            # The pins go with the places they belong to.
+            if "points" in sent:
+                held["points"] = sent.pop("points")
+    applied = _apply(session, user, ride, sent)
+    if held:
+        ride.proposal = json.dumps(
+            {
+                "by": user.display_name,
+                "by_id": user.id,
+                "fields": RideUpdate.model_validate(held).model_dump(mode="json", exclude_unset=True),
+                "agreed": [],
+            }
+        )
+        session.add(ride)
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
-    if moved:
-        told = [b.passenger_id for b in ride.bookings if b not in promoted]
+    if held:
+        notify(session, _consenting(ride), "change_asked", ride, driver=user.display_name)
+    if applied.moved:
+        told = [b.passenger_id for b in ride.bookings if b not in applied.promoted]
         if told:
             notify(session, told, "ride_changed", ride, driver=user.display_name)
     # Any edit an admin makes to someone's ride is news to its driver.
     if not is_driver(user, ride):
         notify(session, [ride.driver_id], "ride_changed", ride, driver=user.display_name)
-    if promoted:
-        notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
-    if new_task:
+    _tell_applied(session, ride, applied)
+    return to_ride_read_dict(ride)
+
+
+def _tell_applied(session: Session, ride: Ride, applied: _Applied | None) -> None:
+    """The pushes an edit owes besides "it changed": seats freed up, a plate for the garage."""
+    if applied is None:
+        return
+    if applied.promoted:
+        notify(session, [b.passenger_id for b in applied.promoted], "seat_freed", ride, driver=ride.driver_name)
+    if applied.garage_task:
         notify(session, admin_ids(session), "garage_plate", ride, name=ride.driver_name, plate=ride.plate)
+
+
+def _proposal_or_409(session: Session, creds, ride_id: int) -> tuple[User, Ride, dict]:
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    asked = proposal_of(ride)
+    if asked is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The driver is not asking for a change")
+    return user, ride, asked
+
+
+def _answering_passenger(user: User, ride: Ride) -> None:
+    if user.id not in _consenting(ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only a passenger in this car can answer the driver")
+
+
+def _answering_driver(user: User, ride: Ride) -> None:
+    if not may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can answer a suggestion")
+
+
+def _saved(session: Session, ride: Ride) -> None:
+    session.add(ride)
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+
+
+@router.post("/{ride_id}/proposal/suggest", response_model=RideRead)
+def suggest_time(ride_id: int, payload: TimeSuggestion, session: WriteSessionDep, creds: CredsDep):
+    """A passenger suggests another departure or return time. It goes to the
+    driver (`time_suggested`); once the driver accepts it, it is the driver's
+    ask like any other, the suggester counted as agreeing. One ask at a time."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    _answering_passenger(user, ride)
+    if ride.proposal:
+        raise HTTPException(status.HTTP_409_CONFLICT, "A change is already asked on this ride")
+    sent = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v != getattr(ride, k)}
+    if not sent:
+        raise HTTPException(422, "Suggest a departure or return time other than the ride's")
+    driver = session.get(User, ride.driver_id) if ride.driver_id is not None else None
+    _plan(session, driver or user, ride, sent)
+    ride.proposal = json.dumps(
+        {
+            "by": user.display_name,
+            "by_id": user.id,
+            "suggested": True,
+            "fields": RideUpdate.model_validate(sent).model_dump(mode="json", exclude_unset=True),
+            "agreed": [user.id],
+        }
+    )
+    _saved(session, ride)
+    notify(session, [ride.driver_id], "time_suggested", ride, name=user.display_name)
+    return to_ride_read_dict(ride)
+
+
+@router.post("/{ride_id}/proposal/agree", response_model=RideRead)
+def agree_to_change(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """A passenger agrees to the driver's change. The last one to agree makes
+    it, held to the rules as they stand now (a shared car taken since is the
+    usual 409, and the agreement is not kept); the driver is pushed.
+
+    On a passenger's suggestion it is the driver (or an admin) accepting it:
+    it becomes the driver's ask to the others, made at once when nobody else
+    is waiting."""
+    user, ride, asked = _proposal_or_409(session, creds, ride_id)
+    if asked.get("suggested"):
+        _answering_driver(user, ride)
+        sent = RideUpdate.model_validate(asked["fields"]).model_dump(exclude_unset=True)
+        _plan(session, user, ride, sent)
+        suggester = asked["by_id"]
+        ride.proposal = json.dumps(
+            {
+                "by": ride.driver_name,
+                "by_id": ride.driver_id,
+                "suggested_by": asked["by"],
+                "fields": asked["fields"],
+                "agreed": asked["agreed"],
+            }
+        )
+        applied = _settle(session, ride)
+        _saved(session, ride)
+        notify(session, [suggester], "suggestion_accepted", ride, name=user.display_name)
+        if applied is None and ride.proposal:
+            waiting = set(_consenting(ride)) - set(asked["agreed"])
+            notify(session, list(waiting), "change_asked", ride, driver=ride.driver_name)
+        _tell_applied(session, ride, applied)
+        return to_ride_read_dict(ride)
+    _answering_passenger(user, ride)
+    if user.id not in asked["agreed"]:
+        asked["agreed"].append(user.id)
+    ride.proposal = json.dumps(asked)
+    applied = _settle(session, ride)
+    _saved(session, ride)
+    if applied is not None:
+        notify(session, [ride.driver_id], "change_agreed", ride)
+        _tell_applied(session, ride, applied)
+    return to_ride_read_dict(ride)
+
+
+@router.post("/{ride_id}/proposal/decline", response_model=RideRead)
+def decline_change(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """A passenger says no: the change is dropped and the driver is pushed who
+    said no. The ride stays as it was. On a passenger's suggestion it is the
+    driver saying no, and the suggester is told."""
+    user, ride, asked = _proposal_or_409(session, creds, ride_id)
+    if asked.get("suggested"):
+        _answering_driver(user, ride)
+        ride.proposal = ""
+        _saved(session, ride)
+        notify(session, [asked["by_id"]], "suggestion_declined", ride, name=user.display_name)
+        return to_ride_read_dict(ride)
+    _answering_passenger(user, ride)
+    ride.proposal = ""
+    _saved(session, ride)
+    notify(session, [ride.driver_id], "change_declined", ride, name=user.display_name)
+    return to_ride_read_dict(ride)
+
+
+@router.delete("/{ride_id}/proposal", response_model=RideRead)
+def withdraw_change(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """Whoever asked takes it back: the driver (or an admin) their change, a
+    passenger their suggestion."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    asked = proposal_of(ride)
+    if not may_run(user, ride) and not (asked is not None and asked.get("by_id") == user.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can edit this ride")
+    if ride.proposal:
+        ride.proposal = ""
+        _saved(session, ride)
     return to_ride_read_dict(ride)
 
 
@@ -709,6 +955,18 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
+    # The driver's ask may have waited only on this passenger. Should it no
+    # longer fit (the shared car taken since), it stays asked: leaving the car
+    # never fails on it.
+    # A suggestion goes with the passenger who made it.
+    suggestion = proposal_of(ride)
+    if suggestion is not None and suggestion.get("suggested") and suggestion.get("by_id") == passenger_id:
+        ride.proposal = ""
+    asked = ride.proposal
+    try:
+        settled = _settle(session, ride)
+    except HTTPException:
+        ride.proposal, settled = asked, None
     if ride.needs_driver and not any(b.passenger_id is not None for b in ride.bookings):
         # The driver cancelled and nobody is left to ask: the car is free.
         # The answer still describes the ride, so the frontend can drop it.
@@ -720,6 +978,9 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
+    if settled is not None:
+        notify(session, [ride.driver_id], "change_agreed", ride)
+        _tell_applied(session, ride, settled)
     if themself:
         notify(session, [ride.driver_id], "got_out", ride, name=passenger)
     else:
