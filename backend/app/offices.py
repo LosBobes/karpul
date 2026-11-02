@@ -83,3 +83,20 @@ def fill_office_distances(target: Engine) -> int:
                 filled += 1
         session.commit()
     return filled
+
+
+# The office with a garage that lets in only the cars on its list: an own car
+# driven there needs its plate on that list, which an admin adds by hand
+# (GET /api/admin/garage, the *Garage list* sheet). The frontend's twin is
+# `needsGarage` in lib/offices.ts.
+GARAGE_OFFICE = "beograd"
+
+
+def needs_garage(car_type: str, plate: str, destination: str) -> bool:
+    """Whether a ride is an own car with a plate going to the garage's office."""
+    return car_type == "own" and bool(plate) and office_of(destination) == GARAGE_OFFICE
+
+
+def garage_task(ride: Ride) -> bool:
+    """Whether a ride is still waiting for an admin to put its plate on the list."""
+    return needs_garage(ride.car_type, ride.plate, ride.destination) and not ride.plate_registered

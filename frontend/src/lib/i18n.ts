@@ -354,12 +354,31 @@ const en = {
     approved: 'Approved',
     approvalAsk: (driver: string) => `${driver} asks for a shared car past their one a week. Your call.`,
     needsDriver: 'Needs a driver',
+    changeAsk: (driver: string) => `${driver} wants to change the ride:`,
+    changeYours: 'You asked your passengers for this change:',
+    changeWaiting: (names: string) => `Waiting for ${names}`,
+    changeYouAgreed: 'You agreed.',
+    agree: 'Agree',
+    withdraw: 'Withdraw',
+    noReturn: 'no return',
+    suggestAsk: (name: string) => `${name} suggests another time:`,
+    suggestYours: 'You suggested another time:',
+    suggestWaiting: (driver: string) => `Waiting for ${driver}`,
+    suggestFrom: (name: string) => `${name}'s suggestion`,
+    accept: 'Accept',
+    suggest: 'Suggest another time',
+    suggestTitle: 'Suggest another time',
+    suggestSend: 'Send to the driver',
+    suggestHint: 'The driver decides; if they take it, the other passengers are asked too.',
     takeOverAsk: (driver: string) => `${driver} can't drive. Will you take the car?`,
     takeOverWait: (driver: string) => `${driver} can't drive. The passengers are asked whether one of them will.`,
     takeOver: "I'll drive",
     coffee: 'Coffee',
     coffeePlease: (first: string) => `${first} would appreciate one`,
     coffeeYou: 'You would appreciate one',
+    garage: 'Garage',
+    plateOnList: 'on the list',
+    plateWaiting: 'not on the list yet',
     /** The driver is a name with no account behind it (the shared car's paper log). */
     noAccount: 'No account',
     claimAsk: (driver: string) => `Is this you? ${driver} has no account yet. Claiming it makes every ride under this name yours.`,
@@ -473,6 +492,9 @@ const en = {
     carHint: (plate: string, seats: number) => `${plate} · ${enPlural(seats, 'seat', 'seats')}`,
     yourCar: 'Your car',
     carPlaceholder: 'e.g. grey Octavia',
+    plate: 'Licence plate',
+    platePlaceholder: 'e.g. NS 123-AB',
+    plateHint: 'For the Beograd office garage: an admin puts it on the list of cars let in.',
     seats: 'Passenger seats',
     fewer: 'Fewer seats',
     more: 'More seats',
@@ -530,6 +552,7 @@ const en = {
     defaultDestination: 'Office',
     /** The road between the offices is a known length (lib/offices.ts). */
     knownRoad: (km: number) => `${km} km, the road between the offices. Filled in for you.`,
+    consentHint: 'Changing the day, the times, the start or the destination waits for your passengers to agree.',
     roadKm: (km: string) => `${km} km by road between the pins. Filled in for you.`,
     /** A one-way ride: offer its mirror image. */
     wayBack: 'Add the way back too',
@@ -605,6 +628,17 @@ const en = {
     open: 'Open the ride',
   },
 
+  /** Own cars coming to the Beograd office whose plate the garage needs: components/GarageList.tsx. */
+  garage: {
+    title: 'Garage list',
+    empty: 'No plates to add.',
+    count: (n: number) => `${n} to add`,
+    open: 'Open the ride',
+    markDone: 'Mark as added',
+    undo: 'Not added after all',
+    onList: 'On the list',
+  },
+
   /** The admin's log: components/AdminLog.tsx, backend app/audit.py. */
   adminLog: {
     title: 'Admin log',
@@ -654,6 +688,10 @@ const en = {
           return `${admin} changed the place ${subject}`
         case 'place_removed':
           return `${admin} forgot the place ${subject}`
+        case 'plate_registered':
+          return `${admin} put the car of ${subject} on the garage list`
+        case 'plate_unregistered':
+          return `${admin} took the car of ${subject} off the garage list`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -828,6 +866,7 @@ const en = {
     full: 'Full',
     awaiting: 'Awaiting approval',
     needsDriver: 'Needs a driver',
+    changeAsked: 'Change asked',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
     stops: (n: number) => enPlural(n, 'stop', 'stops'),
   },
@@ -887,6 +926,12 @@ const en = {
     rideAddedFor: (name: string) => `Ride added for ${name}.`,
     rideAwaiting: 'Added. The admins are asked to approve it.',
     rideApproved: (driver: string) => `Approved. ${driver} has the car.`,
+    changeAsked: 'Your passengers are asked to agree to the change.',
+    changeMade: 'The change is made.',
+    changeAgreed: 'Agreed. The driver is told once everyone has.',
+    changeDropped: 'Change declined, the ride stays as it was.',
+    changeWithdrawn: 'Change withdrawn.',
+    suggestionSent: 'Sent to the driver.',
     claimed: (n: number) => (n === 1 ? 'The ride is yours now.' : `${n} rides are yours now.`),
     lateSaid: (minutes: number) => `The car knows you're ${minutes} min late.`,
     rideDeclined: 'Declined. The ride is removed.',
@@ -1227,6 +1272,12 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^That keeps a shared car with you for more than 24 hours in a row\. An admin can approve it$/, () => 'Tako bi zajednički auto bio kod tebe duže od 24 sata zaredom. Administrator može da to odobri'],
   [/^This ride is not waiting for approval$/, () => 'Ova vožnja ne čeka odobrenje'],
   [/^This ride already has a driver$/, () => 'Ova vožnja već ima vozača'],
+  [/^This ride has no plate for the garage$/, () => 'Ova vožnja nema tablice za garažu'],
+  [/^The driver is not asking for a change$/, () => 'Vozač ne traži izmenu'],
+  [/^A change is already asked on this ride$/, () => 'Za ovu vožnju se već traži izmena'],
+  [/^Suggest a departure or return time other than the ride's$/, () => 'Predloži vreme polaska ili povratka drugačije od trenutnog'],
+  [/^Only the driver or an admin can answer a suggestion$/, () => 'Samo vozač ili administrator može da odgovori na predlog'],
+  [/^Only a passenger in this car can answer the driver$/, () => 'Samo putnik u ovom autu može da odgovori vozaču'],
   [/^Only a passenger in this car can take it over$/, () => 'Samo putnik u ovom autu može da je preuzme'],
   [/^This ride's driver already has an account$/, () => 'Vozač ove vožnje već ima nalog'],
   [/^(.+) is not a name like yours$/, (m) => `Ime ${m[1]} ne liči na tvoje`],
@@ -1709,12 +1760,31 @@ const sr: Messages = {
     approved: 'Odobreno',
     approvalAsk: (driver) => `${driver} traži zajednički auto preko svog jednog nedeljno. Ti odlučuješ.`,
     needsDriver: 'Traži se vozač',
+    changeAsk: (driver) => `${driver} želi da izmeni vožnju:`,
+    changeYours: 'Pitao/la si putnike za ovu izmenu:',
+    changeWaiting: (names) => `Čeka se: ${names}`,
+    changeYouAgreed: 'Složio/la si se.',
+    agree: 'Slažem se',
+    withdraw: 'Povuci',
+    noReturn: 'bez povratka',
+    suggestAsk: (name) => `${name} predlaže drugo vreme:`,
+    suggestYours: 'Predložio/la si drugo vreme:',
+    suggestWaiting: (driver) => `Čeka se odgovor: ${driver}`,
+    suggestFrom: (name) => `Predlog: ${name}`,
+    accept: 'Prihvati',
+    suggest: 'Predloži drugo vreme',
+    suggestTitle: 'Predloži drugo vreme',
+    suggestSend: 'Pošalji vozaču',
+    suggestHint: 'Vozač odlučuje; ako prihvati, pitaju se i ostali putnici.',
     takeOverAsk: (driver) => `${driver} ne može da vozi. Hoćeš li ti da preuzmeš auto?`,
     takeOverWait: (driver) => `${driver} ne može da vozi. Putnici su pitani da li će neko od njih.`,
     takeOver: 'Ja ću voziti',
     coffee: 'Kafa',
     coffeePlease: (first) => `${first} bi se obradovao/la kafi`,
     coffeeYou: 'Obradovao/la bi se kafi',
+    garage: 'Garaža',
+    plateOnList: 'na spisku',
+    plateWaiting: 'još nije na spisku',
     noAccount: 'Bez naloga',
     claimAsk: (driver) => `Da li si ovo ti? ${driver} još nema nalog. Ako potvrdiš, sve vožnje pod ovim imenom postaju tvoje.`,
     claim: 'Ovo sam ja',
@@ -1823,6 +1893,9 @@ const sr: Messages = {
     carHint: (plate, seats) => `${plate} · ${srSeats(seats)}`,
     yourCar: 'Tvoj auto',
     carPlaceholder: 'npr. siva Octavia',
+    plate: 'Registarske tablice',
+    platePlaceholder: 'npr. NS 123-AB',
+    plateHint: 'Za garažu kancelarije u Beogradu: administrator ih dodaje na spisak vozila koja smeju da uđu.',
     seats: 'Mesta za putnike',
     fewer: 'Manje mesta',
     more: 'Više mesta',
@@ -1876,6 +1949,7 @@ const sr: Messages = {
     coffee: 'Obradovao/la bih se kafi',
     defaultDestination: 'Kancelarija',
     knownRoad: (km) => `${km} km, put između kancelarija. Upisano umesto tebe.`,
+    consentHint: 'Izmena dana, vremena, polaska ili odredišta čeka da se putnici slože.',
     roadKm: (km) => `${km} km putem između tačaka. Upisano umesto tebe.`,
     wayBack: 'Dodaj i povratak',
     wayBackHint: 'Druga vožnja u jednom smeru, sa obrnutom rutom.',
@@ -1928,6 +2002,16 @@ const sr: Messages = {
     open: 'Otvori vožnju',
   },
 
+  garage: {
+    title: 'Spisak za garažu',
+    empty: 'Nema tablica za dodavanje.',
+    count: (n) => `${n} za dodavanje`,
+    open: 'Otvori vožnju',
+    markDone: 'Označi kao dodato',
+    undo: 'Ipak nije dodato',
+    onList: 'Na spisku',
+  },
+
   adminLog: {
     title: 'Dnevnik administratora',
     empty: 'Još ništa.',
@@ -1976,6 +2060,10 @@ const sr: Messages = {
           return `${admin} je izmenio/la mesto: ${subject}`
         case 'place_removed':
           return `${admin} je zaboravio/la mesto: ${subject}`
+        case 'plate_registered':
+          return `${admin} je dodao/la auto na spisak za garažu, vozi ${subject}`
+        case 'plate_unregistered':
+          return `${admin} je skinuo/la auto sa spiska za garažu, vozi ${subject}`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -2167,6 +2255,7 @@ const sr: Messages = {
     full: 'Puno',
     awaiting: 'Čeka odobrenje',
     needsDriver: 'Traži se vozač',
+    changeAsked: 'Traži se saglasnost',
     seats: srSeats,
     stops: (n) => srPlural(n, 'usputna stanica', 'usputne stanice', 'usputnih stanica'),
   },
@@ -2225,6 +2314,12 @@ const sr: Messages = {
     rideAddedFor: (name) => `Vožnja je dodata, vozi ${name}.`,
     rideAwaiting: 'Dodato. Administratori su zamoljeni da odobre.',
     rideApproved: (driver) => `Odobreno. ${driver} ima auto.`,
+    changeAsked: 'Putnici su pitani da li se slažu sa izmenom.',
+    changeMade: 'Izmena je usvojena.',
+    changeAgreed: 'Saglasan/na si. Vozač će saznati kad se svi slože.',
+    changeDropped: 'Izmena je odbijena, vožnja ostaje kakva je bila.',
+    changeWithdrawn: 'Zahtev za izmenu je povučen.',
+    suggestionSent: 'Poslato vozaču.',
     claimed: (n) => (n === 1 ? 'Vožnja je sada tvoja.' : `Vožnje su sada tvoje (${n}).`),
     lateSaid: (minutes) => `Putnici znaju da kasniš ${minutes} min.`,
     rideDeclined: 'Odbijeno. Vožnja je uklonjena.',

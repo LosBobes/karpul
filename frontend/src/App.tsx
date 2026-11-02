@@ -4,6 +4,7 @@ import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
 import { AdminLog } from './components/AdminLog'
 import { Approvals } from './components/Approvals'
+import { GarageList } from './components/GarageList'
 import { AuthGate } from './components/AuthGate'
 import { NEW_CAR_BUSY_ID, SharedCars, type SharedCarsTab } from './components/SharedCars'
 import { CarGuide } from './components/CarGuide'
@@ -79,6 +80,12 @@ type Overlay =
   | 'rideLog'
   | 'adminLog'
   | 'approvals'
+  | 'garage'
+
+/** An edit came back as a new ask of the passengers rather than made (backend: rides.update_ride). */
+function newlyAsked(before: Ride, after: Ride): boolean {
+  return !!after.proposal && JSON.stringify(after.proposal) !== JSON.stringify(before.proposal)
+}
 
 function loadView(): View {
   try {
@@ -154,6 +161,8 @@ function Board({ session }: { session: Session }) {
   // that tells the open sheet to reload after a decision.
   const [waiting, setWaiting] = useState(0)
   const [approvalsTick, setApprovalsTick] = useState(0)
+  // The own cars' plates the Beograd garage still needs (components/GarageList.tsx).
+  const [plates, setPlates] = useState(0)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -197,6 +206,7 @@ function Board({ session }: { session: Session }) {
   const openLoggedRide = (rideId: number) => {
     hide('adminLog')
     hide('approvals')
+    hide('garage')
     api
       .ride(rideId)
       .then((ride) => {
@@ -296,8 +306,9 @@ function Board({ session }: { session: Session }) {
   const onSaveRoute = async (ride: Ride, patch: Partial<RideInput>) => {
     let saved = false
     await withBusy(ride.id, async () => {
-      upsertRide(await api.updateRide(ride.id, patch))
-      setToast({ kind: 'ok', text: t.toasts.routeSaved })
+      const updated = await api.updateRide(ride.id, patch)
+      upsertRide(updated)
+      setToast({ kind: 'ok', text: newlyAsked(ride, updated) ? t.toasts.changeAsked : t.toasts.routeSaved })
       saved = true
     })
     return saved
@@ -458,8 +469,9 @@ function Board({ session }: { session: Session }) {
         void _driver
         void _driverId
         void _request
-        upsertRide(await api.updateRide(form.ride.id, patch))
-        setToast({ kind: 'ok', text: t.toasts.rideUpdated })
+        const updated = await api.updateRide(form.ride.id, patch)
+        upsertRide(updated)
+        setToast({ kind: 'ok', text: newlyAsked(form.ride, updated) ? t.toasts.changeAsked : t.toasts.rideUpdated })
         setCarSel(form.ride.id)
       } else {
         const created = await api.createRide(input)
@@ -528,6 +540,35 @@ function Board({ session }: { session: Session }) {
 
   // --- a shared car whose driver cancelled: a passenger takes the wheel ---
 
+  // --- a change to the ride that waits on people (`Ride.proposal`) ---
+
+  const onAnswerChange = (ride: Ride, agree: boolean) =>
+    withBusy(ride.id, async () => {
+      const updated = await api.answerChange(ride.id, agree)
+      upsertRide(updated)
+      const made = !updated.proposal && agree
+      // Taking a passenger's suggestion asks the others, unless nobody is left to ask.
+      const took = agree && !!ride.proposal?.suggested
+      const text = made ? t.toasts.changeMade : took ? t.toasts.changeAsked : agree ? t.toasts.changeAgreed : t.toasts.changeDropped
+      setToast({ kind: 'ok', text })
+    })
+
+  const onWithdrawChange = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.withdrawChange(ride.id))
+      setToast({ kind: 'ok', text: t.toasts.changeWithdrawn })
+    })
+
+  const onSuggestTime = async (ride: Ride, times: { departure_time?: string; return_time?: string }) => {
+    let sent = false
+    await withBusy(ride.id, async () => {
+      upsertRide(await api.suggestTime(ride.id, times))
+      setToast({ kind: 'ok', text: t.toasts.suggestionSent })
+      sent = true
+    })
+    return sent
+  }
+
   const onTakeOver = (ride: Ride) =>
     withBusy(ride.id, async () => {
       upsertRide(await api.takeOver(ride.id))
@@ -577,6 +618,25 @@ function Board({ session }: { session: Session }) {
       .then((list) => setWaiting(list.length))
       .catch(() => undefined)
   }, [isAdmin, rides, approvalsTick])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    api
+      .garage()
+      .then((list) => setPlates(list.filter((r) => !r.plate_registered).length))
+      .catch(() => undefined)
+  }, [isAdmin, rides, approvalsTick])
+
+  // --- an own car's plate for the Beograd garage: the admin ticks it off ---
+
+  const onMarkPlate = (ride: Ride, registered: boolean) =>
+    withBusy(ride.id, async () => {
+      try {
+        upsertRide(await api.setPlateRegistered(ride.id, registered))
+      } finally {
+        setApprovalsTick((n) => n + 1)
+      }
+    })
 
   // --- asking for a ride ---
 
@@ -740,6 +800,9 @@ function Board({ session }: { session: Session }) {
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}
       onTakeOver={(r) => void onTakeOver(r)}
+      onAnswerChange={(r, agree) => void onAnswerChange(r, agree)}
+      onWithdrawChange={(r) => void onWithdrawChange(r)}
+      onSuggestTime={onSuggestTime}
       onLate={(r, minutes) => void onLate(r, minutes)}
       onGuide={() => show('guide')}
       carState={ride.corporate_car_id !== null ? (carStates?.find((s) => s.car.id === ride.corporate_car_id) ?? null) : null}
@@ -861,6 +924,8 @@ function Board({ session }: { session: Session }) {
     onAdminLog: () => show('adminLog'),
     onApprovals: () => show('approvals'),
     approvals: waiting,
+    onGarage: () => show('garage'),
+    garage: plates,
     onGuide: () => show('guide'),
     onHowTo: () => show('howTo'),
     onSupport: () => show('support'),
@@ -905,7 +970,7 @@ function Board({ session }: { session: Session }) {
                   onClick={() => show('sidebar')}
                 >
                   <MenuIcon size={22} />
-                  {isAdmin && waiting > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting)} />}
+                  {isAdmin && waiting + plates > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting + plates)} />}
                 </button>
                 <h1 className="topbar-title">
                   <Logo /> Karpul
@@ -1110,6 +1175,16 @@ function Board({ session }: { session: Session }) {
             onDecline={onDecline}
             onOpen={(r) => openLoggedRide(r.id)}
             onClose={closer('approvals')}
+          />
+        )}
+
+        {is('garage') && isAdmin && (
+          <GarageList
+            version={approvalsTick}
+            busyId={busyId}
+            onMark={(r, registered) => void onMarkPlate(r, registered)}
+            onOpen={(r) => openLoggedRide(r.id)}
+            onClose={closer('garage')}
           />
         )}
 

@@ -595,6 +595,12 @@ def _clean_stops(stops: list[str]) -> list[str]:
     return cleaned
 
 
+def normalise_plate(v: str) -> str:
+    """A plate as the garage's list writes it: upper case, single spaces
+    ("bg 123-ab" is "BG 123-AB")."""
+    return " ".join(v.upper().split())
+
+
 class RideBase(BaseModel):
     ride_date: date
     car_type: CarType
@@ -613,6 +619,9 @@ class RideBase(BaseModel):
     passengers_add_stops: bool = True
     # "I would appreciate a coffee": the driver's hint to the passengers.
     coffee_please: bool = False
+    # An own car's licence plate, for the Beograd office's garage
+    # (offices.needs_garage). Ignored for a shared car, which has its own.
+    plate: str = Field(default="", max_length=16)
     stops: list[str] = Field(default_factory=list)
     stops_before: list[str] = Field(default_factory=list)
     distance_km: float | None = Field(default=None, ge=0, le=2000)
@@ -631,8 +640,15 @@ class RideBase(BaseModel):
     def clean_stops(cls, v: list[str]) -> list[str]:
         return _clean_stops(v)
 
+    @field_validator("plate")
+    @classmethod
+    def clean_plate(cls, v: str) -> str:
+        return normalise_plate(v)
+
     @model_validator(mode="after")
     def check_consistency(self) -> "RideBase":
+        if self.car_type == CarType.corporate:
+            self.plate = ""
         if self.car_type == CarType.corporate and self.corporate_car_id is None:
             raise ValueError("corporate_car_id is required for a corporate car")
         if self.car_type == CarType.own:
@@ -691,12 +707,38 @@ class RideUpdate(BaseModel):
     passengers_manage: bool | None = None
     passengers_add_stops: bool | None = None
     coffee_please: bool | None = None
+    plate: str | None = Field(default=None, max_length=16)
     stops: list[str] | None = None
     stops_before: list[str] | None = None
     distance_km: float | None = Field(default=None, ge=0, le=2000)
     chip_in: str | None = Field(default=None, max_length=40)
     # Replaces the ride's pins whole; a place left out loses its pin.
     points: Points | None = None
+
+
+class TimeSuggestion(BaseModel):
+    """A passenger's suggestion: another departure or return time, or both."""
+
+    departure_time: time | None = None
+    return_time: time | None = None
+
+
+class ProposalRead(BaseModel):
+    by: str
+    by_id: int | None = None
+    # A passenger's suggestion still waiting for the driver; once the driver
+    # accepts it, `suggested_by` names the passenger it came from.
+    suggested: bool = False
+    suggested_by: str | None = None
+    # The fields the driver wants changed, as they would be (RideUpdate, JSON).
+    fields: dict
+    agreed: list[int] = []
+
+
+class GaragePlateUpdate(BaseModel):
+    """An admin's tick: the plate is on the garage's list, or not after all."""
+
+    registered: bool
 
 
 class RideRead(BaseModel):
@@ -717,6 +759,13 @@ class RideRead(BaseModel):
     passengers_manage: bool
     passengers_add_stops: bool = True
     coffee_please: bool = False
+    # An own car's plate for the Beograd garage, and whether an admin has put
+    # it on the garage's list yet.
+    plate: str = ""
+    plate_registered: bool = False
+    # A change the driver is asking the passengers to agree to: who asks, the
+    # fields as they would be, and the accounts that agreed so far.
+    proposal: ProposalRead | None = None
     stops: list[str]
     # Pickup points before `origin`, in the order the car reaches them.
     stops_before: list[str] = []

@@ -22,6 +22,7 @@ from ..events import disconnect, photos_changed, request_deleted, request_saved,
 from ..models import (
     AdminAction,
     Booking,
+    CarType,
     DriveLeg,
     PasswordReset,
     ProfilePhoto,
@@ -32,8 +33,9 @@ from ..models import (
     User,
     WaitlistEntry,
 )
+from ..offices import needs_garage
 from ..push import notify
-from ..schemas import AdminActionRead, AdminUserRead, AdminUserUpdate, ResetLinkOut, RideRead
+from ..schemas import AdminActionRead, AdminUserRead, AdminUserUpdate, GaragePlateUpdate, ResetLinkOut, RideRead
 from ..services import board_extras, promote_waitlist, to_ride_read_dict
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -283,3 +285,47 @@ def approvals(session: SessionDep, creds: CredsDep):
     rides = list(session.exec(stmt).all())
     extras = board_extras(session, rides)
     return [to_ride_read_dict(r, extras) for r in rides]
+
+
+@router.get("/garage", response_model=list[RideRead])
+def garage(session: SessionDep, creds: CredsDep):
+    """Admin-only: the own cars coming to the Beograd office from today on
+    whose plate is not on the garage's list yet (offices.needs_garage),
+    soonest first, then the ones ticked off today and later, so a tick can
+    be taken back."""
+    require_admin(session, creds)
+    stmt = (
+        select(Ride)
+        .where(Ride.car_type == CarType.own, Ride.plate != "", Ride.ride_date >= date.today())
+        .options(selectinload(Ride.bookings), selectinload(Ride.waitlist), selectinload(Ride.legs))  # type: ignore[arg-type]
+        .order_by(Ride.plate_registered, Ride.ride_date, Ride.departure_time, Ride.id)  # type: ignore[arg-type]
+    )
+    rides = [r for r in session.exec(stmt).all() if needs_garage(r.car_type, r.plate, r.destination)]
+    extras = board_extras(session, rides)
+    return [to_ride_read_dict(r, extras) for r in rides]
+
+
+@router.put("/garage/{ride_id}", response_model=RideRead)
+def garage_plate(ride_id: int, payload: GaragePlateUpdate, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: say the ride's plate is on the garage's list (or not after
+    all). The driver is told when it is."""
+    admin = require_admin(session, creds)
+    ride = session.get(Ride, ride_id)
+    if ride is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ride not found")
+    if not needs_garage(ride.car_type, ride.plate, ride.destination):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This ride has no plate for the garage")
+    if ride.plate_registered == payload.registered:
+        return to_ride_read_dict(ride)
+    ride.plate_registered = payload.registered
+    session.add(ride)
+    audit.record(
+        session, admin, "plate_registered" if payload.registered else "plate_unregistered", ride.driver_name,
+        ride=ride, changes=[("plate", None, ride.plate)],
+    )
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
+    if payload.registered:
+        notify(session, [ride.driver_id], "plate_registered", ride, name=admin.display_name, plate=ride.plate)
+    return to_ride_read_dict(ride)

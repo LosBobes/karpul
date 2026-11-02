@@ -367,6 +367,18 @@ export const api = {
 
   users: () => request<AdminUser[]>('/api/admin/users'),
   approvals: () => request<Ride[]>('/api/admin/approvals'),
+  /** A passenger's answer to the driver's change (`Ride.proposal`). */
+  answerChange: (rideId: number, agree: boolean) =>
+    request<Ride>(`/api/rides/${rideId}/proposal/${agree ? 'agree' : 'decline'}`, { method: 'POST' }),
+  /** A passenger suggests another departure or return time; it goes to the driver first. */
+  suggestTime: (rideId: number, times: { departure_time?: string; return_time?: string }) =>
+    request<Ride>(`/api/rides/${rideId}/proposal/suggest`, json('POST', times)),
+  /** Whoever asked takes it back: the driver a change, a passenger a suggestion. */
+  withdrawChange: (rideId: number) => request<Ride>(`/api/rides/${rideId}/proposal`, { method: 'DELETE' }),
+  /** Own cars coming to the Beograd office whose plate the garage needs, waiting ones first. */
+  garage: () => request<Ride[]>('/api/admin/garage'),
+  setPlateRegistered: (rideId: number, registered: boolean) =>
+    request<Ride>(`/api/admin/garage/${rideId}`, json('PUT', { registered })),
   adminLog: (before?: number) => request<AdminAction[]>(`/api/admin/log${before ? `?before=${before}` : ''}`),
 
   setAdmin: (userId: number, isAdmin: boolean) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', { is_admin: isAdmin })),

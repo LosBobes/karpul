@@ -190,6 +190,37 @@ again whenever the board's rides change or a decision is made); each ask is deci
 on it opens the ride on the day plan. The card keeps its *Approve* / *Decline* row (`.approval-row`)
 too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
 
+**Changes wait for the passengers.** When the *driver* moves the day, a time, the start or the
+destination (`CONSENT_FIELDS` in `routers/rides.py`) of a ride with passengers who have accounts, `update_ride`
+checks the whole edit (`_plan`, writes nothing), makes the rest at once (`_apply`) and holds those fields (with
+the pins) in `Ride.proposal` (an `ADDED_COLUMNS` JSON column, `ProposalRead` in `RideRead`: `by`, `by_id`,
+`fields`, `agreed`); the passengers are pushed `change_asked`. Each answers `POST .../proposal/agree` or
+`/decline`; the last agree makes it through `_settle` (held to the rules as they stand then, so a shared car
+taken since is the usual 409), a decline drops it (`change_declined` to the driver), the last one waited on
+leaving the car makes it too, and `DELETE .../proposal` withdraws it. An admin changing someone's ride makes it
+at once and overtakes any ask. **A passenger may suggest another time**: `POST .../proposal/suggest`
+(`TimeSuggestion`, departure and/or return) stores a proposal with `suggested: true` and the suggester already
+agreed, pushed `time_suggested` to the driver; the driver (or an admin) accepting it through the same `agree`
+turns it into the driver's ask to the others (`suggested_by` keeps who it came from) or makes it when nobody
+else is left, declining tells the suggester. One ask at a time (409), and a suggestion goes with its suggester.
+On screen: `ChangeAsk` in `CarDetail.tsx` (each field struck through and then as it would be, the answers for
+whoever answers now, *Withdraw* for whoever asked), *Suggest another time* under the driver head for a passenger
+(`SuggestTime`, a stacked `Sheet` with two `TimePicker`s), a *Change asked* tag on the Upcoming row, the form's
+`consentHint` under the times, and the toast says the passengers were asked (`newlyAsked` in `App.tsx`). An
+invalid merged edit is a 422 now, not a crash. Tests: `tests/test_consent.py`.
+
+**The Beograd garage list.** The Beograd office's garage lets in only the cars on its list, so an own-car
+ride whose destination is that office (`offices.needs_garage`, `GARAGE_OFFICE`; mirrored by `goesToGarage` /
+`garageTask` in `lib/offices.ts`) asks for its licence plate: `Ride.plate` (upper-cased, `normalise_plate`, blank
+for a shared car) and `Ride.plate_registered` (both `ADDED_COLUMNS`). `RideForm` shows the *Licence plate* field
+under the route only then (remembered with the last route), and the driver card shows it as a *Garage* fact to the
+driver and admins. A new task pushes `garage_plate` to every admin (category *approvals*); an edit to another plate
+or another day undoes the tick and asks again. The admins' place is *Garage list* in the drawer
+(`components/GarageList.tsx`, `GET /api/admin/garage`: from today on, the ones still to add first, with an amber
+count on the item and in the ☰ dot), where `PUT /api/admin/garage/{id} {registered}` ticks one off (or takes it
+back), logged as `plate_registered` / `plate_unregistered` and pushed `plate_registered` to the driver. The list
+itself is kept outside Karpul. Tests: `tests/test_garage.py`.
+
 **A shared car's odometer.** Who actually drove a shared car and how far is kept as `DriveLeg`
 rows on the ride (`Ride.legs`, in `RideRead`): one stretch at the wheel each, `start_km` to `end_km`
 (None while being driven), following each other with no gap. The ride's `driver_id` stays who
@@ -236,7 +267,7 @@ as rolling wheels over an invisible input, with chips on top of the last real re
 to (`km_since`, the guess's own figure, in green when there is any), else the office road first (`OFFICE_TRIPS`
 in `lib/offices.ts`, +90 / +92 / both ways), then +10 / +100; the battery as a battery dragged or arrow-keyed, or typed after a tap on its figure
 (`role="slider"`, its colour sliding red to amber to green with the charge, `socHue`, the range at
-`SOC_PER_KM` on an electric car), clean / needs a wash / not checked as pictures of the car, each with a loop always running (sparkles and a
+`SOC_PER_KM` on an electric car), clean / needs a wash / not checked as pictures of the car (picked, clean is tinted blue, a wash amber and not checked grey), each with a loop always running (sparkles and a
 shine; mud, rising stink, dust and two flies; a dotted outline of the missing car with question marks floating
 out of it), the picked one popping, and quick problems as chips. Left untouched for a few seconds the form idles
 (`useIdle` in `lib/useIdle.ts`, `.report-idle`; a light along the drum, an empty battery filling itself, the cars rocking); every

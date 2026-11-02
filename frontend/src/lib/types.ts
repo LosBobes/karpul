@@ -42,6 +42,23 @@ export interface Booking {
   created_at: string
 }
 
+/** The fields a driver's change touches (backend: rides.CONSENT_FIELDS). */
+export type ProposalField = 'ride_date' | 'departure_time' | 'return_time' | 'origin' | 'destination'
+
+export interface Proposal {
+  /** Who asks: the driver's name and account. */
+  by: string
+  by_id: number | null
+  /** A passenger's suggestion still waiting for the driver (`by` is that passenger). */
+  suggested?: boolean
+  /** Once the driver accepted a suggestion: whose it was. */
+  suggested_by?: string | null
+  /** The fields as they would be. */
+  fields: Partial<Record<ProposalField, string | null>> & { points?: unknown }
+  /** The accounts that agreed so far. */
+  agreed: number[]
+}
+
 export interface Ride {
   id: number
   ride_date: string // YYYY-MM-DD
@@ -80,6 +97,12 @@ export interface Ride {
   needs_driver: boolean
   /** Driver's hint: they would appreciate a coffee. */
   coffee_please: boolean
+  /** An own car's plate for the Beograd office's garage ("" none; lib/offices.ts `needsGarage`). */
+  plate: string
+  /** An admin put `plate` on the garage's list. */
+  plate_registered: boolean
+  /** A change the driver asks the passengers to agree to; made once they all do. */
+  proposal: Proposal | null
   /** The driver's mobile number, when their account has one. */
   driver_phone: string | null
   bookings: Booking[]
@@ -248,6 +271,8 @@ export interface RideInput {
   passengers_manage: boolean
   passengers_add_stops: boolean
   coffee_please: boolean
+  /** An own car's plate, for the Beograd garage. */
+  plate?: string
   stops: string[]
   stops_before: string[]
   distance_km: number | null

@@ -48,3 +48,20 @@ export const OFFICE_TRIPS: { from: string; to: string; km: number }[] = [
   { from: 'Beograd', to: 'Novi Sad', km: DISTANCES['beograd>novi sad'] },
   { from: 'Novi Sad', to: 'Beograd', km: DISTANCES['novi sad>beograd'] },
 ]
+
+/**
+ * The office whose garage lets in only the cars on its list (backend:
+ * offices.GARAGE_OFFICE / needs_garage): an own car driven there asks for its
+ * plate, and an admin puts it on the list (components/GarageList.tsx).
+ */
+export const GARAGE_OFFICE = 'beograd'
+
+/** Whether a ride to `destination` in an own car asks for the plate. */
+export function goesToGarage(carType: string, destination: string): boolean {
+  return carType === 'own' && officeOf(destination) === GARAGE_OFFICE
+}
+
+/** Whether a ride is still waiting for an admin to put its plate on the list. */
+export function garageTask(ride: { car_type: string; plate: string; destination: string; plate_registered: boolean }): boolean {
+  return !!ride.plate && goesToGarage(ride.car_type, ride.destination) && !ride.plate_registered
+}

@@ -529,6 +529,15 @@
   color: var(--green);
   font-weight: 500;
 }
+/* A passenger's "Suggest another time", under the driver card's head. */
+.suggest-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: flex-start;
+  margin: 0 0 0.6rem;
+  font-size: 0.84rem;
+}
 .driver-car-guide {
   align-self: flex-start;
   margin: 0.2rem 0 0 -0.3rem;
