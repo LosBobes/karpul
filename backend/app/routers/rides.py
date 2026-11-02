@@ -267,6 +267,21 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
     return to_ride_read_dict(rides[0])
 
 
+@router.get("/last", response_model=RideRead | None)
+def last_ride(session: SessionDep, creds: CredsDep):
+    """The ride you added or were given to drive most recently, or null: what a
+    new ride's form starts from (`User.prefill_rides`). A ride you handed over
+    (`needs_driver`) is no longer yours to copy."""
+    user = require_user(session, creds)
+    ride = session.exec(
+        select(Ride)
+        .where(Ride.driver_id == user.id, Ride.needs_driver == False)  # noqa: E712
+        .order_by(col(Ride.id).desc())
+        .limit(1)
+    ).first()
+    return to_ride_read_dict(ride) if ride is not None else None
+
+
 @router.get("/{ride_id}", response_model=RideRead)
 def get_ride(ride_id: int, session: SessionDep, creds: CredsDep):
     require_user(session, creds)

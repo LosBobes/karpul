@@ -31,6 +31,11 @@ interface Props {
   request?: RideRequest | null
   /** A new ride in a company car's free stretch, picked on the day plan (components/DayPlan.tsx). */
   slot?: { carId: number; departure: string; ret: string } | null
+  /** The last ride you drove (backend: GET /api/rides/last): a new ride starts as a copy of it while `prefill` is on. */
+  previous?: Ride | null
+  /** The account's choice (`User.prefill_rides`), switched in the form itself. */
+  prefill?: boolean
+  onPrefillChange?: (on: boolean) => void
   submitting: boolean
   error: string | null
   /** The error is the shared-car share (one a week): offer to add the ride for an admin to approve. */
@@ -110,6 +115,8 @@ interface Picking {
   index: number
 }
 
+const BLANK_ROUTE = (): LastRoute => ({ origin: '', destination: messages().form.defaultDestination, car_name: '' })
+
 function loadLastRoute(): LastRoute {
   try {
     const raw = localStorage.getItem(LAST_ROUTE_KEY)
@@ -117,7 +124,7 @@ function loadLastRoute(): LastRoute {
   } catch {
     /* ignore */
   }
-  return { origin: '', destination: messages().form.defaultDestination, car_name: '' }
+  return BLANK_ROUTE()
 }
 
 /** How many rides "repeat weekly until" makes: the first plus one per full week. */
@@ -127,49 +134,61 @@ function weeklyCount(from: string, until: string): number {
 }
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
-export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, submitting, error, canAskApproval = false, onSubmit, onDelete, onClose }: Props) {
+export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, previous = null, prefill = true, onPrefillChange, submitting, error, canAskApproval = false, onSubmit, onDelete, onClose }: Props) {
   const t = useT()
   const seed = existing ?? template ?? null
   const me = useMe()
+  // A new ride of your own starts as a copy of the last one you drove, on the
+  // day picked (the times, car, route and the rest; never the date or a repeat).
+  const fresh = !seed
+  const [fromPrevious, setFromPrevious] = useKept('rideForm.fromPrevious', () => fresh && prefill && !!previous)
+  const prev = fresh && fromPrevious ? previous : null
+  // What the fields are filled in from: the ride edited or duplicated, else the last one.
+  const fill = seed ?? prev
+  // A shared car of the last ride that has left the pool since is no pick.
+  const fillCarId = (r: Ride | null) => (r?.corporate_car_id != null && (r !== prev || cars.some((c) => c.id === r.corporate_car_id)) ? r.corporate_car_id : null)
+  const fillCarType = (r: Ride | null): CarType | null => (r?.car_type === 'corporate' && r === prev && fillCarId(r) === null ? (cars.length ? 'corporate' : 'own') : (r?.car_type ?? null))
   // An admin adding a ride picks who drives it; a duplicate keeps its driver.
   const picksDriver = !!me.admin && !existing
   const [driver, setDriver] = useKept<Driver>('rideForm.driver', () =>
     picksDriver && template?.driver_id != null ? { id: template.driver_id, name: template.driver_name } : { id: me.id, name: userName },
   )
-  const [last] = useState(loadLastRoute)
-  const [mode, setModeState] = useKept<Mode>('rideForm.mode', () => (isAdvancedRide(seed) ? 'advanced' : loadMode()))
+  // Switched off, a new ride starts blank: not even the route this browser remembers.
+  const [last] = useState(() => (fresh && !prefill ? BLANK_ROUTE() : loadLastRoute()))
+  const [mode, setModeState] = useKept<Mode>('rideForm.mode', () => (isAdvancedRide(fill) ? 'advanced' : loadMode()))
   const [rideDate, setRideDate] = useKept('rideForm.rideDate', existing?.ride_date ?? request?.request_date ?? date)
-  const [carType, setCarType] = useKept<CarType>('rideForm.carType', slot ? 'corporate' : (seed?.car_type ?? (cars.length ? 'corporate' : 'own')))
-  const [carId, setCarId] = useKept<number | ''>('rideForm.carId', slot?.carId ?? seed?.corporate_car_id ?? cars[0]?.id ?? '')
-  const [carName, setCarName] = useKept('rideForm.carName', seed?.car_type === 'own' ? seed.car_name : last.car_name)
+  const [carType, setCarType] = useKept<CarType>('rideForm.carType', slot ? 'corporate' : (fillCarType(fill) ?? (cars.length ? 'corporate' : 'own')))
+  const [carId, setCarId] = useKept<number | ''>('rideForm.carId', slot?.carId ?? fillCarId(fill) ?? cars[0]?.id ?? '')
+  const [carName, setCarName] = useKept('rideForm.carName', fill?.car_type === 'own' ? fill.car_name : last.car_name)
   // A shared car kept somewhere (CorporateCar.home) starts a new ride there.
   const homeOf = (type: CarType, id: number | '') => (type === 'corporate' ? (cars.find((c) => c.id === id)?.home ?? '') : '')
-  const [origin, setOrigin] = useKept('rideForm.origin', seed?.origin ?? request?.origin ?? (homeOf(carType, carId) || last.origin))
-  const [destination, setDestination] = useKept('rideForm.destination', seed?.destination ?? request?.destination ?? last.destination)
-  const [departure, setDeparture] = useKept('rideForm.departure', slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? '08:00')
-  const [ret, setRet] = useKept('rideForm.ret', slot?.ret ?? seed?.return_time?.slice(0, 5) ?? '17:00')
-  const [oneWay, setOneWay] = useKept('rideForm.oneWay', seed && !slot ? seed.return_time === null : false)
+  const [origin, setOrigin] = useKept('rideForm.origin', seed?.origin ?? request?.origin ?? prev?.origin ?? (homeOf(carType, carId) || last.origin))
+  const [destination, setDestination] = useKept('rideForm.destination', seed?.destination ?? request?.destination ?? prev?.destination ?? last.destination)
+  const [departure, setDeparture] = useKept('rideForm.departure', slot?.departure ?? seed?.departure_time.slice(0, 5) ?? request?.departure_time.slice(0, 5) ?? prev?.departure_time.slice(0, 5) ?? '08:00')
+  const [ret, setRet] = useKept('rideForm.ret', slot?.ret ?? fill?.return_time?.slice(0, 5) ?? '17:00')
+  const [oneWay, setOneWay] = useKept('rideForm.oneWay', fill && !slot ? fill.return_time === null : false)
   // A one-way ride's mirror image, offered with it: the route reversed, on its own day and time.
   const [wayBack, setWayBack] = useKept('rideForm.wayBack', false)
   const [backDate, setBackDate] = useKept('rideForm.backDate', existing?.ride_date ?? request?.request_date ?? date)
   const [backDeparture, setBackDeparture] = useKept('rideForm.backDeparture', '17:00')
   const offersWayBack = oneWay && !existing && !request
-  const [rawSeats, setSeats] = useKept('rideForm.rawSeats', seed?.seats ?? last.seats ?? 3)
-  const [notes, setNotes] = useKept('rideForm.notes', seed?.notes ?? '')
-  const [passengersManage, setPassengersManage] = useKept('rideForm.passengersManage', seed?.passengers_manage ?? false)
-  const [passengersAddStops, setPassengersAddStops] = useKept('rideForm.passengersAddStops', seed?.passengers_add_stops ?? true)
-  const [coffee, setCoffee] = useKept('rideForm.coffee', seed?.coffee_please ?? false)
-  const [plate, setPlate] = useKept('rideForm.plate', seed ? seed.plate : (last.plate ?? ''))
-  const [stops, setStops] = useKept<string[]>('rideForm.stops', seed?.stops ?? [])
-  const [stopsBefore, setStopsBefore] = useKept<string[]>('rideForm.stopsBefore', seed?.stops_before ?? [])
+  const [rawSeats, setSeats] = useKept('rideForm.rawSeats', fill?.seats ?? last.seats ?? 3)
+  const [notes, setNotes] = useKept('rideForm.notes', fill?.notes ?? '')
+  const [passengersManage, setPassengersManage] = useKept('rideForm.passengersManage', fill?.passengers_manage ?? false)
+  const [passengersAddStops, setPassengersAddStops] = useKept('rideForm.passengersAddStops', fill?.passengers_add_stops ?? true)
+  const [coffee, setCoffee] = useKept('rideForm.coffee', fill?.coffee_please ?? false)
+  const [plate, setPlate] = useKept('rideForm.plate', fill ? fill.plate : (last.plate ?? ''))
+  const [stops, setStops] = useKept<string[]>('rideForm.stops', fill?.stops ?? [])
+  const [stopsBefore, setStopsBefore] = useKept<string[]>('rideForm.stopsBefore', fill?.stops_before ?? [])
   const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
-  const [distance, setDistance] = useKept('rideForm.distance', seed?.distance_km != null ? String(seed.distance_km) : '')
-  const [chipIn, setChipIn] = useKept('rideForm.chipIn', seed?.chip_in ?? '')
+  const [distance, setDistance] = useKept('rideForm.distance', fill?.distance_km != null ? String(fill.distance_km) : '')
+  const [chipIn, setChipIn] = useKept('rideForm.chipIn', fill?.chip_in ?? '')
   // The pins of the route by folded name (lib/maps.ts): the ride's own, a
   // request's, the last route's and the shared cars' homes, whichever apply.
   const [pins, setPins] = useKept<Record<string, Point>>('rideForm.pins', () => ({
-    ...(seed ? {} : (last.points ?? {})),
+    ...(fill ? {} : (last.points ?? {})),
     ...Object.assign({}, ...cars.map(homePin)),
+    ...(prev?.points ?? {}),
     ...(request?.points ?? {}),
     ...(seed?.points ?? {}),
   }))
@@ -203,6 +222,43 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     }
   }
 
+  /** The switch: fill the form in from the last ride, or empty it back to a new one.
+   *  The day stays, and so does whatever a request or a picked slot put there. */
+  function startFromPrevious(on: boolean) {
+    setFromPrevious(on)
+    onPrefillChange?.(on)
+    const r = on ? previous : null
+    const base = on ? last : BLANK_ROUTE()
+    const type: CarType = slot ? 'corporate' : (fillCarType(r) ?? (cars.length ? 'corporate' : 'own'))
+    const id = slot?.carId ?? fillCarId(r) ?? cars[0]?.id ?? ''
+    if (!slot) {
+      setCarType(type)
+      setCarId(id)
+    }
+    setCarName(r?.car_type === 'own' ? r.car_name : base.car_name)
+    if (!request) {
+      setOrigin(r?.origin ?? (homeOf(type, id) || base.origin))
+      setDestination(r?.destination ?? base.destination)
+      setDeparture(r?.departure_time.slice(0, 5) ?? '08:00')
+    }
+    if (!slot) {
+      setRet(r?.return_time?.slice(0, 5) ?? '17:00')
+      setOneWay(r ? r.return_time === null : false)
+    }
+    setSeats(r?.seats ?? base.seats ?? 3)
+    setNotes(r?.notes ?? '')
+    setPassengersManage(r?.passengers_manage ?? false)
+    setPassengersAddStops(r?.passengers_add_stops ?? true)
+    setCoffee(r?.coffee_please ?? false)
+    setPlate(r ? r.plate : (base.plate ?? ''))
+    setStops(r?.stops ?? [])
+    setStopsBefore(r?.stops_before ?? [])
+    setDistance(r?.distance_km != null ? String(r.distance_km) : '')
+    setChipIn(r?.chip_in ?? '')
+    if (r) setPins((p) => ({ ...p, ...r.points }))
+    if (r && isAdvancedRide(r)) setModeState('advanced')
+  }
+
   // Another car moves the start along with it, unless the start is one the driver typed.
   function pickCar(type: CarType, id: number | '') {
     const from = homeOf(carType, carId)
@@ -210,7 +266,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     setCarType(type)
     setCarId(id)
     if (seed || request || from === to) return
-    if (origin.trim() === '' || origin === (from || last.origin)) setOrigin(to || last.origin)
+    if (origin.trim() === '' || origin === (from || last.origin) || origin === prev?.origin) setOrigin(to || last.origin)
   }
 
   const selectedCar = cars.find((c) => c.id === carId)
@@ -411,6 +467,20 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           <Avatar name={existing?.driver_name ?? userName} size="sm" />
           <span className="form-driver-name">{existing?.driver_name ?? userName}</span>
           <span className="form-driver-role">{t.form.driver}</span>
+        </div>
+      )}
+
+      {fresh && previous && (
+        <div className="field">
+          <label className="switch-row">
+            <span className="switch-row-text">
+              <span className="switch-row-title">{t.form.fromLast}</span>
+              <span className="switch-row-desc">
+                {t.form.fromLastHint(previous.origin, previous.destination, previous.departure_time.slice(0, 5))}
+              </span>
+            </span>
+            <input type="checkbox" checked={fromPrevious} onChange={(e) => startFromPrevious(e.target.checked)} />
+          </label>
         </div>
       )}
 

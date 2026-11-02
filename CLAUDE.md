@@ -639,6 +639,28 @@ paints light before the script runs); the rules that were never tokens (the past
 the illustrations, the toast, the error text) key off `data-resolved`. The switch
 (`ThemeSwitch`) sits above the language switch in the drawer.
 
+**What's new** (`lib/whatsNew.ts`, `components/WhatsNew.tsx`, `components/WhatsNewArt.tsx`). **Every pull
+request that adds or changes something people will notice adds an entry**: `{ id, date }` at the top of
+`WHATS_NEW` (newest first, `date` the day it lands), its title and a few lines in `whatsNew.entries` in both
+languages of `lib/i18n.ts` (`**words**` bold, as in the how-to), and a demo in `WhatsNewArt` keyed by the id: a
+small piece of the screen it is about playing out on a loop (the `.wn-*` keyframes in `styles/extras.css`; the
+base styles are the end state, because under reduced motion the loops stop). The sheet opens by itself once
+when an account has an entry it has not seen in this browser (`karpul.whatsNewSeen.<id>`) dated after the day
+it joined (a newcomer is not handed the history, and the end-to-end tests' accounts never see it), and *What's
+new* in the drawer's *Help* group shows all of them. `whatsNew.test.ts` checks ids, order and both languages.
+The PR template asks, and `.github/workflows/whats-new.yml` warns (never fails) on a PR touching
+`frontend/src` or `backend/app` without an entry, unless it is labelled `no-whats-new`.
+
+**A new ride starts from your last one.** `User.prefill_rides` (an `ADDED_COLUMNS` column, on by default, in
+`UserRead` and `PATCH /api/auth/me`) says whether `RideForm` starts a new ride (not an edit or a duplicate) as a
+copy of `GET /api/rides/last` (the newest ride by id that the account drives, not one handed over with
+`needs_driver`): car, seats, times, route, stops, pins and the Advanced settings, on the day picked, never the
+date or a repeat; a request or a picked slot still wins for what they set, and a shared car since retired falls
+back to the first in the pool. `App.tsx` fetches it on start and keeps it to the ride just created (not its way
+back). The form's *Start from my last ride* switch fills the form in or empties it on the spot and saves the
+choice to the account; off, the browser's remembered route (`karpul.lastRoute`) is not used either. Tests:
+`tests/test_prefill.py`.
+
 **Language.** The UI is switchable between English and Serbian (Latin script). Every string
 the screen shows lives in `lib/i18n.ts` as two dictionaries, `en` and `sr`; `en` is the
 reference and `sr` is typed as its shape, so a missing key is a type error, never a silent

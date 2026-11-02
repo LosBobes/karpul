@@ -226,6 +226,7 @@ class ProfileUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     current_password: str | None = Field(default=None, max_length=200)
     new_password: str | None = Field(default=None, min_length=1, max_length=200)
+    prefill_rides: bool | None = None
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -271,6 +272,8 @@ class UserRead(BaseModel):
     is_admin: bool = False
     # The secret in this person's calendar feed address; theirs alone to see.
     calendar_token: str | None = None
+    # A new ride's form starts from the last ride this person drove.
+    prefill_rides: bool = True
     created_at: datetime
 
 

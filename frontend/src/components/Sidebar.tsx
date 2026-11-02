@@ -32,6 +32,8 @@ interface Content {
   onHowTo: () => void
   onSupport: () => void
   onFeedback: () => void
+  /** What changed in the app lately (components/WhatsNew.tsx). */
+  onWhatsNew: () => void
   onMyRides: () => void
   onNotifications: () => void
   /** Present while this browser can install the app (lib/install.ts). */
@@ -75,7 +77,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGarage, garage, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGarage, garage, onGuide, onHowTo, onSupport, onFeedback, onWhatsNew, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -113,6 +115,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
       label: t.howTo.menu,
       icon: 'book',
       onSelect: pick(onHowTo),
+    },
+    {
+      label: t.whatsNew.menu,
+      icon: 'sparkle',
+      onSelect: pick(onWhatsNew),
     },
     {
       label: t.support.title,

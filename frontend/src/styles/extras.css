@@ -1290,3 +1290,176 @@
   padding: 0;
   overflow: hidden;
 }
+
+/* --- What's new (components/WhatsNew.tsx, WhatsNewArt.tsx) ---------------
+   Each demo's still frame (its base styles) is the end of the story, so with
+   reduced motion, where the loops stop, it still says what changed. */
+.wn-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.wn-title {
+  margin: 0.4rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.wn-body {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.wn-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.wn-foot .btn-primary {
+  margin-left: auto;
+  min-width: 7rem;
+}
+.wn-step {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.wn-art {
+  display: grid;
+  place-items: center;
+  min-height: 11rem;
+  padding: 1.2rem;
+  border-radius: var(--radius-lg);
+  background: var(--green-soft);
+}
+.wn-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(16rem, 100%);
+  padding: 0.85rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.wn-line {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+.wn-line-label {
+  width: 55%;
+}
+
+/* Prefill: the switch turns on, then each field fills in, then it all starts over. */
+.wn-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.15rem;
+}
+.wn-switch {
+  position: relative;
+  width: 2.1rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: var(--green);
+  animation: wn-switch-on 5s var(--ease-out) infinite;
+}
+.wn-knob {
+  position: absolute;
+  top: 0.15rem;
+  left: 1.1rem;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: #fff;
+  animation: wn-knob-on 5s var(--ease-out) infinite;
+}
+.wn-field {
+  position: relative;
+  height: 2rem;
+  border-bottom: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.wn-field-empty {
+  position: absolute;
+  inset: 0;
+}
+.wn-field-text {
+  position: absolute;
+  left: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: wn-fill 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.25s);
+}
+@keyframes wn-switch-on {
+  0%, 18% { background: var(--border-strong); }
+  26%, 100% { background: var(--green); }
+}
+@keyframes wn-knob-on {
+  0%, 18% { left: 0.15rem; }
+  26%, 100% { left: 1.1rem; }
+}
+@keyframes wn-fill {
+  0%, 28% { opacity: 0; transform: translate(-6px, -50%); }
+  38%, 92% { opacity: 1; transform: translate(0, -50%); }
+  100% { opacity: 0; transform: translate(0, -50%); }
+}
+
+/* Consent: the old time is struck through, the new one comes in, the passengers tick it one by one. */
+.wn-times {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.wn-old {
+  color: var(--muted);
+  text-decoration: line-through;
+  animation: wn-strike 5s var(--ease-out) infinite;
+}
+.wn-arrow {
+  color: var(--muted);
+}
+.wn-new {
+  color: var(--green-dark);
+  animation: wn-arrive 5s var(--ease-out) infinite;
+}
+.wn-pax {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.wn-pax-dot {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  animation: wn-tick 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.35s);
+}
+@keyframes wn-strike {
+  0%, 15% { color: var(--text); text-decoration-color: transparent; }
+  25%, 100% { color: var(--muted); text-decoration-color: currentColor; }
+}
+@keyframes wn-arrive {
+  0%, 22% { opacity: 0; transform: translateX(-6px); }
+  32%, 100% { opacity: 1; transform: none; }
+}
+@keyframes wn-tick {
+  0%, 38% { background: var(--border-strong); color: transparent; transform: scale(0.9); }
+  46% { transform: scale(1.12); }
+  52%, 100% { background: var(--green); color: #fff; transform: none; }
+}

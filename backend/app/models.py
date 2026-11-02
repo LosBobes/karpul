@@ -61,6 +61,10 @@ class User(SQLModel, table=True):
     # How many minutes before departure this person wants the reminder
     # (app/reminders.py); one of reminders.LEAD_CHOICES.
     remind_before: int = Field(default=30, sa_column_kwargs={"server_default": "30"})
+    # A new ride's form starts as a copy of the last ride this person drove
+    # (`GET /api/rides/last`): car, seats, times, route and the rest, on the
+    # day picked. Per account, so it holds in every browser.
+    prefill_rides: bool = Field(default=True, sa_column_kwargs={"server_default": "1"})
     created_at: datetime = Field(default_factory=utcnow)
 
     sessions: list["AuthSession"] = Relationship(

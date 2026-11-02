@@ -220,6 +220,8 @@ export const api = {
   me: () => request<AuthUser>('/api/auth/me'),
 
   /** Change your own name, email, phone or password; a new name follows you onto the board. */
+  /** The ride you drove that was added last, or null: what a new ride's form starts from. */
+  lastRide: () => request<Ride | null>('/api/rides/last'),
   updateMe: (patch: ProfilePatch) => request<AuthUser>('/api/auth/me', json('PATCH', patch)),
 
   /** A new secret for your calendar feed; the old address stops working. */

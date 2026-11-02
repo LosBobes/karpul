@@ -25,6 +25,8 @@ export interface AuthUser {
   is_admin: boolean
   /** The secret in this person's calendar feed address. */
   calendar_token: string | null
+  /** A new ride's form starts from the last ride you drove (missing from a session saved by an older build: on). */
+  prefill_rides?: boolean
   created_at: string
 }
 
