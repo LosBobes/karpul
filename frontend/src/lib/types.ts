@@ -428,4 +428,5 @@ export interface ProfilePatch {
   phone?: string
   current_password?: string
   new_password?: string
+  prefill_rides?: boolean
 }

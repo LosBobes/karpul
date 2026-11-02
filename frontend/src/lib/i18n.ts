@@ -1,6 +1,7 @@
 import { getLocale, useLocale, type Locale } from './locale'
 import type { SupportTopic } from './support'
 import type { PushCategory } from './types'
+import type { DemoKey } from './whatsNew'
 
 /**
  * Every word the screen shows, in English and in Serbian (Latin script).
@@ -557,6 +558,8 @@ const en = {
     /** A one-way ride: offer its mirror image. */
     wayBack: 'Add the way back too',
     wayBackHint: 'A second one-way ride with the route reversed.',
+    fromLast: 'Start from my last ride',
+    fromLastHint: (from: string, to: string, time: string) => `${from} to ${to} at ${time}. Remembered for your next rides too.`,
     wayBackDay: 'Day back',
     wayBackLeaves: 'Leaves at',
   },
@@ -1229,6 +1232,25 @@ const en = {
     movePinShort: 'Move the pin on the map',
     namePlaceholder: 'e.g. Petrol station on Zemunska',
     nameNeeded: 'Give this place a name.',
+  },
+
+  whatsNew: {
+    title: "What's new",
+    menu: "What's new",
+    next: 'Next',
+    back: 'Back',
+    done: 'Got it',
+    step: (n: number, of: number) => `${n} of ${of}`,
+    entries: {
+      prefill: {
+        title: 'A new ride starts from your last one',
+        body: 'Adding a ride fills in the car, seats, times and route of the last ride you drove, on the day you picked. Switch **Start from my last ride** off at the top of the form for a blank one; Karpul remembers your choice on every device.',
+      },
+      consent: {
+        title: 'Passengers agree to a change first',
+        body: 'When a driver moves the day, a time or the route of a ride with passengers, the passengers are asked before it changes. A passenger can also suggest another time from the ride card.',
+      },
+    } satisfies Record<DemoKey, { title: string; body: string }>,
   },
 
   apiError: (message: string) => message,
@@ -1953,6 +1975,8 @@ const sr: Messages = {
     roadKm: (km) => `${km} km putem između tačaka. Upisano umesto tebe.`,
     wayBack: 'Dodaj i povratak',
     wayBackHint: 'Druga vožnja u jednom smeru, sa obrnutom rutom.',
+    fromLast: 'Popuni kao moju poslednju vožnju',
+    fromLastHint: (from, to, time) => `${from} do ${to} u ${time}. Pamti se i za sledeće vožnje.`,
     wayBackDay: 'Dan povratka',
     wayBackLeaves: 'Polazak u',
   },
@@ -2616,10 +2640,30 @@ const sr: Messages = {
     nameNeeded: 'Daj ime ovom mestu.',
   },
 
+  whatsNew: {
+    title: 'Šta je novo',
+    menu: 'Šta je novo',
+    next: 'Dalje',
+    back: 'Nazad',
+    done: 'Važi',
+    step: (n, of) => `${n} od ${of}`,
+    entries: {
+      prefill: {
+        title: 'Nova vožnja kreće od tvoje poslednje',
+        body: 'Kad dodaješ vožnju, auto, mesta, vreme i ruta se popunjavaju kao u tvojoj poslednjoj vožnji, za izabrani dan. Isključi **Popuni kao moju poslednju vožnju** na vrhu forme za praznu; Karpul pamti izbor na svakom uređaju.',
+      },
+      consent: {
+        title: 'Putnici prvo pristaju na izmenu',
+        body: 'Kad vozač pomeri dan, vreme ili rutu vožnje sa putnicima, putnici se pitaju pre nego što se promeni. Putnik može i da predloži drugo vreme sa kartice vožnje.',
+      },
+    },
+  },
+
   apiError: srApiError,
 }
 
-const MESSAGES: Record<Locale, Messages> = { en, sr }
+/** Both dictionaries, for tests that check every entry has both languages. */
+export const MESSAGES: Record<Locale, Messages> = { en, sr }
 
 /** The current language's messages, for code that is not a component. */
 export function messages(): Messages {

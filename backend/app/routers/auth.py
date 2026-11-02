@@ -206,6 +206,9 @@ def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep)
     if "phone" in data:
         user.phone = payload.phone
 
+    if payload.prefill_rides is not None:
+        user.prefill_rides = payload.prefill_rides
+
     first = payload.first_name if payload.first_name is not None else user.first_name
     last = payload.last_name if payload.last_name is not None else user.last_name
     new_name = f"{first} {last}"

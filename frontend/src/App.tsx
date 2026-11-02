@@ -30,6 +30,8 @@ import { RideForm } from './components/RideForm'
 import { Dock, Sidebar } from './components/Sidebar'
 import { SlideSwitch } from './components/SlideSwitch'
 import { SupportSheet } from './components/SupportSheet'
+import { WhatsNew } from './components/WhatsNew'
+import { loadSeen, markSeen, unseen, WHATS_NEW, type WhatsNewEntry } from './lib/whatsNew'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
@@ -72,6 +74,7 @@ type Overlay =
   | 'myRides'
   | 'notif'
   | 'support'
+  | 'whatsNew'
   | 'feedback'
   | 'update'
   | 'cars'
@@ -153,6 +156,18 @@ function Board({ session }: { session: Session }) {
   // the admin's sheets (PeopleAdmin, RideLog, AdminLog, Approvals).
   const { is, show, hide, closer } = useOverlays<Overlay>('board.sheets', ['update'])
 
+  // What's new (lib/whatsNew.ts): what landed since this account last looked
+  // in this browser opens by itself once; the drawer shows all of it again.
+  const [newsShown, setNewsShown] = useState<readonly WhatsNewEntry[]>(() => unseen(WHATS_NEW, loadSeen(user.id), user.created_at))
+  useEffect(() => {
+    const fresh = unseen(WHATS_NEW, loadSeen(user.id), user.created_at)
+    if (fresh.length) show('whatsNew')
+  }, [user.id, user.created_at, show])
+  const closeNews = useCallback(() => {
+    markSeen(user.id, WHATS_NEW.map((e) => e.id))
+    hide('whatsNew')
+  }, [user.id, hide])
+
   // Admin (backend: app/admin.py): the company-car pool and the people. The
   // drawer offers them to admins only; the server checks every call anyway.
   const isAdmin = user.is_admin
@@ -185,6 +200,30 @@ function Board({ session }: { session: Session }) {
   useEffect(() => {
     void resubscribePush()
   }, [user.id])
+
+  // The ride you drove that was added last: a new ride's form starts as a copy
+  // of it while the account says so (`prefill_rides`, the switch in the form).
+  const prefill = user.prefill_rides !== false
+  const [lastRide, setLastRide] = useState<Ride | null>(null)
+  useEffect(() => {
+    let live = true
+    api
+      .lastRide()
+      .then((ride) => {
+        if (live) setLastRide(ride)
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [user.id])
+  function onPrefillChange(on: boolean) {
+    setUser({ ...user, prefill_rides: on })
+    api
+      .updateMe({ prefill_rides: on })
+      .then(setUser)
+      .catch((e) => setToast({ kind: 'error', text: errMsg(e) }))
+  }
 
   // A shared link, /ride/{id}: open that ride on its day, then tidy the URL so
   // a reload does not replay it. The server sent the shell with a preview.
@@ -476,6 +515,8 @@ function Board({ session }: { session: Session }) {
       } else {
         const created = await api.createRide(input)
         upsertRide(created)
+        // The next new ride starts from this one (not from its way back, which is the mirror image).
+        if (created.driver_id === user.id) setLastRide(created)
         const answered = form?.mode === 'create' ? form.request : undefined
         // The way back is a second ride; the first is in by now, so its
         // failure (the shared car's share, a clash) is a toast, not the form's error.
@@ -930,6 +971,10 @@ function Board({ session }: { session: Session }) {
     onHowTo: () => show('howTo'),
     onSupport: () => show('support'),
     onFeedback: () => show('feedback'),
+    onWhatsNew: () => {
+      setNewsShown(WHATS_NEW)
+      show('whatsNew')
+    },
     onMyRides: () => show('myRides'),
     onNotifications: () => show('notif'),
     onSharedCars: () => openSharedCars(),
@@ -1085,6 +1130,7 @@ function Board({ session }: { session: Session }) {
         {is('howTo') && <HowTo isAdmin={isAdmin} onSupport={() => show('support')} onClose={closer('howTo')} />}
 
 
+        {is('whatsNew') && <WhatsNew entries={newsShown.length ? newsShown : WHATS_NEW} onClose={closeNews} />}
         {is('support') && <SupportSheet onFeedback={() => show('feedback')} onClose={closer('support')} />}
 
         {is('feedback') && <FeedbackSheet user={`${userName} (@${user.username})`} view={view} onClose={closer('feedback')} />}
@@ -1120,6 +1166,9 @@ function Board({ session }: { session: Session }) {
             template={form.mode === 'create' ? form.template : null}
             request={form.mode === 'create' ? form.request : null}
             slot={form.mode === 'create' ? form.slot : null}
+            previous={lastRide}
+            prefill={prefill}
+            onPrefillChange={onPrefillChange}
             submitting={submitting}
             error={formError}
             canAskApproval={formAsk}

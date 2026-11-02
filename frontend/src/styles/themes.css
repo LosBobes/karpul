@@ -661,7 +661,8 @@
   .bolt-start,
   .report-parts *,
   .report-parts *::before,
-  .report-parts *::after {
+  .report-parts *::after,
+  .wn-art * {
     animation: none !important;
   }
 }

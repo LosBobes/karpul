@@ -1,0 +1,36 @@
+name: What's new
+
+# Every pull request that adds or changes something people see carries an
+# entry in frontend/src/lib/whatsNew.ts (CLAUDE.md, "What's new"). This is a
+# reminder, not a gate: it warns and stays green, so a bug fix or a change
+# nobody sees is never blocked; the `no-whats-new` label silences it.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  entry:
+    name: What's new entry
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Look for a What's new entry
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          SKIP: ${{ contains(github.event.pull_request.labels.*.name, 'no-whats-new') }}
+        run: |
+          if [ "$SKIP" = "true" ]; then
+            echo "Labelled no-whats-new."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$BASE"...HEAD)
+          if echo "$changed" | grep -qx 'frontend/src/lib/whatsNew.ts'; then
+            echo "This pull request adds to What's new."
+          elif echo "$changed" | grep -qE '^(frontend/src/|backend/app/)'; then
+            echo "::warning file=frontend/src/lib/whatsNew.ts::No What's new entry. If people will notice this change, add one (lib/whatsNew.ts, the words in lib/i18n.ts, a demo in components/WhatsNewArt.tsx); otherwise label the PR no-whats-new."
+          fi
