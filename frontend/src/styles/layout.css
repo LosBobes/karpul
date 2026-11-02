@@ -480,6 +480,24 @@ main,
   font-size: 0.82rem;
   color: var(--muted);
 }
+/* The garage list (components/GarageList.tsx): the plate is what an admin
+   copies onto the garage's list, so it reads like one; a ticked one recedes. */
+.garage-plate {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+.garage-done .approval-ride {
+  opacity: 0.6;
+}
+.garage-on-list {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-right: auto;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--green);
+}
 /* Under the share's refusal in the ride form: the way to ask instead. */
 .form-ask {
   display: flex;

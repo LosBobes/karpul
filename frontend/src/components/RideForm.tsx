@@ -3,7 +3,7 @@ import { useKept } from '../lib/keep'
 import { addDays, foldName, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { fmtKm, pinsFor } from '../lib/maps'
-import { officeDistance } from '../lib/offices'
+import { goesToGarage, officeDistance } from '../lib/offices'
 import { useRoad } from '../lib/places'
 import type { CarType, CorporateCar, Point, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
@@ -92,6 +92,8 @@ interface LastRoute {
   destination: string
   car_name: string
   seats?: number
+  /** Your own car's plate, for the Beograd garage. */
+  plate?: string
   /** The pins of the two, by folded name, when they had any. */
   points?: Record<string, Point>
 }
@@ -157,6 +159,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const [passengersManage, setPassengersManage] = useKept('rideForm.passengersManage', seed?.passengers_manage ?? false)
   const [passengersAddStops, setPassengersAddStops] = useKept('rideForm.passengersAddStops', seed?.passengers_add_stops ?? true)
   const [coffee, setCoffee] = useKept('rideForm.coffee', seed?.coffee_please ?? false)
+  const [plate, setPlate] = useKept('rideForm.plate', seed ? seed.plate : (last.plate ?? ''))
   const [stops, setStops] = useKept<string[]>('rideForm.stops', seed?.stops ?? [])
   const [stopsBefore, setStopsBefore] = useKept<string[]>('rideForm.stopsBefore', seed?.stops_before ?? [])
   const roomForStop = stops.length + stopsBefore.length < MAX_STOPS
@@ -219,6 +222,8 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   const distanceNum = distance.trim() === '' ? null : Number(distance.replace(',', '.'))
   // The road between the offices is a known length (lib/offices.ts); the server fills a blank in with it.
   const knownKm = officeDistance(origin, destination)
+  // An own car to the Beograd office: the garage lets in only the plates on its list.
+  const askPlate = goesToGarage(carType, destination)
   // Elsewhere, with the two ends pinned and a road finder on the server, the
   // road's length is the placeholder, and what a blank distance is sent as.
   const roadPins = [pinOf(origin), ...stops.map(pinOf), pinOf(destination)]
@@ -297,6 +302,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         origin,
         destination,
         car_name: carType === 'own' ? carName : last.car_name,
+        plate: carType === 'own' && plate.trim() ? plate.trim() : last.plate,
         seats,
         points: Object.fromEntries(
           [origin, destination].filter((p) => pinOf(p)).map((p) => [foldName(p), pinOf(p) as Point]),
@@ -322,6 +328,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       passengers_manage: passengersManage,
       passengers_add_stops: passengersAddStops,
       coffee_please: coffee,
+      plate: askPlate ? plate.trim() : '',
       stops: stops.map((s) => s.trim()).filter(Boolean),
       stops_before: stopsBefore.map((s) => s.trim()).filter(Boolean),
       distance_km: distanceNum ?? (knownKm === null ? roadKm : null),
@@ -669,6 +676,21 @@ export function RideForm({ date, userName, cars, existing, template, request = n
           </label>
         )}
       </div>
+
+      {/* An own car to the Beograd office: the garage lets in only the plates on its list. */}
+      {askPlate && (
+        <label className="field">
+          <span className="field-label">{t.form.plate}</span>
+          <input
+            placeholder={t.form.platePlaceholder}
+            maxLength={16}
+            autoCapitalize="characters"
+            value={plate}
+            onChange={(e) => setPlate(e.target.value.toUpperCase())}
+          />
+          <span className="hint">{t.form.plateHint}</span>
+        </label>
+      )}
 
       {advanced && (
         <>

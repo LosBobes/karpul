@@ -73,6 +73,10 @@ const FLUENT = {
     detail: <path d="M5.5 12h9M6.25 14h1M12.75 14h1" />,
     extra: <path d="M5.5 16v1.25M14.5 16v1.25" />,
   },
+  garage: {
+    body: <path d="M3 8.6 9.4 3.9a1 1 0 0 1 1.2 0L17 8.6V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" />,
+    detail: <path d="M6.5 17v-5.75h7V17M6.5 14.1h7" />,
+  },
   people: {
     body: (
       <>

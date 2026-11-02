@@ -8,6 +8,7 @@ import { drives, inRide, isMyBooking, mayClaim, myBooking as findMyBooking, myWa
 import { hasPins, mapsSearchUrl, pointOf, routeUrl, stopHint } from '../lib/maps'
 import { useArrivals } from '../lib/motion'
 import { keepsKm } from '../lib/odometer'
+import { goesToGarage } from '../lib/offices'
 import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
@@ -27,6 +28,7 @@ import {
   CoffeeIcon,
   CoinsIcon,
   CopyIcon,
+  GarageIcon,
   GripIcon,
   HourglassIcon,
   KebabIcon,
@@ -193,6 +195,8 @@ export function CarDetail({
   const isDriver = drives(ride, me)
   // The driver runs the ride; so may an admin, who schedules the cars (backend: _may_run).
   const runsIt = runs(ride, me)
+  // The plate for the Beograd garage is the driver's and the admins' business.
+  const showPlate = !!ride.plate && goesToGarage(ride.car_type, ride.destination) && (runsIt || isDriver)
   const model = carModel(ride.car_name)
   const brand = model ? null : carBrand(ride.car_name)
   const powertrain = carPowertrain(ride.car_name)
@@ -571,7 +575,7 @@ export function CarDetail({
           </span>
         </div>
 
-        {(ride.chip_in || ride.distance_km != null || ride.coffee_please) && (
+        {(ride.chip_in || ride.distance_km != null || ride.coffee_please || showPlate) && (
           <dl className="facts">
             {ride.distance_km != null && (
               <div className="fact">
@@ -595,6 +599,16 @@ export function CarDetail({
                   <CoffeeIcon size={14} /> {t.detail.coffee}
                 </dt>
                 <dd>{isDriver ? t.detail.coffeeYou : t.detail.coffeePlease(firstName(ride.driver_name))}</dd>
+              </div>
+            )}
+            {showPlate && (
+              <div className="fact">
+                <dt>
+                  <GarageIcon size={14} /> {t.detail.garage}
+                </dt>
+                <dd>
+                  {ride.plate} · {ride.plate_registered ? t.detail.plateOnList : t.detail.plateWaiting}
+                </dd>
               </div>
             )}
           </dl>

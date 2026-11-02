@@ -24,6 +24,9 @@ interface Content {
   onApprovals: () => void
   /** Admins: how many shared-car rides wait for approval (a count on the item). */
   approvals: number
+  /** Admins: the own cars' plates the Beograd garage still needs (components/GarageList.tsx). */
+  onGarage: () => void
+  garage: number
   onGuide: () => void
   /** How to use the app (components/HowTo.tsx). */
   onHowTo: () => void
@@ -72,7 +75,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGarage, garage, onGuide, onHowTo, onSupport, onFeedback, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -138,6 +141,12 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
             icon: 'approvals',
             onSelect: pick(onApprovals),
             count: approvals,
+          },
+          {
+            label: t.garage.title,
+            icon: 'garage',
+            onSelect: pick(onGarage),
+            count: garage,
           },
           {
             label: t.sidebar.people,
@@ -242,7 +251,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
 
           <nav className="drawer-nav" aria-label={t.common.menu}>
             <div className="drawer-daily">{daily.map(renderItem)}</div>
-            {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals)}
+            {admin.length > 0 && group('admin', t.sidebar.admin, admin.map(renderItem), approvals + garage)}
             {group('help', t.sidebar.help, help.map(renderItem))}
           </nav>
         </div>

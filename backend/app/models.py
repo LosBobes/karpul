@@ -135,6 +135,12 @@ class Ride(SQLModel, table=True):
     passengers_add_stops: bool = Field(default=True)
     # Driver's hint: they would appreciate a coffee. Only ever shown.
     coffee_please: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    # The licence plate of an own car coming to the Beograd office, for the
+    # garage's list of cars let in (offices.needs_garage): "" for none. An
+    # admin adds it to that list by hand and ticks it off here
+    # (`plate_registered`), which a changed plate undoes.
+    plate: str = Field(default="", sa_column_kwargs={"server_default": ""})
+    plate_registered: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     # Where the places of the route are on the map, as JSON: the place's
     # folded name (services.fold_name) to {"lat": .., "lng": ..}. Keyed by
     # name, not position, so reordering or adding stops needs no bookkeeping;

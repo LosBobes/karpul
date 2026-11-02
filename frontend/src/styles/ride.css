@@ -1049,6 +1049,18 @@
   color: var(--green-dark);
   font-weight: 600;
 }
+/* Each mood picked in its own colour: clean is water blue, not the app's
+   green, and "not checked" a plain grey, because it says nothing either way. */
+.wash-clean.wash-card-on {
+  border-color: color-mix(in srgb, var(--blue) 40%, var(--surface));
+  background: var(--blue-soft);
+  color: color-mix(in srgb, var(--blue) 75%, var(--text));
+}
+.wash-unknown.wash-card-on {
+  border-color: color-mix(in srgb, var(--muted) 60%, var(--surface));
+  background: color-mix(in srgb, var(--muted) 16%, var(--surface));
+  color: var(--text);
+}
 .wash-dirty.wash-card-on {
   border-color: #c8a46a;
   background: color-mix(in srgb, #a07a3c 16%, var(--surface));
@@ -1082,8 +1094,8 @@
   opacity: 0.5;
 }
 .wash-sparkle {
-  fill: #ffd76a;
-  stroke: #f2b300;
+  fill: #9fd0ff;
+  stroke: #2f80d8;
   stroke-width: 0.4;
 }
 /* Each mood keeps its own loop going, picked or not; the picked one also pops. */
@@ -1148,7 +1160,7 @@
   font-size: 15px;
 }
 .wash-card-on .wash-q {
-  fill: var(--green-dark);
+  fill: var(--text);
 }
 .wash-card-on .wash-car {
   animation: wash-pop 400ms var(--ease-bounce);

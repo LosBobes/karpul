@@ -190,6 +190,18 @@ again whenever the board's rides change or a decision is made); each ask is deci
 on it opens the ride on the day plan. The card keeps its *Approve* / *Decline* row (`.approval-row`)
 too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
 
+**The Beograd garage list.** The Beograd office's garage lets in only the cars on its list, so an own-car
+ride whose destination is that office (`offices.needs_garage`, `GARAGE_OFFICE`; mirrored by `goesToGarage` /
+`garageTask` in `lib/offices.ts`) asks for its licence plate: `Ride.plate` (upper-cased, `normalise_plate`, blank
+for a shared car) and `Ride.plate_registered` (both `ADDED_COLUMNS`). `RideForm` shows the *Licence plate* field
+under the route only then (remembered with the last route), and the driver card shows it as a *Garage* fact to the
+driver and admins. A new task pushes `garage_plate` to every admin (category *approvals*); an edit to another plate
+or another day undoes the tick and asks again. The admins' place is *Garage list* in the drawer
+(`components/GarageList.tsx`, `GET /api/admin/garage`: from today on, the ones still to add first, with an amber
+count on the item and in the ☰ dot), where `PUT /api/admin/garage/{id} {registered}` ticks one off (or takes it
+back), logged as `plate_registered` / `plate_unregistered` and pushed `plate_registered` to the driver. The list
+itself is kept outside Karpul. Tests: `tests/test_garage.py`.
+
 **A shared car's odometer.** Who actually drove a shared car and how far is kept as `DriveLeg`
 rows on the ride (`Ride.legs`, in `RideRead`): one stretch at the wheel each, `start_km` to `end_km`
 (None while being driven), following each other with no gap. The ride's `driver_id` stays who
@@ -236,7 +248,7 @@ as rolling wheels over an invisible input, with chips on top of the last real re
 to (`km_since`, the guess's own figure, in green when there is any), else the office road first (`OFFICE_TRIPS`
 in `lib/offices.ts`, +90 / +92 / both ways), then +10 / +100; the battery as a battery dragged or arrow-keyed, or typed after a tap on its figure
 (`role="slider"`, its colour sliding red to amber to green with the charge, `socHue`, the range at
-`SOC_PER_KM` on an electric car), clean / needs a wash / not checked as pictures of the car, each with a loop always running (sparkles and a
+`SOC_PER_KM` on an electric car), clean / needs a wash / not checked as pictures of the car (picked, clean is tinted blue, a wash amber and not checked grey), each with a loop always running (sparkles and a
 shine; mud, rising stink, dust and two flies; a dotted outline of the missing car with question marks floating
 out of it), the picked one popping, and quick problems as chips. Left untouched for a few seconds the form idles
 (`useIdle` in `lib/useIdle.ts`, `.report-idle`; a light along the drum, an empty battery filling itself, the cars rocking); every

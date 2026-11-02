@@ -15,7 +15,7 @@ from ..calendar import ride_ics
 from ..database import get_session, get_write_session
 from ..events import request_saved, ride_deleted, ride_saved
 from ..models import Booking, CarType, Ride, RideRequest, User
-from ..offices import office_distance
+from ..offices import garage_task, office_distance
 from ..push import notify
 from ..schemas import BookingCreate, BookingRead, BookingUpdate, NewStop, Point, RideCreate, RideRead, RideUpdate, StopCreate
 from ..services import (
@@ -248,6 +248,8 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
         notify(session, [driver.id], "ride_assigned", rides[0], name=user.display_name)
     if any(r.approval == "pending" for r in rides):
         notify(session, admin_ids(session), "approval_requested", rides[0], name=driver.display_name)
+    if garage_task(rides[0]):
+        notify(session, admin_ids(session), "garage_plate", rides[0], name=driver.display_name, plate=rides[0].plate)
     return to_ride_read_dict(rides[0])
 
 
@@ -316,8 +318,14 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
         geo.route_places(validated),
         {k: v for k, v in pins_after.items() if pins_before.get(k) != v and k in geo.folded(payload.points)},
     )
+    # The garage's list is of a plate on a day: a new plate or another day is
+    # a new task for the admins, however the old one stood.
+    was_task = garage_task(ride)
+    if data["plate"] != ride.plate or data["ride_date"] != ride.ride_date:
+        data["plate_registered"] = False
     for key, value in data.items():
         setattr(ride, key, value)
+    new_task = garage_task(ride) and (not was_task or "plate_registered" in data)
     if changes:
         audit.record(session, user, "ride_edited", ride.driver_name, ride=ride, changes=changes)
     drop_orphaned_pickups(ride)
@@ -336,6 +344,8 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
         notify(session, [ride.driver_id], "ride_changed", ride, driver=user.display_name)
     if promoted:
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
+    if new_task:
+        notify(session, admin_ids(session), "garage_plate", ride, name=ride.driver_name, plate=ride.plate)
     return to_ride_read_dict(ride)
 
 

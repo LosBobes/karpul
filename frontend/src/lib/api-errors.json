@@ -81,6 +81,7 @@
   "This reset link has expired or was already used",
   "This ride already has 3 pickup points",
   "This ride already has a driver",
+  "This ride has no plate for the garage",
   "This ride is not waiting for approval",
   "This ride's driver already has an account",
   "Too many attempts; try again in 3 min",

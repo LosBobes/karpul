@@ -360,6 +360,9 @@ const en = {
     coffee: 'Coffee',
     coffeePlease: (first: string) => `${first} would appreciate one`,
     coffeeYou: 'You would appreciate one',
+    garage: 'Garage',
+    plateOnList: 'on the list',
+    plateWaiting: 'not on the list yet',
     /** The driver is a name with no account behind it (the shared car's paper log). */
     noAccount: 'No account',
     claimAsk: (driver: string) => `Is this you? ${driver} has no account yet. Claiming it makes every ride under this name yours.`,
@@ -473,6 +476,9 @@ const en = {
     carHint: (plate: string, seats: number) => `${plate} · ${enPlural(seats, 'seat', 'seats')}`,
     yourCar: 'Your car',
     carPlaceholder: 'e.g. grey Octavia',
+    plate: 'Licence plate',
+    platePlaceholder: 'e.g. NS 123-AB',
+    plateHint: 'For the Beograd office garage: an admin puts it on the list of cars let in.',
     seats: 'Passenger seats',
     fewer: 'Fewer seats',
     more: 'More seats',
@@ -605,6 +611,17 @@ const en = {
     open: 'Open the ride',
   },
 
+  /** Own cars coming to the Beograd office whose plate the garage needs: components/GarageList.tsx. */
+  garage: {
+    title: 'Garage list',
+    empty: 'No plates to add.',
+    count: (n: number) => `${n} to add`,
+    open: 'Open the ride',
+    markDone: 'Mark as added',
+    undo: 'Not added after all',
+    onList: 'On the list',
+  },
+
   /** The admin's log: components/AdminLog.tsx, backend app/audit.py. */
   adminLog: {
     title: 'Admin log',
@@ -654,6 +671,10 @@ const en = {
           return `${admin} changed the place ${subject}`
         case 'place_removed':
           return `${admin} forgot the place ${subject}`
+        case 'plate_registered':
+          return `${admin} put the car of ${subject} on the garage list`
+        case 'plate_unregistered':
+          return `${admin} took the car of ${subject} off the garage list`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -1227,6 +1248,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^That keeps a shared car with you for more than 24 hours in a row\. An admin can approve it$/, () => 'Tako bi zajednički auto bio kod tebe duže od 24 sata zaredom. Administrator može da to odobri'],
   [/^This ride is not waiting for approval$/, () => 'Ova vožnja ne čeka odobrenje'],
   [/^This ride already has a driver$/, () => 'Ova vožnja već ima vozača'],
+  [/^This ride has no plate for the garage$/, () => 'Ova vožnja nema tablice za garažu'],
   [/^Only a passenger in this car can take it over$/, () => 'Samo putnik u ovom autu može da je preuzme'],
   [/^This ride's driver already has an account$/, () => 'Vozač ove vožnje već ima nalog'],
   [/^(.+) is not a name like yours$/, (m) => `Ime ${m[1]} ne liči na tvoje`],
@@ -1715,6 +1737,9 @@ const sr: Messages = {
     coffee: 'Kafa',
     coffeePlease: (first) => `${first} bi se obradovao/la kafi`,
     coffeeYou: 'Obradovao/la bi se kafi',
+    garage: 'Garaža',
+    plateOnList: 'na spisku',
+    plateWaiting: 'još nije na spisku',
     noAccount: 'Bez naloga',
     claimAsk: (driver) => `Da li si ovo ti? ${driver} još nema nalog. Ako potvrdiš, sve vožnje pod ovim imenom postaju tvoje.`,
     claim: 'Ovo sam ja',
@@ -1823,6 +1848,9 @@ const sr: Messages = {
     carHint: (plate, seats) => `${plate} · ${srSeats(seats)}`,
     yourCar: 'Tvoj auto',
     carPlaceholder: 'npr. siva Octavia',
+    plate: 'Registarske tablice',
+    platePlaceholder: 'npr. NS 123-AB',
+    plateHint: 'Za garažu kancelarije u Beogradu: administrator ih dodaje na spisak vozila koja smeju da uđu.',
     seats: 'Mesta za putnike',
     fewer: 'Manje mesta',
     more: 'Više mesta',
@@ -1928,6 +1956,16 @@ const sr: Messages = {
     open: 'Otvori vožnju',
   },
 
+  garage: {
+    title: 'Spisak za garažu',
+    empty: 'Nema tablica za dodavanje.',
+    count: (n) => `${n} za dodavanje`,
+    open: 'Otvori vožnju',
+    markDone: 'Označi kao dodato',
+    undo: 'Ipak nije dodato',
+    onList: 'Na spisku',
+  },
+
   adminLog: {
     title: 'Dnevnik administratora',
     empty: 'Još ništa.',
@@ -1976,6 +2014,10 @@ const sr: Messages = {
           return `${admin} je izmenio/la mesto: ${subject}`
         case 'place_removed':
           return `${admin} je zaboravio/la mesto: ${subject}`
+        case 'plate_registered':
+          return `${admin} je dodao/la auto na spisak za garažu, vozi ${subject}`
+        case 'plate_unregistered':
+          return `${admin} je skinuo/la auto sa spiska za garažu, vozi ${subject}`
         default:
           return `${admin}: ${action} ${subject}`
       }

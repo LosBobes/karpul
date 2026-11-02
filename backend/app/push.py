@@ -70,7 +70,7 @@ CATEGORIES: dict[str, tuple[str, ...]] = {
     "reminders": ("leaving_soon", "note_km"),
     "messages": ("message",),
     "requests": ("request_made", "request_answered"),
-    "approvals": ("approval_requested", "ride_approved", "ride_declined"),
+    "approvals": ("approval_requested", "ride_approved", "ride_declined", "garage_plate", "plate_registered"),
     "cars": ("car_issue",),
 }
 CATEGORY_OF = {kind: category for category, kinds in CATEGORIES.items() for kind in kinds}
@@ -119,6 +119,8 @@ TEXTS: dict[str, dict[str, Any]] = {
         "approval_requested": lambda name: f"{name} asks for another shared car",
         "ride_approved": lambda name: f"{name} approved your shared car",
         "ride_declined": lambda name: f"{name} declined your shared car",
+        "garage_plate": lambda name, plate: f"{name} comes to the Beograd office in {plate}: add it to the garage list",
+        "plate_registered": lambda name, plate: f"{plate} is on the garage list ({name})",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} to {destination}",
         # Not strftime: its names follow the server's locale, not the reader's.
         "day": lambda d: f"{('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')[d.weekday()]} {d.day:02d} "
@@ -148,6 +150,8 @@ TEXTS: dict[str, dict[str, Any]] = {
         "approval_requested": lambda name: f"{name} traži još jedan zajednički auto",
         "ride_approved": lambda name: f"{name} je odobrio/la tvoj zajednički auto",
         "ride_declined": lambda name: f"{name} je odbio/la tvoj zajednički auto",
+        "garage_plate": lambda name, plate: f"{name} dolazi u kancelariju u Beogradu autom {plate}: dodaj ga na spisak za garažu",
+        "plate_registered": lambda name, plate: f"{plate} je na spisku za garažu ({name})",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} do {destination}",
         "day": lambda d: f"{('pon', 'uto', 'sre', 'čet', 'pet', 'sub', 'ned')[d.weekday()]} {d.day}. "
         f"{('jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec')[d.month - 1]}",

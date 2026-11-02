@@ -367,6 +367,10 @@ export const api = {
 
   users: () => request<AdminUser[]>('/api/admin/users'),
   approvals: () => request<Ride[]>('/api/admin/approvals'),
+  /** Own cars coming to the Beograd office whose plate the garage needs, waiting ones first. */
+  garage: () => request<Ride[]>('/api/admin/garage'),
+  setPlateRegistered: (rideId: number, registered: boolean) =>
+    request<Ride>(`/api/admin/garage/${rideId}`, json('PUT', { registered })),
   adminLog: (before?: number) => request<AdminAction[]>(`/api/admin/log${before ? `?before=${before}` : ''}`),
 
   setAdmin: (userId: number, isAdmin: boolean) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', { is_admin: isAdmin })),

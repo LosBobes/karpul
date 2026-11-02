@@ -4,6 +4,7 @@ import { AddCarCard } from './components/AddCarCard'
 import { AddRideFab, AddRideToolbarButton } from './components/AddRideButton'
 import { AdminLog } from './components/AdminLog'
 import { Approvals } from './components/Approvals'
+import { GarageList } from './components/GarageList'
 import { AuthGate } from './components/AuthGate'
 import { NEW_CAR_BUSY_ID, SharedCars, type SharedCarsTab } from './components/SharedCars'
 import { CarGuide } from './components/CarGuide'
@@ -79,6 +80,7 @@ type Overlay =
   | 'rideLog'
   | 'adminLog'
   | 'approvals'
+  | 'garage'
 
 function loadView(): View {
   try {
@@ -154,6 +156,8 @@ function Board({ session }: { session: Session }) {
   // that tells the open sheet to reload after a decision.
   const [waiting, setWaiting] = useState(0)
   const [approvalsTick, setApprovalsTick] = useState(0)
+  // The own cars' plates the Beograd garage still needs (components/GarageList.tsx).
+  const [plates, setPlates] = useState(0)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
@@ -197,6 +201,7 @@ function Board({ session }: { session: Session }) {
   const openLoggedRide = (rideId: number) => {
     hide('adminLog')
     hide('approvals')
+    hide('garage')
     api
       .ride(rideId)
       .then((ride) => {
@@ -578,6 +583,25 @@ function Board({ session }: { session: Session }) {
       .catch(() => undefined)
   }, [isAdmin, rides, approvalsTick])
 
+  useEffect(() => {
+    if (!isAdmin) return
+    api
+      .garage()
+      .then((list) => setPlates(list.filter((r) => !r.plate_registered).length))
+      .catch(() => undefined)
+  }, [isAdmin, rides, approvalsTick])
+
+  // --- an own car's plate for the Beograd garage: the admin ticks it off ---
+
+  const onMarkPlate = (ride: Ride, registered: boolean) =>
+    withBusy(ride.id, async () => {
+      try {
+        upsertRide(await api.setPlateRegistered(ride.id, registered))
+      } finally {
+        setApprovalsTick((n) => n + 1)
+      }
+    })
+
   // --- asking for a ride ---
 
   const openAsk = (date: string) => {
@@ -861,6 +885,8 @@ function Board({ session }: { session: Session }) {
     onAdminLog: () => show('adminLog'),
     onApprovals: () => show('approvals'),
     approvals: waiting,
+    onGarage: () => show('garage'),
+    garage: plates,
     onGuide: () => show('guide'),
     onHowTo: () => show('howTo'),
     onSupport: () => show('support'),
@@ -905,7 +931,7 @@ function Board({ session }: { session: Session }) {
                   onClick={() => show('sidebar')}
                 >
                   <MenuIcon size={22} />
-                  {isAdmin && waiting > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting)} />}
+                  {isAdmin && waiting + plates > 0 && <span className="topbar-dot" aria-label={t.approvals.count(waiting + plates)} />}
                 </button>
                 <h1 className="topbar-title">
                   <Logo /> Karpul
@@ -1110,6 +1136,16 @@ function Board({ session }: { session: Session }) {
             onDecline={onDecline}
             onOpen={(r) => openLoggedRide(r.id)}
             onClose={closer('approvals')}
+          />
+        )}
+
+        {is('garage') && isAdmin && (
+          <GarageList
+            version={approvalsTick}
+            busyId={busyId}
+            onMark={(r, registered) => void onMarkPlate(r, registered)}
+            onOpen={(r) => openLoggedRide(r.id)}
+            onClose={closer('garage')}
           />
         )}
 

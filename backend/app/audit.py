@@ -33,6 +33,8 @@ ACTIONS = (
     "photo_removed",  # someone's profile photo taken down
     "place_moved",  # a known place (an office, a suggestion) put somewhere else
     "place_removed",
+    "plate_registered",  # an own car's plate put on the Beograd garage's list
+    "plate_unregistered",  # ... and that tick taken back
     "account_deleted",
 )
 
