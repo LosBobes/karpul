@@ -369,6 +369,13 @@ export function CarDetail({
               )}
             </span>
           </div>
+          {/* Editing is the thing whoever runs a ride does most: in plain sight, not only in the ⋮. */}
+          {runsIt && (
+            <button type="button" className="btn btn-soft driver-edit" disabled={busy} onClick={() => onEdit(ride)}>
+              <PencilIcon size={16} />
+              <span>{t.detail.editShort}</span>
+            </button>
+          )}
           <Menu trigger={<KebabIcon />} label={t.detail.rideOptions} items={menuItems} />
         </header>
 

@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import date
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -14,7 +15,7 @@ from ..database import get_session, get_write_session
 from ..events import cars_changed, cars_state_changed
 from ..models import CarReport, CarType, CorporateCar, Ride, User
 from ..push import notify
-from ..schemas import CarReportIn, CarReportRead, CarStateRead, CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
+from ..schemas import CarBusyRead, CarReportIn, CarReportRead, CarStateRead, CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
 from ..services import corporate_car_label, corporate_usage, relabel_rides_for_car
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
@@ -74,6 +75,40 @@ def list_corporate_cars(session: SessionDep, creds: CredsDep, include_inactive: 
     if not include_inactive:
         stmt = stmt.where(col(CorporateCar.active).is_(True))
     return session.exec(stmt.order_by(col(CorporateCar.active).desc(), CorporateCar.name)).all()
+
+
+@router.get("/corporate/{car_id}/busy", response_model=list[CarBusyRead])
+def corporate_car_busy(
+    car_id: int,
+    session: SessionDep,
+    creds: CredsDep,
+    date_from: date = Query(alias="from"),
+    date_to: date = Query(alias="to"),
+    exclude: int | None = Query(default=None),
+):
+    """When a shared car is taken between two days: the rides that hold it,
+    as `services.ensure_car_available` counts them (a pending ride holds
+    nothing). The ride form paints the days it clashes on red; `exclude` is
+    the ride being edited, which never clashes with itself."""
+    require_user(session, creds)
+    _get_car_or_404(session, car_id)
+    if date_to < date_from or (date_to - date_from).days > 92:
+        raise HTTPException(422, "Range may not exceed 92 days")
+    stmt = (
+        select(Ride)
+        .where(
+            Ride.corporate_car_id == car_id,
+            Ride.car_type == CarType.corporate,
+            Ride.ride_date >= date_from,
+            Ride.ride_date <= date_to,
+        )
+        .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
+    )
+    return [
+        CarBusyRead(ride_id=r.id, ride_date=r.ride_date, departure_time=r.departure_time, return_time=r.return_time, driver_name=r.driver_name)  # type: ignore[arg-type]
+        for r in session.exec(stmt)
+        if r.id != exclude and r.approval != "pending"
+    ]
 
 
 @router.get("/corporate/state", response_model=list[CarStateRead])

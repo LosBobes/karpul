@@ -3,6 +3,7 @@ import type { NewStop } from './stops'
 import type {
   AdminAction,
   AdminUser,
+  CarBusy,
   CarReport,
   CarReportInput,
   CarState,
@@ -247,6 +248,10 @@ export const api = {
   // --- the board ---
 
   corporateCars: () => request<CorporateCar[]>('/api/cars/corporate'),
+
+  /** The rides holding a shared car between two days (not the pending ones); `exclude` is the ride being edited. */
+  carBusy: (carId: number, from: string, to: string, exclude: number | null, signal?: AbortSignal) =>
+    request<CarBusy[]>(`/api/cars/corporate/${carId}/busy?from=${from}&to=${to}${exclude != null ? `&exclude=${exclude}` : ''}`, { signal }),
 
   /** Every shared car as it stands: odometer, battery, cleanliness, issues (backend: app/carstate.py). */
   carStates: () => request<CarState[]>('/api/cars/corporate/state'),

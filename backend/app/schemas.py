@@ -52,6 +52,18 @@ def _clean_home(value: str) -> str:
     return " ".join(value.split())
 
 
+class CarBusyRead(BaseModel):
+    """A stretch a shared car is taken (GET /api/cars/corporate/{id}/busy), for the ride form's calendar."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    ride_id: int
+    ride_date: date
+    departure_time: time
+    return_time: time | None
+    driver_name: str
+
+
 class CorporateCarRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

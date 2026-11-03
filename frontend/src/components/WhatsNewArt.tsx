@@ -9,7 +9,27 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** A week of the ride form's calendar for a shared car: the days it is taken in those hours turn red. */
+function CarBusyDemo() {
+  const taken = [2, 4]
+  return (
+    <div className="wn-card">
+      <div className="wn-busy-head">
+        <span className="wn-line wn-line-label" />
+        <span className="wn-busy-time">08:00 – 12:00</span>
+      </div>
+      <div className="wn-cal">
+        {[9, 10, 11, 12, 13, 14, 15].map((d, i) => (
+          <span key={d} className={taken.includes(i) ? 'wn-cal-day wn-cal-taken' : 'wn-cal-day'} style={{ ['--i' as string]: taken.indexOf(i) }}>
+            {d}
+          </span>
+        ))}
+      </div>
     </div>
   )
 }

@@ -9,6 +9,15 @@ export interface Point {
 /** A route's pins, by the place's folded name (`foldName`; backend: app/geo.py). */
 export type Points = Record<string, Point>
 
+/** A stretch a shared car is taken (backend: GET /api/cars/corporate/{id}/busy). */
+export interface CarBusy {
+  ride_id: number
+  ride_date: string
+  departure_time: string
+  return_time: string | null
+  driver_name: string
+}
+
 export interface CorporateCar {
   id: number
   name: string

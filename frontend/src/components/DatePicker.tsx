@@ -14,10 +14,14 @@ interface Props {
    * `title` is a heading that opens the calendar (the week above the day pills). */
   variant?: 'control' | 'link' | 'title'
   linkText?: string
+  /** Why a day cannot be picked (a shared car taken then), or null: such a day is red and not pressable. */
+  busy?: (iso: string) => string | null
+  /** The month on screen changed (any day of it), so the caller can fetch what `busy` reads. */
+  onMonth?: (iso: string) => void
 }
 
 /** A month calendar in a popover, replacing the native date input. */
-export function DatePicker({ value, onChange, label, disabled, variant = 'control', linkText }: Props) {
+export function DatePicker({ value, onChange, label, disabled, variant = 'control', linkText, busy, onMonth }: Props) {
   const t = useT()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const id = useId()
@@ -54,6 +58,8 @@ export function DatePicker({ value, onChange, label, disabled, variant = 'contro
         <Popover id={id} role="dialog" aria-label={label} anchor={anchor} align={variant === 'link' ? 'right' : 'left'} className="cal-pop" onClose={() => setAnchor(null)}>
           <Calendar
             value={value}
+            busy={busy}
+            onMonth={onMonth}
             onPick={(iso) => {
               onChange(iso)
               setAnchor(null)
@@ -65,7 +71,14 @@ export function DatePicker({ value, onChange, label, disabled, variant = 'contro
   )
 }
 
-function Calendar({ value, onPick }: { value: string; onPick: (iso: string) => void }) {
+interface CalendarProps {
+  value: string
+  onPick: (iso: string) => void
+  busy?: (iso: string) => string | null
+  onMonth?: (iso: string) => void
+}
+
+function Calendar({ value, onPick, busy, onMonth }: CalendarProps) {
   const t = useT()
   const selected = parseISODate(value)
   const [view, setView] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1))
@@ -76,7 +89,12 @@ function Calendar({ value, onPick }: { value: string; onPick: (iso: string) => v
   const cells = Array.from({ length: 42 }, (_, i) => addDays(first, i))
   const weekdays = Array.from({ length: 7 }, (_, i) => addDays(first, i).toLocaleDateString(intlTag(), { weekday: 'narrow' }))
   const monthLabel = view.toLocaleDateString(intlTag(), { month: 'long', year: 'numeric' })
-  const shift = (n: number) => setView(new Date(view.getFullYear(), view.getMonth() + n, 1))
+  // The month a picker opens on is the value's, which the caller already has.
+  const shift = (n: number) => {
+    const next = new Date(view.getFullYear(), view.getMonth() + n, 1)
+    setView(next)
+    onMonth?.(toISODate(next))
+  }
 
   return (
     <div className="cal">
@@ -97,16 +115,27 @@ function Calendar({ value, onPick }: { value: string; onPick: (iso: string) => v
         ))}
         {cells.map((d) => {
           const iso = toISODate(d)
+          const why = busy?.(iso) ?? null
           const cls = [
             'cal-day',
             d.getMonth() !== view.getMonth() && 'cal-day-out',
             iso === today && 'cal-day-today',
             iso === value && 'cal-day-selected',
+            why && 'cal-day-busy',
           ]
             .filter(Boolean)
             .join(' ')
           return (
-            <button key={iso} type="button" className={cls} aria-pressed={iso === value} aria-label={fmtShortDate(iso)} onClick={() => onPick(iso)}>
+            <button
+              key={iso}
+              type="button"
+              className={cls}
+              aria-pressed={iso === value}
+              aria-label={why ? `${fmtShortDate(iso)}: ${why}` : fmtShortDate(iso)}
+              title={why ?? undefined}
+              disabled={!!why && iso !== value}
+              onClick={() => onPick(iso)}
+            >
               {d.getDate()}
             </button>
           )

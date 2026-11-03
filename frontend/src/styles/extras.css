@@ -1450,6 +1450,45 @@
   animation: wn-tick 5s var(--ease-out) infinite;
   animation-delay: calc(var(--i) * 0.35s);
 }
+.wn-busy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.wn-busy-time {
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.wn-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+.wn-cal-day {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.wn-cal-taken {
+  background: var(--red-soft);
+  color: var(--red);
+  text-decoration: line-through;
+  animation: wn-taken 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.3s);
+}
+@keyframes wn-taken {
+  0%, 25% { background: transparent; color: var(--text); text-decoration-color: transparent; transform: none; }
+  33% { transform: scale(1.15); }
+  40%, 100% { background: var(--red-soft); color: var(--red); text-decoration-color: currentColor; transform: none; }
+}
 @keyframes wn-strike {
   0%, 15% { color: var(--text); text-decoration-color: transparent; }
   25%, 100% { color: var(--muted); text-decoration-color: currentColor; }

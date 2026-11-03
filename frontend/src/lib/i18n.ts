@@ -308,6 +308,7 @@ const en = {
 
   detail: {
     editRide: 'Edit ride',
+    editShort: 'Edit',
     stopManage: 'Stop passengers managing seats',
     letManage: 'Let passengers manage seats',
     stopAddStops: 'Stop passengers adding pickup points',
@@ -1242,6 +1243,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      carBusy: {
+        title: 'Taken days are red',
+        body: 'When you book a shared car, the calendar paints red the days it is already taken in the hours you chose, and they cannot be picked. Change the times and the days change with them.',
+      },
       prefill: {
         title: 'A new ride starts from your last one',
         body: 'Adding a ride fills in the car, seats, times and route of the last ride you drove, on the day you picked. Switch **Start from my last ride** off at the top of the form for a blank one; Karpul remembers your choice on every device.',
@@ -1737,6 +1742,7 @@ const sr: Messages = {
 
   detail: {
     editRide: 'Izmeni vožnju',
+    editShort: 'Izmeni',
     stopManage: 'Samo vozač uređuje listu',
     letManage: 'Dozvoli putnicima da uređuju listu',
     stopAddStops: 'Putnici ne dodaju mesta ulaska',
@@ -2648,6 +2654,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      carBusy: {
+        title: 'Zauzeti dani su crveni',
+        body: 'Kad zakazuješ zajednički auto, kalendar crveno boji dane kad je auto već zauzet u satima koje si izabrao, i oni ne mogu da se izaberu. Promeni vreme i dani se menjaju zajedno s njim.',
+      },
       prefill: {
         title: 'Nova vožnja kreće od tvoje poslednje',
         body: 'Kad dodaješ vožnju, auto, mesta, vreme i ruta se popunjavaju kao u tvojoj poslednjoj vožnji, za izabrani dan. Isključi **Popuni kao moju poslednju vožnju** na vrhu forme za praznu; Karpul pamti izbor na svakom uređaju.',
