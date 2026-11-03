@@ -216,6 +216,10 @@ def update_ride(ride_id: int, payload: RideUpdate, session: WriteSessionDep, cre
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can edit this ride")
 
     sent = payload.model_dump(exclude_unset=True)
+    if is_driver(user, ride) and ride.unconfirmed:
+        # The driver has looked at the ride from the paper log: it is theirs as it stands.
+        ride.unconfirmed = False
+        session.add(ride)
     held: dict = {}
     if is_driver(user, ride) and consenting(ride):
         moving = [k for k in CONSENT_FIELDS if k in sent and sent[k] != getattr(ride, k)]

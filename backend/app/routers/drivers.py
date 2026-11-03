@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from .. import audit
-from ..access import booking_of, get_ride_or_404
+from ..access import booking_of, get_ride_or_404, may_run, on_behalf
 from ..admin import require_admin
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
@@ -64,6 +64,27 @@ def take_over(ride_id: int, session: WriteSessionDep, creds: CredsDep):
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
     for b in new_stops:
         notify(session, [ride.driver_id], "stop_added", ride, name=b.passenger_name, place=b.pickup)
+    return to_ride_read_dict(ride)
+
+
+@router.post("/{ride_id}/confirm", response_model=RideRead)
+def confirm_ride(ride_id: int, session: WriteSessionDep, creds: CredsDep):
+    """The driver (or an admin) says a ride from the shared car's paper log
+    (`Ride.unconfirmed`, app/backfill.py) is real as it stands: from now on
+    colleagues can get in, as in any other ride."""
+    user = require_user(session, creds)
+    ride = get_ride_or_404(session, ride_id)
+    if not may_run(user, ride):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver or an admin can confirm this ride")
+    if not ride.unconfirmed:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This ride is already confirmed")
+    ride.unconfirmed = False
+    session.add(ride)
+    if on_behalf(user, ride):
+        audit.record(session, user, "ride_confirmed", ride.driver_name, ride=ride)
+    session.commit()
+    session.refresh(ride)
+    ride_saved(ride, created=False)
     return to_ride_read_dict(ride)
 
 

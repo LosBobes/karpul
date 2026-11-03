@@ -24,6 +24,12 @@ export function runs(ride: Ride, me: Me): boolean {
   return drives(ride, me) || !!me.admin
 }
 
+/** Is there a seat in it that `me` could take? A ride from the paper log its
+ *  driver has not confirmed takes nobody (backend: seats.join_ride). */
+export function hasSeatFor(ride: Ride, me: Me): boolean {
+  return ride.free_seats > 0 && (!ride.unconfirmed || runs(ride, me))
+}
+
 /** Is a row with this account id and this name `me`? */
 export function isMe(me: Me, personId: number | null | undefined, name: string): boolean {
   if (personId !== null && personId !== undefined) return personId === me.id

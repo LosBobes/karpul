@@ -95,6 +95,8 @@ interface Props {
   onClaim: (ride: Ride) => void
   /** A passenger drives a shared car whose driver cancelled (`needs_driver`). */
   onTakeOver: (ride: Ride) => void
+  /** The driver (or an admin) confirms a ride from the shared car's paper log (`Ride.unconfirmed`). */
+  onConfirmRide: (ride: Ride) => void
   /** A passenger's yes or no to the driver's change (`Ride.proposal`). */
   onAnswerChange: (ride: Ride, agree: boolean) => void
   /** Whoever asked takes it back: the driver a change, a passenger a suggestion. */
@@ -181,6 +183,7 @@ export function CarDetail({
   onDecline,
   onClaim,
   onTakeOver,
+  onConfirmRide,
   onAnswerChange,
   onWithdrawChange,
   onSuggestTime,
@@ -217,7 +220,10 @@ export function CarDetail({
   // A seat on offer stays on screen while a call is out (its buttons only go
   // disabled), so the card never flickers through "No passengers yet" before
   // the passenger arrives; `canJoin` is whether it can be taken right now.
-  const seatOnOffer = !isDriver && !myBooking && !full && !isPast
+  // A ride from the paper log takes nobody until its driver confirms it
+  // (backend: join_ride); whoever runs it may still put people in.
+  const held = ride.unconfirmed && !runsIt
+  const seatOnOffer = !isDriver && !myBooking && !full && !isPast && !held
   const canJoin = seatOnOffer && !busy
   const receives = dragActive && canJoin
   // Who may put other people in and take them out: the driver (or an admin)
@@ -227,7 +233,7 @@ export function CarDetail({
   // A full car has a queue: the first seat that frees up goes to the first in line.
   const myEntry = myWaitlistEntry(ride, me)
   const line = placeInLine(ride, me)
-  const canWait = full && !isDriver && !myBooking && !myEntry && !isPast && ride.seats > 0
+  const canWait = full && !isDriver && !myBooking && !myEntry && !isPast && ride.seats > 0 && !ride.unconfirmed
 
   const [adding, setAdding] = useState(false)
   // A passenger's "Suggest another time" sheet.
@@ -360,6 +366,7 @@ export function CarDetail({
               {isDriver && <span className="tag">{t.detail.you}</span>}
               {ride.driver_id === null && <span className="tag tag-muted">{t.detail.noAccount}</span>}
               {ride.needs_driver && <span className="tag tag-amber">{t.detail.needsDriver}</span>}
+              {ride.unconfirmed && <span className="tag tag-amber">{t.detail.unconfirmed}</span>}
               {ride.approval === 'pending' && <span className="tag tag-amber">{t.detail.awaiting}</span>}
               {ride.approval === 'approved' && <span className="tag tag-green">{t.detail.approved}</span>}
               {ride.series_id && (
@@ -427,6 +434,21 @@ export function CarDetail({
               <span className="approval-actions">
                 <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onTakeOver(ride)}>
                   <CarIcon size={16} /> {t.detail.takeOver}
+                </button>
+              </span>
+            )}
+          </div>
+        )}
+
+        {ride.unconfirmed && !isPast && (
+          <div className="approval-row">
+            <span className="approval-ask">
+              {!runsIt ? t.detail.unconfirmedWait(ride.driver_name) : isDriver ? t.detail.confirmAsk : t.detail.confirmAskFor(ride.driver_name)}
+            </span>
+            {runsIt && (
+              <span className="approval-actions">
+                <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onConfirmRide(ride)}>
+                  <CheckIcon size={16} /> {t.detail.confirm}
                 </button>
               </span>
             )}

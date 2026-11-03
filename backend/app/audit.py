@@ -20,6 +20,7 @@ ACTIONS = (
     "ride_removed",
     "ride_approved",  # a shared car past the driver's share, let through
     "ride_declined",
+    "ride_confirmed",  # a ride from the shared car's paper log, confirmed for its driver
     "seat_added",  # someone put in someone else's car
     "seat_removed",
     "car_added",

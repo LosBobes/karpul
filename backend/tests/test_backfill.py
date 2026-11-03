@@ -41,6 +41,8 @@ def test_every_day_of_the_log_becomes_a_ride(engine):
         assert (airport.departure_time, airport.return_time) == (time(19, 30), time(21, 0))
         # Past days are not reminded of; today's and later rides are.
         assert all(r.reminder_sent == (r.ride_date < TODAY) for r in rides)
+        # The coming ones take nobody until their drivers confirm them.
+        assert all(r.unconfirmed == (r.ride_date >= TODAY) for r in rides)
 
 
 def test_drivers_are_matched_to_accounts_without_diacritics(engine):

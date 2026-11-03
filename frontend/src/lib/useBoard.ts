@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api, isNetworkError } from './api'
 import { useLiveBoard, type LiveEvent, type LiveStatus } from './live'
+import { loadNotices } from './notices'
 import { loadPhotos } from './photos'
 import type { CarState, CorporateCar, Ride, RideRequest } from './types'
 
@@ -203,6 +204,9 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
         case 'photos.changed':
           loadPhotos().catch(() => undefined)
           break
+        case 'notices.changed':
+          loadNotices().catch(() => undefined)
+          break
         default:
           break
       }
@@ -213,6 +217,7 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
   // board, the photos and the cars' state are all fetched again on every (re)connect.
   const onConnect = useCallback(() => {
     loadPhotos().catch(() => undefined)
+    loadNotices().catch(() => undefined)
     reloadCarStates().catch(() => undefined)
     return load()
   }, [load, reloadCarStates])
@@ -220,6 +225,7 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
   // Also without a socket (a proxy that refuses WebSockets falls back to polling).
   useEffect(() => {
     loadPhotos().catch(() => undefined)
+    loadNotices().catch(() => undefined)
     // Data fetching: the state update happens after the await, not synchronously.
     // oxlint-disable-next-line react/set-state-in-effect
     reloadCarStates().catch(() => undefined)
@@ -236,6 +242,7 @@ export function useBoard(range: Range, { isAdmin, onLoadError }: Options): Board
       if (document.visibilityState !== 'visible') return
       void load()
       loadPhotos().catch(() => undefined)
+      loadNotices().catch(() => undefined)
     }
     window.addEventListener('focus', onFocus)
     document.addEventListener('visibilitychange', onShow)

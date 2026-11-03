@@ -182,6 +182,11 @@ class Ride(SQLModel, table=True):
     # the ride (access.is_driver). Nobody by departure, it goes
     # (reminders.drop_driverless).
     needs_driver: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    # A coming ride written from the shared car's paper log (app/backfill.py):
+    # the log says who booked the car, not that they take passengers, so
+    # nobody but whoever runs the ride puts anyone in it until the driver (or
+    # an admin) confirms it (POST /api/rides/{id}/confirm) or the driver edits it.
+    unconfirmed: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     created_at: datetime = Field(default_factory=utcnow)
 
     corporate_car: CorporateCar | None = Relationship(back_populates="rides")
@@ -218,6 +223,9 @@ class Booking(SQLModel, table=True):
     passenger_name: str
     # Where this passenger gets in: the ride's origin ("") or one of its stops.
     pickup: str = ""
+    # Who put this passenger in the car when it was someone else (a colleague
+    # booking for Milan): told when the seat is taken away again.
+    added_by_id: int | None = Field(default=None, foreign_key="appuser.id")
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="bookings")
@@ -290,9 +298,38 @@ class RideMessage(SQLModel, table=True):
     # /api/rides/{id}/late): the app shows it in each reader's language, and
     # `body` is the English for anything that only reads text.
     late_minutes: int | None = None
+    # Set when the author took someone else out of the car (DELETE
+    # .../bookings/{id}): the passenger's name, so everyone in the car can see
+    # who did it; `body` is the English, the app writes it in the reader's.
+    removed_name: str | None = None
     created_at: datetime = Field(default_factory=utcnow)
 
     ride: Ride = Relationship(back_populates="messages")
+
+
+class SeatNotice(SQLModel, table=True):
+    """"You were taken out of a car", kept until the person has seen it, for
+    whoever has no push in this browser or missed it: the app shows the unseen
+    ones on top of the board (`/api/notices`). One for the passenger taken out
+    (with an account) and one for whoever had put them in. A snapshot in
+    words, so it outlives the ride."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="appuser.id", index=True)
+    ride_id: int | None = None
+    ride_date: date
+    departure_time: time
+    origin: str
+    destination: str
+    # "taken_out": someone took a passenger out of the car; "ride_removed":
+    # the ride itself went.
+    kind: str = "taken_out"
+    # Who lost the seat: the reader themself (`yours`) or someone they put in.
+    passenger_name: str
+    yours: bool = True
+    by_name: str
+    created_at: datetime = Field(default_factory=utcnow)
+    seen: bool = Field(default=False, index=True)
 
 
 class RideRequest(SQLModel, table=True):

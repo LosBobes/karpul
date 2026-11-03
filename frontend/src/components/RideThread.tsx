@@ -115,17 +115,21 @@ export function RideThread({ ride, isDriver, onError }: Props) {
             <ol ref={list} className="thread-list">
               {items.map((m) => {
                 const mine = m.author_id === me.id
+                // Who took whom out of the car stays in the thread for good (backend: notices.seat_taken).
+                const trace = !!m.removed_name
                 return (
-                  <li key={m.id} className={mine ? 'thread-msg thread-msg-me' : 'thread-msg'}>
+                  <li key={m.id} className={['thread-msg', mine && 'thread-msg-me', trace && 'thread-msg-trace'].filter(Boolean).join(' ')}>
                     <Avatar name={m.author_name} size="sm" />
                     <div className="thread-msg-main">
                       <div className="thread-msg-head">
                         <strong>{mine ? t.detail.you : m.author_name}</strong>
                         <time dateTime={m.created_at}>{when(m.created_at)}</time>
                       </div>
-                      <p className="thread-msg-body">{m.late_minutes !== null ? t.thread.late(m.late_minutes) : m.body}</p>
+                      <p className="thread-msg-body">
+                        {m.late_minutes !== null ? t.thread.late(m.late_minutes) : m.removed_name ? t.thread.removed(m.removed_name) : m.body}
+                      </p>
                     </div>
-                    {(mine || isDriver) && (
+                    {(mine || isDriver) && !trace && (
                       <button
                         type="button"
                         className="icon-btn icon-btn-sm thread-msg-remove"

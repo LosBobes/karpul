@@ -31,6 +31,8 @@ def join_waitlist(ride_id: int, payload: WaitlistJoin, session: WriteSessionDep,
     ride = get_ride_or_404(session, ride_id)
     if is_driver(user, ride):
         raise HTTPException(status.HTTP_409_CONFLICT, "You drive this ride")
+    if ride.unconfirmed:
+        raise HTTPException(status.HTTP_409_CONFLICT, "The driver has not confirmed this ride yet")
     if booking_of(ride, user) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "You are already in this car")
     if any(e.user_id == user.id for e in ride.waitlist):

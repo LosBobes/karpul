@@ -7,7 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, col, select
 
-from .. import audit, geo
+from .. import audit, geo, notices
 from ..access import get_ride_or_404, is_driver, may_manage_seats, may_run, on_behalf
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
@@ -75,6 +75,8 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     """
     user = require_user(session, creds)
     ride = get_ride_or_404(session, ride_id)
+    if ride.unconfirmed and not may_run(user, ride):
+        raise HTTPException(status.HTTP_409_CONFLICT, "The driver has not confirmed this ride yet")
     name = payload.passenger_name
     if norm_name(name) == user.name_key:
         passenger: User | None = user
@@ -101,7 +103,10 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     added = _new_stop(session, ride, user, payload.pickup, payload.new_stop)
     pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
     passenger_id = passenger.id if passenger is not None else None
-    ride.bookings.append(Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup))  # type: ignore[arg-type]
+    added_by = user.id if passenger is not user else None
+    ride.bookings.append(
+        Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup, added_by_id=added_by)  # type: ignore[arg-type]
+    )
     queues = seated(session, ride, passenger_id)
     answered = answer_requests(session, passenger_id, ride)
     if passenger is not user and on_behalf(user, ride):
@@ -225,8 +230,13 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         )
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail)
     passenger, passenger_id = booking.passenger_name, booking.passenger_id
-    if not themself and on_behalf(user, ride):
-        audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
+    told: tuple[int | None, int | None] = (None, None)
+    if not themself:
+        # Someone else's seat: a line in the thread for the whole car, and a
+        # notice that waits in the app for the passenger and whoever put them in.
+        told = notices.seat_taken(session, ride, booking, user)
+        if on_behalf(user, ride):
+            audit.record(session, user, "seat_removed", ride.driver_name, ride=ride, changes=[("passenger", passenger, None)])
     ride.bookings.remove(booking)
     session.delete(booking)
     # The driver's ask may have waited only on this passenger. Should it no
@@ -246,6 +256,8 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
         # The answer still describes the ride, so the frontend can drop it.
         answer = to_ride_read_dict(ride)
         remove_rides(session, None, [ride], tell_driver=False)
+        if not themself:
+            _tell_taken_out(session, ride, user, passenger, told)
         return answer
     new_stops: list[Booking] = []
     promoted = promote_waitlist(session, ride, new_stops)
@@ -258,10 +270,21 @@ def leave_ride(ride_id: int, booking_id: int, session: WriteSessionDep, creds: C
     if themself:
         notify(session, [ride.driver_id], "got_out", ride, name=passenger)
     else:
-        notify(session, [passenger_id], "taken_out", ride, driver=ride.driver_name)
+        _tell_taken_out(session, ride, user, passenger, told)
     if promoted:
         notify(session, [b.passenger_id for b in promoted], "seat_freed", ride, driver=ride.driver_name)
     # The queue's new places reach the route without the driver doing anything.
     for b in new_stops:
         notify(session, [ride.driver_id], "stop_added", ride, name=b.passenger_name, place=b.pickup)
     return to_ride_read_dict(ride)
+
+
+def _tell_taken_out(session: Session, ride: Ride, by: User, passenger: str, told: tuple[int | None, int | None]) -> None:
+    """After the commit: the passenger and whoever put them in hear who took
+    the seat away, by push (never muted) and in the app."""
+    told_passenger, adder = told
+    if told_passenger is not None:
+        notify(session, [told_passenger], "taken_out", ride, by=by.display_name)
+    if adder is not None:
+        notify(session, [adder], "guest_taken_out", ride, by=by.display_name, name=passenger)
+    notices.published([told_passenger, adder])

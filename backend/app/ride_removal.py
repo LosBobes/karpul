@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 from sqlmodel import Session, select
 
-from . import audit
+from . import audit, notices
 from .access import driver_unless_actor, is_driver, on_behalf
 from .events import request_saved, ride_deleted
 from .models import CarType, Ride, RideRequest, User
@@ -49,6 +49,7 @@ def remove_rides(
     at departure, and the passengers are told that. Commits."""
     gone = []
     reopened: list[RideRequest] = []
+    noticed: list[int] = []
     for r in doomed:
         passengers = [b.passenger_id for b in r.bookings]
         alternatives = cars_with_seats(session, r) if passengers and r.ride_date >= date.today() else []
@@ -63,6 +64,11 @@ def remove_rides(
                 url=f"/ride/{alternatives[0].id}" if alternatives else "/",
                 **said,
             )
+        if user is not None and r.ride_date >= date.today():
+            # A notice in the app too: not everyone has push on, and a
+            # colleague put in by name has no account to push at all (whoever
+            # put them in hears it).
+            noticed += notices.ride_gone(session, r, user)
         if tell_driver and user is not None:
             notify(session, driver_unless_actor(user, r), "ride_removed", r, driver=user.display_name, url="/")
         for request in session.exec(select(RideRequest).where(RideRequest.ride_id == r.id)):
@@ -74,6 +80,7 @@ def remove_rides(
         gone.append((r.id, r.ride_date))
         session.delete(r)
     session.commit()
+    notices.published(noticed)  # type: ignore[arg-type]
     for rid, rdate in gone:
         ride_deleted(rid, rdate)  # type: ignore[arg-type]
     for request in reopened:

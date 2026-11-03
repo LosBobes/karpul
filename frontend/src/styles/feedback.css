@@ -594,3 +594,74 @@
     transform: translateX(40px);
   }
 }
+
+/* "You lost a seat" (SeatNotices.tsx): a card each above the board on a phone,
+   floating in the top corner on a wide screen, until *Got it*. Amber like the
+   other things on the board that want a decision, with a red mark: a seat lost. */
+.seat-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+.seat-notices-float {
+  position: fixed;
+  z-index: 8;
+  top: 4.5rem;
+  right: 1.5rem;
+  width: min(400px, calc(100vw - 3rem));
+  margin: 0;
+}
+.seat-notices-float .seat-notice {
+  box-shadow: var(--shadow-pop);
+}
+.seat-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--red);
+  animation: pop-in-up var(--dur-gentle) var(--ease-out);
+}
+.seat-notice-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.seat-notice-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--red-soft);
+  color: var(--red);
+}
+.seat-notice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.seat-notice-text strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.seat-notice-text span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.seat-notice-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.seat-notice-actions .btn {
+  min-height: 36px;
+}
+.thread-msg-trace .thread-msg-body {
+  font-style: italic;
+  color: var(--muted);
+}

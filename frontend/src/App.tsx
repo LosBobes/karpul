@@ -59,6 +59,8 @@ import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
 import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
 import { InstallCard } from './components/InstallCard'
+import { SeatNotices } from './components/SeatNotices'
+import { clearNotices } from './lib/notices'
 
 type FormState = { mode: 'create'; template?: Ride; request?: RideRequest; slot?: Slot } | { mode: 'edit'; ride: Ride } | null
 
@@ -250,6 +252,8 @@ function Board({ session }: { session: Session }) {
 
   const onLoadError = useCallback((e: unknown) => setToast({ kind: 'error', text: messages().toasts.couldNotLoad(errMsg(e)) }), [setToast])
   const board = useBoard(range, { isAdmin, onLoadError })
+  // Another account signing in here starts with no seat notices of this one's.
+  useEffect(() => clearNotices, [])
   const { rides, requests, cars, adminCars, carStates, reloadCarStates, loading, liveStatus, load, upsertRide, removeRides, upsertRequest, removeRequest, reloadCars } = board
   // Back where the page was scrolled, once there is a board to scroll.
   useEffect(() => {
@@ -284,7 +288,7 @@ function Board({ session }: { session: Session }) {
   // What the ride card does (lib/useRideActions.ts): seats, the queue, the
   // route, the driver's switches, removal, asks and answers.
   const actions = useRideActions({ me, rides, withBusy, upsertRide, removeRides, setToast, setConfirm })
-  const { onJoin, afterLeave, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onClaim, onLate } = actions
+  const { onJoin, afterLeave, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onConfirmRide, onClaim, onLate } = actions
 
   /** Drop of the passenger chip onto a car: switch cars if already seated, else join. */
   const onDropPassenger = (target: Ride, drag: PassengerDrag) => {
@@ -417,6 +421,16 @@ function Board({ session }: { session: Session }) {
   const installCard = installMode && !installDismissed && (
     <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
   )
+  // "You lost a seat" (lib/notices.ts): *See that day* opens the day board there.
+  const seatNotices = (
+    <SeatNotices
+      floating={wide}
+      onSeeDay={(iso) => {
+        setViewState('week')
+        setSelected(iso)
+      }}
+    />
+  )
   const openUpcomingId = upcoming ? upcomingSelection(carSel, rides, me, wide) : null
   const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
 
@@ -475,6 +489,7 @@ function Board({ session }: { session: Session }) {
       onDecline={onDecline}
       onClaim={(r) => void onClaim(r)}
       onTakeOver={(r) => void onTakeOver(r)}
+      onConfirmRide={(r) => void onConfirmRide(r)}
       onAnswerChange={(r, agree) => void onAnswerChange(r, agree)}
       onWithdrawChange={(r) => void onWithdrawChange(r)}
       onSuggestTime={onSuggestTime}
@@ -667,6 +682,7 @@ function Board({ session }: { session: Session }) {
           </header>
 
           <main>
+            {!wide && seatNotices}
             {!wide && installCard}
 
             {/* One switch for the three views, so the one leaving slides out as the next comes in. */}
@@ -756,6 +772,7 @@ function Board({ session }: { session: Session }) {
         {!wide && tabBar}
 
         {wide && installCard}
+        {wide && seatNotices}
 
         {is('sidebar') && !wide && <Sidebar {...menu} onClose={closer('sidebar')} />}
 

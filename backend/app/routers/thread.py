@@ -76,6 +76,9 @@ def delete_message(ride_id: int, message_id: int, session: WriteSessionDep, cred
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found")
     if message.author_id != user.id and not is_driver(user, ride):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the author or the driver can remove this message")
+    if message.removed_name is not None:
+        # Who took whom out of the car is the trace the car relies on.
+        raise HTTPException(status.HTTP_409_CONFLICT, "A line about someone taken out of the car stays")
     session.delete(message)
     session.commit()
     session.refresh(ride)

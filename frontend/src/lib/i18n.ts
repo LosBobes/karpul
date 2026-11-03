@@ -178,7 +178,7 @@ const en = {
     kinds: 'What to tell you',
     kindsOff: 'Takes effect once notifications are on.',
     category: {
-      seats: ['Seats', 'Someone gets in or out, or a seat frees up for you'],
+      seats: ['Seats', 'Someone gets in or out, or a seat frees up for you. Losing your seat always reaches you'],
       changes: ['Ride changes', 'A ride you are in moves, runs late or is removed, or you are put down to drive'],
       reminders: ['Reminders', 'Before you leave, and to note the odometer when a shared car is back'],
       messages: ['Messages', 'Someone writes in the thread of your ride'],
@@ -375,6 +375,11 @@ const en = {
     takeOverAsk: (driver: string) => `${driver} can't drive. Will you take the car?`,
     takeOverWait: (driver: string) => `${driver} can't drive. The passengers are asked whether one of them will.`,
     takeOver: "I'll drive",
+    unconfirmed: 'Not confirmed',
+    confirmAsk: "This ride comes from the shared car's paper log. Until you confirm it, nobody else can get in.",
+    confirmAskFor: (driver: string) => `${driver} has not confirmed this ride from the shared car's paper log. Until then nobody else can get in.`,
+    unconfirmedWait: (driver: string) => `${driver} has not confirmed this ride yet. It comes from the shared car's paper log, so nobody can get in until then.`,
+    confirm: 'Confirm the ride',
     coffee: 'Coffee',
     coffeePlease: (first: string) => `${first} would appreciate one`,
     coffeeYou: 'You would appreciate one',
@@ -439,6 +444,7 @@ const en = {
     send: 'Send',
     remove: 'Remove message',
     late: (minutes: number) => `Running ${minutes} min late`,
+    removed: (name: string) => `Took ${name} out of the car`,
   },
 
   /** Asking for a ride nobody offers yet: components/RequestForm.tsx and RequestList.tsx. */
@@ -672,6 +678,8 @@ const en = {
           return `${admin} approved a shared-car ride of ${subject}`
         case 'ride_declined':
           return `${admin} declined a shared-car ride of ${subject}`
+        case 'ride_confirmed':
+          return `${admin} confirmed a ride from the paper log for ${subject}`
         case 'seat_added':
           return `${admin} put someone in the car of ${subject}`
         case 'seat_removed':
@@ -884,6 +892,7 @@ const en = {
     full: 'Full',
     awaiting: 'Awaiting approval',
     needsDriver: 'Needs a driver',
+    unconfirmed: 'Not confirmed',
     changeAsked: 'Change asked',
     seats: (n: number) => enPlural(n, 'seat', 'seats'),
     stops: (n: number) => enPlural(n, 'stop', 'stops'),
@@ -924,6 +933,8 @@ const en = {
     declineBody: (driver: string) => `The ride is removed and ${driver} is told it was declined. Any passengers are told too.`,
     removeFollowingTitle: 'Remove this and the following rides?',
     removeFollowingBody: 'This ride and every later ride of this weekly series will be removed. Their passengers lose their seats.',
+    takeOutTitle: 'Take them out of the car?',
+    takeOutBody: (name: string) => `${name} loses the seat and is told who took it away. The thread keeps a line about it.`,
     deleteCarTitle: 'Delete this car?',
     deleteCarBody: (name: string, plate: string) =>
       `${name} (${plate}) will be deleted from the pool. Retiring it instead keeps it on past rides.`,
@@ -939,6 +950,8 @@ const en = {
     rideRemoved: 'Ride removed.',
     handedOver: 'Your passengers are asked whether one of them drives.',
     tookOver: "You're driving now.",
+    rideConfirmed: 'Ride confirmed. Colleagues can get in now.',
+    takenOut: (name: string) => `${name} is out of the car and has been told.`,
     rideUpdated: 'Ride updated.',
     rideAdded: 'Ride added.',
     rideAddedFor: (name: string) => `Ride added for ${name}.`,
@@ -1249,6 +1262,17 @@ const en = {
     nameNeeded: 'Give this place a name.',
   },
 
+  /** "You lost a seat", on top of the board until seen: components/SeatNotices.tsx. */
+  notices: {
+    label: 'Lost seats',
+    takenOut: (by: string) => `${by} took you out of the car`,
+    guestTakenOut: (by: string, name: string) => `${by} took ${name} out of the car`,
+    rideRemoved: (by: string) => `${by} removed the ride you were in`,
+    guestRideRemoved: (by: string, name: string) => `${by} removed the ride ${name} was in`,
+    seeDay: 'See that day',
+    gotIt: 'Got it',
+  },
+
   whatsNew: {
     title: "What's new",
     menu: "What's new",
@@ -1257,6 +1281,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      seatNotice: {
+        title: 'Losing a seat is never silent',
+        body: 'If someone takes you, or a colleague you put in, out of a car, or removes the ride, you are told: by a push that cannot be switched off, and by a card on top of the board until you tap **Got it**. The ride\'s messages keep a line saying who did it. Rides from the shared Mazda\'s paper log take nobody until their driver taps **Confirm the ride**.',
+      },
       carWhere: {
         title: 'Where each shared car is',
         body: '**Shared cars** now says where each car is: on the road and with whom, or where its last ride left it. It is worked out from the rides every time you open it. A ride you run also has its own **Edit** button on the card.',
@@ -1340,6 +1368,11 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^The odometer cannot read less than (.+) km here$/, (m) => `Kilometraža ovde ne može biti manja od ${m[1]} km`],
   [/^The odometer is noted from the day of the ride$/, () => 'Kilometraža se upisuje od dana vožnje'],
   [/^No free seats left$/, () => 'Nema više slobodnih mesta'],
+  [/^The driver has not confirmed this ride yet$/, () => 'Vozač još nije potvrdio ovu vožnju'],
+  [/^Only the driver or an admin can confirm this ride$/, () => 'Samo vozač ili administrator može da potvrdi ovu vožnju'],
+  [/^This ride is already confirmed$/, () => 'Ova vožnja je već potvrđena'],
+  [/^Notice not found$/, () => 'Obaveštenje nije pronađeno'],
+  [/^A line about someone taken out of the car stays$/, () => 'Zapis o tome ko je uklonjen iz auta ostaje'],
   [/^Only the driver or an admin can cancel this ride$/, () => 'Samo vozač ili administrator može da ukloni ovu vožnju'],
   [/^Only the driver or an admin can edit this ride$/, () => 'Samo vozač ili administrator može da izmeni ovu vožnju'],
   [/^Only an admin can add a ride for someone else$/, () => 'Samo administrator može da doda vožnju za nekog drugog'],
@@ -1630,7 +1663,7 @@ const sr: Messages = {
     kinds: 'O čemu da te obaveštavamo',
     kindsOff: 'Važi kada uključiš obaveštenja.',
     category: {
-      seats: ['Mesta', 'Neko uđe ili izađe, ili se oslobodi mesto za tebe'],
+      seats: ['Mesta', 'Neko uđe ili izađe, ili se oslobodi mesto za tebe. Kad ostaneš bez mesta, obaveštenje stiže uvek'],
       changes: ['Izmene vožnji', 'Vožnja u kojoj si se pomeri, kasni ili ukloni, ili te upišu kao vozača'],
       reminders: ['Podsetnici', 'Pre polaska, i da upišeš kilometražu kad se zajednički auto vrati'],
       messages: ['Poruke', 'Neko napiše nešto u razgovoru tvoje vožnje'],
@@ -1825,6 +1858,11 @@ const sr: Messages = {
     takeOverAsk: (driver) => `${driver} ne može da vozi. Hoćeš li ti da preuzmeš auto?`,
     takeOverWait: (driver) => `${driver} ne može da vozi. Putnici su pitani da li će neko od njih.`,
     takeOver: 'Ja ću voziti',
+    unconfirmed: 'Nije potvrđena',
+    confirmAsk: 'Ova vožnja je upisana iz papirnog dnevnika zajedničkog auta. Dok je ne potvrdiš, niko drugi ne može da uđe.',
+    confirmAskFor: (driver) => `${driver} još nije potvrdio/la ovu vožnju iz papirnog dnevnika zajedničkog auta. Do tada niko drugi ne može da uđe.`,
+    unconfirmedWait: (driver) => `${driver} još nije potvrdio/la ovu vožnju. Upisana je iz papirnog dnevnika zajedničkog auta, pa do tada niko ne može da uđe.`,
+    confirm: 'Potvrdi vožnju',
     coffee: 'Kafa',
     coffeePlease: (first) => `${first} bi se obradovao/la kafi`,
     coffeeYou: 'Obradovao/la bi se kafi',
@@ -1887,6 +1925,7 @@ const sr: Messages = {
     send: 'Pošalji',
     remove: 'Ukloni poruku',
     late: (minutes) => `Kasnim ${minutes} min`,
+    removed: (name) => `Uklonio/la sam iz auta: ${name}`,
   },
 
   requests: {
@@ -2088,6 +2127,8 @@ const sr: Messages = {
           return `${admin} je odobrio/la vožnju zajedničkim autom, vozi ${subject}`
         case 'ride_declined':
           return `${admin} je odbio/la vožnju zajedničkim autom, vozio/la bi ${subject}`
+        case 'ride_confirmed':
+          return `${admin} je potvrdio/la vožnju iz papirnog dnevnika, vozi ${subject}`
         case 'seat_added':
           return `${admin} je dodao/la putnika, vozi ${subject}`
         case 'seat_removed':
@@ -2317,6 +2358,7 @@ const sr: Messages = {
     full: 'Puno',
     awaiting: 'Čeka odobrenje',
     needsDriver: 'Traži se vozač',
+    unconfirmed: 'Nije potvrđena',
     changeAsked: 'Traži se saglasnost',
     seats: srSeats,
     stops: (n) => srPlural(n, 'usputna stanica', 'usputne stanice', 'usputnih stanica'),
@@ -2356,6 +2398,8 @@ const sr: Messages = {
     declineBody: (driver) => `Vožnja se uklanja i ${driver} dobija obaveštenje da je odbijena. Putnici takođe.`,
     removeFollowingTitle: 'Ukloniti ovu i sledeće vožnje?',
     removeFollowingBody: 'Ova vožnja i sve kasnije vožnje iz ove nedeljne serije biće uklonjene. Njihovi putnici gube mesta.',
+    takeOutTitle: 'Ukloniti iz auta?',
+    takeOutBody: (name) => `Bez mesta ostaje: ${name}. Dobiće obaveštenje ko je to uradio, a u temi vožnje ostaje zapis.`,
     deleteCarTitle: 'Obrisati ovaj auto?',
     deleteCarBody: (name, plate) =>
       `${name} (${plate}) biće obrisan iz voznog parka. Ako ga umesto toga povučeš, ostaje na prošlim vožnjama.`,
@@ -2371,6 +2415,8 @@ const sr: Messages = {
     rideRemoved: 'Vožnja je uklonjena.',
     handedOver: 'Putnici su pitani da li će neko od njih da vozi.',
     tookOver: 'Sada ti voziš.',
+    rideConfirmed: 'Vožnja je potvrđena. Kolege sada mogu da uđu.',
+    takenOut: (name) => `Uklonjen/a iz auta i obavešten/a: ${name}.`,
     rideUpdated: 'Vožnja je izmenjena.',
     rideAdded: 'Vožnja je dodata.',
     rideAddedFor: (name) => `Vožnja je dodata, vozi ${name}.`,
@@ -2678,6 +2724,16 @@ const sr: Messages = {
     nameNeeded: 'Daj ime ovom mestu.',
   },
 
+  notices: {
+    label: 'Izgubljena mesta',
+    takenOut: (by) => `${by} te je uklonio/la iz auta`,
+    guestTakenOut: (by, name) => `${by} je uklonio/la iz auta: ${name}`,
+    rideRemoved: (by) => `${by} je uklonio/la vožnju u kojoj si bio/la`,
+    guestRideRemoved: (by, name) => `${by} je uklonio/la vožnju, a u njoj je bio/la ${name}`,
+    seeDay: 'Pogledaj taj dan',
+    gotIt: 'U redu',
+  },
+
   whatsNew: {
     title: 'Šta je novo',
     menu: 'Šta je novo',
@@ -2686,6 +2742,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      seatNotice: {
+        title: 'Gubitak mesta više ne prolazi neprimećeno',
+        body: 'Ako neko iz auta ukloni tebe ili kolegu koga si ti dodao/la, ili ukloni vožnju, saznaćeš: push obaveštenjem koje ne može da se isključi i karticom na vrhu table dok ne dodirneš **U redu**. U porukama vožnje ostaje zapis ko je to uradio. Vožnje iz papirnog dnevnika zajedničke Mazde ne primaju putnike dok vozač ne dodirne **Potvrdi vožnju**.',
+      },
       carWhere: {
         title: 'Gde je koji zajednički auto',
         body: '**Zajednički automobili** sada pokazuju gde je svaki auto: na putu i ko ga vozi, ili gde ga je ostavila poslednja vožnja. Računa se iz vožnji svaki put kad ih otvoriš. Vožnja koju vodiš ima i svoje dugme **Izmeni** na kartici.',

@@ -30,6 +30,7 @@ from ..models import (
     Ride,
     RideMessage,
     RideRequest,
+    SeatNotice,
     User,
     WaitlistEntry,
 )
@@ -181,6 +182,10 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
     for booking in session.exec(select(Booking).where(Booking.passenger_id == user.id)).all():
         booking.passenger_id = None
         session.add(booking)
+    for booking in session.exec(select(Booking).where(Booking.added_by_id == user.id)).all():
+        booking.added_by_id = None
+        session.add(booking)
+    session.exec(delete(SeatNotice).where(col(SeatNotice.user_id) == user.id))
     for ride in session.exec(select(Ride).where(Ride.driver_id == user.id)).all():
         if ride not in session.deleted:
             ride.driver_id = None

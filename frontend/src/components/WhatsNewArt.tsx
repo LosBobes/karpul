@@ -9,7 +9,29 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** A passenger row goes from the car, and the card telling them so pops up over it. */
+function SeatNoticeDemo() {
+  return (
+    <div className="wn-card wn-notice-stage">
+      <div className="wn-pax-row">
+        <span className="wn-pax-avatar">M</span>
+        <span className="wn-pax-name">Milan</span>
+      </div>
+      <div className="wn-notice">
+        <svg viewBox="0 0 16 16" width="16" height="16">
+          <path d="M8 2.5a3.5 3.5 0 0 0-3.5 3.5v2.4L3.3 10.6h9.4l-1.2-2.2V6A3.5 3.5 0 0 0 8 2.5Z" fill="currentColor" />
+          <circle cx="8" cy="12.6" r="1.2" fill="currentColor" />
+        </svg>
+        <span className="wn-notice-lines">
+          <span className="wn-line" />
+          <span className="wn-line wn-line-label" />
+        </span>
+      </div>
     </div>
   )
 }

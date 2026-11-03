@@ -1599,3 +1599,56 @@
   46% { transform: scale(1.12); }
   52%, 100% { background: var(--green); color: #fff; transform: none; }
 }
+
+/* Seat notice: Milan's row goes from the car, then the card saying so pops up. */
+.wn-notice-stage {
+  gap: 0.6rem;
+}
+.wn-pax-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0.35;
+  text-decoration: line-through;
+  animation: wn-pax-out 5s var(--ease-out) infinite;
+}
+.wn-pax-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--green-soft);
+  color: var(--green-dark);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.wn-pax-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.wn-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-left: 3px solid var(--red);
+  border-radius: var(--radius-sm);
+  background: var(--red-soft);
+  color: var(--red);
+  animation: wn-notice-in 5s var(--ease-out) infinite;
+}
+.wn-notice-lines {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+@keyframes wn-pax-out {
+  0%, 20% { opacity: 1; text-decoration-color: transparent; }
+  35%, 100% { opacity: 0.35; text-decoration-color: currentColor; }
+}
+@keyframes wn-notice-in {
+  0%, 38% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  50%, 100% { opacity: 1; transform: none; }
+}

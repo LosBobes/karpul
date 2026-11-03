@@ -550,6 +550,23 @@ class MessageRead(BaseModel):
     author_name: str
     body: str
     late_minutes: int | None = None
+    removed_name: str | None = None
+    created_at: datetime
+
+
+class SeatNoticeRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    ride_id: int | None
+    ride_date: date
+    departure_time: time
+    origin: str
+    destination: str
+    kind: str
+    passenger_name: str
+    yours: bool
+    by_name: str
     created_at: datetime
 
 
@@ -809,6 +826,9 @@ class RideRead(BaseModel):
     # The driver cancelled a shared car with passengers in it; one of them may
     # take the wheel (POST /api/rides/{id}/takeover).
     needs_driver: bool = False
+    # From the shared car's paper log and not confirmed by its driver yet:
+    # nobody else can get in (POST /api/rides/{id}/confirm).
+    unconfirmed: bool = False
     # The driver's mobile number when their account has one, for "Call the driver".
     driver_phone: str | None = None
     bookings: list[BookingRead]
