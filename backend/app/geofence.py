@@ -5,7 +5,9 @@ on; unset lets everyone in, which is what a local checkout and the tests do.
 Every request is held to it, the shell, the API and the live socket alike:
 anything else gets a 403 (a socket is closed with 4403 before it opens).
 Private and loopback addresses always pass, so Docker's health check and a
-LAN keep working.
+LAN keep working. `/api/health` passes from anywhere (`OPEN_PATHS`): the
+uptime check runs on GitHub's machines, which are not in the team's
+countries, and the answer carries nothing but "ok" and how the backups stand.
 
 The country comes from the client address uvicorn reports, which is the real
 one behind Caddy because production trusts `X-Forwarded-For`
@@ -30,6 +32,8 @@ log = logging.getLogger("karpul.geofence")
 DEFAULT_DB = "/app/geoip/country.mmdb"
 CLOSE_FORBIDDEN = 4403
 REFUSAL = b"Karpul is not available in your country."
+# Answered whatever the country: the uptime check's address (.github/workflows/uptime.yml).
+OPEN_PATHS = frozenset({"/api/health"})
 
 
 def allowed_countries() -> frozenset[str]:
@@ -89,6 +93,9 @@ class GeoFence:
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:
         if scope["type"] not in ("http", "websocket"):
+            await self.app(scope, receive, send)
+            return
+        if scope["type"] == "http" and scope.get("path") in OPEN_PATHS:
             await self.app(scope, receive, send)
             return
         client = scope.get("client")

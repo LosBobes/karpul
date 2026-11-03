@@ -38,7 +38,7 @@ export function drives(ride: Ride, me: Me): boolean {
 /**
  * Will removing this ride ask its passengers to drive instead of removing it?
  * The driver's own shared car, not waiting for approval, not left yet, with
- * someone with an account in it (backend: _hands_over in routers/rides.py).
+ * someone with an account in it (backend: hands_over in app/ride_removal.py).
  */
 export function handsOver(ride: Ride, me: Me, now: Date = new Date()): boolean {
   if (!drives(ride, me) || ride.car_type !== 'corporate' || ride.approval === 'pending') return false

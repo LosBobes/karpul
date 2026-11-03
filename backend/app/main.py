@@ -20,12 +20,29 @@ from sqlmodel import Session
 from . import backfill, geo
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
-from .housekeeping import housekeeping_loop
+from .housekeeping import backup_status, housekeeping_loop
 from .models import Ride
 from .monitoring import init_sentry
 from .offices import fill_office_distances
 from .reminders import reminder_loop
-from .routers import admin, auth, cars, live, odometer, photos, places, push, requests, rides, stats, thread, waitlist
+from .routers import (
+    admin,
+    auth,
+    cars,
+    drivers,
+    live,
+    odometer,
+    photos,
+    places,
+    proposals,
+    push,
+    requests,
+    rides,
+    seats,
+    stats,
+    thread,
+    waitlist,
+)
 from .seed import seed_corporate_cars
 
 # The app's own loggers (karpul.*) at INFO next to uvicorn's: push, reminders,
@@ -121,6 +138,9 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(cars.router)
 app.include_router(rides.router)
+app.include_router(seats.router)
+app.include_router(proposals.router)
+app.include_router(drivers.router)
 app.include_router(odometer.router)
 app.include_router(waitlist.router)
 app.include_router(places.router)
@@ -135,13 +155,16 @@ app.include_router(photos.router)
 @app.get("/api/health", tags=["meta"])
 def health(session: Annotated[Session, Depends(get_session)]):
     """For the container's health check and an uptime monitor: 200 while the
-    database answers, 503 when it does not."""
+    database answers, 503 when it does not. `backup` and `offsite` say how the
+    nightly snapshot stands (`housekeeping.backup_status`); they never turn the
+    answer into an error, the uptime check reads them (.github/workflows/uptime.yml)."""
     try:
         session.exec(text("SELECT 1"))  # type: ignore[call-overload]
     except Exception:
         log.exception("health check: database unreachable")
         return JSONResponse({"status": "error", "database": "unreachable"}, status_code=503)
-    return {"status": "ok"}
+    bind = session.get_bind()
+    return {"status": "ok", **backup_status(getattr(bind, "engine", bind))}  # type: ignore[arg-type]
 
 
 class HashedAssets(StaticFiles):

@@ -9,11 +9,14 @@ that are only refused anyway.
   (default: `backups/` beside the database file, which in production is the
   `karpul_data` volume) as `karpul-<date>-<time>.db`, once a day
   (BACKUP_EVERY), and the newest KARPUL_BACKUP_KEEP (14) are kept. The volume
-  is on the same box as the database, so the runbook also copies the newest
-  snapshot off it (`make backup` or the host's cron); this is what protects
-  against a wrong `docker compose down -v`, a bad migration or a fat finger
-  in the admin sheet, not against losing the box. Nothing runs on a database
-  that is not a SQLite file (the tests' in-memory one).
+  is on the same box as the database: this protects against a wrong
+  `docker compose down -v`, a bad migration or a fat finger in the admin
+  sheet, not against losing the box. **Off the box**: with
+  `KARPUL_BACKUP_S3_URL` set, the newest snapshot is also uploaded to a bucket
+  (`app/offsite.py`), tried again every pass until it has gone. Nothing runs
+  on a database that is not a SQLite file (the tests' in-memory one).
+* **Status.** `backup_status` says whether the newest snapshot is fresh and
+  whether it is off the box, for `/api/health` and the uptime check.
 * **Purging.** Expired sessions and spent reset links (`auth.purge_expired`).
 """
 
@@ -29,12 +32,15 @@ from pathlib import Path
 from sqlalchemy.engine import Engine, make_url
 from sqlmodel import Session
 
+from . import offsite
 from .auth import purge_expired
 from .backup import snapshot
 
 log = logging.getLogger("karpul.housekeeping")
 
 BACKUP_EVERY = timedelta(hours=23)
+# Past this the nightly snapshot is overdue: a day, the hourly check, and slack.
+BACKUP_STALE = timedelta(hours=26)
 CHECK_EVERY_S = 3600
 BACKUP_NAME = re.compile(r"^karpul-(\d{8})-(\d{4})\.db$")
 
@@ -69,13 +75,29 @@ def backups_in(folder: Path) -> list[Path]:
     return sorted(p for p in folder.iterdir() if BACKUP_NAME.match(p.name))
 
 
+def taken_at(snapshot: Path) -> datetime:
+    m = BACKUP_NAME.match(snapshot.name)
+    return datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M")  # type: ignore[union-attr]
+
+
 def backup_due(folder: Path, now: datetime) -> bool:
     newest = backups_in(folder)[-1:]
     if not newest:
         return True
-    m = BACKUP_NAME.match(newest[0].name)
-    taken = datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M")  # type: ignore[union-attr]
-    return now - taken >= BACKUP_EVERY
+    return now - taken_at(newest[0]) >= BACKUP_EVERY
+
+
+def backup_status(target: Engine, now: datetime | None = None) -> dict[str, str]:
+    """`backup`: "off" (no file database), "ok" or "stale" (the newest snapshot
+    is past BACKUP_STALE, or there is none); `offsite`: see `offsite.status`."""
+    now = now or datetime.now()
+    folder = backup_dir(target)
+    if folder is None or database_file(target) is None:
+        return {"backup": "off", "offsite": "off"}
+    snapshots = backups_in(folder)
+    taken = taken_at(snapshots[-1]) if snapshots else None
+    fresh = taken is not None and now - taken < BACKUP_STALE
+    return {"backup": "ok" if fresh else "stale", "offsite": offsite.status(snapshots, taken, now)}
 
 
 def write_backup(target: Engine, now: datetime | None = None, keep: int | None = None) -> Path | None:
@@ -106,10 +128,16 @@ def run_housekeeping(target: Engine, now: datetime | None = None) -> dict[str, i
         gone = purge_expired(session)
         session.commit()
     done: dict[str, int | str | None] = {**gone, "backup": None}
+    done["offsite"] = None
     folder = backup_dir(target)
-    if folder is not None and database_file(target) is not None and backup_due(folder, now):
+    if folder is None or database_file(target) is None:
+        return done
+    if backup_due(folder, now):
         written = write_backup(target, now)
         done["backup"] = str(written) if written is not None else None
+    if folder.is_dir():
+        offsite.drop_stale_markers(folder)
+        done["offsite"] = offsite.send_newest(backups_in(folder))
     return done
 
 

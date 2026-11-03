@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.services import LIMIT_DAY, LIMIT_STRETCH, LIMIT_WEEK
+from tests.conftest import patch_ride_notify
 
 # A Monday well ahead, so a week's rides never straddle today.
 MONDAY = date.today() + timedelta(days=(7 - date.today().weekday()) % 7 + 7)
@@ -35,7 +36,7 @@ def sent(monkeypatch):
         out.append((kind, sorted(uid for uid in user_ids if uid is not None), args))
         return 0
 
-    monkeypatch.setattr("app.routers.rides.notify", fake_notify)
+    patch_ride_notify(monkeypatch, fake_notify)
     return out
 
 

@@ -36,6 +36,12 @@ services:
       # The nightly snapshots (app/housekeeping.py): where in the volume, how many to keep.
       KARPUL_BACKUP_DIR: ${KARPUL_BACKUP_DIR:-/data/backups}
       KARPUL_BACKUP_KEEP: ${KARPUL_BACKUP_KEEP:-14}
+      # A copy of each snapshot off the box, in S3-compatible storage (app/offsite.py).
+      # Unset = the snapshots stay in the volume only.
+      KARPUL_BACKUP_S3_URL: ${KARPUL_BACKUP_S3_URL:-}
+      KARPUL_BACKUP_S3_KEY: ${KARPUL_BACKUP_S3_KEY:-}
+      KARPUL_BACKUP_S3_SECRET: ${KARPUL_BACKUP_S3_SECRET:-}
+      KARPUL_BACKUP_S3_REGION: ${KARPUL_BACKUP_S3_REGION:-}
       # Who has the maps (app/geo.py): everyone, admins (to try something first) or off.
       KARPUL_MAPS: ${KARPUL_MAPS:-everyone}
       # Caddy is the only thing that can reach the container (the port below is

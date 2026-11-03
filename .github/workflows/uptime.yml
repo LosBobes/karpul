@@ -1,0 +1,75 @@
+# Is www.karpul.dev up, and are its backups safe?
+#
+# Every 15 minutes (GitHub may run a scheduled job late, or skip one when it
+# is busy) this asks /api/health from outside, the way a colleague's phone
+# would, and fails when:
+#   * the site does not answer 200 three times in a row (the box, Caddy, the
+#     container or the database is down; app/main.py answers 503 when the
+#     database does not),
+#   * the nightly snapshot is more than a day old (`backup: stale`,
+#     app/housekeeping.py), or
+#   * the newest snapshot has not reached the off-site bucket hours after it
+#     was taken (`offsite: failing`, app/offsite.py).
+# A failed scheduled run is what GitHub notifies about: by email (and in the
+# app) to whoever last changed the schedule below, per their notification
+# settings. /api/health is the one address the country filter lets through
+# (app/geofence.py OPEN_PATHS), because these runners are not in DE or RS.
+#
+# The address is the repository variable KARPUL_HEALTH_URL when set
+# (Settings → Secrets and variables → Actions → Variables), else production.
+# Scheduled runs only happen on the default branch.
+
+name: Uptime
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  health:
+    name: Health check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask /api/health
+        env:
+          URL: ${{ vars.KARPUL_HEALTH_URL || 'https://www.karpul.dev/api/health' }}
+        run: |
+          body=""
+          for attempt in 1 2 3; do
+            if body=$(curl --fail --silent --show-error --max-time 20 "$URL"); then
+              break
+            fi
+            body=""
+            echo "Attempt $attempt: no answer"
+            [ "$attempt" = 3 ] || sleep 30
+          done
+          if [ -z "$body" ]; then
+            echo "::error title=Karpul is down::$URL did not answer 200, three times in a minute."
+            exit 1
+          fi
+          echo "$body"
+          status=$(jq -r '.status' <<<"$body")
+          backup=$(jq -r '.backup // "unknown"' <<<"$body")
+          offsite=$(jq -r '.offsite // "unknown"' <<<"$body")
+          failed=0
+          if [ "$status" != ok ]; then
+            echo "::error title=Karpul is unwell::status is $status"
+            failed=1
+          fi
+          if [ "$backup" = stale ]; then
+            echo "::error title=No fresh backup::The newest nightly snapshot is more than a day old (app/housekeeping.py)."
+            failed=1
+          fi
+          if [ "$offsite" = failing ]; then
+            echo "::error title=Backup not off the box::The newest snapshot has not reached the bucket (app/offsite.py); see the app's log for karpul.offsite."
+            failed=1
+          fi
+          exit $failed

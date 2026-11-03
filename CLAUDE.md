@@ -34,11 +34,11 @@ App icons: `node scripts/render-icons.mjs` (from `frontend/`, needs Playwright's
 the PNGs in `public/` from `public/favicon.svg`; the PNGs are checked in, so a build never needs a browser.
 Whole app in Docker: `docker compose up --build` → http://localhost:8080.
 
-CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread; a reload keeping the view and a half-filled form) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat) and `e2e/places.spec.ts` (an office picked from the suggestions, the route on the map, a passenger dropping the pin of a new pickup point; the server runs with no geocoder or router and tiles from an address that answers nothing). There is no formatter. The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
+CI (`.github/workflows/ci.yml`) runs exactly: backend `ruff check .` and `pytest -q`; frontend `npm run lint`, `npm test` and `npm run build`; and an `e2e` job that builds the frontend and runs `npm run e2e` (Playwright, Chromium only) against uvicorn on a temp SQLite file: `e2e/smoke.spec.ts` (register, offer, get in, write in the thread; a reload keeping the view and a half-filled form) `e2e/journey.spec.ts` (get in, leave, the driver removes the ride, each side seeing the other live; the car status sheet) and `e2e/pickup.spec.ts` (a passenger gets in at a new place before the start, the driver adds one on the way and then closes the route to new places; a new place from the waiting list goes on the route with the seat) and `e2e/places.spec.ts` (an office picked from the suggestions, the route on the map, a passenger dropping the pin of a new pickup point; the server runs with no geocoder or router and tiles from an address that answers nothing) and `e2e/admin.spec.ts` (a shared car past the share asked for from the form and approved under *Approvals*, a plate ticked off the *Garage list*, a passenger taking over a shared car whose driver cancelled; the admins are `boss.<tag>` / `chief.<tag>` in `KARPUL_ADMINS` in `playwright.config.ts`, each test puts its own car in the pool through the API, and because every board and the admins' lists show every run's rides, the checks match this run's names exactly, `(?!\d)` after the tag). There is no formatter. `.github/workflows/uptime.yml` is not CI: every 15 minutes it asks production's `/api/health` and fails when the site is down, the newest snapshot is stale or it has not reached the bucket (below). The Vite dev proxy forwards `/api/ws` as a WebSocket (`ws: true` in `vite.config.ts`).
 
 **Error texts are a contract.** The server's `detail` strings are English and `apiError` in `lib/i18n.ts` renders them in Serbian by pattern. `backend/tests/error_catalogue.py` collects every `HTTPException` detail and schema `ValueError` from the source (AST, f-string blanks filled with samples) into `frontend/src/lib/api-errors.json`; `tests/test_error_catalogue.py` fails when that file is stale and `src/lib/i18n.test.ts` fails when a text in it has no Serbian. Change a wording: run `python -m tests.error_catalogue`, then translate. `apiError` tries a message whole before splitting it on `"; "`, because several texts contain one.
 
-Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`, `make backups` (the app's own nightly snapshots, below), and `make backfill` (the shared Mazda's 2026 paper log as rides, `app/backfill.py`; a dry run unless `APPLY=1`, safe to repeat). Nobody needs to run it: the lifespan calls `backfill.run_once` on every start, which applies it once and records `mazda-log-2026` in the `DataMigration` table so it never runs again (with no single Mazda in the pool it logs a warning, writes nothing and tries again on the next start; a failure is logged and never stops the app). The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits. **The app also backs itself up** (`app/housekeeping.py`, started in the lifespan): once a day the same snapshot goes to `KARPUL_BACKUP_DIR` (default `backups/` beside the database file, in production the volume) as `karpul-<date>-<time>.db`, written under a `.part` name and renamed, the newest `KARPUL_BACKUP_KEEP` (14) kept; the same hourly pass purges expired sessions and spent reset links (`auth.purge_expired`). Nothing runs on an in-memory database. Tests: `tests/test_housekeeping.py`.
+Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the shell): `make ssh`, `make logs`, `make deploy`, `make backup`, `make backups` (the app's own nightly snapshots, below), and `make backfill` (the shared Mazda's 2026 paper log as rides, `app/backfill.py`; a dry run unless `APPLY=1`, safe to repeat). Nobody needs to run it: the lifespan calls `backfill.run_once` on every start, which applies it once and records `mazda-log-2026` in the `DataMigration` table so it never runs again (with no single Mazda in the pool it logs a warning, writes nothing and tries again on the next start; a failure is logged and never stops the app). The backup streams `python -m app.backup`, a consistent snapshot through SQLite's backup API — the database is in WAL mode, so copying `karpul.db` alone loses the latest commits. **The app also backs itself up** (`app/housekeeping.py`, started in the lifespan): once a day the same snapshot goes to `KARPUL_BACKUP_DIR` (default `backups/` beside the database file, in production the volume) as `karpul-<date>-<time>.db`, written under a `.part` name and renamed, the newest `KARPUL_BACKUP_KEEP` (14) kept; the same hourly pass purges expired sessions and spent reset links (`auth.purge_expired`). Nothing runs on an in-memory database. **Off the box**: with `KARPUL_BACKUP_S3_URL` (endpoint, bucket, prefix, path-style) plus `_KEY` / `_SECRET` / `_REGION`, the newest snapshot is also PUT to S3-compatible object storage (`app/offsite.py`, Signature Version 4 on the standard library like `webpush.py`, held to AWS's own example; `offsite.put` is what tests replace and `clean_env` clears the variables). A snapshot that went up gets a `<name>.sent` marker beside it, so a failure is retried on the next pass; the key needs write only, retention is the bucket's lifecycle rule. `housekeeping.backup_status` (`backup`: ok / stale past `BACKUP_STALE` 26 h / off; `offsite`: ok / pending / failing / off) is in `/api/health`. Tests: `tests/test_housekeeping.py`, `tests/test_offsite.py`.
 
 ## Architecture
 
@@ -125,10 +125,18 @@ the whole board in `GET /api/rides`, next to the thread's message counts), and `
 for everyone but the driver. Email is optional too; the production `appuser.email` started out
 NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
 
-**The ride routers.** `routers/rides.py` is the rides and their seats; the odometer (`/legs`) is
-`routers/odometer.py`, the queue `routers/waitlist.py`, the thread `routers/thread.py`, and the
-checks they share (`get_ride_or_404`, `is_driver`, `may_run`, `on_behalf`, `booking_of`,
-`may_manage_seats`) live in `app/access.py`.
+**The ride routers.** All under `/api/rides`: `routers/rides.py` is the rides themselves (the
+board, add, edit, remove, `/last`, the calendar file); `routers/seats.py` the seats and pickup
+points (`/bookings`, `/stops`); `routers/proposals.py` the driver's asks and the passengers'
+answers (`/proposal/...`); `routers/drivers.py` who drives (`/approve`, `/decline`, `/takeover`,
+`/claim`); the odometer (`/legs`) is `routers/odometer.py`, the queue `routers/waitlist.py`, the
+thread `routers/thread.py`. The rules they share: the checks (`get_ride_or_404`, `is_driver`,
+`may_run`, `on_behalf`, `booking_of`, `may_manage_seats`) in `app/access.py`; an edit held to the
+creation rules and the consent fields (`prepare`, `approval_for`, `plan`, `apply_edit`, `settle`,
+`tell_applied`, `CONSENT_FIELDS`) in `app/ride_edits.py`; a ride going (`remove_rides`,
+`hands_over`, `cars_with_seats`) in `app/ride_removal.py`. Each of these modules imports `notify`
+itself, so a test recording pushes patches them all through `patch_ride_notify` in `conftest.py`
+(`RIDE_NOTIFIERS`; add a new module that pushes about a ride there).
 
 **Admins run every ride.** `may_run` in `app/access.py` lets the driver *or an admin* edit and
 remove a ride (and its following weeks) and manage its seats; the frontend twin is `runs()` in
@@ -154,7 +162,7 @@ its label in `adminLog.fields`. Tests: `tests/test_admin_rides.py`.
 approved ones too), `over_shared_car_share` turns that into `LIMIT_WEEK` / `LIMIT_DAY` (the day's
 text wins), and then `LIMIT_STRETCH`: `shared_car_stretch` joins the ride with the driver's shared-car
 rides that meet or overlap it (any car, any approval; no return holds the car to midnight) and more than
-`SHARED_CAR_MAX_STRETCH` (24 h) in a row is past the share too (the day either side is all it reads). `_approval_for` in `routers/rides.py` applies it on create (per occurrence of a series)
+`SHARED_CAR_MAX_STRETCH` (24 h) in a row is past the share too (the day either side is all it reads). `approval_for` in `app/ride_edits.py` applies it on create (per occurrence of a series)
 and when an edit moves an unapproved ride to another day, car type or time: within the share the ride's
 `approval` is `""`; past it a plain user gets the 409, or with `RideCreate.request_approval` the ride
 is added as `"pending"` and every admin (`admin.admin_ids`) is pushed `approval_requested`; an admin
@@ -162,13 +170,13 @@ adding it (for anyone) gets `"approved"` outright, and own cars are never ration
 holds no slot**: `ensure_car_available` skips it, so the car stays bookable over it (and two asks may
 overlap), and `POST /api/rides/{id}/approve` (admin, 409 unless pending) re-runs that check before it
 sets `"approved"` and pushes `ride_approved`, so an approval that would double-book is the usual 409;
-`/decline` removes the ride through `_remove_rides` with `ride_declined` to the driver and
+`/decline` removes the ride through `remove_rides` with `ride_declined` to the driver and
 `ride_removed` to the passengers; both are in the admin's log. **A removed ride points on**: a
 passenger's `ride_removed` push also says how many other cars that day still have a seat
-(`_alternatives`, nearest departure first) and opens the nearest one (`notify(..., url=)`), so a
+(`cars_with_seats`, nearest departure first) and opens the nearest one (`notify(..., url=)`), so a
 cancellation the evening before is not a dead end. **A cancelled shared car asks its passengers
 first**: when the *driver* removes their own shared-car ride that has not left, is not pending and has
-someone with an account in it (`_hands_over` in `routers/rides.py`, mirrored by `handsOver` in
+someone with an account in it (`hands_over` in `app/ride_removal.py`, mirrored by `handsOver` in
 `lib/me.ts`), the ride is not deleted but set `Ride.needs_driver` (an `ADDED_COLUMNS` column): it keeps
 the car, the passengers are pushed `driver_needed`, and `is_driver` / `drives()` stop treating the old
 driver as the driver (their name stays as the snapshot; the ride no longer counts in their share). A
@@ -191,11 +199,11 @@ on it opens the ride on the day plan. The card keeps its *Approve* / *Decline* r
 too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
 
 **Changes wait for the passengers.** When the *driver* moves the day, a time, the start or the
-destination (`CONSENT_FIELDS` in `routers/rides.py`) of a ride with passengers who have accounts, `update_ride`
-checks the whole edit (`_plan`, writes nothing), makes the rest at once (`_apply`) and holds those fields (with
+destination (`CONSENT_FIELDS` in `app/ride_edits.py`) of a ride with passengers who have accounts, `update_ride`
+checks the whole edit (`plan`, writes nothing), makes the rest at once (`apply_edit`) and holds those fields (with
 the pins) in `Ride.proposal` (an `ADDED_COLUMNS` JSON column, `ProposalRead` in `RideRead`: `by`, `by_id`,
 `fields`, `agreed`); the passengers are pushed `change_asked`. Each answers `POST .../proposal/agree` or
-`/decline`; the last agree makes it through `_settle` (held to the rules as they stand then, so a shared car
+`/decline`; the last agree makes it through `settle` (held to the rules as they stand then, so a shared car
 taken since is the usual 409), a decline drops it (`change_declined` to the driver), the last one waited on
 leaving the car makes it too, and `DELETE .../proposal` withdraws it. An admin changing someone's ride makes it
 at once and overtakes any ask. **A passenger may suggest another time**: `POST .../proposal/suggest`
@@ -283,7 +291,7 @@ the car's name on the driver card of a shared-car ride (`.driver-car-state`). Te
 
 **The road between the offices** (`app/offices.py`, `lib/offices.ts`, keep in step): Beograd to
 Novi Sad is 90 km, Novi Sad to Beograd 92 (`OFFICES` holds the names people write, folded).
-`_prepare` fills a blank `distance_km` in on that route, `fill_office_distances` does it for old
+`prepare` (`app/ride_edits.py`) fills a blank `distance_km` in on that route, `fill_office_distances` does it for old
 rides on every start, the form shows the known figure as the placeholder and says so
 (`form.knownRoad`), and the car state's guess uses it. Tests: `tests/test_offices.py`.
 
@@ -313,13 +321,15 @@ passengers. The ride's times do not change.
 On screen: requests under each Upcoming day and under `YouPanel` in Week (`RequestList`,
 "Offer a ride" opens `RideForm` with `request`), asked through `RequestForm`.
 
-**Operations.** `/api/health` queries the database (503 when it cannot). `KARPUL_SENTRY_DSN`
+**Operations.** `/api/health` queries the database (503 when it cannot) and carries
+`backup` / `offsite` from `housekeeping.backup_status` (never an error; the uptime workflow reads them). `KARPUL_SENTRY_DSN`
 turns on Sentry (`app/monitoring.py`, no PII, traces only with `KARPUL_SENTRY_TRACES`); unset sends
 nothing. A middleware in `main.py` logs 5xx answers, crashes (then re-raises, for Sentry) and
 requests slower than 1 s under `karpul.http`; uvicorn's access log has the rest.
 `KARPUL_ALLOWED_COUNTRIES` (`DE,RS`) is a country filter in front of everything, socket included
 (`app/geofence.py`, pure ASGI, the outermost middleware): another country is a 403 or a 4403 close,
-private addresses always pass, an address the database does not know is refused, and a missing
+private addresses always pass, `/api/health` passes from anywhere (`OPEN_PATHS`, for the uptime check on
+GitHub's runners), an address the database does not know is refused, and a missing
 database logs an error and lets everyone in. The database is DB-IP Lite, downloaded at image build
 by `backend/fetch_geoip.py` (it sends its own User-Agent: DB-IP refuses Python's); tests replace
 `geofence.country_of`, and `clean_env` clears the variable.
@@ -367,7 +377,7 @@ the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak
 **Where the rules live:**
 - `schemas.py` — field validation and cross-field consistency (`corporate_car_id` required for corporate rides, `car_name` required for own cars, `return_time > departure_time`).
 - `services.py` — corporate-car double-booking check. Windows are half-open, so the same car can be handed over back to back within a day (a ride back at 12:00 does not block one leaving at 12:00); a ride with no `return_time` has no handover point and occupies the car until end of day. Called on both create and update (update passes `exclude_ride_id`).
-- `routers/rides.py` — ownership checks and the rules that need the DB row:
+- `routers/rides.py` and `app/ride_edits.py` — ownership checks and the rules that need the DB row:
   - `seats` may not exceed the chosen corporate car's `passenger_seats` (422), and on PATCH may not
     drop below the number of existing bookings (409).
   - For corporate rides the server overwrites `car_name` with `"<Name> (<PLATE>)"`; a client-supplied
@@ -807,7 +817,13 @@ initials keep their contrast.
 
 **Frontend data flow.** `App.tsx` holds the UI state, with its pieces in hooks: which sheets
 are open (`lib/useOverlays.ts`, one open set, `is`/`show`/`hide` and a stable `closer(name)`),
-the toast (`lib/useToast.ts`), the passenger chip in flight (`lib/usePassengerDrag.ts`), and
+the toast (`lib/useToast.ts`), the passenger chip in flight (`lib/usePassengerDrag.ts`),
+everything a ride card does (`lib/useRideActions.ts`: seats, queue, route, switches, removal, asks
+and answers, takeover, claim, running late; each call goes through the board's `withBusy` and
+`upsertRide`, and `newlyAsked` lives there), the admin's desk (`lib/useAdminDesk.ts`: the
+approvals and garage counts, approve / decline / plate, the car pool's controls), asking for a
+ride (`lib/useRideRequests.ts`), the shared `errMsg` (`lib/errors.ts`) and `Confirm`
+(`lib/confirm.ts`), and
 the pure rules for which ride is open and which days are loaded (`lib/selection.ts`:
 `daySelection`, `upcomingSelection`, `boardRange`, tested in `selection.test.ts`). The board's
 data lives in `lib/useBoard.ts` (the shared cars' state too, `carStates`): rides and requests for the range on screen (a Mon–Sun week, or the Upcoming 90 days), both car lists, the sequence-guarded `load`, the live-event reducer and the 30 s fallback poll. Mutating endpoints return the updated `Ride` so `upsertRide()` can patch state without a full reload. The rest of the components are presentational, plus a few sheets that fetch their own data (`MyRides`, `PeopleAdmin`, `RideThread`). On any mutation error it toasts and refetches. **A reload lands where you were** (`lib/keep.ts`): state that should survive a refresh (the

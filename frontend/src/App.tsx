@@ -6,7 +6,7 @@ import { AdminLog } from './components/AdminLog'
 import { Approvals } from './components/Approvals'
 import { GarageList } from './components/GarageList'
 import { AuthGate } from './components/AuthGate'
-import { NEW_CAR_BUSY_ID, SharedCars, type SharedCarsTab } from './components/SharedCars'
+import { SharedCars, type SharedCarsTab } from './components/SharedCars'
 import { CarGuide } from './components/CarGuide'
 import { HowTo } from './components/HowTo'
 import { CarCarousel } from './components/CarCarousel'
@@ -36,17 +36,21 @@ import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
+import type { Confirm } from './lib/confirm'
+import { errMsg } from './lib/errors'
+import { useAdminDesk } from './lib/useAdminDesk'
+import { useRideRequests } from './lib/useRideRequests'
+import { newlyAsked, useRideActions } from './lib/useRideActions'
 import { setUser, useSession, type Session } from './lib/auth'
 import { messages, useT } from './lib/i18n'
-import { fmtShortDate, fmtTime, parseISODate, todayISO } from './lib/dates'
+import { parseISODate, todayISO } from './lib/dates'
 import { useSlideDir } from './lib/motion'
 import type { PassengerDrag } from './lib/dnd'
-import { drives, handsOver, isMyRequest, MeContext, myBooking, placeInLine, type Me } from './lib/me'
+import { isMyRequest, MeContext, myBooking, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateNotices, useUpdateReady } from './lib/pwa'
-import type { CorporateCarInput, Ride, RideInput, RideRequest, RideRequestInput } from './lib/types'
+import type { Ride, RideInput, RideRequest } from './lib/types'
 import { boardRange, daySelection, upcomingSelection, VIEWS, type View } from './lib/selection'
-import type { NewStop } from './lib/stops'
 import { keepFor, restoreScroll, useKept } from './lib/keep'
 import { useBoard } from './lib/useBoard'
 import { useOverlays } from './lib/useOverlays'
@@ -85,11 +89,6 @@ type Overlay =
   | 'approvals'
   | 'garage'
 
-/** An edit came back as a new ask of the passengers rather than made (backend: rides.update_ride). */
-function newlyAsked(before: Ride, after: Ride): boolean {
-  return !!after.proposal && JSON.stringify(after.proposal) !== JSON.stringify(before.proposal)
-}
-
 function loadView(): View {
   try {
     const v = localStorage.getItem(VIEW_KEY)
@@ -97,22 +96,6 @@ function loadView(): View {
   } catch {
     return 'upcoming'
   }
-}
-
-/** A pending "are you sure?" — the confirm card owns the wording, the caller the action. */
-interface Confirm {
-  title: string
-  body: ReactNode
-  label: string
-  onConfirm: () => void
-}
-
-/** An error as a toast line, in the app's language (server texts are English, see i18n). */
-function errMsg(e: unknown): string {
-  const t = messages()
-  if (e instanceof ApiError) return t.apiError(e.message)
-  if (e instanceof Error) return e.message
-  return t.common.somethingWrong
 }
 
 /**
@@ -139,9 +122,6 @@ function Board({ session }: { session: Session }) {
   // The error is the shared-car share: the form offers to ask an admin instead.
   const [formAsk, setFormAsk] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  // "Ask for a ride" (components/RequestForm.tsx): the day it opens on, or closed.
-  const [askDate, setAskDate] = useKept<string | null>('board.ask', null)
-  const [askError, setAskError] = useState<string | null>(null)
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useKept<number | null>('board.ride', null)
@@ -171,15 +151,6 @@ function Board({ session }: { session: Session }) {
   // Admin (backend: app/admin.py): the company-car pool and the people. The
   // drawer offers them to admins only; the server checks every call anyway.
   const isAdmin = user.is_admin
-  // The shared-car rides waiting for an admin (components/Approvals.tsx):
-  // how many wait (a count in the drawer and a dot on the ☰), and a tick
-  // that tells the open sheet to reload after a decision.
-  const [waiting, setWaiting] = useState(0)
-  const [approvalsTick, setApprovalsTick] = useState(0)
-  // The own cars' plates the Beograd garage still needs (components/GarageList.tsx).
-  const [plates, setPlates] = useState(0)
-  const [adminError, setAdminError] = useState<string | null>(null)
-  const [adminBusyId, setAdminBusyId] = useState<number | null>(null)
 
   useEffect(() => {
     document.title = t.documentTitle
@@ -303,168 +274,17 @@ function Board({ session }: { session: Session }) {
     }
   }
 
-  const onJoin = (ride: Ride, pickup = '', newStop: NewStop | null = null) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await api.join(ride.id, userName, pickup, newStop))
-      setToast({ kind: 'ok', text: t.toasts.youreIn(ride.driver_name) })
-    })
+  // The admin's approvals, garage list and car pool (lib/useAdminDesk.ts),
+  // and asking for a ride (lib/useRideRequests.ts).
+  const desk = useAdminDesk({ isAdmin, rides, withBusy, upsertRide, removeRides, reloadCars, load, notice, setConfirm })
+  const { waiting, plates, onApprove, onDecline, onMarkPlate } = desk
+  const asks = useRideRequests({ withBusy, upsertRequest, removeRequest, notice })
+  const { askDate, openAsk, closeAsk, onWithdraw } = asks
 
-  /** A ride waiting for a driver goes once nobody with an account is left to ask. */
-  const afterLeave = (r: Ride) => {
-    if (r.needs_driver && !r.bookings.some((b) => b.passenger_id !== null)) removeRides((x) => x.id === r.id)
-    else upsertRide(r)
-  }
-
-  const onLeave = (ride: Ride, bookingId: number) =>
-    withBusy(ride.id, async () => {
-      afterLeave(await api.leave(ride.id, bookingId))
-    })
-
-  /** The keyboard's way of dragging the chip to another car: leave one, join the other. */
-  const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '', newStop: NewStop | null = null) =>
-    withBusy(target.id, async () => {
-      afterLeave(await api.leave(from.ride.id, from.bookingId))
-      upsertRide(await api.join(target.id, userName, pickup, newStop))
-      setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
-    })
-
-  const onMovePickup = (ride: Ride, bookingId: number, pickup: string, newStop: NewStop | null = null) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await api.movePickup(ride.id, bookingId, pickup, newStop))
-      setToast({ kind: 'ok', text: t.toasts.pickupChanged(pickup || ride.origin) })
-    })
-
-  /** The driver (or an admin) puts another pickup point on the route. */
-  const onAddStop = (ride: Ride, stop: string, where: NewStop) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await api.addStop(ride.id, stop, where))
-      setToast({ kind: 'ok', text: t.toasts.stopAdded(stop) })
-    })
-
-  /** The driver (or an admin) saves the route edited in `RouteEditor`; true when it went through. */
-  const onSaveRoute = async (ride: Ride, patch: Partial<RideInput>) => {
-    let saved = false
-    await withBusy(ride.id, async () => {
-      const updated = await api.updateRide(ride.id, patch)
-      upsertRide(updated)
-      setToast({ kind: 'ok', text: newlyAsked(ride, updated) ? t.toasts.changeAsked : t.toasts.routeSaved })
-      saved = true
-    })
-    return saved
-  }
-
-  /** A shared car's odometer (components/Odometer.tsx): the call returns the ride. */
-  const onOdometer = (ride: Ride, call: () => Promise<Ride>) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await call())
-    })
-
-  /** Queue for a seat in a full car. */
-  const onWait = (ride: Ride, pickup: string, newStop: NewStop | null = null) =>
-    withBusy(ride.id, async () => {
-      const updated = await api.joinWaitlist(ride.id, pickup, newStop)
-      upsertRide(updated)
-      setToast({ kind: 'ok', text: t.toasts.waiting(placeInLine(updated, me)) })
-    })
-
-  /** Leave the queue yourself, or (the driver) take someone off it. */
-  const onLeaveLine = (ride: Ride, entryId: number) =>
-    withBusy(ride.id, async () => {
-      const mine = ride.waitlist.find((w) => w.id === entryId)?.user_id === me.id
-      upsertRide(await api.leaveWaitlist(ride.id, entryId))
-      if (mine) setToast({ kind: 'ok', text: t.toasts.stoppedWaiting })
-    })
-
-  /** The system share sheet where there is one, else the link goes to the clipboard. */
-  const onShare = async (ride: Ride) => {
-    const url = `${window.location.origin}/ride/${ride.id}`
-    const title = t.share.title(ride.driver_name, ride.origin, ride.destination)
-    const text = t.detail.shareText(ride.driver_name, ride.origin, ride.destination, `${fmtShortDate(ride.ride_date)} ${fmtTime(ride.departure_time)}`)
-    if (typeof navigator.share === 'function') {
-      try {
-        await navigator.share({ title, text, url })
-        return
-      } catch {
-        /* dismissed, or not allowed here: fall back to copying */
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url)
-      setToast({ kind: 'ok', text: t.toasts.linkCopied })
-    } catch {
-      setToast({ kind: 'error', text: url })
-    }
-  }
-
-  const onDownloadCalendar = (ride: Ride) => {
-    api.downloadRideCalendar(ride.id).catch((e) => setToast({ kind: 'error', text: errMsg(e) }))
-  }
-
-  /** The driver, or a passenger when the driver allows it, puts a colleague in. */
-  const onAddPassenger = (ride: Ride, name: string) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await api.join(ride.id, name))
-      setToast({ kind: 'ok', text: t.toasts.nameIn(name, ride.driver_name) })
-    })
-
-  /** The driver's switch: may the passengers add and remove each other? */
-  const onTogglePassengersManage = (ride: Ride) =>
-    withBusy(ride.id, async () => {
-      const on = !ride.passengers_manage
-      upsertRide(await api.updateRide(ride.id, { passengers_manage: on }))
-      setToast({ kind: 'ok', text: on ? t.toasts.manageOn : drives(ride, me) ? t.toasts.manageOff : t.toasts.manageOffFor(ride.driver_name) })
-    })
-
-  /** The driver's switch: may the passengers put new pickup points on the route? */
-  const onTogglePassengersAddStops = (ride: Ride) =>
-    withBusy(ride.id, async () => {
-      const on = !ride.passengers_add_stops
-      upsertRide(await api.updateRide(ride.id, { passengers_add_stops: on }))
-      setToast({ kind: 'ok', text: on ? t.toasts.addStopsOn : t.toasts.addStopsOff })
-    })
-
-  const onCancel = (ride: Ride) => {
-    const n = ride.bookings.length
-    // A shared car with people in it is offered to them rather than taken away.
-    const handed = handsOver(ride, me)
-    setConfirm({
-      title: t.confirm.removeRideTitle,
-      body: handed
-        ? t.confirm.handOverPax(n)
-        : n > 0
-          ? t.confirm.removeRidePax(n)
-          : t.confirm.removeRideBody(ride.driver_name, ride.car_name, fmtShortDate(ride.ride_date)),
-      label: t.common.remove,
-      onConfirm: () => {
-        setConfirm(null)
-        void withBusy(ride.id, async () => {
-          await api.deleteRide(ride.id)
-          if (handed) upsertRide(await api.ride(ride.id))
-          else removeRides((r) => r.id === ride.id)
-          setToast({ kind: 'ok', text: handed ? t.toasts.handedOver : t.toasts.rideRemoved })
-        })
-      },
-    })
-  }
-
-  /** "Remove this and following": the rest of a weekly series goes with this ride. */
-  const onCancelFollowing = (ride: Ride) =>
-    setConfirm({
-      title: t.confirm.removeFollowingTitle,
-      body: t.confirm.removeFollowingBody,
-      label: t.common.remove,
-      onConfirm: () => {
-        setConfirm(null)
-        void withBusy(ride.id, async () => {
-          // The ones offered to their passengers stay; the live update marks them.
-          // Decided before the call, as that update may land first.
-          const kept = new Set(rides.filter((r) => handsOver(r, me)).map((r) => r.id))
-          await api.deleteRide(ride.id, 'following')
-          removeRides((r) => r.series_id === ride.series_id && r.ride_date >= ride.ride_date && !kept.has(r.id))
-          setToast({ kind: 'ok', text: t.toasts.ridesRemoved })
-        })
-      },
-    })
+  // What the ride card does (lib/useRideActions.ts): seats, the queue, the
+  // route, the driver's switches, removal, asks and answers.
+  const actions = useRideActions({ me, rides, withBusy, upsertRide, removeRides, setToast, setConfirm })
+  const { onJoin, afterLeave, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onClaim, onLate } = actions
 
   /** Drop of the passenger chip onto a car: switch cars if already seated, else join. */
   const onDropPassenger = (target: Ride, drag: PassengerDrag) => {
@@ -565,203 +385,15 @@ function Board({ session }: { session: Session }) {
     }
   }
 
-  // --- a shared car past the driver's share: the admin's call ---
-
-  const onApprove = (ride: Ride) =>
-    withBusy(ride.id, async () => {
-      try {
-        upsertRide(await api.approveRide(ride.id))
-        setToast({ kind: 'ok', text: t.toasts.rideApproved(ride.driver_name) })
-      } finally {
-        setApprovalsTick((n) => n + 1)
-      }
-    })
-
-  // --- a ride under a name with no account: "this is me" ---
-
-  // --- a shared car whose driver cancelled: a passenger takes the wheel ---
-
-  // --- a change to the ride that waits on people (`Ride.proposal`) ---
-
-  const onAnswerChange = (ride: Ride, agree: boolean) =>
-    withBusy(ride.id, async () => {
-      const updated = await api.answerChange(ride.id, agree)
-      upsertRide(updated)
-      const made = !updated.proposal && agree
-      // Taking a passenger's suggestion asks the others, unless nobody is left to ask.
-      const took = agree && !!ride.proposal?.suggested
-      const text = made ? t.toasts.changeMade : took ? t.toasts.changeAsked : agree ? t.toasts.changeAgreed : t.toasts.changeDropped
-      setToast({ kind: 'ok', text })
-    })
-
-  const onWithdrawChange = (ride: Ride) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await api.withdrawChange(ride.id))
-      setToast({ kind: 'ok', text: t.toasts.changeWithdrawn })
-    })
-
-  const onSuggestTime = async (ride: Ride, times: { departure_time?: string; return_time?: string }) => {
-    let sent = false
-    await withBusy(ride.id, async () => {
-      upsertRide(await api.suggestTime(ride.id, times))
-      setToast({ kind: 'ok', text: t.toasts.suggestionSent })
-      sent = true
-    })
-    return sent
-  }
-
-  const onTakeOver = (ride: Ride) =>
-    withBusy(ride.id, async () => {
-      upsertRide(await api.takeOver(ride.id))
-      setToast({ kind: 'ok', text: t.toasts.tookOver })
-    })
-
-  const onClaim = (ride: Ride) =>
-    withBusy(ride.id, async () => {
-      const claimed = await api.claimRide(ride.id)
-      for (const r of claimed) upsertRide(r)
-      setToast({ kind: 'ok', text: t.toasts.claimed(claimed.length) })
-    })
-
-  // The driver's "running late": a line in the thread and a push to the car;
-  // the ride comes back over the socket with its new message count.
-  const onLate = (ride: Ride, minutes: number) =>
-    withBusy(ride.id, async () => {
-      await api.runningLate(ride.id, minutes)
-      setToast({ kind: 'ok', text: t.toasts.lateSaid(minutes) })
-    })
-
-  const onDecline = (ride: Ride) =>
-    setConfirm({
-      title: t.confirm.declineTitle,
-      body: t.confirm.declineBody(ride.driver_name),
-      label: t.detail.decline,
-      onConfirm: () => {
-        setConfirm(null)
-        void withBusy(ride.id, async () => {
-          try {
-            await api.declineRide(ride.id)
-            removeRides((r) => r.id === ride.id)
-            setToast({ kind: 'ok', text: t.toasts.rideDeclined })
-          } finally {
-            setApprovalsTick((n) => n + 1)
-          }
-        })
-      },
-    })
-
-  // How many wait, for the drawer's count: asked again whenever the board
-  // changes (a new ask arrives as a live ride event) or a decision is made.
-  useEffect(() => {
-    if (!isAdmin) return
-    api
-      .approvals()
-      .then((list) => setWaiting(list.length))
-      .catch(() => undefined)
-  }, [isAdmin, rides, approvalsTick])
-
-  useEffect(() => {
-    if (!isAdmin) return
-    api
-      .garage()
-      .then((list) => setPlates(list.filter((r) => !r.plate_registered).length))
-      .catch(() => undefined)
-  }, [isAdmin, rides, approvalsTick])
-
-  // --- an own car's plate for the Beograd garage: the admin ticks it off ---
-
-  const onMarkPlate = (ride: Ride, registered: boolean) =>
-    withBusy(ride.id, async () => {
-      try {
-        upsertRide(await api.setPlateRegistered(ride.id, registered))
-      } finally {
-        setApprovalsTick((n) => n + 1)
-      }
-    })
-
-  // --- asking for a ride ---
-
-  const openAsk = (date: string) => {
-    setAskError(null)
-    setAskDate(date)
-  }
-  const closeAsk = useCallback(() => setAskDate(null), [setAskDate])
-
-  async function onSubmitAsk(input: RideRequestInput) {
-    setSubmitting(true)
-    setAskError(null)
-    try {
-      upsertRequest(await api.createRequest(input))
-      setAskDate(null)
-      setToast({ kind: 'ok', text: t.toasts.requestAdded })
-    } catch (e) {
-      setAskError(errMsg(e))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   const onOffer = (request: RideRequest) => setForm({ mode: 'create', request })
 
-  const onWithdraw = (request: RideRequest) =>
-    withBusy(-request.id, async () => {
-      await api.deleteRequest(request.id)
-      removeRequest(request.id)
-      setToast({ kind: 'ok', text: t.toasts.requestWithdrawn })
-    })
-
-  // --- admin: the car pool ---
 
   function openSharedCars(tab?: SharedCarsTab) {
     if (tab) setCarsTab(tab)
     show('cars')
-    if (!isAdmin) return
-    setAdminError(null)
-    reloadCars().catch((e) => setAdminError(errMsg(e)))
+    desk.pool.refresh()
   }
 
-  async function withAdminBusy(id: number, fn: () => Promise<void>) {
-    setAdminBusyId(id)
-    setAdminError(null)
-    try {
-      await fn()
-      await reloadCars()
-      // A car edit can rewrite `car_name` on rides already booked in it
-      // (backend: relabel_rides_for_car), so the board has to be reloaded or it
-      // keeps the old name and plate until the next event.
-      await load()
-    } catch (e) {
-      setAdminError(errMsg(e))
-    } finally {
-      setAdminBusyId(null)
-    }
-  }
-
-  const onCreateCar = (input: CorporateCarInput) =>
-    void withAdminBusy(NEW_CAR_BUSY_ID, async () => {
-      await api.createCar(input)
-      setToast({ kind: 'ok', text: t.toasts.carAdded(input.name) })
-    })
-
-  const onUpdateCar = (id: number, patch: Partial<CorporateCarInput & { active: boolean }>) =>
-    void withAdminBusy(id, () => api.updateCar(id, patch).then(() => undefined))
-
-  const loadUsage = useCallback((days: number) => api.carUsage(days), [])
-  const downloadUsage = useCallback((days: number) => api.downloadCarUsage(days), [])
-
-  const onDeleteCar = (car: { id: number; name: string; plate: string }) =>
-    setConfirm({
-      title: t.confirm.deleteCarTitle,
-      body: t.confirm.deleteCarBody(car.name, car.plate),
-      label: t.common.delete,
-      onConfirm: () => {
-        setConfirm(null)
-        void withAdminBusy(car.id, async () => {
-          await api.deleteCar(car.id)
-          setToast({ kind: 'ok', text: t.toasts.carDeleted(car.name) })
-        })
-      },
-    })
 
   const upcoming = view === 'upcoming'
   const dayRides = upcoming ? [] : rides.filter((r) => r.ride_date === selected)
@@ -1186,7 +818,7 @@ function Board({ session }: { session: Session }) {
           />
         )}
 
-        {askDate !== null && <RequestForm date={askDate} submitting={submitting} error={askError} onSubmit={onSubmitAsk} onClose={closeAsk} />}
+        {askDate !== null && <RequestForm date={askDate} submitting={asks.submitting} error={asks.askError} onSubmit={asks.onSubmitAsk} onClose={closeAsk} />}
 
         {is('cars') && (
           <SharedCars
@@ -1198,13 +830,13 @@ function Board({ session }: { session: Session }) {
             onTab={setCarsTab}
             cars={adminCars}
             loading={adminCars.length === 0}
-            error={adminError}
-            busyId={adminBusyId}
-            onCreate={onCreateCar}
-            onUpdate={onUpdateCar}
-            onDelete={onDeleteCar}
-            onLoadUsage={loadUsage}
-            onDownloadUsage={downloadUsage}
+            error={desk.pool.error}
+            busyId={desk.pool.busyId}
+            onCreate={desk.pool.onCreateCar}
+            onUpdate={desk.pool.onUpdateCar}
+            onDelete={desk.pool.onDeleteCar}
+            onLoadUsage={desk.pool.loadUsage}
+            onDownloadUsage={desk.pool.downloadUsage}
             onClose={closer('cars')}
           />
         )}
@@ -1218,7 +850,7 @@ function Board({ session }: { session: Session }) {
 
         {is('approvals') && isAdmin && (
           <Approvals
-            version={approvalsTick + waiting}
+            version={desk.tick + waiting}
             busyId={busyId}
             onApprove={(r) => void onApprove(r)}
             onDecline={onDecline}
@@ -1229,7 +861,7 @@ function Board({ session }: { session: Session }) {
 
         {is('garage') && isAdmin && (
           <GarageList
-            version={approvalsTick}
+            version={desk.tick}
             busyId={busyId}
             onMark={(r, registered) => void onMarkPlate(r, registered)}
             onOpen={(r) => openLoggedRide(r.id)}
