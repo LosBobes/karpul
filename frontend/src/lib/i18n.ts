@@ -1263,7 +1263,7 @@ const en = {
       },
       carBusy: {
         title: 'Taken days are red',
-        body: 'When you book a shared car, the calendar paints red the days it is already taken in the hours you chose, and they cannot be picked. Change the times and the days change with them.',
+        body: 'When you book a shared car, the calendar paints red the days it is already taken in the hours you chose, and they cannot be picked. A new ride starts on the first day the car is free, and a taken slot cannot be saved, weekly repeats included.',
       },
       prefill: {
         title: 'A new ride starts from your last one',
@@ -2692,7 +2692,7 @@ const sr: Messages = {
       },
       carBusy: {
         title: 'Zauzeti dani su crveni',
-        body: 'Kad zakazuješ zajednički auto, kalendar crveno boji dane kad je auto već zauzet u satima koje si izabrao, i oni ne mogu da se izaberu. Promeni vreme i dani se menjaju zajedno s njim.',
+        body: 'Kad zakazuješ zajednički auto, kalendar crveno boji dane kad je auto već zauzet u satima koje si izabrao, i oni ne mogu da se izaberu. Nova vožnja počinje od prvog dana kad je auto slobodan, a zauzet termin ne može da se sačuva, ni u nedeljnom ponavljanju.',
       },
       prefill: {
         title: 'Nova vožnja kreće od tvoje poslednje',

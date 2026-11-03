@@ -296,7 +296,10 @@ way), `home` before any (`CorporateCar.home`), pending rides not counted; `openS
 /api/cars/corporate/{id}/busy?from&to&exclude` (signed in, ≤ 92 days) lists the rides holding a car
 (not pending) and `useCarBusy` / `clashOn` in `lib/carBusy.ts` (mirroring `services._overlaps`) let
 `DatePicker`'s `busy` paint a clashing day red and unpickable; a picked day that clashes after the
-times move blocks the save with the server's own 409 wording. **Usage** is `UsageDashboard.tsx`:
+times move blocks the save with the server's own 409 wording, as does a later week of a repeat (the
+`(date)` suffix), and the save waits until the car's days are known (`known`). A new ride (not an
+edit, request or day-plan slot) starts on `firstFreeDay` from the day asked for, once per car
+(`settledFor`). **Usage** is `UsageDashboard.tsx`:
 per car `hours`, `per_day` and `by_hour` from `services.usage_heat` drawn as a calendar or a
 weekday-by-hour heatmap (`lib/usageHeat.ts`); the rides are in the CSV, not listed. Tests:
 `tests/test_car_state.py`.
