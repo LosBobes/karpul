@@ -48,20 +48,22 @@ def _edit_distance(a: str, b: str) -> int:
 SIMILAR_NAME = 0.8
 
 
+def name_likeness(a: str, b: str) -> float:
+    """How alike two names are, 0 to 1: 1 - edits / longer length on the
+    folded names, in whichever word order comes out closest."""
+    fa, fb = fold_name(a), fold_name(b)
+    if not fa or not fb:
+        return 0.0
+    variants = (fb, " ".join(sorted(fb.split())))
+    fa_sorted = " ".join(sorted(fa.split()))
+    return max(1 - _edit_distance(x, y) / max(len(x), len(y)) for x in (fa, fa_sorted) for y in variants)
+
+
 def similar_names(a: str, b: str) -> bool:
     """Could these two names be the same person? Diacritics, case, spacing and
     the order of the words aside, they may differ by about one letter in five
     (`SIMILAR_NAME`). Mirrored by `similarName` in lib/dates.ts; keep both in step."""
-    fa, fb = fold_name(a), fold_name(b)
-    if not fa or not fb:
-        return False
-    variants = (fb, " ".join(sorted(fb.split())))
-    fa_sorted = " ".join(sorted(fa.split()))
-    for x in (fa, fa_sorted):
-        for y in variants:
-            if 1 - _edit_distance(x, y) / max(len(x), len(y)) >= SIMILAR_NAME:
-                return True
-    return False
+    return name_likeness(a, b) >= SIMILAR_NAME
 
 
 def stops_from_text(text: str) -> list[str]:

@@ -67,7 +67,7 @@ class Target:
 CATEGORIES: dict[str, tuple[str, ...]] = {
     "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
     "changes": ("change_asked", "change_agreed", "change_declined", "time_suggested", "suggestion_accepted", "suggestion_declined", "running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
-    "reminders": ("leaving_soon", "note_km"),
+    "reminders": ("leaving_soon", "note_km", "log_yours", "log_claim"),
     "messages": ("message",),
     "requests": ("request_made", "request_answered"),
     "approvals": ("approval_requested", "ride_approved", "ride_declined", "garage_plate", "plate_registered"),
@@ -115,6 +115,13 @@ TEXTS: dict[str, dict[str, Any]] = {
         "stop_added": lambda name, place: f"{name} gets in at {place}, a new pickup point",
         "leaving_soon": lambda minutes: f"Leaving in {minutes} min",
         "note_km": lambda car: f"{car} back? Note the odometer",
+        "log_yours": lambda n: (
+            "Your ride from the shared Mazda's paper log: check the times and note the odometer"
+            if n == 1
+            else f"{n} of your rides from the shared Mazda's paper log: check the times and note the odometer"
+        ),
+        "log_claim": lambda name, n: f"Are you {name}? The shared Mazda's log has {n} ride{'s' if n > 1 else ''} "
+        "under that name. Tap This is me",
         "car_issue": lambda name, car: f"{name} reports a problem with {car}",
         "seat_freed": lambda driver: f"A seat freed up: you're in {driver}'s car",
         "message": lambda name, text: f"{name}: {text}",
@@ -152,6 +159,13 @@ TEXTS: dict[str, dict[str, Any]] = {
         "stop_added": lambda name, place: f"{name} ulazi kod: {place}, novo mesto ulaska",
         "leaving_soon": lambda minutes: f"Polazak za {minutes} min",
         "note_km": lambda car: f"{car} je vraćen? Upiši kilometražu",
+        "log_yours": lambda n: (
+            "Tvoja vožnja iz papirnog dnevnika zajedničke Mazde: proveri vreme i upiši kilometražu"
+            if n == 1
+            else f"Tvoje vožnje iz papirnog dnevnika zajedničke Mazde ({n}): proveri vreme i upiši kilometražu"
+        ),
+        "log_claim": lambda name, n: f"Da li si ti {name}? U dnevniku zajedničke Mazde pod tim imenom je "
+        f"{_sr_rides(n)}. Dodirni Ovo sam ja",
         "car_issue": lambda name, car: f"{name} prijavljuje problem sa autom {car}",
         "seat_freed": lambda driver: f"Oslobodilo se mesto: u autu si, vozi {driver}",
         "message": lambda name, text: f"{name}: {text}",
@@ -176,6 +190,15 @@ def _sr_cars(n: int) -> str:
     if n == 1:
         return "jednom autu"
     return f"{n} auta"
+
+
+def _sr_rides(n: int) -> str:
+    """Serbian "N rides" after "je": one, a few, many."""
+    if n % 10 == 1 and n % 100 != 11:
+        return f"{n} vožnja"
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return f"{n} vožnje"
+    return f"{n} vožnji"
 
 
 def _texts(locale: str) -> dict[str, Any]:

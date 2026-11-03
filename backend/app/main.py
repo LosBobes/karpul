@@ -17,7 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlmodel import Session
 
-from . import backfill, geo
+from . import backfill, backfill_notice, geo
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
 from .housekeeping import backup_status, housekeeping_loop
@@ -75,6 +75,12 @@ async def lifespan(_: FastAPI):
         backfill.run_once(engine)
     except Exception:
         backfill.log.exception("Backfilling the shared-car log failed")
+    # Once, while push is on: the people who should check those rides or claim
+    # them (app/backfill_notice.py).
+    try:
+        backfill_notice.run_once(engine)
+    except Exception:
+        backfill.log.exception("Telling people about the shared-car log failed")
     # The road between the offices is a known length (app/offices.py): rides
     # on it from before that was so get their distance.
     try:
