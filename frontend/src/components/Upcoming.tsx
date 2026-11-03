@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, shortCarName } from '../lib/dates'
 import { useKept } from '../lib/keep'
 import { useT } from '../lib/i18n'
-import { drives, seatedIn, useMe } from '../lib/me'
+import { drives, hasSeatFor, seatedIn, useMe } from '../lib/me'
 import type { Ride, RideRequest } from '../lib/types'
 import { PowertrainMark } from './CarArt'
 import { ArrowRightIcon, HandIcon, SearchIcon, XIcon } from './icons'
@@ -46,7 +46,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
   const [query, setQuery] = useKept('upcoming.query', '')
   const q = fold(query.trim())
   const matches = (r: Ride) => {
-    if (filter === 'free' && r.free_seats <= 0) return false
+    if (filter === 'free' && !hasSeatFor(r, me)) return false
     if (filter === 'mine' && !drives(r, me)) return false
     if (filter === 'joined' && !seatedIn(r, me)) return false
     if (q && !fold(`${r.origin} ${r.destination} ${r.driver_name} ${r.car_name} ${allStops(r).join(' ')}`).includes(q)) return false
@@ -147,6 +147,7 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
                           <small>{r.return_time ? t.upcoming.back(fmtTime(r.return_time)) : t.upcoming.oneWay}</small>
                         </span>
                         {r.needs_driver && <span className="tag tag-amber">{t.upcoming.needsDriver}</span>}
+                        {r.unconfirmed && <span className="tag tag-amber">{t.upcoming.unconfirmed}</span>}
                         {r.proposal && <span className="tag tag-amber">{t.upcoming.changeAsked}</span>}
                         {r.approval === 'pending' && <span className="tag tag-amber">{t.upcoming.awaiting}</span>}
                         {driving ? (

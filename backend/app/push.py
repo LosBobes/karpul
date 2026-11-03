@@ -65,7 +65,7 @@ class Target:
 # What a person can switch off, kind by kind (`User.push_muted`, the
 # Notifications sheet). Every `kind` notify() sends belongs to exactly one.
 CATEGORIES: dict[str, tuple[str, ...]] = {
-    "seats": ("got_in", "got_out", "taken_out", "seat_freed"),
+    "seats": ("got_in", "got_out", "taken_out", "guest_taken_out", "seat_freed"),
     "changes": ("change_asked", "change_agreed", "change_declined", "time_suggested", "suggestion_accepted", "suggestion_declined", "running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
     "reminders": ("leaving_soon", "note_km", "log_yours", "log_claim"),
     "messages": ("message",),
@@ -74,6 +74,9 @@ CATEGORIES: dict[str, tuple[str, ...]] = {
     "cars": ("car_issue",),
 }
 CATEGORY_OF = {kind: category for category, kinds in CATEGORIES.items() for kind in kinds}
+# Losing a seat someone counted on cannot be switched off: muting "seats"
+# silences the rest of that category, never these.
+ALWAYS_SENT = frozenset({"taken_out", "guest_taken_out", "ride_removed"})
 
 
 def muted(user: User) -> list[str]:
@@ -83,7 +86,7 @@ def muted(user: User) -> list[str]:
 def targets_for(session: Session, user_ids: list[int | None], kind: str | None = None) -> list[Target]:
     wanted = {uid for uid in user_ids if uid is not None}
     category = CATEGORY_OF.get(kind or "")
-    if category is not None and wanted:
+    if category is not None and wanted and kind not in ALWAYS_SENT:
         people = session.exec(select(User).where(User.id.in_(wanted))).all()  # type: ignore[union-attr]
         wanted -= {u.id for u in people if category in muted(u)}
     if not wanted:
@@ -98,7 +101,8 @@ TEXTS: dict[str, dict[str, Any]] = {
     "en": {
         "got_in": lambda name: f"{name} got in your car",
         "got_out": lambda name: f"{name} got out of your car",
-        "taken_out": lambda driver: f"{driver} took you out of the car",
+        "taken_out": lambda by: f"{by} took you out of the car",
+        "guest_taken_out": lambda by, name: f"{by} took {name} out of the car",
         "ride_removed": lambda driver, alternatives=0: f"{driver} removed the ride"
         + ("" if not alternatives else f". {alternatives} other car{'s' if alternatives > 1 else ''} with free seats that day"),
         "ride_changed": lambda driver: f"{driver} changed the ride",
@@ -142,7 +146,8 @@ TEXTS: dict[str, dict[str, Any]] = {
     "sr": {
         "got_in": lambda name: f"{name} je ušao/la u tvoj auto",
         "got_out": lambda name: f"{name} je izašao/la iz tvog auta",
-        "taken_out": lambda driver: f"{driver} te je uklonio/la iz auta",
+        "taken_out": lambda by: f"{by} te je uklonio/la iz auta",
+        "guest_taken_out": lambda by, name: f"{by} je uklonio/la iz auta putnika koga si dodao/la: {name}",
         "ride_removed": lambda driver, alternatives=0: f"{driver} je uklonio/la vožnju"
         + ("" if not alternatives else f". Tog dana ima mesta u još {_sr_cars(alternatives)}"),
         "ride_changed": lambda driver: f"{driver} je izmenio/la vožnju",

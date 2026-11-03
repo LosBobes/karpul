@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { firstName, fmtTime, shortCarName } from '../lib/dates'
 import { useT } from '../lib/i18n'
 import { dropZone, type DropTarget } from '../lib/dnd'
-import { drives, seatedIn, useMe, type Me } from '../lib/me'
+import { drives, hasSeatFor, seatedIn, useMe, type Me } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
@@ -20,7 +20,7 @@ interface Props {
 
 function canReceive(ride: Ride, me: Me): boolean {
   if (drives(ride, me) || seatedIn(ride, me)) return false
-  return ride.free_seats > 0
+  return hasSeatFor(ride, me)
 }
 
 /**

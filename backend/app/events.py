@@ -131,3 +131,8 @@ def request_deleted(request_id: int) -> None:
 
 def photos_changed() -> None:
     hub.publish({"type": "photos.changed"})
+
+
+def notices_changed(user_id: int) -> None:
+    """That account has a seat notice to see (app/notices.py); nobody else hears."""
+    hub.publish({"type": "notices.changed"}, user_id=user_id)

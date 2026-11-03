@@ -212,6 +212,17 @@ What you see on a ride card:
 add or remove *themselves*; other passengers only when the driver turned on *Passengers can
 add and remove each other*.
 
+**If someone else takes you out.** Whoever takes another person out of a car is asked first,
+and it is never silent: the passenger (and whoever had put them in, for a colleague booked by
+name) gets a notification that cannot be switched off and a card on top of the board until they
+tap **Got it**, and the ride's **Messages** keep a line saying who did it, which nobody can
+remove. The same card appears when a ride you are in is removed. **See that day** opens the day,
+so you can find another car.
+
+**"Not confirmed".** A coming ride from the shared Mazda's paper log says who booked the car, not
+that they take passengers, so it shows **Not confirmed** and nobody can get in or queue for it
+until its driver (or an admin) taps **Confirm the ride**. Editing the ride confirms it too.
+
 **"No account" and "This is me".** Some older rides (for example the shared car's paper log
 that was brought into the app) have a driver who is just a name with no account; they show a
 *No account* tag. If that name is yours, you see **This is me**: tap it and all such rides under
@@ -350,7 +361,7 @@ you want to hear about:
 
 | Category | You are told when |
 | --- | --- |
-| **Seats** | someone gets in or out of your car, or a seat frees up for you |
+| **Seats** | someone gets in or out of your car, or a seat frees up for you. Being taken out of a car, or a ride you are in being removed, always reaches you, even with this off |
 | **Ride changes** | a ride you are in moves, runs late or is removed, or you are put down to drive |
 | **Reminders** | it is time to leave, and to note the odometer when a shared car is back |
 | **Messages** | someone writes in the thread of your ride |

@@ -104,6 +104,9 @@ export interface Ride {
   /** The driver cancelled a shared car with passengers in it: one of them may
    *  take the wheel (`takeOver`); `driver_name` is still who cancelled. */
   needs_driver: boolean
+  /** A coming ride from the shared car's paper log its driver has not confirmed:
+   *  nobody but whoever runs it puts anyone in (`confirmRide`). */
+  unconfirmed: boolean
   /** Driver's hint: they would appreciate a coffee. */
   coffee_please: boolean
   /** An own car's plate for the Beograd office's garage ("" none; lib/offices.ts `needsGarage`). */
@@ -157,6 +160,25 @@ export interface RideMessage {
   body: string
   /** The driver's one-tap "running N min late"; shown in the reader's language. */
   late_minutes: number | null
+  /** Set when the author took this passenger out of the car; shown in the reader's language. */
+  removed_name?: string | null
+  created_at: string
+}
+
+/** "You lost a seat", until seen (GET /api/notices, backend app/notices.py). */
+export interface SeatNotice {
+  id: number
+  ride_id: number | null
+  ride_date: string
+  departure_time: string
+  origin: string
+  destination: string
+  /** Someone took the passenger out, or the ride itself went. */
+  kind: 'taken_out' | 'ride_removed'
+  passenger_name: string
+  /** The reader lost their own seat; false: a colleague they had put in did. */
+  yours: boolean
+  by_name: string
   created_at: string
 }
 

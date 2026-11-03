@@ -4,7 +4,7 @@ import type { Confirm } from './confirm'
 import { errMsg } from './errors'
 import { fmtShortDate, fmtTime } from './dates'
 import { useT } from './i18n'
-import { drives, handsOver, placeInLine, type Me } from './me'
+import { drives, handsOver, isMyBooking, placeInLine, type Me } from './me'
 import type { NewStop } from './stops'
 import type { Ride, RideInput } from './types'
 import type { Toast } from './useToast'
@@ -49,10 +49,27 @@ export function useRideActions({ me, rides, withBusy, upsertRide, removeRides, s
     else upsertRide(r)
   }
 
-  const onLeave = (ride: Ride, bookingId: number) =>
+  const leave = (ride: Ride, bookingId: number, done?: () => void) =>
     withBusy(ride.id, async () => {
       afterLeave(await api.leave(ride.id, bookingId))
+      done?.()
     })
+
+  /** Your own seat goes at once; someone else's only after "are you sure?",
+   *  because they lose it (and are told who took it away). */
+  const onLeave = (ride: Ride, bookingId: number) => {
+    const booking = ride.bookings.find((b) => b.id === bookingId)
+    if (!booking || isMyBooking(booking, me)) return leave(ride, bookingId)
+    setConfirm({
+      title: t.confirm.takeOutTitle,
+      body: t.confirm.takeOutBody(booking.passenger_name),
+      label: t.common.remove,
+      onConfirm: () => {
+        setConfirm(null)
+        void leave(ride, bookingId, () => setToast({ kind: 'ok', text: t.toasts.takenOut(booking.passenger_name) }))
+      },
+    })
+  }
 
   /** The keyboard's way of dragging the chip to another car: leave one, join the other. */
   const onSwitch = (target: Ride, from: { ride: Ride; bookingId: number }, pickup = '', newStop: NewStop | null = null) =>
@@ -239,6 +256,13 @@ export function useRideActions({ me, rides, withBusy, upsertRide, removeRides, s
       setToast({ kind: 'ok', text: t.toasts.tookOver })
     })
 
+  /** The driver (or an admin) confirms a ride from the shared car's paper log. */
+  const onConfirmRide = (ride: Ride) =>
+    withBusy(ride.id, async () => {
+      upsertRide(await api.confirmRide(ride.id))
+      setToast({ kind: 'ok', text: t.toasts.rideConfirmed })
+    })
+
   const onClaim = (ride: Ride) =>
     withBusy(ride.id, async () => {
       const claimed = await api.claimRide(ride.id)
@@ -254,5 +278,5 @@ export function useRideActions({ me, rides, withBusy, upsertRide, removeRides, s
       setToast({ kind: 'ok', text: t.toasts.lateSaid(minutes) })
     })
 
-  return { onJoin, afterLeave, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onClaim, onLate }
+  return { onJoin, afterLeave, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onConfirmRide, onClaim, onLate }
 }

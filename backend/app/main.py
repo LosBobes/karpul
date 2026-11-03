@@ -31,6 +31,7 @@ from .routers import (
     cars,
     drivers,
     live,
+    notices,
     odometer,
     photos,
     places,
@@ -75,6 +76,12 @@ async def lifespan(_: FastAPI):
         backfill.run_once(engine)
     except Exception:
         backfill.log.exception("Backfilling the shared-car log failed")
+    # The coming log rides written before they waited for their drivers'
+    # confirmation wait for it now, once.
+    try:
+        backfill.hold_once(engine)
+    except Exception:
+        backfill.log.exception("Holding the shared-car log's coming rides failed")
     # Once, while push is on: the people who should check those rides or claim
     # them (app/backfill_notice.py).
     try:
@@ -151,6 +158,7 @@ app.include_router(odometer.router)
 app.include_router(waitlist.router)
 app.include_router(places.router)
 app.include_router(thread.router)
+app.include_router(notices.router)
 app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)

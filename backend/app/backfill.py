@@ -47,6 +47,8 @@ from .services import corporate_car_label, ensure_car_available, fold_name
 log = logging.getLogger("karpul.backfill")
 
 MARKER = "mazda-log-2026"
+# The coming log rides already written before `Ride.unconfirmed` existed get it once.
+HOLD_MARKER = "mazda-log-2026-unconfirmed"
 DAY_START = time(8, 0)
 DAY_END = time(18, 0)
 BG, NS, NIS = "Beograd", "Novi Sad", "Niš"
@@ -173,11 +175,47 @@ def backfill(session: Session, today: date) -> dict[str, list[str]]:
                     seats=car.passenger_seats,
                     # A day already gone needs no reminder.
                     reminder_sent=day < today,
+                    # The log says who booked the car, not that they take
+                    # anyone: nobody gets in until the driver confirms it.
+                    unconfirmed=day >= today,
                 )
             )
             session.flush()
             report["added"].append(line)
     return report
+
+
+def hold_unconfirmed(session: Session, today: date) -> list[Ride]:
+    """The coming log rides nobody has looked at yet (still on the log's own
+    times, as `backfill_notice.needs_a_look` tells), marked `unconfirmed`.
+    Whoever already sits in one stays; nobody new gets in until the driver
+    confirms it. Returns the rides marked; the caller commits."""
+    from .backfill_notice import log_rides, needs_a_look
+
+    held = []
+    for entry, ride in log_rides(session):
+        if ride.ride_date >= today and not ride.unconfirmed and needs_a_look(entry, ride, today):
+            ride.unconfirmed = True
+            session.add(ride)
+            held.append(ride)
+    return held
+
+
+def hold_once(target: Engine, today: date | None = None) -> list[Ride] | None:
+    """`hold_unconfirmed`, once (`HOLD_MARKER`), after the backfill has run.
+    Returns the rides marked, or None when it had run already or the
+    backfill has not (a later start tries again)."""
+    with Session(target) as session:
+        begin_write(session)
+        if session.get(DataMigration, HOLD_MARKER) is not None or session.get(DataMigration, MARKER) is None:
+            return None
+        held = hold_unconfirmed(session, today or date.today())
+        session.add(DataMigration(name=HOLD_MARKER))
+        session.commit()
+        for ride in held:
+            session.refresh(ride)
+    log.info("Coming shared-car log rides held until their drivers confirm them: %d", len(held))
+    return held
 
 
 def report_lines(report: dict[str, list[str]]) -> list[str]:

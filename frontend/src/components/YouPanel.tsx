@@ -1,7 +1,7 @@
 import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
-import { drives, useMe } from '../lib/me'
+import { drives, hasSeatFor, useMe } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { Avatar } from './Avatar'
@@ -49,7 +49,7 @@ export function YouPanel({
 
   const driving = dayRides.find((r) => drives(r, me)) ?? null
   const seated = currentRide !== null
-  const openSeats = dayRides.some((r) => r.free_seats > 0 && !drives(r, me))
+  const openSeats = dayRides.some((r) => hasSeatFor(r, me) && !drives(r, me))
   const canDrag = !seated && !driving && openSeats && !isPast
 
   const cls = [
