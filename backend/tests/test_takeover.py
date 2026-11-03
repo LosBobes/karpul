@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from app.models import Ride
 from app.reminders import drop_driverless
+from tests.conftest import patch_ride_notify
 
 DAY = date.today() + timedelta(days=14)
 ANA = {"X-User-Name": "Ana Petrović"}
@@ -41,7 +42,7 @@ def sent(monkeypatch):
         out.append((kind, sorted(uid for uid in user_ids if uid is not None)))
         return 0
 
-    monkeypatch.setattr("app.routers.rides.notify", fake_notify)
+    patch_ride_notify(monkeypatch, fake_notify)
     return out
 
 

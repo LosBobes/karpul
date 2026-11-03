@@ -4,6 +4,8 @@ from datetime import date, timedelta
 
 import pytest
 
+from tests.conftest import patch_ride_notify
+
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 
 
@@ -31,7 +33,7 @@ def sent(monkeypatch):
         out.append((kind, sorted(uid for uid in user_ids if uid is not None), args))
         return 0
 
-    monkeypatch.setattr("app.routers.rides.notify", fake_notify)
+    patch_ride_notify(monkeypatch, fake_notify)
     return out
 
 

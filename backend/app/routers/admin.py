@@ -274,7 +274,7 @@ def admin_log(
 @router.get("/approvals", response_model=list[RideRead])
 def approvals(session: SessionDep, creds: CredsDep):
     """Admin-only: the shared-car rides waiting for approval, from today on,
-    soonest first (routers/rides.approve_ride / decline_ride decide them)."""
+    soonest first (routers/drivers.approve_ride / decline_ride decide them)."""
     require_admin(session, creds)
     stmt = (
         select(Ride)

@@ -5,6 +5,8 @@ from datetime import date, timedelta
 
 import pytest
 
+from tests.conftest import patch_ride_notify
+
 DAY = date.today() + timedelta(days=3)
 
 
@@ -33,8 +35,7 @@ def sent(monkeypatch):
         out.append((kind, args))
         return 0
 
-    monkeypatch.setattr("app.routers.rides.notify", fake_notify)
-    monkeypatch.setattr("app.routers.admin.notify", fake_notify)
+    patch_ride_notify(monkeypatch, fake_notify, "app.routers.admin")
     return out
 
 

@@ -16,6 +16,23 @@ from app.models import User
 from app.seed import seed_corporate_cars
 from app.services import new_calendar_token, norm_name
 
+# Every module that pushes about a ride: the ride routers and the rules they
+# share. A test that records the pushes patches `notify` in all of them.
+RIDE_NOTIFIERS = (
+    "app.routers.rides",
+    "app.routers.seats",
+    "app.routers.proposals",
+    "app.routers.drivers",
+    "app.ride_edits",
+    "app.ride_removal",
+)
+
+
+def patch_ride_notify(monkeypatch, fake, *more: str) -> None:
+    """Replace `notify` with `fake` wherever a ride push is sent (and in `more`)."""
+    for module in (*RIDE_NOTIFIERS, *more):
+        monkeypatch.setattr(f"{module}.notify", fake)
+
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch):
@@ -24,6 +41,9 @@ def clean_env(monkeypatch):
     monkeypatch.delenv("KARPUL_ADMINS", raising=False)
     monkeypatch.delenv("KARPUL_SENTRY_DSN", raising=False)
     monkeypatch.delenv("KARPUL_ALLOWED_COUNTRIES", raising=False)
+    # No backup ever leaves for a developer's bucket (app/offsite.py).
+    for name in ("URL", "KEY", "SECRET", "REGION"):
+        monkeypatch.delenv(f"KARPUL_BACKUP_S3_{name}", raising=False)
     # No test ever asks the public geocoder or a router; tests that want one
     # set the address and replace geo.fetch_json.
     monkeypatch.setenv("KARPUL_GEOCODER_URL", "")

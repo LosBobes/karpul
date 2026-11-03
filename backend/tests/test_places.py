@@ -10,6 +10,7 @@ from sqlmodel import select
 from app import geo
 from app.models import AdminAction, KnownPlace, Ride, RideRequest
 from app.offices import OFFICE_POINTS
+from tests.conftest import patch_ride_notify
 
 TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 LIMAN = {"lat": 45.2440, "lng": 19.8420}
@@ -45,8 +46,7 @@ def sent(monkeypatch):
         out.append((kind, sorted(uid for uid in user_ids if uid is not None), args))
         return 0
 
-    for module in ("app.routers.rides", "app.routers.requests"):
-        monkeypatch.setattr(f"{module}.notify", fake_notify)
+    patch_ride_notify(monkeypatch, fake_notify, "app.routers.requests")
     return out
 
 

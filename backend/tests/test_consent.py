@@ -5,6 +5,8 @@ from datetime import date, timedelta
 
 import pytest
 
+from tests.conftest import patch_ride_notify
+
 DAY = date.today() + timedelta(days=4)
 DRIVER = {"X-User-Name": "Ana Vozač"}
 BOJAN = {"X-User-Name": "Bojan Putnik"}
@@ -35,7 +37,7 @@ def sent(monkeypatch):
         out.append(kind)
         return 0
 
-    monkeypatch.setattr("app.routers.rides.notify", fake_notify)
+    patch_ride_notify(monkeypatch, fake_notify)
     return out
 
 

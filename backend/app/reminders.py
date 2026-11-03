@@ -131,13 +131,13 @@ def drop_driverless(session: Session, now: datetime | None = None) -> int:
     """Remove every ride whose driver cancelled (`needs_driver`) and that
     nobody took over by its departure: the passengers are told it is off, and
     the car is free again. Returns how many went. Commits."""
-    from .routers.rides import _remove_rides
+    from .ride_removal import remove_rides
 
     now = now or datetime.now()
     stmt = select(Ride).where(Ride.needs_driver.is_(True), Ride.ride_date <= now.date())  # type: ignore[attr-defined]
     due = [r for r in session.exec(stmt) if datetime.combine(r.ride_date, r.departure_time) <= now]
     if due:
-        _remove_rides(session, None, due, tell_driver=False)
+        remove_rides(session, None, due, tell_driver=False)
     return len(due)
 
 

@@ -5,6 +5,8 @@ from datetime import date, timedelta
 
 import pytest
 
+from tests.conftest import patch_ride_notify
+
 TOMORROW = date.today() + timedelta(days=1)
 
 
@@ -131,9 +133,7 @@ def test_stops_before_the_start(client):
 @pytest.fixture
 def sent(monkeypatch):
     out = []
-    monkeypatch.setattr(
-        "app.routers.rides.notify", lambda session, ids, kind, ride, **args: out.append((kind, args)) or 0
-    )
+    patch_ride_notify(monkeypatch, lambda session, ids, kind, ride, **args: out.append((kind, args)) or 0)
     return out
 
 

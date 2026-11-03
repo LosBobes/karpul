@@ -145,7 +145,7 @@ class Ride(SQLModel, table=True):
     # (`plate_registered`), which a changed plate undoes.
     plate: str = Field(default="", sa_column_kwargs={"server_default": ""})
     plate_registered: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
-    # A change the driver asked the passengers for (routers/rides.py
+    # A change the driver asked the passengers for (app/ride_edits.py
     # CONSENT_FIELDS), as JSON: {"by", "by_id", "fields": a RideUpdate,
     # "agreed": [account ids]}; "" when nothing is asked. Made once every
     # passenger with an account agrees, dropped when one declines.

@@ -40,7 +40,12 @@ export default defineConfig({
       KARPUL_FRONTEND_DIST: join(process.cwd(), 'dist'),
       CORPORATE_CARS: '',
       KARPUL_VAPID_PRIVATE_KEY: '',
-      KARPUL_ADMINS: 'ana',
+      // ana for the smoke test; e2e/admin.spec.ts signs up a boss and a chief per
+      // project and attempt (p, d, p2, d2, ...: a retry or --repeat-each), eight deep.
+      KARPUL_ADMINS: [
+        'ana',
+        ...['p', 'd'].flatMap((p) => ['', '2', '3', '4', '5', '6', '7', '8'].flatMap((n) => [`boss.${p}${n}`, `chief.${p}${n}`])),
+      ].join(','),
       // Every test registers its own people, all from one address.
       KARPUL_REGISTRATIONS_PER_HOUR: '100',
       // No outside services: places come from what Karpul knows (the offices),
