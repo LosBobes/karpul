@@ -303,6 +303,21 @@ main,
   border-color: var(--green);
   color: #fff;
 }
+.cal-day-busy,
+.cal-day-busy:hover,
+.cal-day-busy:disabled {
+  background: var(--red-soft);
+  border-color: transparent;
+  color: var(--red);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.cal-day-selected.cal-day-busy {
+  cursor: default;
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
 .cal-foot {
   display: flex;
   justify-content: flex-end;

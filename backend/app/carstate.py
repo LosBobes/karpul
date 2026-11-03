@@ -24,6 +24,7 @@ from sqlmodel import Session, col, select
 
 from .models import CarReport, CarType, CorporateCar, Ride
 from .offices import ride_km
+from .services import fold_name, load_points
 
 # Battery used per kilometre, in percent: the Mazda 6e's 68.8 kWh go about
 # 420 km on the motorway in practice (WLTP says 479), so a 90 km leg costs
@@ -81,6 +82,51 @@ def _km_since(rides: list[Ride], after_ride: Ride | None, after_day: date | None
             continue
         total += ride_km(r.origin, r.destination, r.distance_km, r.return_time is not None) or 0
     return total
+
+
+def _pin(ride: Ride, place: str) -> dict[str, float] | None:
+    return load_points(ride.points).get(fold_name(place))
+
+
+def car_location(car: CorporateCar, rides: list[Ride], now: datetime) -> dict[str, Any]:
+    """Where the car is now, worked out from its rides (nobody reports it):
+
+    - `out`: on a ride with a return that has left and is not back yet, so
+      with its driver, `place` the ride's destination and `until` the return;
+    - `parked`: after the last ride that has been driven, back at its start
+      when it had a return, at its destination when it was one way;
+    - `home`: no ride yet, where the car is kept (`CorporateCar.home`);
+    - `unknown`: none of that.
+
+    A ride waiting for approval is not counted: it may never go.
+    """
+    today, clock = now.date(), now.time()
+    went = [r for r in rides if r.approval != "pending" and (r.ride_date < today or (r.ride_date == today and r.departure_time <= clock))]
+    home_pin = {"lat": car.home_lat, "lng": car.home_lng} if car.home_lat is not None and car.home_lng is not None else None
+    base: dict[str, Any] = {"state": "unknown", "place": None, "point": None, "ride_id": None, "driver": None, "since": None, "until": None, "estimated": True}
+    if not went:
+        if car.home:
+            return {**base, "state": "home", "place": car.home, "point": home_pin}
+        return base
+    last = went[-1]
+    since = datetime.combine(last.ride_date, last.departure_time)
+    if last.ride_date == today and last.return_time is not None and clock < last.return_time:
+        return {
+            **base,
+            "state": "out",
+            "place": last.destination,
+            "point": _pin(last, last.destination),
+            "ride_id": last.id,
+            "driver": last.driver_name,
+            "since": since,
+            "until": datetime.combine(last.ride_date, last.return_time),
+        }
+    place = last.origin if last.return_time is not None else last.destination
+    at = datetime.combine(last.ride_date, last.return_time) if last.return_time is not None else since
+    point = _pin(last, place)
+    if point is None and car.home and fold_name(place) == fold_name(car.home):
+        point = home_pin
+    return {**base, "state": "parked", "place": place, "point": point, "ride_id": last.id, "driver": last.driver_name, "since": at}
 
 
 def car_state(car: CorporateCar, rides: list[Ride], reports: list[CarReport], now: datetime) -> dict[str, Any]:
@@ -142,6 +188,7 @@ def car_state(car: CorporateCar, rides: list[Ride], reports: list[CarReport], no
         "clean": clean.as_dict(),
         "issues": issues.as_dict(),
         "recent": reports[:RECENT_REPORTS],
+        "location": car_location(car, rides, now),
     }
 
 

@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react'
-import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
+import { useState } from 'react'
 import { api } from '../lib/api'
 import { messages, useT } from '../lib/i18n'
 import type { CarReportInput, CarState, CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { CarStatusList } from './CarStatus'
-import { CarIcon, ChartIcon, DownloadIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { CarIcon, ChartIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { PlaceDialog } from './PlaceDialog'
 import { Menu } from './Menu'
 import { PlaceInput } from './PlaceInput'
 import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
+import { UsageDashboard } from './UsageDashboard'
 
 type CarPatch = Partial<CorporateCarInput & { active: boolean }>
 
@@ -136,7 +136,7 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
         </div>
       )}
 
-      {tab === 'usage' && <Usage load={onLoadUsage} download={onDownloadUsage} />}
+      {tab === 'usage' && <UsageDashboard load={onLoadUsage} download={onDownloadUsage} />}
 
       {tab === 'cars' && (
         <>
@@ -202,171 +202,6 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
         </>
       )}
     </Sheet>
-  )
-}
-
-const WINDOWS = [30, 90, 365] as const
-
-/**
- * How the pool is used: per car the rides, the days it went out (as a share
- * of the working days in the window), drivers, passengers and kilometres,
- * when it last went out and what is booked ahead; then the rides themselves.
- */
-function Usage({ load, download }: { load: (days: number) => Promise<CarUsage>; download: (days: number) => Promise<void> }) {
-  const t = useT()
-  const [days, setDays] = useState<(typeof WINDOWS)[number]>(90)
-  const [report, setReport] = useState<CarUsage | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [downloading, setDownloading] = useState(false)
-
-  async function exportSheet() {
-    setDownloading(true)
-    try {
-      await download(days)
-    } catch (e) {
-      setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong)
-    } finally {
-      setDownloading(false)
-    }
-  }
-
-  useEffect(() => {
-    let live = true
-    // Data fetching, like App.load: a window change clears the old error first.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setError(null)
-    load(days)
-      .then((r) => live && setReport(r))
-      .catch((e) => live && setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong))
-    return () => {
-      live = false
-    }
-  }, [days, load])
-
-  const pct = (rate: number) => `${Math.round(rate * 100)}%`
-
-  return (
-    <div className="usage">
-      <div className="segmented usage-window" role="radiogroup" aria-label={t.usage.window(days)}>
-        <SegThumb count={WINDOWS.length} index={WINDOWS.indexOf(days)} />
-        {WINDOWS.map((d) => (
-          <button key={d} type="button" role="radio" aria-checked={days === d} className={days === d ? 'seg seg-on' : 'seg'} onClick={() => setDays(d)}>
-            {t.usage.window(d)}
-          </button>
-        ))}
-      </div>
-
-      {error && <p className="error">{error}</p>}
-      {!report && !error && <p className="hint">{t.common.loading}</p>}
-
-      {report && (
-        <>
-          <div className="stat-grid stat-grid-4">
-            <div className="card stat-tile">
-              <strong className="when-value">{report.totals.rides}</strong>
-              <span>{t.usage.ridesLabel}</span>
-            </div>
-            <div className="card stat-tile">
-              <strong className="when-value">{report.totals.days_used}</strong>
-              <span>{t.usage.daysOut}</span>
-            </div>
-            <div className="card stat-tile">
-              <strong className="when-value">{report.totals.passengers}</strong>
-              <span>{t.usage.passengers}</span>
-            </div>
-            <div className="card stat-tile">
-              <strong className="when-value">{report.totals.km}</strong>
-              <span>{t.usage.km}</span>
-            </div>
-          </div>
-          <p className="hint">{t.usage.useRateHint(report.working_days)}</p>
-
-          <ul className="usage-list">
-            {report.cars.map((row) => (
-              <li key={row.car.id} className={row.car.active ? 'card usage-car' : 'card usage-car usage-car-retired'}>
-                <div className="usage-car-head">
-                  <span className="admin-car-icon" aria-hidden="true">
-                    <CarGlyph carName={row.car.name} size={16} />
-                  </span>
-                  <span className="admin-row-text">
-                    <strong>
-                      {row.car.name}
-                      <PowertrainMark carName={row.car.name} />
-                      {!row.car.active && <span className="tag">{t.usage.retired}</span>}
-                    </strong>
-                    <span>
-                      <span className="mono">{row.car.plate}</span> · {t.usage.lastUsed}: {row.last_used ? fmtShortDate(row.last_used) : t.usage.never}
-                      {row.upcoming > 0 && ` · ${t.usage.booked(row.upcoming)}`}
-                    </span>
-                  </span>
-                  <span className="usage-rate when-value" title={t.usage.useRate}>
-                    {pct(row.use_rate)}
-                  </span>
-                </div>
-                <div className="usage-bar" role="img" aria-label={`${t.usage.useRate} ${pct(row.use_rate)}`}>
-                  <span style={{ width: pct(Math.min(row.use_rate, 1)) }} />
-                </div>
-                <dl className="usage-facts">
-                  <div>
-                    <dt>{t.usage.ridesLabel}</dt>
-                    <dd className="when-value">{row.rides}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.usage.daysOut}</dt>
-                    <dd className="when-value">{row.days_used}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.usage.drivers}</dt>
-                    <dd className="when-value">{row.drivers}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.usage.passengers}</dt>
-                    <dd className="when-value">{row.passengers}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.usage.km}</dt>
-                    <dd className="when-value">{row.km}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-
-          <h3 className="section-title">{t.usage.history}</h3>
-          {report.history.length > 0 && (
-            <button type="button" className="btn btn-soft btn-block" disabled={downloading} onClick={() => void exportSheet()}>
-              <DownloadIcon size={18} /> {t.usage.download}
-            </button>
-          )}
-          {report.history.length === 0 ? (
-            <p className="hint">{t.usage.noUsage}</p>
-          ) : (
-            <ul className="history-list">
-              {report.history.map((h) => (
-                <li key={h.id} className="history-row">
-                  <span className="history-when">
-                    <span className="when-value">{fmtShortDate(h.ride_date)}</span>
-                    <small>
-                      {fmtTime(h.departure_time)}
-                      {h.return_time ? ` – ${fmtTime(h.return_time)}` : ''}
-                    </small>
-                  </span>
-                  <span className="history-text">
-                    <strong>
-                      {shortCarName(h.car_name)} · {h.driver_name}
-                    </strong>
-                    <span>
-                      {t.myRides.route(h.origin, h.destination)} · {t.usage.pax(h.passengers, h.seats)}
-                      {h.distance_km != null && ` · ${h.distance_km} km`}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
-    </div>
   )
 }
 

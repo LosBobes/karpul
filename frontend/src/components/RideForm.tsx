@@ -8,6 +8,7 @@ import { useRoad } from '../lib/places'
 import type { CarType, CorporateCar, Point, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
 import { MAX_STOPS } from '../lib/stops'
+import { clashOn, clashText, useCarBusy } from '../lib/carBusy'
 import { PlaceDialog } from './PlaceDialog'
 import { PlaceInput } from './PlaceInput'
 import { Avatar } from './Avatar'
@@ -298,6 +299,21 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         ? t.apiError('Offer at least one seat to take the person who asked')
         : null
     : null
+  // A shared car already taken in the hours asked for: the day is red in the
+  // calendar and cannot be picked, and a day picked before the times moved says so.
+  const [months, setMonths] = useState<string[]>([])
+  const busyCar = carType === 'corporate' && carId !== '' ? carId : null
+  const busy = useCarBusy(busyCar, existing?.id ?? null, [rideDate, ...(offersWayBack && wayBack ? [backDate] : []), ...months])
+  const addMonth = (iso: string) => setMonths((ms) => (ms.includes(iso) ? ms : [...ms, iso]))
+  const rideBusy = (iso: string) => {
+    const b = clashOn(busy, iso, departure, oneWay ? null : ret)
+    return b ? t.apiError(clashText(b)) : null
+  }
+  const backBusy = (iso: string) => {
+    const b = clashOn(busy, iso, backDeparture, null)
+    return b ? t.apiError(clashText(b)) : null
+  }
+  const clash = rideBusy(rideDate) ?? (offersWayBack && wayBack ? backBusy(backDate) : null)
   const localError =
     !oneWay && ret <= departure
       ? t.form.returnAfter
@@ -305,7 +321,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         ? t.form.repeatMax
         : repeatTooEarly
           ? t.form.repeatUntil
-          : requestError
+          : (requestError ?? clash)
 
   // What the simple form is carrying out of sight, named so it is never a surprise.
   const stopCount = [...stopsBefore, ...stops].filter((s) => s.trim() !== '').length
@@ -572,7 +588,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         <div className={oneWay ? 'when-grid when-grid-one' : 'when-grid'}>
           <div className="subfield">
             <span className="subfield-label">{t.form.day}</span>
-            <DatePicker label={t.form.day} value={rideDate} onChange={setRideDate} />
+            <DatePicker label={t.form.day} value={rideDate} onChange={setRideDate} busy={busyCar !== null ? rideBusy : undefined} onMonth={addMonth} />
           </div>
           <div className="subfield">
             <span className="subfield-label">{t.form.departs}</span>
@@ -601,7 +617,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
             <div className="when-grid when-grid-one">
               <div className="subfield">
                 <span className="subfield-label">{t.form.wayBackDay}</span>
-                <DatePicker label={t.form.wayBackDay} value={backDate} onChange={setBackDate} />
+                <DatePicker label={t.form.wayBackDay} value={backDate} onChange={setBackDate} busy={busyCar !== null ? backBusy : undefined} onMonth={addMonth} />
               </div>
               <div className="subfield">
                 <span className="subfield-label">{t.form.wayBackLeaves}</span>

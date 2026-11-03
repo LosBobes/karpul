@@ -140,7 +140,8 @@ itself, so a test recording pushes patches them all through `patch_ride_notify` 
 
 **Admins run every ride.** `may_run` in `app/access.py` lets the driver *or an admin* edit and
 remove a ride (and its following weeks) and manage its seats; the frontend twin is `runs()` in
-`lib/me.ts` (`Me.admin`), which `CarDetail` uses for the ⋮ menu and the seat controls. An admin can
+`lib/me.ts` (`Me.admin`), which `CarDetail` uses for the ⋮ menu, the card's own *Edit* button
+(`.driver-edit`) and the seat controls. An admin can
 also add a ride in someone else's name: `RideCreate.driver_id` (create only; anyone else naming
 another account is a 403, an unknown one a 404), chosen in `RideForm` through `DriverPicker`
 (the form's driver line made pressable, listing `/api/admin/users`); that account then drives and
@@ -286,7 +287,18 @@ own: an admin gets the car's ⋮ (edit, retire, delete) and its `CarEditor` hand
 admin's name, the car's own fields only when they changed), *Mark as fixed* on a problem, a ⋮ with *Edit* / *Remove* on each recent report, *Add
 shared car* at the foot and the retired cars listed under it; the one other tab, admins only, is
 *Usage* (the tab is `sharedCars.tab` in `App.tsx`, so the driver card's car line opens it on the cars). One line under
-the car's name on the driver card of a shared-car ride (`.driver-car-state`). Tests:
+the car's name on the driver card of a shared-car ride (`.driver-car-state`). **Where the car is**
+(`carstate.car_location`, `location` in the state, `CarWhere` in `CarStatus.tsx`): nobody reports it,
+it is worked out from the rides and the clock: `out` on a ride with a return that has left and is not
+back, `parked` after the last ride driven (at its start after a return, its destination after one
+way), `home` before any (`CorporateCar.home`), pending rides not counted; `openSharedCars` in
+`App.tsx` refetches the state on every visit for that reason. **Taken days in the form**: `GET
+/api/cars/corporate/{id}/busy?from&to&exclude` (signed in, ≤ 92 days) lists the rides holding a car
+(not pending) and `useCarBusy` / `clashOn` in `lib/carBusy.ts` (mirroring `services._overlaps`) let
+`DatePicker`'s `busy` paint a clashing day red and unpickable; a picked day that clashes after the
+times move blocks the save with the server's own 409 wording. **Usage** is `UsageDashboard.tsx`:
+per car `hours`, `per_day` and `by_hour` from `services.usage_heat` drawn as a calendar or a
+weekday-by-hour heatmap (`lib/usageHeat.ts`); the rides are in the CSV, not listed. Tests:
 `tests/test_car_state.py`.
 
 **The road between the offices** (`app/offices.py`, `lib/offices.ts`, keep in step): Beograd to

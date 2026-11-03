@@ -52,6 +52,18 @@ def _clean_home(value: str) -> str:
     return " ".join(value.split())
 
 
+class CarBusyRead(BaseModel):
+    """A stretch a shared car is taken (GET /api/cars/corporate/{id}/busy), for the ride form's calendar."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    ride_id: int
+    ride_date: date
+    departure_time: time
+    return_time: time | None
+    driver_name: str
+
+
 class CorporateCarRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -458,6 +470,19 @@ class FactRead(BaseModel):
     estimated: bool
 
 
+class CarLocationRead(BaseModel):
+    """Where a shared car is now, worked out from its rides (app/carstate.car_location)."""
+
+    state: str  # out | parked | home | unknown
+    place: str | None = None
+    point: Point | None = None
+    ride_id: int | None = None
+    driver: str | None = None
+    since: datetime | None = None
+    until: datetime | None = None
+    estimated: bool = True
+
+
 class CarStateRead(BaseModel):
     """A shared car as it stands (GET /api/cars/corporate/state)."""
 
@@ -470,6 +495,7 @@ class CarStateRead(BaseModel):
     clean: FactRead
     issues: FactRead
     recent: list[CarReportRead]
+    location: CarLocationRead
 
 
 class NewStop(BaseModel):

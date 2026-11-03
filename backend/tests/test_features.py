@@ -372,6 +372,11 @@ def test_usage_report_counts_per_car(client, admin_auth):
     assert body["totals"]["rides"] == 2 and body["totals"]["passengers"] == 1
     assert [h["car_id"] for h in body["history"]] == [a["id"], a["id"]]
     assert 0 < rows[a["id"]]["use_rate"] <= 1
+    # The heatmaps: 07:30-16:30 and 18:00-20:00 yesterday.
+    assert rows[a["id"]]["per_day"] == {yesterday: 11.0} and rows[a["id"]]["hours"] == 11.0
+    week = rows[a["id"]]["by_hour"][date.fromisoformat(yesterday).weekday()]
+    assert [h for h in range(24) if week[h]] == [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19]
+    assert sum(map(sum, rows[b["id"]]["by_hour"])) == 0 and rows[b["id"]]["per_day"] == {}
 
     wide = client.get("/api/cars/corporate/usage", params={"days": 365}, headers=admin_auth).json()
     assert {row["car"]["id"]: row["rides"] for row in wide["cars"]}[b["id"]] == 1
@@ -421,3 +426,21 @@ def test_usage_rate_counts_weekend_days_in_the_denominator(session_factory):
     assert report["working_days"] == 21
     assert row["days_used"] == 23
     assert row["use_rate"] == 1.0
+
+
+def test_usage_heat_counts_an_overlap_once_and_no_return_to_midnight():
+    from datetime import time
+
+    from app.models import Ride
+    from app.services import usage_heat
+
+    day = date(2026, 11, 2)  # a Monday
+    rides = [
+        Ride(ride_date=day, departure_time=time(8), return_time=time(12)),
+        Ride(ride_date=day, departure_time=time(11), return_time=time(13, 30)),
+        Ride(ride_date=day + timedelta(days=1), departure_time=time(22), return_time=None),
+    ]
+    per_day, by_hour = usage_heat(rides)
+    assert per_day == {"2026-11-02": 5.5, "2026-11-03": 2.0}
+    assert [h for h in range(24) if by_hour[0][h]] == [8, 9, 10, 11, 12, 13]
+    assert [h for h in range(24) if by_hour[1][h]] == [22, 23]

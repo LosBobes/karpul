@@ -182,3 +182,30 @@ def test_an_edited_report_goes_out_live(client, car, admin_auth):
         assert ws.receive_json()["type"] == "hello"
         client.patch(f"/api/cars/corporate/reports/{report['id']}", json={"soc": 55}, headers=admin_auth)
         assert ws.receive_json()["type"] == "cars.state"
+
+
+def test_where_the_car_is_follows_its_rides(client, car, session_factory):
+    at = lambda hhmm: datetime.combine(TODAY, datetime.strptime(hhmm, "%H:%M").time())  # noqa: E731
+    before = state_of(session_factory, car, at("07:00"))["location"]
+    assert before["state"] in ("home", "unknown")
+
+    # Yesterday one way to Novi Sad: the car stayed there overnight.
+    client.post("/api/rides", json=shared(car["id"], YESTERDAY, return_time=None))
+    loc = state_of(session_factory, car, at("07:00"))["location"]
+    assert loc["state"] == "parked" and loc["place"] == "Novi Sad" and loc["driver"] == "Ana"
+
+    # Today out and back from Novi Sad: on the road until 12:00, then back at the start.
+    ride = client.post("/api/rides", json=shared(car["id"], origin="Novi Sad", destination="Beograd", driver_name="Mila")).json()
+    loc = state_of(session_factory, car, at("09:30"))["location"]
+    assert loc["state"] == "out" and loc["place"] == "Beograd" and loc["driver"] == "Mila" and loc["ride_id"] == ride["id"]
+    assert loc["until"] == at("12:00")
+    loc = state_of(session_factory, car, at("13:00"))["location"]
+    assert loc["state"] == "parked" and loc["place"] == "Novi Sad" and loc["since"] == at("12:00")
+
+    # A ride still waiting for an admin does not move the car.
+    asked = shared(car["id"], origin="Novi Sad", destination="Subotica", driver_name="Mila", departure_time="14:00", return_time=None, request_approval=True)
+    assert client.post("/api/rides", json=asked).json()["approval"] == "pending"
+    assert state_of(session_factory, car, at("15:00"))["location"]["place"] == "Novi Sad"
+
+    states = client.get("/api/cars/corporate/state", headers=ANA).json()
+    assert next(s for s in states if s["car"]["id"] == car["id"])["location"]["state"] in ("out", "parked")

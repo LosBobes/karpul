@@ -172,7 +172,7 @@ that are still set.
 
 ### Running your ride
 
-Open your ride and use the **⋮** menu:
+Open your ride: **Edit** sits right on the card, beside the **⋮** menu, which has the rest:
 
 - **Edit ride**, **Duplicate ride**, **Remove ride**. On a weekly ride there is also
   **Remove this and following rides**.
@@ -260,6 +260,8 @@ that nobody has to add.
 Shared cars are the company's pool cars. Anyone can book one by adding a ride in it; Karpul
 makes sure the same car is never booked twice at the same time. A car is booked from the
 departure to the return time; a ride with no return time keeps the car until midnight.
+In the form's calendar, the days the chosen car is already taken in the hours you picked are
+**red** and cannot be picked; change the times and the red days change with them.
 
 ### The fair share
 
@@ -288,7 +290,9 @@ with pictures:
 ☰ → **Shared cars** shows every shared car's **odometer**, **battery**, whether it is **clean**
 and any **reported** problems, with who said so and when. Figures marked *about* are guessed
 from the rides since the last reading. The same summary appears under the car's name on a
-shared-car ride.
+shared-car ride. Each card also says **where the car is**: on the road (where to, with whom,
+back by when) or where its last ride left it (back at the start after a return trip, at the
+destination after a one-way ride), worked out from the rides each time you open the list.
 
 Found the car dirty, low on battery or with a warning light? Use **Report on this car** on its
 card. It opens a window of its own: type the odometer, or add to the last reading what the rides
@@ -418,8 +422,10 @@ ride, the driver is notified.
   back) or deletes one never used, and **Add shared car** is at the foot of the list. On a
   card, **Mark as fixed** clears a reported problem, and ⋮ on a report under *Recent reports*
   puts a wrong reading right (**Edit**) or takes the report out (**Remove**), so the car's
-  status falls back on the one before; both go in the admin log. The **Usage** tab shows how
-  each car was used over 30, 90 or 365 days and can be downloaded as a spreadsheet.
+  status falls back on the one before; both go in the admin log. The **Usage** tab is a
+  dashboard over 30, 90 or 365 days: the pool's use, rides, hours out and km, then a card per
+  car with its use rate and a heatmap, **By day** (hours out each day, a column per week) or
+  **By hour** (when in the week it tends to be out), and the rides as a spreadsheet download.
 - **People:** search accounts, **Make admin** / **Remove admin**, create a **Password reset
   link** (pass it on yourself; there is no email), remove someone's photo, or **Delete
   account** (their coming rides are cancelled; past rides keep the name).

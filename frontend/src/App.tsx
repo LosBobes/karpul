@@ -392,6 +392,8 @@ function Board({ session }: { session: Session }) {
     if (tab) setCarsTab(tab)
     show('cars')
     desk.pool.refresh()
+    // Where each car is now is worked out from the rides and the clock: ask again on every visit.
+    reloadCarStates().catch(() => undefined)
   }
 
 
