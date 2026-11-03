@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clashOn, clashText, monthGrid } from './carBusy'
+import { clashOn, clashText, firstFreeDay, monthGrid } from './carBusy'
 import type { CarBusy } from './types'
 
 const ride = (day: string, dep: string, ret: string | null, id = 1): CarBusy => ({
@@ -43,5 +43,22 @@ describe('monthGrid', () => {
   it('is the six weeks from the Monday on or before the 1st', () => {
     // 1 November 2026 is a Sunday.
     expect(monthGrid('2026-11-20')).toEqual({ from: '2026-10-26', to: '2026-12-06' })
+  })
+})
+
+describe('firstFreeDay', () => {
+  const busy = [ride('2026-11-10', '08:00', '12:00', 1), ride('2026-11-11', '07:00', null, 2)]
+  const all = () => true
+
+  it('keeps a free day and moves off taken ones to the next free', () => {
+    expect(firstFreeDay(busy, all, '2026-11-09', '09:00', '11:00')).toEqual({ free: '2026-11-09', unknown: null })
+    expect(firstFreeDay(busy, all, '2026-11-10', '09:00', '11:00')).toEqual({ free: '2026-11-12', unknown: null })
+    // Free that day in other hours: the day stays.
+    expect(firstFreeDay(busy, all, '2026-11-10', '13:00', '15:00').free).toBe('2026-11-10')
+  })
+
+  it('waits for a month that has not come back', () => {
+    const known = (d: string) => d < '2026-11-11'
+    expect(firstFreeDay(busy, known, '2026-11-10', '09:00', '11:00')).toEqual({ free: null, unknown: '2026-11-11' })
   })
 })
