@@ -2,12 +2,13 @@ import { useState, type ReactNode } from 'react'
 import { useKept } from '../lib/keep'
 import { api } from '../lib/api'
 import { factText, fmtWhen } from '../lib/carState'
+import { CLOCK } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import type { CarReport, CarState } from '../lib/types'
 import { Avatar } from './Avatar'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CheckIcon, BoltIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, RoadIcon, TrashIcon } from './icons'
+import { CheckIcon, BoltIcon, CarIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, PinIcon, RoadIcon, TrashIcon } from './icons'
 import { CarReportSheet } from './CarReportSheet'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Menu } from './Menu'
@@ -146,6 +147,41 @@ interface CardProps {
   onDone: (sent: boolean) => void
 }
 
+/** Where the car is now, from its rides, with the place on the map when it is pinned (else the car's home). */
+function CarWhere({ state }: { state: CarState }) {
+  const t = useT()
+  const loc = state.location
+  const car = state.car
+  const home = car.home && car.home_lat != null && car.home_lng != null ? { point: { lat: car.home_lat, lng: car.home_lng }, label: car.home } : null
+  const pin = loc.point && loc.place ? { point: loc.point, label: loc.place } : loc.state === 'unknown' ? home : null
+  const text =
+    loc.state === 'out' && loc.place
+      ? t.carState.whereOut(loc.place, loc.driver ?? '', loc.until ? fmtClock(loc.until) : null)
+      : loc.state === 'parked' && loc.place
+        ? t.carState.whereParked(loc.place)
+        : loc.state === 'home' && loc.place
+          ? t.carState.whereHome(loc.place)
+          : t.carState.whereUnknown
+  const sub =
+    loc.state === 'parked' && loc.since ? t.carState.whereSince(fmtWhen(loc.since), loc.driver ?? '') : loc.state !== 'unknown' ? t.carState.whereGuess : null
+  return (
+    <>
+      <div className={loc.state === 'out' ? 'car-where car-where-out' : 'car-where'}>
+        {loc.state === 'out' ? <CarIcon size={16} /> : <PinIcon size={16} />}
+        <span>
+          <strong>{text}</strong>
+          {sub && <small>{sub}</small>}
+        </span>
+      </div>
+      {pin && <MapView className="car-state-map" label={pin.label} pins={[{ point: pin.point, label: pin.label, kind: 'spot' }]} />}
+    </>
+  )
+}
+
+function fmtClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString(intlTag(), CLOCK)
+}
+
 function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, onReport, onEdit, onRemove, onFix, onDone }: CardProps) {
   const t = useT()
   const odo = factText(state.odometer, (v) => t.carState.km(km(v)))
@@ -173,13 +209,7 @@ function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, 
       </header>
       {editor}
 
-      {state.car.home && state.car.home_lat != null && state.car.home_lng != null && (
-        <MapView
-          className="car-state-map"
-          label={state.car.home}
-          pins={[{ point: { lat: state.car.home_lat, lng: state.car.home_lng }, label: state.car.home, kind: 'spot' }]}
-        />
-      )}
+      <CarWhere state={state} />
 
       <dl className="car-facts">
         <div className={odo.guessed ? 'car-fact car-fact-guess' : 'car-fact'}>

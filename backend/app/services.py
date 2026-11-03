@@ -631,6 +631,38 @@ def person_stats(session: Session, user: User, today: date | None = None) -> dic
     return {"month": bucket([r for r in rides if r.ride_date >= month_start]), "all": bucket(rides), "history": history[:100]}
 
 
+def _hours_out(r: Ride) -> tuple[float, float]:
+    """When a ride holds its car, in hours from midnight: no return holds it to
+    the end of the day, as `ensure_car_available` counts it."""
+    start = r.departure_time.hour + r.departure_time.minute / 60
+    end = 24.0 if r.return_time is None else r.return_time.hour + r.return_time.minute / 60
+    return start, max(end, start)
+
+
+def usage_heat(rides: list[Ride]) -> tuple[dict[str, float], list[list[int]]]:
+    """A car's heatmaps: the hours it was out on each day it went out, and per
+    weekday (Monday first) and hour of the day, on how many days it was out in
+    that hour (any part of it). Overlapping rides on a day count once."""
+    spans: dict[date, list[tuple[float, float]]] = defaultdict(list)
+    for r in rides:
+        spans[r.ride_date].append(_hours_out(r))
+    per_day: dict[str, float] = {}
+    by_hour = [[0] * 24 for _ in range(7)]
+    for day, items in spans.items():
+        items.sort()
+        merged: list[list[float]] = []
+        for s, e in items:
+            if merged and s <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], e)
+            else:
+                merged.append([s, e])
+        per_day[day.isoformat()] = round(sum(e - s for s, e in merged), 2)
+        for h in range(24):
+            if any(s < h + 1 and h < e for s, e in merged):
+                by_hour[day.weekday()][h] += 1
+    return per_day, by_hour
+
+
 def corporate_usage(session: Session, days: int, today: date | None = None, history_limit: int | None = 200) -> dict:
     """How the pool cars were used over the last `days` days (today included):
     per car the rides, the days it went out, the drivers and passengers, the
@@ -662,6 +694,7 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
         dates = {r.ride_date for r in rides}
         days_used = len(dates)
         weekend_days = sum(1 for d in dates if d.weekday() >= 5)
+        per_day, by_hour = usage_heat(rides)
         rows.append(
             {
                 "car": {"id": car.id, "name": car.name, "plate": car.plate, "passenger_seats": car.passenger_seats, "active": car.active, "home": car.home},
@@ -674,6 +707,9 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
                 "km": round(sum(r.distance_km or 0 for r in rides), 1),
                 "last_used": max((r.ride_date for r in rides), default=None),
                 "upcoming": ahead_by_car.get(car.id, 0),
+                "hours": round(sum(per_day.values()), 1),
+                "per_day": per_day,
+                "by_hour": by_hour,
             }
         )
     history = [

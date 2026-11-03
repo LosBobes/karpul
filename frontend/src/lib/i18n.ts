@@ -590,16 +590,24 @@ const en = {
     daysOut: 'Days out',
     useRate: 'Use rate',
     useRateHint: (days: number) => `Days the car went out, over the ${days} working days in this window and any weekend day it went out.`,
-    drivers: 'Drivers',
-    passengers: 'Passengers',
+    poolRate: 'Pool use',
+    hoursOut: 'Hours out',
     km: 'km',
-    lastUsed: 'Last used',
-    never: 'Never',
-    booked: (n: number) => (n === 1 ? '1 ride booked ahead' : `${n} rides booked ahead`),
-    history: 'Rides in this window',
+    heatmap: 'Heatmap',
+    byDay: 'By day',
+    byHour: 'By hour',
+    less: 'Less',
+    more: 'More',
+    dayCell: (day: string, hours: string) => (hours === '0' ? `${day}: not out` : `${day}: ${hours} h out`),
+    hourCell: (weekday: string, hour: string, n: number, of: number) => `${weekday} ${hour}:00: out on ${n} of ${of}`,
+    dayHeatLabel: (car: string, n: number) => `${car}: out on ${enPlural(n, 'day', 'days')}`,
+    hourHeatLabel: (car: string) => `${car}: when in the week it is out`,
+    summary: (rides: number, daysOut: number, drivers: number, km: number, ahead: number) =>
+      [enPlural(rides, 'ride', 'rides'), `${enPlural(daysOut, 'day', 'days')} out`, enPlural(drivers, 'driver', 'drivers'), `${km} km`, ahead ? `${ahead} booked ahead` : null]
+        .filter(Boolean)
+        .join(' · '),
     noUsage: 'No shared-car rides in this window.',
     retired: 'Retired',
-    pax: (n: number, seats: number) => `${n} of ${seats}`,
     download: 'Download as a spreadsheet',
   },
 
@@ -811,6 +819,12 @@ const en = {
 
   /** The state of each shared car: components/CarStatus.tsx (backend: app/carstate.py). */
   carState: {
+    whereOut: (place: string, driver: string, until: string | null) => `On the road to ${place} with ${driver}` + (until ? `, back by ${until}` : ''),
+    whereParked: (place: string) => `In ${place}`,
+    whereHome: (place: string) => `In ${place}, where it is kept`,
+    whereUnknown: 'Where it is is not known yet',
+    whereSince: (when: string, driver: string) => `Since ${when}, after ${driver}'s ride; worked out from the rides`,
+    whereGuess: 'Worked out from the rides',
     odometer: 'Odometer',
     battery: 'Battery',
     cleanTitle: 'Clean',
@@ -1243,6 +1257,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      carWhere: {
+        title: 'Where each shared car is',
+        body: '**Shared cars** now says where each car is: on the road and with whom, or where its last ride left it. It is worked out from the rides every time you open it. A ride you run also has its own **Edit** button on the card.',
+      },
       carBusy: {
         title: 'Taken days are red',
         body: 'When you book a shared car, the calendar paints red the days it is already taken in the hours you chose, and they cannot be picked. Change the times and the days change with them.',
@@ -2012,16 +2030,24 @@ const sr: Messages = {
     daysOut: 'Dana u vožnji',
     useRate: 'Iskorišćenost',
     useRateHint: (days) => `Dani kad je auto išao, u odnosu na ${srPlural(days, 'radni dan', 'radna dana', 'radnih dana')} u ovom periodu i dane vikenda kad je išao.`,
-    drivers: 'Vozača',
-    passengers: 'Putnika',
+    poolRate: 'Iskorišćenost',
+    hoursOut: 'Sati u vožnji',
     km: 'km',
-    lastUsed: 'Poslednji put',
-    never: 'Nikad',
-    booked: (n) => `${srPlural(n, 'vožnja zakazana', 'vožnje zakazane', 'vožnji zakazano')} unapred`,
-    history: 'Vožnje u ovom periodu',
+    heatmap: 'Toplotna mapa',
+    byDay: 'Po danima',
+    byHour: 'Po satima',
+    less: 'Manje',
+    more: 'Više',
+    dayCell: (day, hours) => (hours === '0' ? `${day}: nije išao` : `${day}: ${hours} h u vožnji`),
+    hourCell: (weekday, hour, n, of) => `${weekday} ${hour}:00: u vožnji ${n} od ${of}`,
+    dayHeatLabel: (car, n) => `${car}: u vožnji ${srPlural(n, 'dan', 'dana', 'dana')}`,
+    hourHeatLabel: (car) => `${car}: kad je u toku nedelje u vožnji`,
+    summary: (rides, daysOut, drivers, km, ahead) =>
+      [srPlural(rides, 'vožnja', 'vožnje', 'vožnji'), `${srPlural(daysOut, 'dan', 'dana', 'dana')} u vožnji`, srPlural(drivers, 'vozač', 'vozača', 'vozača'), `${km} km`, ahead ? `${ahead} unapred` : null]
+        .filter(Boolean)
+        .join(' · '),
     noUsage: 'U ovom periodu nije bilo vožnji zajedničkim autom.',
     retired: 'Povučen',
-    pax: (n, seats) => `${n} od ${seats}`,
     download: 'Preuzmi kao tabelu',
   },
 
@@ -2206,6 +2232,12 @@ const sr: Messages = {
   },
 
   carState: {
+    whereOut: (place, driver, until) => `Na putu za ${place}, vozi ${driver}` + (until ? `, vraća se do ${until}` : ''),
+    whereParked: (place) => `Mesto: ${place}`,
+    whereHome: (place) => `Mesto: ${place}, gde se drži`,
+    whereUnknown: 'Još se ne zna gde je',
+    whereSince: (when, driver) => `Od ${when}, posle vožnje: ${driver}; izračunato iz vožnji`,
+    whereGuess: 'Izračunato iz vožnji',
     odometer: 'Kilometar-sat',
     battery: 'Baterija',
     cleanTitle: 'Čistoća',
@@ -2654,6 +2686,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      carWhere: {
+        title: 'Gde je koji zajednički auto',
+        body: '**Zajednički automobili** sada pokazuju gde je svaki auto: na putu i ko ga vozi, ili gde ga je ostavila poslednja vožnja. Računa se iz vožnji svaki put kad ih otvoriš. Vožnja koju vodiš ima i svoje dugme **Izmeni** na kartici.',
+      },
       carBusy: {
         title: 'Zauzeti dani su crveni',
         body: 'Kad zakazuješ zajednički auto, kalendar crveno boji dane kad je auto već zauzet u satima koje si izabrao, i oni ne mogu da se izaberu. Promeni vreme i dani se menjaju zajedno s njim.',

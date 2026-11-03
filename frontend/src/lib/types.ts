@@ -346,6 +346,12 @@ export interface CarUsageRow {
   km: number
   last_used: string | null
   upcoming: number
+  /** Hours booked in the window (overlaps once). */
+  hours: number
+  /** The hours out on each day it went out, by ISO day. */
+  per_day: Record<string, number>
+  /** Per weekday (Monday first) and hour, on how many days it was out then. */
+  by_hour: number[][]
 }
 
 export interface UsageRide {
@@ -420,6 +426,20 @@ export interface CarState {
   clean: Fact<boolean>
   issues: Fact<string>
   recent: CarReport[]
+  /** Where it is now, worked out from its rides (backend: carstate.car_location). */
+  location: CarLocation
+}
+
+export interface CarLocation {
+  /** `out` on a ride, `parked` after one, `home` before any, `unknown`. */
+  state: 'out' | 'parked' | 'home' | 'unknown'
+  place: string | null
+  point: Point | null
+  ride_id: number | null
+  driver: string | null
+  since: string | null
+  until: string | null
+  estimated: boolean
 }
 
 export interface PushConfig {

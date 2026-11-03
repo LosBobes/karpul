@@ -9,7 +9,24 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** A shared car's card: a pin drops on the place and the line under it says where the car is. */
+function CarWhereDemo() {
+  return (
+    <div className="wn-card">
+      <span className="wn-line wn-line-label" />
+      <div className="wn-where">
+        <svg className="wn-where-pin" viewBox="0 0 16 16" width="18" height="18">
+          <path d="M8 14.5s4.5-4.2 4.5-7.8a4.5 4.5 0 0 0-9 0c0 3.6 4.5 7.8 4.5 7.8Z" fill="currentColor" />
+          <circle cx="8" cy="6.6" r="1.7" fill="var(--surface)" />
+        </svg>
+        <span className="wn-where-text">Novi Sad</span>
+      </div>
+      <span className="wn-line" />
     </div>
   )
 }

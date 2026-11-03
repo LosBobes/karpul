@@ -643,6 +643,30 @@
 .car-fact-warn dd {
   color: #b45309;
 }
+.car-where {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.car-where svg {
+  flex: none;
+  margin-top: 0.15rem;
+  color: var(--green);
+}
+.car-where > span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.car-where strong {
+  font-weight: 600;
+}
+.car-where small {
+  font-size: 0.74rem;
+  color: var(--muted);
+}
 .car-issues {
   display: flex;
   align-items: flex-start;
