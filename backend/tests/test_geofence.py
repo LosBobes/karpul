@@ -28,9 +28,19 @@ def test_listed_countries_get_in_and_the_rest_do_not(client, located):
     assert client.get("/api/rides").status_code == 200
     for elsewhere in ("US", None):
         located[0] = elsewhere
-        r = client.anon.get("/api/health")
+        r = client.anon.get("/api/push/config")
         assert r.status_code == 403 and "not available in your country" in r.text
         assert client.get("/api/rides").status_code == 403
+        assert client.anon.get("/").status_code == 403
+
+
+def test_the_health_check_answers_from_anywhere(client, located):
+    """The uptime check runs on GitHub's machines, abroad."""
+    located[0] = "US"
+    r = client.anon.get("/api/health")
+    assert r.status_code == 200 and r.json()["status"] == "ok"
+    # Only that address: one beside it is refused as before.
+    assert client.anon.get("/api/health/").status_code == 403
 
 
 def test_the_socket_is_refused_too(client, located):

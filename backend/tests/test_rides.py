@@ -20,7 +20,8 @@ def own_ride(**overrides):
 
 
 def test_health(client):
-    assert client.get("/api/health").json() == {"status": "ok"}
+    # The tests' database is in memory: no snapshots to speak of.
+    assert client.get("/api/health").json() == {"status": "ok", "backup": "off", "offsite": "off"}
 
 
 def test_corporate_cars_seeded(client):

@@ -109,8 +109,8 @@ app hides the switch.
 
 `KARPUL_SENTRY_DSN` turns on error reports to Sentry (no request bodies, headers
 or personal data). Empty sends nothing anywhere. `/api/health` checks the
-database, so an uptime monitor pointed at `https://www.karpul.dev/api/health`
-notices a broken one.
+database and says how the backups stand; the repository's own uptime check
+asks it every 15 minutes (*Uptime monitoring* below).
 
 `docker-compose.prod.yml` also sets `FORWARDED_ALLOW_IPS=*` so uvicorn takes the
 visitor's address from Caddy's `X-Forwarded-For`; the sign-in rate limit counts
@@ -236,18 +236,64 @@ the `-wal` / `-shm` files removed and the container restarted.
 
 ### Nightly backups
 
-The app also backs itself up (`backend/app/housekeeping.py`): once a day it
-writes the same kind of snapshot to `/data/backups/karpul-<date>-<time>.db`
-inside the volume and keeps the newest 14 (`KARPUL_BACKUP_DIR`,
-`KARPUL_BACKUP_KEEP` in `.env`). That covers a bad deploy, a wrong
-`docker compose down -v` is survived only by a copy elsewhere, so copy the
-newest snapshot off the box as well. From a laptop, `make backups` pulls the
-whole folder into `./backups/`. On the host, a cron line does it unattended
-(rsync to wherever the other apps' backups go):
+The app backs itself up (`backend/app/housekeeping.py`): once a day it writes
+the same kind of snapshot to `/data/backups/karpul-<date>-<time>.db` inside the
+volume and keeps the newest 14 (`KARPUL_BACKUP_DIR`, `KARPUL_BACKUP_KEEP` in
+`.env`). That covers a bad deploy or a fat finger; a wrong
+`docker compose down -v`, or losing the server, is survived only by a copy
+elsewhere.
+
+**Off the box, by the app.** Give it a bucket in any S3-compatible object
+storage and every new snapshot is uploaded there too (`backend/app/offsite.py`),
+tried again every hour until it has gone:
+
+1. Create a bucket (Hetzner Console → Object Storage, e.g. `karpul-backups` in
+   `fsn1`), and an access key for it. The key only needs to write: the app
+   never lists or deletes, so a box that is broken into cannot wipe its own
+   backups.
+2. Give the bucket a lifecycle rule that expires objects after, say, 60 days;
+   that is the retention, Karpul keeps nothing remote itself.
+3. In `.env`:
+
+   ```env
+   KARPUL_BACKUP_S3_URL=https://fsn1.your-objectstorage.com/karpul-backups/nightly
+   KARPUL_BACKUP_S3_KEY=<access key>
+   KARPUL_BACKUP_S3_SECRET=<secret key>
+   KARPUL_BACKUP_S3_REGION=fsn1
+   ```
+
+   The address is the endpoint, the bucket and an optional prefix, path-style.
+   Cloudflare R2 (`https://<account>.r2.cloudflarestorage.com/<bucket>`, region
+   `auto`), Backblaze B2 and AWS S3 work the same way.
+4. `docker compose -f docker-compose.prod.yml up -d`. The first pass runs on
+   start; `make logs` shows `off-site copy written: ...` (or why it failed),
+   and `/api/health` says `"offsite": "ok"`.
+
+An uploaded snapshot gets a `<name>.sent` marker beside it in the volume. To
+restore one, see *Restoring the database* under *Rollback*.
+
+**Or by hand.** From a laptop, `make backups` pulls the whole folder into
+`./backups/`. On the host, a cron line does it unattended (rsync to wherever the
+other apps' backups go):
 
 ```
 17 4 * * * docker compose -f /opt/karpul/docker-compose.prod.yml cp app:/data/backups /var/backups/karpul >/dev/null 2>&1
 ```
+
+### Uptime monitoring
+
+`.github/workflows/uptime.yml` asks `https://www.karpul.dev/api/health` from
+GitHub's machines every 15 minutes and fails when the site does not answer
+200 three times in a minute, when the newest snapshot is more than a day old
+(`"backup": "stale"`), or when it has not reached the bucket hours after it was
+taken (`"offsite": "failing"`). A failed run is GitHub's to report: by email and
+in the GitHub app, to whoever last changed the workflow's schedule (check
+*Settings → Notifications → Actions* on that account). `/api/health` is the one
+address the country filter lets through from anywhere, since the runners are
+not in Germany or Serbia; it says nothing but `ok` and those two words.
+Point it elsewhere with the repository variable `KARPUL_HEALTH_URL`, or run it
+by hand from the *Actions* tab. GitHub may run a scheduled job a few minutes
+late, and pauses schedules on a repository with no activity for 60 days.
 
 ---
 
@@ -270,6 +316,22 @@ docker compose -f docker-compose.prod.yml up --build -d
 ```
 
 Return to automatic updates by checking out `main` again and pushing.
+
+### Restoring the database
+
+A snapshot is a plain single-file SQLite database (no `-wal` beside it). Stop
+the app, put the snapshot in place of `karpul.db` (dropping the old WAL files
+with it), and start again:
+
+```bash
+cd /opt/karpul
+docker compose -f docker-compose.prod.yml stop app
+# A snapshot from the bucket, downloaded to the host, goes into the volume first:
+#   docker compose -f docker-compose.prod.yml cp ./karpul-<date>-<time>.db app:/data/backups/
+docker compose -f docker-compose.prod.yml run --rm --no-deps app sh -c \
+  'cp /data/backups/karpul-<date>-<time>.db /data/karpul.db && rm -f /data/karpul.db-wal /data/karpul.db-shm'
+docker compose -f docker-compose.prod.yml up -d
+```
 
 ## Removing Karpul
 

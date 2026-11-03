@@ -20,7 +20,7 @@ from sqlmodel import Session
 from . import backfill, geo
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
-from .housekeeping import housekeeping_loop
+from .housekeeping import backup_status, housekeeping_loop
 from .models import Ride
 from .monitoring import init_sentry
 from .offices import fill_office_distances
@@ -155,13 +155,16 @@ app.include_router(photos.router)
 @app.get("/api/health", tags=["meta"])
 def health(session: Annotated[Session, Depends(get_session)]):
     """For the container's health check and an uptime monitor: 200 while the
-    database answers, 503 when it does not."""
+    database answers, 503 when it does not. `backup` and `offsite` say how the
+    nightly snapshot stands (`housekeeping.backup_status`); they never turn the
+    answer into an error, the uptime check reads them (.github/workflows/uptime.yml)."""
     try:
         session.exec(text("SELECT 1"))  # type: ignore[call-overload]
     except Exception:
         log.exception("health check: database unreachable")
         return JSONResponse({"status": "error", "database": "unreachable"}, status_code=503)
-    return {"status": "ok"}
+    bind = session.get_bind()
+    return {"status": "ok", **backup_status(getattr(bind, "engine", bind))}  # type: ignore[arg-type]
 
 
 class HashedAssets(StaticFiles):
