@@ -261,7 +261,9 @@ Shared cars are the company's pool cars. Anyone can book one by adding a ride in
 makes sure the same car is never booked twice at the same time. A car is booked from the
 departure to the return time; a ride with no return time keeps the car until midnight.
 In the form's calendar, the days the chosen car is already taken in the hours you picked are
-**red** and cannot be picked; change the times and the red days change with them.
+**red** and cannot be picked; change the times and the red days change with them. A new ride
+starts on the first day the car is free in those hours, and a taken slot (a weekly repeat's
+later weeks included) cannot be saved.
 
 ### The fair share
 

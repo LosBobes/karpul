@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useKept } from '../lib/keep'
 import { addDays, foldName, parseISODate, toISODate } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
@@ -8,7 +8,7 @@ import { useRoad } from '../lib/places'
 import type { CarType, CorporateCar, Point, Ride, RideInput, RideRequest } from '../lib/types'
 import { drives, useMe } from '../lib/me'
 import { MAX_STOPS } from '../lib/stops'
-import { clashOn, clashText, useCarBusy } from '../lib/carBusy'
+import { clashOn, clashText, firstFreeDay, useCarBusy } from '../lib/carBusy'
 import { PlaceDialog } from './PlaceDialog'
 import { PlaceInput } from './PlaceInput'
 import { Avatar } from './Avatar'
@@ -303,7 +303,17 @@ export function RideForm({ date, userName, cars, existing, template, request = n
   // calendar and cannot be picked, and a day picked before the times moved says so.
   const [months, setMonths] = useState<string[]>([])
   const busyCar = carType === 'corporate' && carId !== '' ? carId : null
-  const busy = useCarBusy(busyCar, existing?.id ?? null, [rideDate, ...(offersWayBack && wayBack ? [backDate] : []), ...months])
+  // A weekly repeat books the same car on each of its days, so each is checked too.
+  const repeatDates = !existing && repeat && !repeatTooFar && !repeatTooEarly ? Array.from({ length: repeatCount - 1 }, (_, i) => toISODate(addDays(parseISODate(rideDate), 7 * (i + 1)))) : []
+  // A new ride in a shared car starts on a day the car is free in those hours:
+  // the day asked for, else the next free one. Once per car, so a day the
+  // driver picks (or times they move later) are never overruled.
+  const autoDay = !existing && !request && !slot
+  const [settledFor, setSettledFor] = useKept<number | null>('rideForm.settledFor', null)
+  const settling = busyCar !== null && autoDay && settledFor !== busyCar
+  // While it looks, the next three months come too: the free day may be in one of them.
+  const probe = settling ? [1, 2, 3].map((n) => toISODate(new Date(parseISODate(rideDate).getFullYear(), parseISODate(rideDate).getMonth() + n, 1))) : []
+  const { busy, known } = useCarBusy(busyCar, existing?.id ?? null, [rideDate, ...repeatDates, ...(offersWayBack && wayBack ? [backDate] : []), ...probe, ...months])
   const addMonth = (iso: string) => setMonths((ms) => (ms.includes(iso) ? ms : [...ms, iso]))
   const rideBusy = (iso: string) => {
     const b = clashOn(busy, iso, departure, oneWay ? null : ret)
@@ -313,7 +323,27 @@ export function RideForm({ date, userName, cars, existing, template, request = n
     const b = clashOn(busy, iso, backDeparture, null)
     return b ? t.apiError(clashText(b)) : null
   }
-  const clash = rideBusy(rideDate) ?? (offersWayBack && wayBack ? backBusy(backDate) : null)
+  const repeatClash = (() => {
+    for (const day of repeatDates) {
+      const b = clashOn(busy, day, departure, oneWay ? null : ret)
+      if (b) return t.apiError(`${clashText(b)} (${day})`)
+    }
+    return null
+  })()
+  const clash = rideBusy(rideDate) ?? repeatClash ?? (offersWayBack && wayBack ? backBusy(backDate) : null)
+  // Until the car's days have come back the save waits, so a taken slot is never sent.
+  const checkingCar = busyCar !== null && [rideDate, ...repeatDates, ...(offersWayBack && wayBack ? [backDate] : [])].some((d) => !known(d))
+
+  const first = settling ? firstFreeDay(busy, known, rideDate, departure, oneWay ? null : ret, 60) : null
+  // Nothing free three months on, or still loading: the day stays (and the save waits or says why).
+  const settleTo = first && !first.unknown ? (first.free ?? rideDate) : null
+  useEffect(() => {
+    if (settleTo === null || busyCar === null) return
+    // The car's days came back from the server: move off a taken day once.
+    // oxlint-disable-next-line react/set-state-in-effect
+    if (settleTo !== rideDate) setRideDate(settleTo)
+    setSettledFor(busyCar)
+  }, [settleTo, busyCar, rideDate, setRideDate, setSettledFor])
   const localError =
     !oneWay && ret <= departure
       ? t.form.returnAfter
@@ -371,7 +401,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    if (localError || distanceBad) return
+    if (localError || distanceBad || checkingCar) return
     try {
       // A ride an admin adds for someone else is not their own commute to remember.
       const remembered: LastRoute = {
@@ -441,7 +471,7 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       onClose={onClose}
       footer={
         <>
-          <button type="submit" className="btn btn-primary btn-block" disabled={submitting || !!localError || distanceBad}>
+          <button type="submit" className="btn btn-primary btn-block" disabled={submitting || !!localError || distanceBad || checkingCar}>
             {submitting ? t.common.saving : existing ? t.form.saveChanges : t.form.addTitle}
           </button>
           {existing && onDelete && (

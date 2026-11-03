@@ -26,6 +26,26 @@ export function clashOn(busy: CarBusy[], day: string, dep: string, ret: string |
   return null
 }
 
+/**
+ * The first day from `from` on (at most `days` ahead) the car is free in those
+ * hours: `null` when one of them is not known yet (`unknown` is that day, to fetch).
+ */
+export function firstFreeDay(
+  busy: CarBusy[],
+  known: (day: string) => boolean,
+  from: string,
+  dep: string,
+  ret: string | null,
+  days = 92,
+): { free: string | null; unknown: string | null } {
+  for (let i = 0; i <= days; i++) {
+    const day = toISODate(addDays(parseISODate(from), i))
+    if (!known(day)) return { free: null, unknown: day }
+    if (!clashOn(busy, day, dep, ret)) return { free: day, unknown: null }
+  }
+  return { free: null, unknown: null }
+}
+
 /** The server's own words for a clash (services.ensure_car_available), so `apiError` has them in Serbian too. */
 export function clashText(b: CarBusy): string {
   return (
@@ -38,8 +58,10 @@ export function clashText(b: CarBusy): string {
 /**
  * When a shared car is taken, month by month as the calendar asks for them
  * (`months`: any day of each month wanted). `null` for no car: nothing is fetched.
+ * `known(day)` says whether that day's month has come back yet; a month that
+ * could not be fetched counts as known and empty (the server still refuses a clash).
  */
-export function useCarBusy(carId: number | null, exclude: number | null, months: string[]): CarBusy[] {
+export function useCarBusy(carId: number | null, exclude: number | null, months: string[]): { busy: CarBusy[]; known: (day: string) => boolean } {
   const [got, setGot] = useState<Record<string, CarBusy[]>>({})
   const grids = [...new Set(months.map((m) => monthGrid(m).from))].sort()
   const key = `${carId}:${exclude}`
@@ -53,14 +75,17 @@ export function useCarBusy(carId: number | null, exclude: number | null, months:
       api
         .carBusy(carId, from, to, exclude, ctl.signal)
         .then((rows) => setGot((g) => ({ ...g, [`${key}:${from}`]: rows })))
-        .catch(() => {
-          /* no marks: the server still refuses a clash */
+        .catch((e) => {
+          // No marks: the server still refuses a clash. An abort is a re-ask, not a failure.
+          if (!ctl.signal.aborted) setGot((g) => ({ ...g, [`${key}:${from}`]: [] }))
+          void e
         })
     }
     return () => ctl.abort()
   }, [carId, exclude, key, wanted])
 
-  if (carId === null) return []
+  if (carId === null) return { busy: [], known: () => true }
   const seen = new Set<number>()
-  return grids.flatMap((g) => got[`${key}:${g}`] ?? []).filter((b) => (seen.has(b.ride_id) ? false : (seen.add(b.ride_id), true)))
+  const busy = grids.flatMap((g) => got[`${key}:${g}`] ?? []).filter((b) => (seen.has(b.ride_id) ? false : (seen.add(b.ride_id), true)))
+  return { busy, known: (day) => got[`${key}:${monthGrid(day).from}`] !== undefined }
 }
