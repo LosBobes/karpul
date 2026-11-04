@@ -86,7 +86,8 @@ adds a ride. It is the only add button in the app.
 - your name at the top: **Your account**,
 - **Your rides**, **Shared cars** and the **Shared car guide**,
 - **Manage** (admins only): approvals, people, places, all rides, the admin log,
-- **Help**: the guide, **Contact support**, **Report a bug or send feedback**,
+- **Help**: the guide, **What's new**, **Take the tour** (the three cards a new account sees
+  on its first visit), **Contact support**, **Report a bug or send feedback**,
 - **Settings** at the foot: **Notifications**, **Install the app**, theme and language.
 
 On a computer the menu is always open down the left side.
@@ -392,6 +393,12 @@ ride itself.
 
 ☰ → **Your rides** shows rides **Driven**, **Ridden along**, **People carried** and **km shared**,
 this month and all time, and your **Past rides**.
+
+Under **Off the road** it adds up what your rides saved: **car km saved**, and roughly the
+**kg CO₂** and **litres of fuel** with them. Every passenger is a car left at home for the ride's
+distance, and that trip is counted half for the driver and half for the passenger, so
+everyone's figures add up to the team's. Rides without a distance count as nothing, so it is a
+floor. Admins see the whole team's figures under **Shared cars** → **Usage**.
 
 ---
 

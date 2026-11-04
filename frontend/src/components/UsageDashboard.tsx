@@ -297,7 +297,9 @@ function Screens({ days }: { days: number }) {
         <ul className="screen-list">
           {report.screens.map((s) => (
             <li key={s.key} className="screen-row">
-              <code className="screen-name">{s.key}</code>
+              <span className="screen-name" title={s.key}>
+                {screenLabel(s.key)}
+              </span>
               <span className="screen-bar" aria-hidden="true">
                 <span style={{ width: `${Math.max(2, (s.count / top) * 100)}%` }} />
               </span>
@@ -308,4 +310,34 @@ function Screens({ days }: { days: number }) {
       )}
     </section>
   )
+}
+
+/** A counted screen's name as the app shows it, in the app language; the key itself when the app has since dropped it. */
+function screenLabel(key: string): string {
+  const t = messages()
+  const [kind, name] = key.split('.') as [string, string]
+  const views: Record<string, string> = { upcoming: t.view.upcoming, week: t.view.week, day: t.view.day }
+  const shapes: Record<string, string> = { clock: t.plan.clock, timeline: t.plan.timeline, map: t.plan.map }
+  const sheets: Record<string, string> = {
+    sidebar: t.common.menu,
+    account: t.account.title,
+    guide: t.guide.title,
+    howTo: t.howTo.title,
+    myRides: t.myRides.title,
+    notif: t.notif.title,
+    support: t.support.title,
+    whatsNew: t.whatsNew.title,
+    feedback: t.feedback.title,
+    update: t.update.title,
+    cars: t.sidebar.cars,
+    people: t.sidebar.people,
+    places: t.sidebar.places,
+    rideLog: t.rideLog.title,
+    adminLog: t.adminLog.title,
+    approvals: t.approvals.title,
+    garage: t.garage.title,
+  }
+  const label = kind === 'view' ? views[name] : kind === 'plan' ? shapes[name] : kind === 'sheet' ? sheets[name] : undefined
+  if (!label) return key
+  return kind === 'view' ? t.usage.screenView(label) : kind === 'plan' ? t.usage.screenPlan(label) : label
 }

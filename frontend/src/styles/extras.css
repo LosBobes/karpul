@@ -360,7 +360,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted);
+  font-weight: 500;
 }
 .screen-bar {
   height: 6px;
