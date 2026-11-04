@@ -829,6 +829,8 @@ class RideRead(BaseModel):
     # From the shared car's paper log and not confirmed by its driver yet:
     # nobody else can get in (POST /api/rides/{id}/confirm).
     unconfirmed: bool = False
+    # The admin who added the ride in the driver's name, "" when the driver did.
+    added_by_name: str = ""
     # The driver's mobile number when their account has one, for "Call the driver".
     driver_phone: str | None = None
     bookings: list[BookingRead]

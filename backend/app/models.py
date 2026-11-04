@@ -187,6 +187,12 @@ class Ride(SQLModel, table=True):
     # nobody but whoever runs the ride puts anyone in it until the driver (or
     # an admin) confirms it (POST /api/rides/{id}/confirm) or the driver edits it.
     unconfirmed: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
+    # The admin who added the ride in the driver's name (RideCreate.driver_id),
+    # on every week of a series: the ride's own trail of who made it, next to
+    # the admin's log. A name snapshot like `driver_name`, so it outlives the
+    # account (deletion nulls the id). Both empty for a ride the driver added.
+    added_by_id: int | None = Field(default=None, foreign_key="appuser.id")
+    added_by_name: str = Field(default="", sa_column_kwargs={"server_default": ""})
     created_at: datetime = Field(default_factory=utcnow)
 
     corporate_car: CorporateCar | None = Relationship(back_populates="rides")

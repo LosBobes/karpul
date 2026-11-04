@@ -136,6 +136,8 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
                 raise HTTPException(409, f"{exc.detail} ({ride_date.isoformat()})") from exc
             raise
         ride = Ride(**data, driver_id=driver.id, series_id=series_id, approval=approval)
+        if driver is not user:
+            ride.added_by_id, ride.added_by_name = user.id, user.display_name
         session.add(ride)
         # Flush so the next occurrence's availability check sees this one.
         session.flush()

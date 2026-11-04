@@ -211,6 +211,7 @@ export function RideLog({ onClose }: Props) {
                   <td>
                     {r.driver_name}
                     {r.driver_phone && <span className="log-sub mono">{r.driver_phone}</span>}
+                    {r.added_by_name && <span className="log-sub">{t.rideLog.addedBy(r.added_by_name)}</span>}
                   </td>
                   <td>
                     {r.car_name}
