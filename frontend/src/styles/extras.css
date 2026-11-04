@@ -1600,6 +1600,33 @@
   52%, 100% { background: var(--green); color: #fff; transform: none; }
 }
 
+/* Added by: under Marko's row, the fact naming the admin who added the ride slides in. */
+.wn-addedby-driver {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.wn-addedby-fact {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  animation: wn-arrive 5s var(--ease-out) infinite;
+}
+.wn-addedby-fact .wn-line-label {
+  flex: 0 0 3rem;
+}
+.wn-addedby-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  animation: wn-tick-name 5s var(--ease-out) infinite;
+}
+@keyframes wn-tick-name {
+  0%, 38% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
 /* Seat notice: Milan's row goes from the car, then the card saying so pops up. */
 .wn-notice-stage {
   gap: 0.6rem;

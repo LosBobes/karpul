@@ -109,6 +109,8 @@ export interface Ride {
   unconfirmed: boolean
   /** Driver's hint: they would appreciate a coffee. */
   coffee_please: boolean
+  /** The admin who added the ride in the driver's name ("" when the driver did). */
+  added_by_name: string
   /** An own car's plate for the Beograd office's garage ("" none; lib/offices.ts `needsGarage`). */
   plate: string
   /** An admin put `plate` on the garage's list. */

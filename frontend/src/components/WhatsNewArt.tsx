@@ -9,7 +9,33 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** A driver card: the line saying which admin added the ride slides in under the driver. */
+function AddedByDemo() {
+  return (
+    <div className="wn-card">
+      <div className="wn-addedby-driver">
+        <span className="wn-pax-avatar">M</span>
+        <span className="wn-pax-name">Marko</span>
+      </div>
+      <span className="wn-line" />
+      <div className="wn-addedby-fact">
+        <svg viewBox="0 0 16 16" width="14" height="14">
+          <path
+            d="M8 1.75c1.6 1.2 3.3 1.8 5.25 1.85v3.9c0 3.2-2 5.5-5.25 6.75C4.75 13 2.75 10.7 2.75 7.5V3.6C4.7 3.55 6.4 2.95 8 1.75Z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="wn-line wn-line-label" />
+        <span className="wn-addedby-name">Ada</span>
+      </div>
     </div>
   )
 }

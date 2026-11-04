@@ -385,6 +385,7 @@ const en = {
     coffeeYou: 'You would appreciate one',
     garage: 'Garage',
     plateOnList: 'on the list',
+    addedBy: 'Added by',
     plateWaiting: 'not on the list yet',
     /** The driver is a name with no account behind it (the shared car's paper log). */
     noAccount: 'No account',
@@ -786,11 +787,13 @@ const en = {
       odoEnd: 'Odometer back',
       driven: 'Driven (km)',
       atWheel: 'At the wheel',
+      addedBy: 'Added by',
     },
     company: 'Company',
     own: 'Own',
     oneWay: 'one way',
     booked: 'as booked',
+    addedBy: (admin: string) => `added by ${admin}`,
     none: 'No rides between these dates.',
     noMatch: 'No ride matches the filters.',
     totals: (rides: number, pax: number, km: number, driven: number) =>
@@ -1281,6 +1284,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      addedBy: {
+        title: 'Who added a ride',
+        body: 'A ride an admin added in your name now says so on the card: **Added by** and the admin\'s name, on every week of a repeat. **All rides** shows it under the driver and carries it in the spreadsheet, and the **Admin log** keeps the line as before.',
+      },
       seatNotice: {
         title: 'Losing a seat is never silent',
         body: 'If someone takes you, or a colleague you put in, out of a car, or removes the ride, you are told: by a push that cannot be switched off, and by a card on top of the board until you tap **Got it**. The ride\'s messages keep a line saying who did it. Rides from the shared Mazda\'s paper log take nobody until their driver taps **Confirm the ride**.',
@@ -1868,6 +1875,7 @@ const sr: Messages = {
     coffeeYou: 'Obradovao/la bi se kafi',
     garage: 'Garaža',
     plateOnList: 'na spisku',
+    addedBy: 'Dodao/la',
     plateWaiting: 'još nije na spisku',
     noAccount: 'Bez naloga',
     claimAsk: (driver) => `Da li si ovo ti? ${driver} još nema nalog. Ako potvrdiš, sve vožnje pod ovim imenom postaju tvoje.`,
@@ -2234,11 +2242,13 @@ const sr: Messages = {
       odoEnd: 'Kilometraža pri vraćanju',
       driven: 'Pređeno (km)',
       atWheel: 'Za volanom',
+      addedBy: 'Dodao/la',
     },
     company: 'Zajednički',
     own: 'Sopstveni',
     oneWay: 'u jednom pravcu',
     booked: 'prema rezervaciji',
+    addedBy: (admin) => `dodao/la ${admin}`,
     none: 'Između ovih datuma nema vožnji.',
     noMatch: 'Nijedna vožnja ne odgovara filterima.',
     totals: (rides, pax, km, driven) =>
@@ -2742,6 +2752,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      addedBy: {
+        title: 'Ko je dodao vožnju',
+        body: 'Vožnja koju je administrator dodao u tvoje ime sada to piše na kartici: **Dodao/la** i ime administratora, za svaku nedelju ponavljanja. **Sve vožnje** to pokazuju ispod vozača i nose u tabeli, a **Dnevnik administratora** i dalje čuva zapis.',
+      },
       seatNotice: {
         title: 'Gubitak mesta više ne prolazi neprimećeno',
         body: 'Ako neko iz auta ukloni tebe ili kolegu koga si ti dodao/la, ili ukloni vožnju, saznaćeš: push obaveštenjem koje ne može da se isključi i karticom na vrhu table dok ne dodirneš **U redu**. U porukama vožnje ostaje zapis ko je to uradio. Vožnje iz papirnog dnevnika zajedničke Mazde ne primaju putnike dok vozač ne dodirne **Potvrdi vožnju**.',

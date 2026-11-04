@@ -21,6 +21,7 @@ const ride = (id: number, over: Partial<Ride> = {}): Ride =>
     needs_driver: false,
     unconfirmed: false,
     coffee_please: false,
+    added_by_name: '',
     plate: '',
     plate_registered: false,
     proposal: null,
@@ -65,12 +66,13 @@ describe('the rides table', () => {
   })
 
   it('writes a spreadsheet an office in Germany or Serbia opens as is', () => {
-    const csv = logCsv([rides[0], ride(4, { distance_km: 12.5, notes: '=HYPERLINK("x"); call me', driver_phone: '+381 64 123' })], messages())
+    const csv = logCsv([rides[0], ride(4, { distance_km: 12.5, notes: '=HYPERLINK("x"); call me', driver_phone: '+381 64 123', added_by_name: 'Ada Admin' })], messages())
     const [head, first, second] = csv.split('\r\n')
     expect(head.startsWith('﻿Date;Leaves;Back;Driver;Driver phone;Car;Type')).toBe(true)
-    expect(first).toBe('2026-10-20;07:30;16:00;Ana;;Octavia (FIRM-001);Company;Novi Sad;;HQ;3;1;Mila Đorđević;;80;;;;Ana (as booked);;')
+    expect(head.endsWith(';Chip in;Note;Added by')).toBe(true)
+    expect(first).toBe('2026-10-20;07:30;16:00;Ana;;Octavia (FIRM-001);Company;Novi Sad;;HQ;3;1;Mila Đorđević;;80;;;;Ana (as booked);;;')
     expect(second).toContain(";'+381 64 123;")
     expect(second).toContain(';12,5;')
-    expect(second.endsWith(`;"'=HYPERLINK(""x""); call me"`)).toBe(true)
+    expect(second.endsWith(`;"'=HYPERLINK(""x""); call me";Ada Admin`)).toBe(true)
   })
 })

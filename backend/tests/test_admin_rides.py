@@ -187,3 +187,34 @@ def test_only_admins_read_the_log(client, admin_auth):
     assert client.anon.get("/api/admin/log").status_code == 401
     first = log(client, admin_auth)
     assert client.get(f"/api/admin/log?before={first[0]['id']}", headers=admin_auth).json() == []
+
+
+def test_a_ride_added_for_someone_else_says_who_added_it(client, admin_auth):
+    marko = user_id(client, "Marko Jovanović")
+    until = (date.today() + timedelta(days=15)).isoformat()
+    made = client.post("/api/rides", json=ride(driver_id=marko, repeat_until=until), headers=admin_auth).json()
+    assert made["added_by_name"] == "Ada Admin"
+    # Every week of the series carries the trail, not only the first one.
+    weeks = client.get(f"/api/admin/rides?from={TOMORROW}&to={until}", headers=admin_auth).json()
+    assert len(weeks) == 3
+    assert {r["added_by_name"] for r in weeks} == {"Ada Admin"}
+    # The driver's own rides, and an admin's own, carry none.
+    assert client.post("/api/rides", json=ride(driver_name="Ana Petrović")).json()["added_by_name"] == ""
+    assert client.post("/api/rides", json=ride(), headers=admin_auth).json()["added_by_name"] == ""
+    # It stays when the driver edits the ride.
+    edited = client.patch(f"/api/rides/{made['id']}", json={"notes": "mine now"}, headers={"X-User-Name": "Marko Jovanović"})
+    assert edited.json()["added_by_name"] == "Ada Admin"
+
+
+def test_the_trail_follows_the_admins_name_and_outlives_the_account(client, admin_auth, engine):
+    from tests.conftest import make_person
+
+    marko = user_id(client, "Marko Jovanović")
+    made = client.post("/api/rides", json=ride(driver_id=marko), headers=admin_auth).json()
+    assert client.patch("/api/auth/me", json={"last_name": "Adminović"}, headers=admin_auth).status_code == 200
+    assert client.get(f"/api/rides/{made['id']}").json()["added_by_name"] == "Ada Adminović"
+
+    _, token = make_person(engine, "Bora Boss", admin=True)
+    ada = client.get("/api/auth/me", headers=admin_auth).json()["id"]
+    assert client.delete(f"/api/admin/users/{ada}", headers={"Authorization": f"Bearer {token}"}).status_code == 204
+    assert client.get(f"/api/rides/{made['id']}").json()["added_by_name"] == "Ada Adminović"

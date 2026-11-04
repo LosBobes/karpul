@@ -43,6 +43,7 @@ import {
   RepeatIcon,
   RoadIcon,
   ShareIcon,
+  ShieldIcon,
   TrashIcon,
   UserIcon,
   UsersIcon,
@@ -643,7 +644,7 @@ export function CarDetail({
           </span>
         </div>
 
-        {(ride.chip_in || ride.distance_km != null || ride.coffee_please || showPlate) && (
+        {(ride.chip_in || ride.distance_km != null || ride.coffee_please || showPlate || ride.added_by_name) && (
           <dl className="facts">
             {ride.distance_km != null && (
               <div className="fact">
@@ -677,6 +678,14 @@ export function CarDetail({
                 <dd>
                   {ride.plate} · {ride.plate_registered ? t.detail.plateOnList : t.detail.plateWaiting}
                 </dd>
+              </div>
+            )}
+            {ride.added_by_name && (
+              <div className="fact">
+                <dt>
+                  <ShieldIcon size={14} /> {t.detail.addedBy}
+                </dt>
+                <dd>{ride.added_by_name}</dd>
               </div>
             )}
           </dl>

@@ -107,7 +107,7 @@ export function logCsv(rides: Ride[], t: Messages): string {
   const c = t.rideLog.col
   const header = [
     c.date, c.departs, c.back, c.driver, c.phone, c.car, c.type, c.from, c.stops, c.to, c.seats, c.taken, c.passengers, c.waiting, c.km,
-    c.odoStart, c.odoEnd, c.driven, c.atWheel, c.chipIn, c.note,
+    c.odoStart, c.odoEnd, c.driven, c.atWheel, c.chipIn, c.note, c.addedBy,
   ]
   const rows = rides.map((r) => {
     const odo = odometerSpan(r)
@@ -137,6 +137,7 @@ export function logCsv(rides: Ride[], t: Messages): string {
       : kmByDriver(r).map((d) => `${d.name} ${d.km} km`).join(', '),
     r.chip_in,
     r.notes,
+    r.added_by_name,
     ]
   })
   return '﻿' + [header, ...rows].map((row) => row.map(cell).join(';')).join('\r\n') + '\r\n'

@@ -190,6 +190,10 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
         if ride not in session.deleted:
             ride.driver_id = None
             session.add(ride)
+    for ride in session.exec(select(Ride).where(Ride.added_by_id == user.id)).all():
+        if ride not in session.deleted:
+            ride.added_by_id = None
+            session.add(ride)
     for message in session.exec(select(RideMessage).where(RideMessage.author_id == user.id)).all():
         message.author_id = None
         session.add(message)

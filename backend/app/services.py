@@ -287,6 +287,11 @@ def rename_person(session: Session, user: User, new_name: str) -> list[Ride]:
             ride.driver_name = new_name
             session.add(ride)
             touch(ride.id)  # type: ignore[arg-type]
+    for ride in session.exec(select(Ride).where(Ride.added_by_id == user.id)).all():
+        if ride.added_by_name != new_name:
+            ride.added_by_name = new_name
+            session.add(ride)
+            touch(ride.id)  # type: ignore[arg-type]
     for booking in session.exec(select(Booking).where(Booking.passenger_id == user.id)).all():
         if booking.passenger_name != new_name:
             booking.passenger_name = new_name

@@ -27,6 +27,7 @@ function ride(id: number, overrides: Partial<Ride> = {}): Ride {
     needs_driver: false,
     unconfirmed: false,
     coffee_please: false,
+    added_by_name: '',
     plate: '',
     plate_registered: false,
     proposal: null,
