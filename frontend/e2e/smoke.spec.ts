@@ -74,10 +74,11 @@ test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
   await expect(ana.getByRole('button', { name: 'Messages (1)' }).first()).toBeVisible()
 
   // Ana puts a third colleague in: picked from the people with an account, never typed.
+  // A name no other spec registers: they all share one server and run in any order.
   const tag = info.project.name === 'phone' ? 'P' : 'D'
-  const milaName = `Mila Ilić ${tag}`
+  const vesnaName = `Vesna Stanić ${tag}`
   const made = await ana.request.post('/api/auth/register', {
-    data: { username: `mila.${tag.toLowerCase()}`, first_name: 'Mila', last_name: `Ilić ${tag}`, password: 'a-long-enough-password' },
+    data: { username: `vesna.smoke.${tag.toLowerCase()}`, first_name: 'Vesna', last_name: `Stanić ${tag}`, password: 'a-long-enough-password' },
   })
   expect(made.status()).toBe(201)
   await ana.getByRole('button', { name: 'Add a colleague' }).first().click()
@@ -85,10 +86,10 @@ test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
   // Marko, already in the car, is not offered again.
   await search.fill(`jovanovic ${tag}`)
   await expect(ana.getByRole('option', { name: markoName })).toHaveCount(0)
-  await search.fill(`ilic ${tag}`)
-  await ana.getByRole('option', { name: milaName }).click()
-  await expect(toast(ana, milaName)).toBeAttached()
-  await expect(marko.getByText(milaName).first()).toBeVisible()
+  await search.fill(`stanic ${tag}`)
+  await ana.getByRole('option', { name: vesnaName }).click()
+  await expect(toast(ana, vesnaName)).toBeAttached()
+  await expect(marko.getByText(vesnaName).first()).toBeVisible()
 })
 
 test('signed out, the API shows nothing', async ({ request }) => {
