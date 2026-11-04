@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useKept } from '../lib/keep'
 import { addDays, foldName, parseISODate, toISODate } from '../lib/dates'
-import { messages, useT } from '../lib/i18n'
-import { fmtKm, pinsFor } from '../lib/maps'
+import { useT } from '../lib/i18n'
+import { pinsFor } from '../lib/maps'
 import { goesToGarage, officeDistance } from '../lib/offices'
 import { useRoad } from '../lib/places'
 import type { CarType, CorporateCar, Point, Ride, RideInput, RideRequest } from '../lib/types'
@@ -13,12 +13,11 @@ import { PlaceDialog } from './PlaceDialog'
 import { PlaceInput } from './PlaceInput'
 import { Avatar } from './Avatar'
 import { DriverPicker, type Driver } from './DriverPicker'
-import { DatePicker } from './DatePicker'
-import { CarIcon, ChevronRightIcon, CoffeeIcon, HandIcon, MinusIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { ChevronRightIcon, HandIcon, PinIcon, PlusIcon, TrashIcon, XIcon } from './icons'
 import { SegThumb } from './Segmented'
-import { Select } from './Select'
 import { Sheet } from './Sheet'
-import { TimePicker } from './TimePicker'
+import { CarField, ExtrasFields, RepeatField, SeatsField, WayBackField, WhenField } from './RideFormParts'
+import { BLANK_ROUTE, homePin, isAdvancedRide, LAST_ROUTE_KEY, loadLastRoute, loadMode, MAX_REPEAT_WEEKS, MODE_KEY, weeklyCount, type LastRoute, type Mode } from '../lib/rideForm'
 
 interface Props {
   date: string
@@ -47,68 +46,6 @@ interface Props {
   onClose: () => void
 }
 
-const LAST_ROUTE_KEY = 'karpul.lastRoute'
-/** Simple or advanced, remembered per browser like the view and the theme. */
-const MODE_KEY = 'karpul.formMode'
-/** "Repeat weekly" may reach this far (backend: schemas.MAX_REPEAT_WEEKS). */
-const MAX_REPEAT_WEEKS = 26
-
-/**
- * Two depths of the same form. *Simple* asks only what a ride cannot be made
- * without: who drives, which car, how many seats, when, and where from and to.
- * *Advanced* adds the rest in place (the passenger-list switch under the seats,
- * repeats under the day, the pickup points inside the route, then distance,
- * chip-in and the note), so switching mode never reshuffles the fields you
- * already filled in — it only reveals or hides the ones around them.
- *
- * Nothing is dropped by going back to Simple: the values stay in state and are
- * submitted, and a one-line summary at the foot of the simple form says which
- * advanced settings are carrying a value, with a tap to go and see them.
- */
-type Mode = 'simple' | 'advanced'
-
-function loadMode(): Mode {
-  try {
-    return localStorage.getItem(MODE_KEY) === 'advanced' ? 'advanced' : 'simple'
-  } catch {
-    return 'simple'
-  }
-}
-
-/** A ride that already carries an advanced setting opens on the advanced form,
- *  so editing it never hides what is there behind a mode the driver forgot. */
-function isAdvancedRide(seed: Ride | null): boolean {
-  if (!seed) return false
-  return (
-    seed.passengers_manage ||
-    !seed.passengers_add_stops ||
-    seed.stops.length > 0 ||
-    seed.stops_before.length > 0 ||
-    seed.distance_km != null ||
-    seed.chip_in.trim() !== '' ||
-    seed.coffee_please ||
-    seed.notes.trim() !== ''
-  )
-}
-
-/** What the form remembers from the last ride you added: the route, your own
- *  car and how many seats you offered in it, so a regular commute is two taps. */
-interface LastRoute {
-  origin: string
-  destination: string
-  car_name: string
-  seats?: number
-  /** Your own car's plate, for the Beograd garage. */
-  plate?: string
-  /** The pins of the two, by folded name, when they had any. */
-  points?: Record<string, Point>
-}
-
-/** A shared car's home as a pin, by its folded name. */
-function homePin(car: CorporateCar | undefined): Record<string, Point> {
-  return car && car.home && car.home_lat != null && car.home_lng != null ? { [foldName(car.home)]: { lat: car.home_lat, lng: car.home_lng } } : {}
-}
-
 /** Which place of the route the map picker is pinning. */
 interface Picking {
   field: 'origin' | 'destination' | 'stop' | 'before'
@@ -116,23 +53,6 @@ interface Picking {
   index: number
 }
 
-const BLANK_ROUTE = (): LastRoute => ({ origin: '', destination: messages().form.defaultDestination, car_name: '' })
-
-function loadLastRoute(): LastRoute {
-  try {
-    const raw = localStorage.getItem(LAST_ROUTE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch {
-    /* ignore */
-  }
-  return BLANK_ROUTE()
-}
-
-/** How many rides "repeat weekly until" makes: the first plus one per full week. */
-function weeklyCount(from: string, until: string): number {
-  const days = Math.round((parseISODate(until).getTime() - parseISODate(from).getTime()) / 86_400_000)
-  return days < 0 ? 0 : Math.floor(days / 7) + 1
-}
 
 /** The "Add ride" / "Edit ride" bottom sheet. */
 export function RideForm({ date, userName, cars, existing, template, request = null, slot = null, previous = null, prefill = true, onPrefillChange, submitting, error, canAskApproval = false, onSubmit, onDelete, onClose }: Props) {
@@ -530,67 +450,9 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         </div>
       )}
 
-      <div className="field">
-        <span className="field-label">{t.form.car}</span>
-        <div className="segmented" role="radiogroup" aria-label={t.form.car}>
-          <SegThumb count={2} index={carType === 'corporate' ? 0 : 1} />
-          <button
-            type="button"
-            role="radio"
-            aria-checked={carType === 'corporate'}
-            className={carType === 'corporate' ? 'seg seg-on' : 'seg'}
-            disabled={!cars.length}
-            onClick={() => pickCar('corporate', carId)}
-          >
-            {t.form.companyCar}
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={carType === 'own'}
-            className={carType === 'own' ? 'seg seg-on' : 'seg'}
-            onClick={() => pickCar('own', carId)}
-          >
-            {t.form.myOwnCar}
-          </button>
-        </div>
-        {carType === 'corporate' ? (
-          <Select
-            label={t.form.whichCar}
-            icon={<CarIcon size={16} />}
-            value={carId === '' ? null : carId}
-            options={cars.map((c) => ({ value: c.id, label: c.name, hint: [t.form.carHint(c.plate, c.passenger_seats), c.home].filter(Boolean).join(' · ') }))}
-            onChange={(id) => pickCar('corporate', id)}
-          />
-        ) : (
-          <input
-            required
-            aria-label={t.form.yourCar}
-            placeholder={t.form.carPlaceholder}
-            maxLength={80}
-            value={carName}
-            onChange={(e) => setCarName(e.target.value)}
-          />
-        )}
-      </div>
+      <CarField cars={cars} carType={carType} carId={carId} carName={carName} onPick={pickCar} onCarName={setCarName} />
 
-      <div className="field">
-        <div className="field-row">
-          <span className="field-label" id="capacity-label">
-            {t.form.seats}
-          </span>
-          <div className="stepper stepper-sm" role="group" aria-labelledby="capacity-label">
-            <button type="button" aria-label={t.form.fewer} disabled={seats <= minSeats} onClick={() => setSeats(seats - 1)}>
-              <MinusIcon />
-            </button>
-            <output aria-live="polite">{seats}</output>
-            <button type="button" aria-label={t.form.more} disabled={seats >= maxSeats} onClick={() => setSeats(seats + 1)}>
-              <PlusIcon />
-            </button>
-          </div>
-        </div>
-        {minSeats > 0 && <p className="hint">{t.form.alreadyBooked(minSeats)}</p>}
-      </div>
+      <SeatsField seats={seats} minSeats={minSeats} maxSeats={maxSeats} onSeats={setSeats} />
 
       {advanced && (
         <div className="field">
@@ -605,79 +467,34 @@ export function RideForm({ date, userName, cars, existing, template, request = n
         </div>
       )}
 
-      {/* Day, departure and return read as one line: rides are same-day, so the
-          return has a time and no date of its own. */}
-      <div className="field">
-        <span className="field-label field-label-row">
-          {t.form.when}
-          <label className="toggle">
-            <span>{t.form.oneWay}</span>
-            <input type="checkbox" checked={oneWay} onChange={(e) => setOneWay(e.target.checked)} />
-          </label>
-        </span>
-        <div className={oneWay ? 'when-grid when-grid-one' : 'when-grid'}>
-          <div className="subfield">
-            <span className="subfield-label">{t.form.day}</span>
-            <DatePicker label={t.form.day} value={rideDate} onChange={setRideDate} busy={busyCar !== null ? rideBusy : undefined} onMonth={addMonth} />
-          </div>
-          <div className="subfield">
-            <span className="subfield-label">{t.form.departs}</span>
-            <TimePicker label={t.form.departureTime} value={departure} onChange={setDeparture} />
-          </div>
-          {!oneWay && (
-            <div className="subfield">
-              <span className="subfield-label">{t.form.returns}</span>
-              <TimePicker label={t.form.returnTime} value={ret} onChange={setRet} />
-            </div>
-          )}
-        </div>
-        {asksPassengers && <p className="hint">{t.form.consentHint}</p>}
-      </div>
+      <WhenField
+        oneWay={oneWay}
+        onOneWay={setOneWay}
+        rideDate={rideDate}
+        onRideDate={setRideDate}
+        departure={departure}
+        onDeparture={setDeparture}
+        ret={ret}
+        onRet={setRet}
+        busy={busyCar !== null ? rideBusy : undefined}
+        onMonth={addMonth}
+        asksPassengers={asksPassengers}
+      />
 
       {offersWayBack && (
-        <div className="field">
-          <label className="switch-row">
-            <span className="switch-row-text">
-              <span className="switch-row-title">{t.form.wayBack}</span>
-              <span className="switch-row-desc">{t.form.wayBackHint}</span>
-            </span>
-            <input type="checkbox" checked={wayBack} onChange={(e) => setWayBack(e.target.checked)} />
-          </label>
-          {wayBack && (
-            <div className="when-grid when-grid-one">
-              <div className="subfield">
-                <span className="subfield-label">{t.form.wayBackDay}</span>
-                <DatePicker label={t.form.wayBackDay} value={backDate} onChange={setBackDate} busy={busyCar !== null ? backBusy : undefined} onMonth={addMonth} />
-              </div>
-              <div className="subfield">
-                <span className="subfield-label">{t.form.wayBackLeaves}</span>
-                <TimePicker label={t.form.wayBackLeaves} value={backDeparture} onChange={setBackDeparture} />
-              </div>
-            </div>
-          )}
-        </div>
+        <WayBackField
+          on={wayBack}
+          onToggle={setWayBack}
+          backDate={backDate}
+          onBackDate={setBackDate}
+          backDeparture={backDeparture}
+          onBackDeparture={setBackDeparture}
+          busy={busyCar !== null ? backBusy : undefined}
+          onMonth={addMonth}
+        />
       )}
 
-      {advanced && !existing && (
-        <div className="field">
-          <label className="switch-row">
-            <span className="switch-row-text">
-              <span className="switch-row-title">{t.form.repeatWeekly}</span>
-              {!repeat && <span className="switch-row-desc">{t.form.repeatMax}</span>}
-            </span>
-            <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-          </label>
-          {repeat && (
-            <div className="grid-2">
-              <div className="subfield">
-                <span className="subfield-label">{t.form.repeatUntil}</span>
-                <DatePicker label={t.form.repeatUntil} value={repeatUntil} onChange={setRepeatUntil} />
-              </div>
-              <p className="hint hint-inline">{repeatCount > 1 ? t.form.repeatCount(repeatCount) : t.form.repeatMax}</p>
-            </div>
-          )}
-        </div>
-      )}
+      {advanced && !existing && <RepeatField repeat={repeat} onRepeat={setRepeat} until={repeatUntil} onUntil={setRepeatUntil} count={repeatCount} />}
 
       {/* One box, one focus ring: start, the stops between and the destination
           are the same journey, so they are drawn as one stack of rows. */}
@@ -814,53 +631,19 @@ export function RideForm({ date, userName, cars, existing, template, request = n
       )}
 
       {advanced && (
-        <>
-          <div className="grid-2">
-            <label className="field">
-              <span className="field-label">{t.form.distance}</span>
-              <span className="input-unit">
-                <input
-                  inputMode="decimal"
-                  pattern="[0-9]*[.,]?[0-9]*"
-                  maxLength={7}
-                  placeholder={knownKm !== null ? String(knownKm) : roadKm !== null ? fmtKm(roadKm) : '0'}
-                  aria-invalid={distanceBad || undefined}
-                  value={distance}
-                  onChange={(e) => setDistance(e.target.value)}
-                />
-                <span aria-hidden="true">km</span>
-              </span>
-            </label>
-            <label className="field">
-              <span className="field-label">{t.form.chipIn}</span>
-              <input maxLength={40} placeholder={t.form.chipInPlaceholder} value={chipIn} onChange={(e) => setChipIn(e.target.value)} />
-            </label>
-          </div>
-          <p className="hint hint-tight">
-            {knownKm !== null && distance.trim() === ''
-              ? t.form.knownRoad(knownKm)
-              : roadKm !== null && distance.trim() === ''
-                ? t.form.roadKm(fmtKm(roadKm))
-                : t.form.distanceHint}{' '}
-            {t.form.chipInHint}
-          </p>
-
-          <label className="switch-row">
-            <span className="switch-row-text">
-              <span className="switch-row-title switch-row-title-icon">
-                <CoffeeIcon size={16} /> {t.form.coffee}
-              </span>
-            </span>
-            <input type="checkbox" checked={coffee} onChange={(e) => setCoffee(e.target.checked)} />
-          </label>
-
-          <label className="field">
-            <span className="field-label">
-              {t.form.notes} <span className="muted">{t.form.optional}</span>
-            </span>
-            <textarea rows={2} maxLength={500} placeholder={t.form.notesPlaceholder} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </label>
-        </>
+        <ExtrasFields
+          distance={distance}
+          onDistance={setDistance}
+          distanceBad={distanceBad}
+          knownKm={knownKm}
+          roadKm={roadKm}
+          chipIn={chipIn}
+          onChipIn={setChipIn}
+          coffee={coffee}
+          onCoffee={setCoffee}
+          notes={notes}
+          onNotes={setNotes}
+        />
       )}
 
       {!advanced && extras.length > 0 && (
