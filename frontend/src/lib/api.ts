@@ -1,4 +1,5 @@
 import { authToken, clearSession, type AuthUser, type Session } from './auth'
+import type { Person } from './people'
 import type { NewStop } from './stops'
 import type {
   AdminAction,
@@ -289,10 +290,15 @@ export const api = {
   /**
    * Put `passengerName` in the car: yourself (a plain join), or someone else,
    * which the server allows the driver, and the passengers while the ride's
-   * `passengers_manage` is on.
+   * `passengers_manage` is on. Someone else is an account, by `passengerId`.
    */
-  join: (rideId: number, passengerName: string, pickup = '', newStop: NewStop | null = null) =>
-    request<Ride>(`/api/rides/${rideId}/bookings`, json('POST', { passenger_name: passengerName, pickup, new_stop: newStop })),
+  join: (rideId: number, passengerName: string, pickup = '', newStop: NewStop | null = null, passengerId: number | null = null) =>
+    request<Ride>(
+      `/api/rides/${rideId}/bookings`,
+      json('POST', { passenger_name: passengerName, passenger_id: passengerId, pickup, new_stop: newStop }),
+    ),
+  /** Everyone with an account, to pick a colleague from (backend: routers/people.py). */
+  people: () => request<Person[]>('/api/people'),
 
   leave: (rideId: number, bookingId: number) => request<Ride>(`/api/rides/${rideId}/bookings/${bookingId}`, { method: 'DELETE' }),
 

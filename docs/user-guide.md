@@ -37,8 +37,8 @@ Open Karpul in your browser and choose **Register**. You need:
   **mobile phone** number. The phone number is shown on the rides you drive, so your
   passengers can call you. Leave it out if you never drive.
 
-If a colleague already put you in their car by name before you had an account, registering
-under that same name makes those seats yours automatically.
+If a seat from before accounts (the shared Mazda's paper log, say) goes by your name,
+registering under that same name makes it yours automatically.
 
 You stay signed in. As long as you open Karpul at least once a month, you never see the
 sign-in screen again on that browser.
@@ -181,8 +181,9 @@ Open your ride: **Edit** sits right on the card, beside the **⋮** menu, which 
   opposites).
 - **Share ride** and **Add to calendar** (see [section 8](#8-notifications-calendar-and-sharing)).
 
-On the card itself you can **Add a passenger by name** (a colleague without an account works
-too) and take a passenger out. Under the route, **Add a pickup point** goes straight to the place
+On the card itself you can **Add a colleague** (a search over everyone with an account: type a
+few letters and tap the name; someone without an account has to register first) and take a
+passenger out. Under the route, **Add a pickup point** goes straight to the place
 picker and then where on the way it is. **Edit the route** opens the whole route over the full screen,
 with who gets in where: tap a place to
 pick it again (a pickup point also says where on the way it goes), **×** takes a pickup point off,

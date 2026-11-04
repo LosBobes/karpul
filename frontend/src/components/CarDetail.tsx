@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { firstName, fmtTime } from '../lib/dates'
 import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
@@ -7,6 +7,7 @@ import { hasPins, routeUrl, stopHint } from '../lib/maps'
 import { useArrivals } from '../lib/motion'
 import { keepsKm } from '../lib/odometer'
 import { goesToGarage } from '../lib/offices'
+import type { Person } from '../lib/people'
 import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
@@ -47,6 +48,7 @@ import {
 } from './icons'
 import { Menu } from './Menu'
 import { Odometer } from './Odometer'
+import { PassengerPicker } from './PassengerPicker'
 import { RideThread } from './RideThread'
 import { RideMap, RouteMapSheet } from './RouteMap'
 import { Select } from './Select'
@@ -75,7 +77,7 @@ interface Props {
   onCancelFollowing: (ride: Ride) => void
   /** Put somebody else in the car (driver, or a passenger when the driver allows it). */
   /** Settles once the call is done, so the form can stay until the passenger is in. */
-  onAddPassenger: (ride: Ride, name: string) => Promise<void>
+  onAddPassenger: (ride: Ride, person: Person) => Promise<void>
   onCancel: (ride: Ride) => void
   onEdit: (ride: Ride) => void
   onDuplicate: (ride: Ride) => void
@@ -218,7 +220,6 @@ export function CarDetail({
   // A passenger's "Suggest another time" sheet.
   const [suggesting, setSuggesting] = useState(false)
   const arrived = useArrivals(ride.bookings.map((b) => b.id))
-  const [newName, setNewName] = useState('')
   // Where you get in: the start, one of the stops, or somewhere new you put on the route.
   const [pickup, setPickup] = useState('')
   const [movingPickup, setMovingPickup] = useState<false | 'pick' | 'new'>(false)
@@ -268,15 +269,10 @@ export function CarDetail({
   const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
 
 
-  function submitAdd(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const name = newName.trim().replace(/\s+/g, ' ')
-    if (!name || busy) return
-    // The form stays until the new row is there, so the two swap in one step.
-    void onAddPassenger(ride, name).then(() => {
-      setNewName('')
-      setAdding(false)
-    })
+  function pickPassenger(person: Person) {
+    if (busy) return
+    // The picker stays until the new row is there, so the two swap in one step.
+    void onAddPassenger(ride, person).then(() => setAdding(false))
   }
 
   const shareItems = [
@@ -677,27 +673,11 @@ export function CarDetail({
         {canAddOther && !adding && (
           <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => setAdding(true)}>
             <UserIcon size={18} />
-            {t.detail.addByName}
+            {t.detail.addColleague}
           </button>
         )}
         {canAddOther && adding && (
-          <form className="pax-add" onSubmit={submitAdd}>
-            <input
-              autoFocus
-              required
-              aria-label={t.detail.passengerName}
-              placeholder={t.detail.colleagueName}
-              maxLength={80}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-            <button type="submit" className="btn btn-primary" disabled={busy || !newName.trim()}>
-              {t.common.add}
-            </button>
-            <button type="button" className="icon-btn" aria-label={t.common.cancel} onClick={() => setAdding(false)}>
-              <XIcon size={18} />
-            </button>
-          </form>
+          <PassengerPicker ride={ride} busy={busy} onPick={pickPassenger} onCancel={() => setAdding(false)} />
         )}
 
         {full && !myBooking && !isDriver && ride.bookings.length > 0 && !myEntry && <p className="hint">{t.detail.full}</p>}

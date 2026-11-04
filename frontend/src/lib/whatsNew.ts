@@ -8,7 +8,7 @@
  * showing only what this account has not seen in this browser and nothing from
  * before the account existed: a newcomer is not handed the history.
  */
-export type DemoKey = 'impact' | 'addedBy' | 'seatNotice' | 'carWhere' | 'carBusy' | 'prefill' | 'consent'
+export type DemoKey = 'pickColleague' | 'impact' | 'addedBy' | 'seatNotice' | 'carWhere' | 'carBusy' | 'prefill' | 'consent'
 
 export interface WhatsNewEntry {
   /** Stable: it is what "seen" remembers. Also the key of its words in i18n. */
@@ -18,6 +18,7 @@ export interface WhatsNewEntry {
 }
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = [
+  { id: 'pickColleague', date: '2026-11-04' },
   { id: 'impact', date: '2026-11-04' },
   { id: 'addedBy', date: '2026-11-04' },
   { id: 'seatNotice', date: '2026-11-03' },

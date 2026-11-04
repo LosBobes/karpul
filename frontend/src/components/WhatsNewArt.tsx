@@ -9,7 +9,7 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
     </div>
   )
 }
@@ -32,6 +32,25 @@ function ImpactDemo() {
 }
 
 /** A driver card: the line saying which admin added the ride slides in under the driver. */
+/** A few letters in the search box, the matching colleagues under it, and one picked. */
+function PickColleagueDemo() {
+  return (
+    <div className="wn-card wn-pick">
+      <div className="wn-field">
+        <span className="wn-field-text">Mil</span>
+      </div>
+      <div className="wn-pick-row wn-pick-on" style={{ ['--i' as string]: 0 }}>
+        <span className="wn-pax-avatar">MI</span>
+        <span className="wn-pax-name">Mila Ilić</span>
+      </div>
+      <div className="wn-pick-row" style={{ ['--i' as string]: 1 }}>
+        <span className="wn-pax-avatar">MM</span>
+        <span className="wn-pax-name">Milan Marić</span>
+      </div>
+    </div>
+  )
+}
+
 function AddedByDemo() {
   return (
     <div className="wn-card">

@@ -578,6 +578,9 @@ class LateIn(BaseModel):
 
 class BookingCreate(BaseModel):
     passenger_name: str = Field(min_length=1, max_length=80)
+    # Someone else is picked from the people with an account (`GET /api/people`):
+    # their id wins over the name, which is then only a label.
+    passenger_id: int | None = None
     # "" is the ride's origin; otherwise one of the ride's stops, verbatim.
     pickup: str = Field(default="", max_length=120)
     # A place that is not on the route yet: added as a pickup point there.

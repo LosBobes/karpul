@@ -65,11 +65,11 @@ def seated(session: Session, ride: Ride, user_id: int | None) -> list[Ride]:
 def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, creds: CredsDep):
     """Put `passenger_name` in the car.
 
-    Getting in yourself is the plain case. Someone else can be added by name,
-    but only by the driver or, when the driver allows it (`passengers_manage`),
-    by a passenger already in the car; a name that belongs to an account gets
-    that account's seat, any other is a seat by name until that colleague
-    registers. `pickup` is where they get in: the origin by default, or one of
+    Getting in yourself is the plain case. Someone else can be added, but
+    only by the driver or, when the driver allows it (`passengers_manage`),
+    by a passenger already in the car, and only someone with an account
+    (`passenger_id`, picked from `GET /api/people`; a name is matched to its
+    account, and a name with no account is refused). `pickup` is where they get in: the origin by default, or one of
     the stops. A seat also ends the passenger's wait for the other cars that
     day and answers their request for it.
     """
@@ -78,8 +78,8 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
     if ride.unconfirmed and not may_run(user, ride):
         raise HTTPException(status.HTTP_409_CONFLICT, "The driver has not confirmed this ride yet")
     name = payload.passenger_name
-    if norm_name(name) == user.name_key:
-        passenger: User | None = user
+    if payload.passenger_id == user.id or (payload.passenger_id is None and norm_name(name) == user.name_key):
+        passenger = user
     else:
         if not may_manage_seats(ride, user):
             if ride.passengers_manage:
@@ -87,13 +87,21 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
             else:
                 detail = "Only the driver can add other passengers to this car"
             raise HTTPException(status.HTTP_403_FORBIDDEN, detail)
-        passenger = account_for_name(session, name)
-    if passenger is not None:
-        name = passenger.display_name
-    if (passenger is not None and is_driver(passenger, ride)) or norm_name(name) == norm_name(ride.driver_name):
+        # Someone else is always an account, picked from the list: a typed
+        # name with nobody behind it would be a seat nobody can see as theirs.
+        found = (
+            session.get(User, payload.passenger_id)
+            if payload.passenger_id is not None
+            else account_for_name(session, name)
+        )
+        if found is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Only colleagues with an account can be added")
+        passenger = found
+    name = passenger.display_name
+    if is_driver(passenger, ride) or norm_name(name) == norm_name(ride.driver_name):
         raise HTTPException(status.HTTP_409_CONFLICT, f"{name} is the driver of this ride")
     if any(
-        (passenger is not None and is_person(passenger, b.passenger_id, b.passenger_name))
+        is_person(passenger, b.passenger_id, b.passenger_name)
         or norm_name(b.passenger_name) == norm_name(name)
         for b in ride.bookings
     ):
@@ -102,7 +110,7 @@ def join_ride(ride_id: int, payload: BookingCreate, session: WriteSessionDep, cr
         raise HTTPException(status.HTTP_409_CONFLICT, "No free seats left")
     added = _new_stop(session, ride, user, payload.pickup, payload.new_stop)
     pickup = added if added is not None else pickup_or_422(ride, payload.pickup)
-    passenger_id = passenger.id if passenger is not None else None
+    passenger_id = passenger.id
     added_by = user.id if passenger is not user else None
     ride.bookings.append(
         Booking(ride_id=ride.id, passenger_id=passenger_id, passenger_name=name, pickup=pickup, added_by_id=added_by)  # type: ignore[arg-type]

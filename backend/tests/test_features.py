@@ -178,6 +178,7 @@ def test_the_driver_can_close_the_route_to_new_pickup_points(client, sent):
     r = client.post(f"/api/rides/{rid}/bookings", json={"passenger_name": "Bojan", "pickup": "liman", "new_stop": {}})
     assert r.status_code == 201 and r.json()["bookings"][0]["pickup"] == "Liman"
     # The driver may still add one for a passenger, and open the route again.
+    client.auth("Mila")
     r = client.post(
         f"/api/rides/{rid}/bookings",
         json={"passenger_name": "Mila", "pickup": "Futog", "new_stop": {"before": True}},

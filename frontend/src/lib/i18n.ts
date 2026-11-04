@@ -429,9 +429,9 @@ const en = {
     distance: (km: number) => `${km} km one way`,
     removeName: (name: string) => `Remove ${name}`,
     leave: 'Leave',
-    addByName: 'Add a passenger by name',
-    passengerName: "Passenger's name",
-    colleagueName: "Colleague's name",
+    addColleague: 'Add a colleague',
+    findColleague: 'Search colleagues',
+    moreColleagues: (n: number) => (n === 1 ? '1 more, type to narrow it down' : `${n} more, type to narrow it down`),
     full: 'This car is full.',
     waitFor: 'Wait for a seat',
     waitHint: 'The first seat that frees up is yours, with a notification.',
@@ -1150,7 +1150,7 @@ const en = {
           '**One way** removes the return time and offers **Add the way back too** for another day.',
           '**Advanced** adds a weekly repeat (up to 26 weeks), pickup points, distance, chip-in, coffee and a note. Chip-in is only the agreement: nothing is charged here.',
           'Your ride\'s ⋮ menu edits, duplicates, shares or removes it. Your passengers are told when it moves or is removed.',
-          'On the card you can add a passenger by name, take one out and add a pickup point.',
+          'On the card you can add a colleague (search for them by name), take one out and add a pickup point.',
         ],
       },
       {
@@ -1320,6 +1320,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      pickColleague: {
+        title: 'Colleagues are picked, not typed',
+        body: '**Add a colleague** on a ride card now searches the people with an account: type a few letters and tap the name. A typed name nobody has an account under can no longer take a seat, so every seat belongs to someone who sees it, gets the reminders and can give it up.',
+      },
       impact: {
         title: 'What your seats took off the road',
         body: '**Your rides** now adds up the car kilometres your rides saved, and roughly the CO₂ and fuel with them: every passenger is a car left at home, split half and half between driver and passenger. Admins see the whole team\'s under **Usage**. New in the **Help** group: **Take the tour**.',
@@ -1428,6 +1432,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Only the passenger or the driver can remove this booking$/, () => 'Ovu rezervaciju može da ukloni samo taj putnik ili vozač'],
   [/^Only the driver or a passenger in this car can add someone$/, () => 'Nekoga može da doda samo vozač ili putnik iz ovog auta'],
   [/^Only the driver can add other passengers to this car$/, () => 'Druge putnike u ovaj auto može da doda samo vozač'],
+  [/^Only colleagues with an account can be added$/, () => 'Mogu se dodati samo kolege koje imaju nalog'],
   [/^Range may not exceed (\d+) days$/, (m) => `Opseg ne može biti duži od ${m[1]} dana`],
   [/^`to` must not be before `from`$/, () => 'Krajnji datum ne može biti pre početnog'],
   [/^(.+) already joined this ride$/, (m) => `${m[1]} već ima mesto u ovoj vožnji`],
@@ -1958,9 +1963,9 @@ const sr: Messages = {
     distance: (km) => `${km} km u jednom smeru`,
     removeName: (name) => `Ukloni (${name})`,
     leave: 'Izađi',
-    addByName: 'Dodaj putnika po imenu',
-    passengerName: 'Ime putnika',
-    colleagueName: 'Ime kolege',
+    addColleague: 'Dodaj kolegu',
+    findColleague: 'Pretraži kolege',
+    moreColleagues: (n: number) => `Još ${n}, kucaj da suziš izbor`,
     full: 'Ovaj auto je pun.',
     waitFor: 'Čekaj mesto',
     waitHint: 'Prvo mesto koje se oslobodi je tvoje, uz obaveštenje.',
@@ -2661,7 +2666,7 @@ const sr: Messages = {
           '**U jednom smeru** uklanja vreme povratka i nudi **Dodaj i povratak** za drugi dan.',
           '**Napredno** dodaje ponavljanje svake sedmice (do 26 sedmica), mesta ulaska, razdaljinu, doprinos, kafu i napomenu. Doprinos je samo dogovor: ovde se ništa ne naplaćuje.',
           'Meni ⋮ na tvojoj vožnji služi da je izmeniš, dupliraš, podeliš ili ukloniš. Putnici dobijaju obaveštenje kad se vožnja pomeri ili ukloni.',
-          'Na kartici vožnje možeš da dodaš putnika po imenu, izvadiš nekog iz auta i dodaš mesto ulaska.',
+          'Na kartici vožnje možeš da dodaš kolegu (potražiš ga po imenu), izvadiš nekog iz auta i dodaš mesto ulaska.',
         ],
       },
       {
@@ -2827,6 +2832,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      pickColleague: {
+        title: 'Kolege se biraju, ne kucaju',
+        body: '**Dodaj kolegu** na kartici vožnje sada pretražuje ljude koji imaju nalog: ukucaj nekoliko slova i dodirni ime. Ime pod kojim niko nema nalog više ne može da zauzme mesto, pa svako mesto pripada nekome ko ga vidi, dobija podsetnike i može da ga se odrekne.',
+      },
       impact: {
         title: 'Koliko su tvoja mesta skinula sa puta',
         body: '**Tvoje vožnje** sada sabiraju kilometre autom koje su tvoje vožnje uštedele, i otprilike CO₂ i gorivo uz njih: svaki putnik je jedan auto ostavljen kod kuće, podeljeno pola-pola između vozača i putnika. Administratori vide ceo tim u kartici **Korišćenje**. Novo u grupi **Pomoć**: **Obilazak aplikacije**.',

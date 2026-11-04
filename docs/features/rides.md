@@ -42,7 +42,7 @@ office under any of its names, else folded). **Losing a seat is never silent** (
 out by someone else (`leave_ride`, not your own) writes a thread line (`RideMessage.removed_name`, an `ADDED_COLUMNS`
 column; the app renders `thread.removed`, and it cannot be deleted, a 409) and pushes `taken_out` to the passenger,
 naming whoever did it, and `guest_taken_out` to whoever had put them in (`Booking.added_by_id`, set when someone books
-another person, nulled on account deletion), so a colleague booked by name with no account still has someone told.
+another person, nulled on account deletion), so an old seat by name with no account (new ones always have one) still has someone told.
 `taken_out`, `guest_taken_out` and `ride_removed` are `push.ALWAYS_SENT`: muting *Seats* or *Changes* never silences
 them. Because not everyone has push on, the same people get a `SeatNotice` (also for a coming ride removed through
 `remove_rides`): `GET /api/notices` (unseen, today on), `POST /api/notices/{id}/seen`, and `notices.changed` over the

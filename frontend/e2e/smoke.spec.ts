@@ -72,6 +72,23 @@ test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
   if ((await anaRow.getAttribute('aria-expanded')) !== 'true') await anaRow.click()
   await expect(ana.getByText(markoName).first()).toBeVisible()
   await expect(ana.getByRole('button', { name: 'Messages (1)' }).first()).toBeVisible()
+
+  // Ana puts a third colleague in: picked from the people with an account, never typed.
+  const tag = info.project.name === 'phone' ? 'P' : 'D'
+  const milaName = `Mila Ilić ${tag}`
+  const made = await ana.request.post('/api/auth/register', {
+    data: { username: `mila.${tag.toLowerCase()}`, first_name: 'Mila', last_name: `Ilić ${tag}`, password: 'a-long-enough-password' },
+  })
+  expect(made.status()).toBe(201)
+  await ana.getByRole('button', { name: 'Add a colleague' }).first().click()
+  const search = ana.getByRole('combobox', { name: 'Search colleagues' })
+  // Marko, already in the car, is not offered again.
+  await search.fill(`jovanovic ${tag}`)
+  await expect(ana.getByRole('option', { name: markoName })).toHaveCount(0)
+  await search.fill(`ilic ${tag}`)
+  await ana.getByRole('option', { name: milaName }).click()
+  await expect(toast(ana, milaName)).toBeAttached()
+  await expect(marko.getByText(milaName).first()).toBeVisible()
 })
 
 test('signed out, the API shows nothing', async ({ request }) => {

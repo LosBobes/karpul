@@ -185,6 +185,7 @@ def test_passengers_manage_defaults_off_and_only_driver_adds_or_removes_others(c
     # A stranger neither.
     assert client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "Zoran"}).status_code == 403
     # The driver always can.
+    client.auth("Petar")
     r = client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "ana"})
     assert r.status_code == 201, r.text
     assert [b["passenger_name"] for b in r.json()["bookings"]] == ["Marko", "Petar"]
@@ -201,6 +202,7 @@ def test_passengers_manage_lets_passengers_add_and_remove_each_other(client):
     client.post(url, json={"passenger_name": "Marko"})
 
     # Marko, seated, puts Petar in ...
+    client.auth("Petar")
     r = client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "marko"})
     assert r.status_code == 201, r.text
     # ... but somebody outside the car still cannot.
@@ -231,6 +233,7 @@ def test_driver_toggles_passengers_manage(client):
     r = client.patch(f"/api/rides/{rid}", json={"passengers_manage": True}, headers={"X-User-Name": "Ana"})
     assert r.status_code == 200
     assert r.json()["passengers_manage"] is True
+    client.auth("Petar")
     assert client.post(url, json={"passenger_name": "Petar"}, headers={"X-User-Name": "Marko"}).status_code == 201
 
     # Off again: what was allowed a moment ago is refused.
