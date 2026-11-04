@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { fmtHour, fmtShortDate, parseISODate, addDays, startOfWeek } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import type { CarUsage, CarUsageRow } from '../lib/types'
+import { api } from '../lib/api'
+import type { CarUsage, CarUsageRow, ScreenUsage } from '../lib/types'
 import { dayColumns, dayLevel, monthStarts, shareLevel, weekdayCounts, type HeatLevel } from '../lib/usageHeat'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { DownloadIcon } from './icons'
@@ -101,6 +102,27 @@ export function UsageDashboard({ load, download }: { load: (days: number) => Pro
             </div>
           </div>
 
+          {report.team && (
+            <section className="stats">
+              <h3 className="section-title">{t.usage.team}</h3>
+              <div className="stat-grid usage-stats">
+                {(
+                  [
+                    [report.team.seats_filled, t.usage.seatsFilled],
+                    [Math.round(report.team.car_km_avoided), t.usage.carKm],
+                    [Math.round(report.team.co2_kg), t.usage.co2],
+                    [Math.round(report.team.fuel_l), t.usage.fuel],
+                  ] as const
+                ).map(([value, label]) => (
+                  <div key={label} className="card stat-tile stat-tile-green">
+                    <strong className="when-value">{value}</strong>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="usage-shape-row">
             <div className="segmented usage-shape" role="radiogroup" aria-label={t.usage.heatmap}>
               <SegThumb count={SHAPES.length} index={SHAPES.indexOf(shape)} />
@@ -149,6 +171,8 @@ export function UsageDashboard({ load, download }: { load: (days: number) => Pro
               <DownloadIcon size={18} /> {t.usage.download}
             </button>
           )}
+
+          <Screens days={days} />
         </>
       )}
     </div>
@@ -241,4 +265,79 @@ function HourHeat({ row, counts }: { row: CarUsageRow; counts: number[] }) {
       </div>
     </div>
   )
+}
+
+/**
+ * Which views and sheets get opened in the window (lib/usage.ts), most first,
+ * each with a bar against the most opened one: what is worth simplifying and
+ * what nobody finds.
+ */
+function Screens({ days }: { days: number }) {
+  const t = useT()
+  const [report, setReport] = useState<ScreenUsage | null>(null)
+  useEffect(() => {
+    let live = true
+    api
+      .screenUsage(days)
+      .then((r) => live && setReport(r))
+      .catch(() => live && setReport({ from: '', to: '', screens: [] }))
+    return () => {
+      live = false
+    }
+  }, [days])
+  if (!report) return null
+  const top = report.screens[0]?.count ?? 1
+  return (
+    <section className="stats screens">
+      <h3 className="section-title">{t.usage.screens}</h3>
+      <p className="hint hint-tight">{t.usage.screensHint}</p>
+      {report.screens.length === 0 ? (
+        <p className="hint">{t.usage.noScreens}</p>
+      ) : (
+        <ul className="screen-list">
+          {report.screens.map((s) => (
+            <li key={s.key} className="screen-row">
+              <span className="screen-name" title={s.key}>
+                {screenLabel(s.key)}
+              </span>
+              <span className="screen-bar" aria-hidden="true">
+                <span style={{ width: `${Math.max(2, (s.count / top) * 100)}%` }} />
+              </span>
+              <span className="screen-count">{t.usage.opened(s.count, s.days)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+/** A counted screen's name as the app shows it, in the app language; the key itself when the app has since dropped it. */
+function screenLabel(key: string): string {
+  const t = messages()
+  const [kind, name] = key.split('.') as [string, string]
+  const views: Record<string, string> = { upcoming: t.view.upcoming, week: t.view.week, day: t.view.day }
+  const shapes: Record<string, string> = { clock: t.plan.clock, timeline: t.plan.timeline, map: t.plan.map }
+  const sheets: Record<string, string> = {
+    sidebar: t.common.menu,
+    account: t.account.title,
+    guide: t.guide.title,
+    howTo: t.howTo.title,
+    myRides: t.myRides.title,
+    notif: t.notif.title,
+    support: t.support.title,
+    whatsNew: t.whatsNew.title,
+    feedback: t.feedback.title,
+    update: t.update.title,
+    cars: t.sidebar.cars,
+    people: t.sidebar.people,
+    places: t.sidebar.places,
+    rideLog: t.rideLog.title,
+    adminLog: t.adminLog.title,
+    approvals: t.approvals.title,
+    garage: t.garage.title,
+  }
+  const label = kind === 'view' ? views[name] : kind === 'plan' ? shapes[name] : kind === 'sheet' ? sheets[name] : undefined
+  if (!label) return key
+  return kind === 'view' ? t.usage.screenView(label) : kind === 'plan' ? t.usage.screenPlan(label) : label
 }

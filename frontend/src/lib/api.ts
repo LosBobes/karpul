@@ -13,6 +13,7 @@ import type {
   KnownPlace,
   MapConfig,
   PersonStats,
+  ScreenUsage,
   Photo,
   PlaceSuggestion,
   Point,
@@ -372,6 +373,7 @@ export const api = {
 
   /** How the pool cars were used over the last `days` days, with the rides as history. */
   carUsage: (days: number) => request<CarUsage>(`/api/cars/corporate/usage?days=${days}`),
+  screenUsage: (days: number) => request<ScreenUsage>(`/api/admin/usage?days=${days}`),
 
   /** The same window's company-car rides as a spreadsheet. */
   downloadCarUsage: (days: number) => download(`/api/cars/corporate/usage.csv?days=${days}`, 'karpul-company-cars.csv'),

@@ -1,6 +1,7 @@
 """Karpul - lightweight carpooling for a community."""
 
 import asyncio
+import hashlib
 import html
 import logging
 import os
@@ -9,7 +10,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -17,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlmodel import Session
 
-from . import backfill, backfill_notice, geo
+from . import backfill, backfill_notice, geo, ratelimit
 from .database import engine, get_session, init_db
 from .geofence import GeoFence
 from .housekeeping import backup_status, housekeeping_loop
@@ -42,6 +43,7 @@ from .routers import (
     seats,
     stats,
     thread,
+    usage,
     waitlist,
 )
 from .seed import seed_corporate_cars
@@ -128,6 +130,28 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(GeoFence)
 
 
+WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+# The doors count their own attempts (app/ratelimit.py).
+UNTHROTTLED = ("/api/auth/login", "/api/auth/register", "/api/auth/reset")
+
+
+@app.middleware("http")
+async def throttle_writes(request: Request, call_next):
+    """A ceiling on the writes one signed-in browser can make in a minute
+    (`ratelimit.writes_by_token`), keyed by a hash of its bearer token, so it
+    costs no database query. Reads, the socket and the doors pass untouched."""
+    path = request.url.path
+    auth_header = request.headers.get("authorization", "")
+    if request.method in WRITE_METHODS and path.startswith("/api/") and not path.startswith(UNTHROTTLED) and auth_header:
+        key = hashlib.sha256(auth_header.encode()).hexdigest()
+        try:
+            ratelimit.writes_by_token.check(key)
+        except HTTPException as e:
+            return JSONResponse({"detail": e.detail}, status_code=e.status_code, headers=e.headers)
+        ratelimit.writes_by_token.hit(key)
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def log_slow_and_failed(request: Request, call_next):
     """uvicorn's access log has every request; this adds the ones worth a
@@ -159,6 +183,7 @@ app.include_router(waitlist.router)
 app.include_router(places.router)
 app.include_router(thread.router)
 app.include_router(notices.router)
+app.include_router(usage.router)
 app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)

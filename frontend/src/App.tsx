@@ -54,12 +54,15 @@ import { boardRange, daySelection, upcomingSelection, VIEWS, type View } from '.
 import { keepFor, restoreScroll, useKept } from './lib/keep'
 import { useBoard } from './lib/useBoard'
 import { useOverlays } from './lib/useOverlays'
+import { track } from './lib/usage'
+import { newAccount, setTourDone, tourDone } from './lib/tour'
 import { usePassengerDrag } from './lib/usePassengerDrag'
 import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
 import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
 import { InstallCard } from './components/InstallCard'
 import { SeatNotices } from './components/SeatNotices'
+import { Tour } from './components/Tour'
 import { clearNotices } from './lib/notices'
 
 type FormState = { mode: 'create'; template?: Ride; request?: RideRequest; slot?: Slot } | { mode: 'edit'; ride: Ride } | null
@@ -114,6 +117,7 @@ function Board({ session }: { session: Session }) {
     [user.id, user.display_name, user.is_admin],
   )
   const [view, setViewState] = useState<View>(loadView)
+  const [touring, setTouring] = useState(() => newAccount(user.created_at) && !tourDone(user.id))
   // Where you are comes back after a reload (lib/keep.ts): the day, the open
   // ride, the sheets that were up and the forms in them.
   const [selected, setSelectedDate] = useKept('board.date', todayISO)
@@ -235,6 +239,7 @@ function Board({ session }: { session: Session }) {
   }, [setSelectedDate, setCarSel])
 
   const setView = useCallback((v: View) => {
+    track(`view.${v}`)
     setViewState(v)
     setCarSel(null)
     // The day plan is about today first; its arrows and calendar go elsewhere.
@@ -421,6 +426,12 @@ function Board({ session }: { session: Session }) {
   const installCard = installMode && !installDismissed && (
     <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
   )
+  // The first-login tour (lib/tour.ts): once, for a new account, in this browser.
+  const finishTour = () => {
+    setTourDone(user.id, true)
+    setTouring(false)
+  }
+  const tour = touring && !loading && <Tour wide={wide} onDone={finishTour} />
   // "You lost a seat" (lib/notices.ts): *See that day* opens the day board there.
   const seatNotices = (
     <SeatNotices
@@ -624,6 +635,10 @@ function Board({ session }: { session: Session }) {
       setNewsShown(WHATS_NEW)
       show('whatsNew')
     },
+    onTour: () => {
+      setTourDone(user.id, false)
+      setTouring(true)
+    },
     onMyRides: () => show('myRides'),
     onNotifications: () => show('notif'),
     onSharedCars: () => openSharedCars(),
@@ -647,7 +662,7 @@ function Board({ session }: { session: Session }) {
   return (
     <MeContext.Provider value={me}>
       <div className={wide ? 'app app-wide' : 'app'}>
-        {wide && <Dock {...menu} />}
+        {wide && <Dock {...menu} extra={tour} />}
         <div className="workspace">
           <header className="topbar">
             {wide ? (
@@ -684,6 +699,7 @@ function Board({ session }: { session: Session }) {
           <main>
             {!wide && seatNotices}
             {!wide && installCard}
+            {!wide && tour}
 
             {/* One switch for the three views, so the one leaving slides out as the next comes in. */}
             <SlideSwitch id={view} dir={viewDir}>

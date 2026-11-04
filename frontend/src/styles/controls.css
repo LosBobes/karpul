@@ -596,6 +596,72 @@ span.plus-circle svg {
   }
 }
 
+/* The first-login tour (Tour.tsx): a card above the board on a phone and at
+   the top of the dock on a wide screen, never over anything; `.tour-spot` is
+   the ring it puts round the control a step is about. */
+.tour-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border-left: 3px solid var(--green);
+  animation: pop-in-up var(--dur-gentle) var(--ease-out);
+}
+.tour-card-dock {
+  margin: 0 0.75rem 0.75rem;
+}
+.tour-card h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.tour-card p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tour-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--green);
+}
+.tour-close {
+  margin: -0.35rem -0.45rem -0.35rem 0;
+}
+.tour-foot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.tour-dots {
+  display: flex;
+  gap: 0.3rem;
+  margin-right: auto;
+}
+.tour-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: background var(--dur-fast), width var(--dur-fast) var(--ease-out);
+}
+.tour-dot-on {
+  width: 16px;
+  border-radius: 3px;
+  background: var(--green);
+}
+.tour-spot {
+  /* No animation: the controls it rings (the plus) have their own. */
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+
 /* The home-screen install offer (InstallCard.tsx): a card above the board on
    a phone, floating in the bottom corner on a wide screen. */
 .install-card {

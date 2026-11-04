@@ -34,6 +34,8 @@ interface Content {
   onFeedback: () => void
   /** What changed in the app lately (components/WhatsNew.tsx). */
   onWhatsNew: () => void
+  /** The first-login tour again (components/Tour.tsx). */
+  onTour: () => void
   onMyRides: () => void
   onNotifications: () => void
   /** Present while this browser can install the app (lib/install.ts). */
@@ -53,6 +55,8 @@ interface Item {
   onSelect: () => void
   /** Something waiting on you there: an amber count after the label. */
   count?: number
+  /** The first-login tour points here (`data-tour`, lib/tour.ts). */
+  tour?: string
 }
 
 type GroupKey = 'admin' | 'help' | 'settings'
@@ -77,7 +81,7 @@ function loadOpen(): Record<GroupKey, boolean> {
  * then *Manage* for admins, *Help*, and *Settings* folded at the foot. `pick` wraps each item's
  * action (the drawer closes itself first; the dock has nothing to close).
  */
-function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGarage, garage, onGuide, onHowTo, onSupport, onFeedback, onWhatsNew, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
+function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces, onRideLog, onAdminLog, onApprovals, approvals, onGarage, garage, onGuide, onHowTo, onSupport, onFeedback, onWhatsNew, onTour, onMyRides, onNotifications, onInstall, onSharedCars, pick }: Content & { pick: (fn: () => void) => () => void }) {
   const t = useT()
   const [open, setOpen] = useState(loadOpen)
   const toggle = (key: GroupKey) =>
@@ -102,6 +106,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
       label: t.sidebar.cars,
       icon: 'car',
       onSelect: pick(onSharedCars),
+      tour: 'sharedCars',
     },
     {
       label: t.sidebar.guide,
@@ -120,6 +125,11 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
       label: t.whatsNew.menu,
       icon: 'sparkle',
       onSelect: pick(onWhatsNew),
+    },
+    {
+      label: t.tour.menu,
+      icon: 'book',
+      onSelect: pick(onTour),
     },
     {
       label: t.support.title,
@@ -179,7 +189,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
     : []
 
   const renderItem = (it: Item) => (
-    <button key={it.label} type="button" className="drawer-item" onClick={it.onSelect}>
+    <button key={it.label} type="button" className="drawer-item" data-tour={it.tour} onClick={it.onSelect}>
       <span className="drawer-item-icon">
         <FluentIcon name={it.icon} size={20} />
       </span>
@@ -273,7 +283,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
  * desktop app keeps its sidebar, instead of a drawer behind the ☰. Nothing
  * to close, no backdrop, no history entry; an item opens its sheet directly.
  */
-export function Dock(props: Content) {
+export function Dock({ extra, ...props }: Content & { extra?: ReactNode }) {
   const pick = (fn: () => void) => fn
   return (
     <aside id="app-sidebar" className="drawer dock" aria-label="Karpul">
@@ -282,6 +292,8 @@ export function Dock(props: Content) {
           <Logo /> Karpul
         </span>
       </header>
+      {/* The first-login tour sits here on a wide screen, covering nothing. */}
+      {extra}
       <SidebarBody {...props} pick={pick} />
     </aside>
   )

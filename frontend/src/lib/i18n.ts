@@ -1,6 +1,7 @@
 import { getLocale, useLocale, type Locale } from './locale'
 import type { SupportTopic } from './support'
 import type { PushCategory } from './types'
+import type { TourStep } from './tour'
 import type { DemoKey } from './whatsNew'
 
 /**
@@ -155,6 +156,11 @@ const en = {
     carried: 'People carried',
     km: 'km shared',
     kmHint: 'One-way distances as the drivers entered them; a ride without one counts as 0.',
+    impact: 'Off the road',
+    carKm: 'car km saved',
+    co2: 'kg CO₂ saved',
+    fuel: 'litres of fuel saved',
+    impactHint: 'Each passenger is a car left at home, the trip split half and half between driver and passenger. About 0.17 kg CO₂ and 7 l per 100 km, an average car.',
     history: 'Past rides',
     noHistory: 'No past rides yet.',
     feed: 'Calendar feed',
@@ -600,6 +606,17 @@ const en = {
     poolRate: 'Pool use',
     hoursOut: 'Hours out',
     km: 'km',
+    team: 'The team, all cars',
+    screens: 'What gets opened',
+    screenView: (name: string) => `${name} view`,
+    screenPlan: (name: string) => `Day plan as ${name.toLowerCase()}`,
+    screensHint: 'Counted with no names on them: only the day, the screen and how often.',
+    noScreens: 'Nothing counted in this window yet.',
+    opened: (n: number, days: number) => `${n}× on ${enPlural(days, 'day', 'days')}`,
+    seatsFilled: 'Seats filled',
+    carKm: 'Car km saved',
+    co2: 'kg CO₂ saved',
+    fuel: 'Litres saved',
     heatmap: 'Heatmap',
     byDay: 'By day',
     byHour: 'By hour',
@@ -1276,6 +1293,25 @@ const en = {
     gotIt: 'Got it',
   },
 
+  tour: {
+    count: (n: number, of: number) => `${n} of ${of}`,
+    next: 'Next',
+    back: 'Back',
+    done: 'Finish',
+    skip: 'Skip the tour',
+    menu: 'Take the tour',
+    steps: {
+      find: ['Find a ride', 'Upcoming lists every ride from today on, Week shows one week day by day, and Day plans the shared cars by the hour. Open a ride to take a seat in it.'],
+      offer: ['Driving somewhere?', 'The green plus adds your ride: the car, the seats, the day and the route. Colleagues going your way get in, and you are told when they do.'],
+      cars: ['The shared cars', 'They are in the menu: how each one stands (kilometres, battery, anything wrong) and how to charge one with the company card.'],
+    } as Record<TourStep, [string, string]>,
+    /** Where a step reads differently beside the dock on a wide screen. */
+    wide: {
+      offer: 'Add ride, top right, offers your ride: the car, the seats, the day and the route. Colleagues going your way get in, and you are told when they do.',
+      cars: 'They are on the left: how each one stands (kilometres, battery, anything wrong) and how to charge one with the company card.',
+    } as Partial<Record<TourStep, string>>,
+  },
+
   whatsNew: {
     title: "What's new",
     menu: "What's new",
@@ -1284,6 +1320,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      impact: {
+        title: 'What your seats took off the road',
+        body: '**Your rides** now adds up the car kilometres your rides saved, and roughly the CO₂ and fuel with them: every passenger is a car left at home, split half and half between driver and passenger. Admins see the whole team\'s under **Usage**. New in the **Help** group: **Take the tour**.',
+      },
       addedBy: {
         title: 'Who added a ride',
         body: 'A ride an admin added in your name now says so on the card: **Added by** and the admin\'s name, on every week of a repeat. **All rides** shows it under the driver and carries it in the spreadsheet, and the **Admin log** keeps the line as before.',
@@ -1367,6 +1407,7 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^Nobody is at the wheel of this car$/, () => 'Niko nije za volanom ovog auta'],
   [/^Nothing has been noted on the odometer$/, () => 'Kilometraža još nije upisana'],
   [/^Say at least one thing about the car$/, () => 'Napiši bar nešto o autu'],
+  [/^Not a screen name$/, () => 'Nije naziv ekrana'],
   [/^That car is retired$/, () => 'Taj auto je povučen'],
   [/^Only the driver or an admin can note the odometer at the start$/, () => 'Početnu kilometražu može da upiše samo vozač ili administrator'],
   [/^Only the driver or an admin can undo the odometer$/, () => 'Unos kilometraže može da poništi samo vozač ili administrator'],
@@ -1647,6 +1688,11 @@ const sr: Messages = {
     carried: 'Prevezenih ljudi',
     km: 'km zajedno',
     kmHint: 'Razdaljine u jednom smeru kako su ih vozači upisali; vožnja bez razdaljine računa se kao 0.',
+    impact: 'Manje na putu',
+    carKm: 'ušteđenih km autom',
+    co2: 'kg CO₂ manje',
+    fuel: 'litara goriva manje',
+    impactHint: 'Svaki putnik je jedan auto koji je ostao kod kuće, a vožnja se deli pola-pola između vozača i putnika. Oko 0,17 kg CO₂ i 7 l na 100 km, prosečan auto.',
     history: 'Prošle vožnje',
     noHistory: 'Još nema prošlih vožnji.',
     feed: 'Kalendar',
@@ -2080,6 +2126,17 @@ const sr: Messages = {
     poolRate: 'Iskorišćenost',
     hoursOut: 'Sati u vožnji',
     km: 'km',
+    team: 'Ceo tim, svi automobili',
+    screens: 'Šta se otvara',
+    screenView: (name) => `Prikaz: ${name}`,
+    screenPlan: (name) => `Plan dana: ${name.toLowerCase()}`,
+    screensHint: 'Broji se bez imena: samo dan, ekran i koliko puta.',
+    noScreens: 'U ovom periodu još ništa nije izbrojano.',
+    opened: (n, days) => `${n}× u ${srPlural(days, 'dan', 'dana', 'dana')}`,
+    seatsFilled: 'Popunjenih mesta',
+    carKm: 'Ušteđenih km',
+    co2: 'kg CO₂ manje',
+    fuel: 'Litara manje',
     heatmap: 'Toplotna mapa',
     byDay: 'Po danima',
     byHour: 'Po satima',
@@ -2744,6 +2801,24 @@ const sr: Messages = {
     gotIt: 'U redu',
   },
 
+  tour: {
+    count: (n, of) => `${n} od ${of}`,
+    next: 'Dalje',
+    back: 'Nazad',
+    done: 'Završi',
+    skip: 'Preskoči obilazak',
+    menu: 'Obilazak aplikacije',
+    steps: {
+      find: ['Nađi vožnju', 'Predstojeće su sve vožnje od danas, Nedelja pokazuje jednu nedelju dan po dan, a Dan raspoređuje zajedničke automobile po satima. Otvori vožnju da zauzmeš mesto.'],
+      offer: ['Ideš negde kolima?', 'Zeleni plus dodaje tvoju vožnju: auto, mesta, dan i putanju. Kolege koje idu tvojim putem ulaze, a ti dobijaš obaveštenje.'],
+      cars: ['Zajednički automobili', 'U meniju su: kako koji stoji (kilometraža, baterija, kvarovi) i kako se puni službenom karticom.'],
+    },
+    wide: {
+      offer: 'Dodaj vožnju, gore desno, nudi tvoju vožnju: auto, mesta, dan i putanju. Kolege koje idu tvojim putem ulaze, a ti dobijaš obaveštenje.',
+      cars: 'Levo su: kako koji stoji (kilometraža, baterija, kvarovi) i kako se puni službenom karticom.',
+    },
+  },
+
   whatsNew: {
     title: 'Šta je novo',
     menu: 'Šta je novo',
@@ -2752,6 +2827,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      impact: {
+        title: 'Koliko su tvoja mesta skinula sa puta',
+        body: '**Tvoje vožnje** sada sabiraju kilometre autom koje su tvoje vožnje uštedele, i otprilike CO₂ i gorivo uz njih: svaki putnik je jedan auto ostavljen kod kuće, podeljeno pola-pola između vozača i putnika. Administratori vide ceo tim u kartici **Korišćenje**. Novo u grupi **Pomoć**: **Obilazak aplikacije**.',
+      },
       addedBy: {
         title: 'Ko je dodao vožnju',
         body: 'Vožnja koju je administrator dodao u tvoje ime sada to piše na kartici: **Dodao/la** i ime administratora, za svaku nedelju ponavljanja. **Sve vožnje** to pokazuju ispod vozača i nose u tabeli, a **Dnevnik administratora** i dalje čuva zapis.',

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react'
 import { useKept } from './keep'
+import { track } from './usage'
 
 /**
  * Which sheets and drawers are open, by name. One open set instead of a
@@ -13,7 +14,14 @@ import { useKept } from './keep'
 export function useOverlays<K extends string>(keepKey = 'overlays', transient: readonly K[] = []) {
   const [kept, setKept] = useKept<K[]>(keepKey, [], (names) => names.filter((k) => !transient.includes(k)))
   const open = useMemo<ReadonlySet<K>>(() => new Set(kept), [kept])
-  const show = useCallback((name: K) => setKept((prev) => (prev.includes(name) ? prev : [...prev, name])), [setKept])
+  const show = useCallback(
+    (name: K) => {
+      // Counted for the office's *What gets opened* (lib/usage.ts): the name only.
+      track(`sheet.${name}`)
+      setKept((prev) => (prev.includes(name) ? prev : [...prev, name]))
+    },
+    [setKept],
+  )
   const hide = useCallback((name: K) => setKept((prev) => (prev.includes(name) ? prev.filter((k) => k !== name) : prev)), [setKept])
   const closers = useRef(new Map<K, () => void>())
   const closer = useCallback(

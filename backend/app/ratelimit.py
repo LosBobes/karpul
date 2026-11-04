@@ -1,4 +1,6 @@
-"""Throttling the doors: sign-in, registration and password reset.
+"""Throttling the doors (sign-in, registration and password reset) and the
+writes that reach other people (a thread line, a ride request, a car report:
+each one pushes someone).
 
 Karpul is one uvicorn worker (see `app/events.py`), so the counters live in
 this process. Each `Limiter` remembers, per key, when the attempts it was told
@@ -92,7 +94,42 @@ reset_attempts = Limiter(20, 15 * 60)
 # spending the public geocoder's patience for everyone.
 place_lookups = Limiter(60, 60)
 
-ALL = (login_failures_by_account, login_failures_by_ip, registrations, reset_attempts, place_lookups)
+# The writes that tell other people, per account. Each figure is far past what
+# a person does by hand and well short of a phone full of pushes from a stuck
+# client or a bored colleague.
+WRITES = {
+    # A chat: 20 lines a minute is typing fast.
+    "message": Limiter(20, 60),
+    # "Running late" pushes every passenger; a few taps a day is the most.
+    "late": Limiter(6, 60 * 60),
+    # A new ride (a weekly series is one); admins are not held to it, they
+    # may be entering a whole paper log.
+    "ride": Limiter(40, 60 * 60),
+    # A request pushes every driver who drives that way; past the 14 open
+    # requests one person may have at all (routers/requests.py).
+    "request": Limiter(20, 60 * 60),
+    # A report with a problem pushes every admin.
+    "car_report": Limiter(20, 60 * 60),
+    # The screens opened (routers/usage.py): the app sends a batch a minute at
+    # most, and one more each time the tab is hidden.
+    "usage": Limiter(120, 60 * 60),
+}
+
+# And a ceiling on every write at all, per signed-in browser (the bearer
+# token, so it needs no database lookup): `main.throttle_writes`. The doors
+# above keep their own counts. The end-to-end tests may raise it.
+writes_by_token = Limiter(int(os.getenv("KARPUL_WRITES_PER_MINUTE", "300")), 60)
+
+
+def spend(kind: str, user_id: int | None) -> None:
+    """429 once `user_id` has used up `kind` (WRITES), else count this one."""
+    limiter = WRITES[kind]
+    key = str(user_id)
+    limiter.check(key)
+    limiter.hit(key)
+
+
+ALL = (login_failures_by_account, login_failures_by_ip, registrations, reset_attempts, place_lookups, writes_by_token, *WRITES.values())
 
 
 def reset_all() -> None:

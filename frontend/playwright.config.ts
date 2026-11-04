@@ -48,6 +48,7 @@ export default defineConfig({
       ].join(','),
       // Every test registers its own people, all from one address.
       KARPUL_REGISTRATIONS_PER_HOUR: '100',
+      KARPUL_WRITES_PER_MINUTE: '1000',
       // No outside services: places come from what Karpul knows (the offices),
       // and the map's tiles from an address that answers nothing, so the map
       // draws its pins on a blank ground without the test touching the network.

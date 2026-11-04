@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent } from 'react'
+import { track } from '../lib/usage'
 import { addDays, firstName, fmtDayDate, fmtDayLabel, fmtHour, fmtTime, parseISODate, shortCarName, toISODate, todayISO } from '../lib/dates'
 import {
   captionRoom,
@@ -124,6 +125,7 @@ export function DayPlan({ date, rides, cars, loading, isPast, selectedId, onSele
   const fallback: Shape = wide ? 'clock' : 'timeline'
   const shape: Shape = chosen && SHAPES.includes(chosen) ? chosen : fallback
   const pickShape = (next: Shape) => {
+    track(`plan.${next}`)
     setChosen(next)
     try {
       localStorage.setItem(SHAPE_KEY, next)

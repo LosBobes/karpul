@@ -598,6 +598,39 @@ def _working_days(start: date, end: date) -> int:
     return n
 
 
+CO2_KG_PER_KM = 0.17
+"""What one kilometre of a car on the road puts out, roughly: the average of
+the cars on Europe's roads, not of the one in the ride. Good enough for a
+figure that only ever says *about*."""
+FUEL_L_PER_KM = 0.07
+"""And what it burns: 7 l per 100 km."""
+
+
+def impact(rides: list[Ride], user_id: int | None = None) -> dict:
+    """The car trips the rides took off the road, and what they would have put out.
+
+    Every passenger in a ride is one car that stayed at home for the ride's
+    one-way distance. With `user_id`, that trip is split half and half between
+    the driver and the passenger, so adding up everyone's figure gives the
+    team's and nobody's trip is counted twice; without it, the whole of it.
+    Rides with no distance count 0, so this is a floor, like *km shared*.
+    """
+    km = 0.0
+    for r in rides:
+        dist = r.distance_km or 0
+        if user_id is None:
+            km += dist * len(r.bookings)
+        elif r.driver_id == user_id:
+            km += dist * len(r.bookings) / 2
+        else:
+            km += dist / 2
+    return {
+        "car_km_avoided": round(km, 1),
+        "co2_kg": round(km * CO2_KG_PER_KM, 1),
+        "fuel_l": round(km * FUEL_L_PER_KM, 1),
+    }
+
+
 def person_stats(session: Session, user: User, today: date | None = None) -> dict:
     """What `user` has shared: rides driven and ridden, people carried and the
     kilometres driven together, this month and all time, plus the past rides.
@@ -618,6 +651,7 @@ def person_stats(session: Session, user: User, today: date | None = None) -> dic
             "rides_ridden": len(ridden),
             "people_carried": sum(len(r.bookings) for r in driven),
             "km_shared": round(sum(r.distance_km or 0 for r in subset), 1),
+            **impact(subset, user.id),
         }
 
     history = [
@@ -682,7 +716,8 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
     start = today - timedelta(days=days - 1)
     working = max(_working_days(start, today), 1)
     cars = list(session.exec(select(CorporateCar).order_by(CorporateCar.name)).all())
-    past = [r for r in _rides_between(session, start, today) if r.car_type == CarType.corporate]
+    window = list(_rides_between(session, start, today))
+    past = [r for r in window if r.car_type == CarType.corporate]
     ahead = [
         r
         for r in _rides_between(session, today + timedelta(days=1), today + timedelta(days=92))
@@ -746,6 +781,12 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
             "passengers": sum(len(r.bookings) for r in past),
             "km": round(sum(r.distance_km or 0 for r in past), 1),
             "days_used": len({r.ride_date for r in past}),
+        },
+        # The whole team's, own cars included: what sharing took off the road.
+        "team": {
+            "rides": len(window),
+            "seats_filled": sum(len(r.bookings) for r in window),
+            **impact(window),
         },
         "history": history[:history_limit] if history_limit is not None else history,
     }

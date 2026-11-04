@@ -278,7 +278,12 @@ def test_my_stats_count_rides_driven_and_ridden(client):
     r = client.get("/api/stats/me", headers={"X-User-Name": "Ana"})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["all"] == {"rides_driven": 1, "rides_ridden": 1, "people_carried": 1, "km_shared": 50.0}
+    figures = {k: body["all"][k] for k in ("rides_driven", "rides_ridden", "people_carried", "km_shared")}
+    assert figures == {"rides_driven": 1, "rides_ridden": 1, "people_carried": 1, "km_shared": 50.0}
+    # Half of Bojan's 40 km (his car stayed home) and half of Ana's own 10.
+    assert body["all"]["car_km_avoided"] == 25.0
+    assert body["all"]["co2_kg"] == pytest.approx(25 * 0.17, abs=0.1)
+    assert body["all"]["fuel_l"] == pytest.approx(25 * 0.07, abs=0.1)
     assert [h["role"] for h in body["history"]] == ["passenger", "driver"] or [h["role"] for h in body["history"]] == ["driver", "passenger"]
     assert {h["id"] for h in body["history"]} == {driven["id"], ridden["id"]}
 
@@ -370,6 +375,9 @@ def test_usage_report_counts_per_car(client, admin_auth):
     assert rows[a["id"]]["upcoming"] == 0
     assert rows[b["id"]]["rides"] == 0 and rows[b["id"]]["upcoming"] == 1 and rows[b["id"]]["last_used"] is None
     assert body["totals"]["rides"] == 2 and body["totals"]["passengers"] == 1
+    # The team's figures take every car, the own one too: Bojan's 30 km saved.
+    assert body["team"]["rides"] == 3 and body["team"]["seats_filled"] == 1
+    assert body["team"]["car_km_avoided"] == 30.0
     assert [h["car_id"] for h in body["history"]] == [a["id"], a["id"]]
     assert 0 < rows[a["id"]]["use_rate"] <= 1
     # The heatmaps: 07:30-16:30 and 18:00-20:00 yesterday.
@@ -444,3 +452,20 @@ def test_usage_heat_counts_an_overlap_once_and_no_return_to_midnight():
     assert per_day == {"2026-11-02": 5.5, "2026-11-03": 2.0}
     assert [h for h in range(24) if by_hour[0][h]] == [8, 9, 10, 11, 12, 13]
     assert [h for h in range(24) if by_hour[1][h]] == [22, 23]
+
+
+def test_impact_splits_each_saved_trip_so_the_team_adds_up():
+    """Every passenger is one car trip saved; the driver and the passenger
+    each get half, so everyone's figures add up to the team's."""
+    from types import SimpleNamespace
+
+    from app.services import impact
+
+    ride = SimpleNamespace(distance_km=90, driver_id=1, bookings=[object(), object()])
+    lone = SimpleNamespace(distance_km=50, driver_id=1, bookings=[])
+    blank = SimpleNamespace(distance_km=None, driver_id=1, bookings=[object()])
+    rides = [ride, lone, blank]
+    assert impact(rides)["car_km_avoided"] == 180
+    assert impact(rides, 1)["car_km_avoided"] == 90  # the driver: half of two trips
+    assert impact([ride], 2)["car_km_avoided"] == 45  # a passenger: half of theirs
+    assert impact(rides, 1)["car_km_avoided"] + 2 * impact([ride], 2)["car_km_avoided"] == impact(rides)["car_km_avoided"]

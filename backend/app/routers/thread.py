@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, col, select
 
+from .. import ratelimit
 from ..access import get_ride_or_404, is_driver
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
@@ -50,6 +51,7 @@ def post_message(ride_id: int, payload: MessageIn, session: WriteSessionDep, cre
     whoever wrote it. The ride goes out over the socket with its new
     `message_count`, which is how open threads know to fetch again."""
     user = require_user(session, creds)
+    ratelimit.spend("message", user.id)
     ride = get_ride_or_404(session, ride_id)
     message = RideMessage(ride_id=ride.id, author_id=user.id, author_name=user.display_name, body=payload.body)  # type: ignore[arg-type]
     session.add(message)
@@ -92,6 +94,7 @@ def running_late(ride_id: int, payload: LateIn, session: WriteSessionDep, creds:
     from `late_minutes`), and the passengers are pushed `running_late`. The
     times on the ride stay as they are: it is a heads-up, not an edit."""
     user = require_user(session, creds)
+    ratelimit.spend("late", user.id)
     ride = get_ride_or_404(session, ride_id)
     if not is_driver(user, ride):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the driver can say the ride is running late")
