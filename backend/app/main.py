@@ -43,6 +43,7 @@ from .routers import (
     seats,
     stats,
     thread,
+    usage,
     waitlist,
 )
 from .seed import seed_corporate_cars
@@ -182,6 +183,7 @@ app.include_router(waitlist.router)
 app.include_router(places.router)
 app.include_router(thread.router)
 app.include_router(notices.router)
+app.include_router(usage.router)
 app.include_router(live.router)
 app.include_router(push.router)
 app.include_router(stats.router)

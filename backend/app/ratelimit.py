@@ -110,6 +110,9 @@ WRITES = {
     "request": Limiter(20, 60 * 60),
     # A report with a problem pushes every admin.
     "car_report": Limiter(20, 60 * 60),
+    # The screens opened (routers/usage.py): the app sends a batch a minute at
+    # most, and one more each time the tab is hidden.
+    "usage": Limiter(120, 60 * 60),
 }
 
 # And a ceiling on every write at all, per signed-in browser (the bearer

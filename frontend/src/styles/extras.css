@@ -342,6 +342,41 @@
   color: var(--muted);
   line-height: 1.2;
 }
+.screen-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.screen-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 11rem) 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+}
+.screen-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.screen-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--green-soft);
+  overflow: hidden;
+}
+.screen-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--green);
+}
+.screen-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .stat-grid-3 {
   grid-template-columns: repeat(3, 1fr);
 }

@@ -360,6 +360,13 @@ export interface HistoryRide {
   distance_km: number | null
 }
 
+/** GET /api/admin/usage: how often each screen was opened (no names, routers/usage.py). */
+export interface ScreenUsage {
+  from: string
+  to: string
+  screens: { key: string; count: number; days: number }[]
+}
+
 /** GET /api/cars/corporate/usage (admin) */
 export interface CarUsage {
   from: string

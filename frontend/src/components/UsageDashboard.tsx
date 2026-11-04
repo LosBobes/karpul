@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { fmtHour, fmtShortDate, parseISODate, addDays, startOfWeek } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import type { CarUsage, CarUsageRow } from '../lib/types'
+import { api } from '../lib/api'
+import type { CarUsage, CarUsageRow, ScreenUsage } from '../lib/types'
 import { dayColumns, dayLevel, monthStarts, shareLevel, weekdayCounts, type HeatLevel } from '../lib/usageHeat'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { DownloadIcon } from './icons'
@@ -170,6 +171,8 @@ export function UsageDashboard({ load, download }: { load: (days: number) => Pro
               <DownloadIcon size={18} /> {t.usage.download}
             </button>
           )}
+
+          <Screens days={days} />
         </>
       )}
     </div>
@@ -261,5 +264,48 @@ function HourHeat({ row, counts }: { row: CarUsageRow; counts: number[] }) {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Which views and sheets get opened in the window (lib/usage.ts), most first,
+ * each with a bar against the most opened one: what is worth simplifying and
+ * what nobody finds.
+ */
+function Screens({ days }: { days: number }) {
+  const t = useT()
+  const [report, setReport] = useState<ScreenUsage | null>(null)
+  useEffect(() => {
+    let live = true
+    api
+      .screenUsage(days)
+      .then((r) => live && setReport(r))
+      .catch(() => live && setReport({ from: '', to: '', screens: [] }))
+    return () => {
+      live = false
+    }
+  }, [days])
+  if (!report) return null
+  const top = report.screens[0]?.count ?? 1
+  return (
+    <section className="stats screens">
+      <h3 className="section-title">{t.usage.screens}</h3>
+      <p className="hint hint-tight">{t.usage.screensHint}</p>
+      {report.screens.length === 0 ? (
+        <p className="hint">{t.usage.noScreens}</p>
+      ) : (
+        <ul className="screen-list">
+          {report.screens.map((s) => (
+            <li key={s.key} className="screen-row">
+              <code className="screen-name">{s.key}</code>
+              <span className="screen-bar" aria-hidden="true">
+                <span style={{ width: `${Math.max(2, (s.count / top) * 100)}%` }} />
+              </span>
+              <span className="screen-count">{t.usage.opened(s.count, s.days)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }

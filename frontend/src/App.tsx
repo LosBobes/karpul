@@ -54,6 +54,7 @@ import { boardRange, daySelection, upcomingSelection, VIEWS, type View } from '.
 import { keepFor, restoreScroll, useKept } from './lib/keep'
 import { useBoard } from './lib/useBoard'
 import { useOverlays } from './lib/useOverlays'
+import { track } from './lib/usage'
 import { usePassengerDrag } from './lib/usePassengerDrag'
 import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
@@ -235,6 +236,7 @@ function Board({ session }: { session: Session }) {
   }, [setSelectedDate, setCarSel])
 
   const setView = useCallback((v: View) => {
+    track(`view.${v}`)
     setViewState(v)
     setCarSel(null)
     // The day plan is about today first; its arrows and calendar go elsewhere.

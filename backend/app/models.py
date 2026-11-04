@@ -3,6 +3,7 @@
 from datetime import date, datetime, time, timezone
 from enum import Enum
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -488,3 +489,19 @@ class KnownPlace(SQLModel, table=True):
     uses: int = Field(default=0)
     last_used: datetime = Field(default_factory=utcnow)
 
+
+
+class UsageCount(SQLModel, table=True):
+    """How often a screen was opened on a day (`routers/usage.py`): a view, a
+    sheet, a shape of the day plan. Nothing about who: no account, no address,
+    no time of day, only the day, the screen's name and a count, so what the
+    office learns is which parts of Karpul are used, never by whom."""
+
+    __tablename__ = "usagecount"
+    __table_args__ = (UniqueConstraint("day", "key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    day: date = Field(index=True)
+    # "view.week", "sheet.myRides", ... (USAGE_KEY in routers/usage.py).
+    key: str
+    count: int = Field(default=0)
