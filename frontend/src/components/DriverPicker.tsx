@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
+import { fold } from '../lib/people'
 import type { AdminUser } from '../lib/types'
 import { Avatar } from './Avatar'
 import { CheckIcon, ChevronDownIcon, SearchIcon } from './icons'
@@ -9,10 +10,6 @@ import { Popover } from './Popover'
 export interface Driver {
   id: number
   name: string
-}
-
-function fold(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
 interface Props {

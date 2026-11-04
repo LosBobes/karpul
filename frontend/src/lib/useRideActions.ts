@@ -5,6 +5,7 @@ import { errMsg } from './errors'
 import { fmtShortDate, fmtTime } from './dates'
 import { useT } from './i18n'
 import { drives, handsOver, isMyBooking, placeInLine, type Me } from './me'
+import type { Person } from './people'
 import type { NewStop } from './stops'
 import type { Ride, RideInput } from './types'
 import type { Toast } from './useToast'
@@ -152,10 +153,10 @@ export function useRideActions({ me, rides, withBusy, upsertRide, removeRides, s
   }
 
   /** The driver, or a passenger when the driver allows it, puts a colleague in. */
-  const onAddPassenger = (ride: Ride, name: string) =>
+  const onAddPassenger = (ride: Ride, person: Person) =>
     withBusy(ride.id, async () => {
-      upsertRide(await api.join(ride.id, name))
-      setToast({ kind: 'ok', text: t.toasts.nameIn(name, ride.driver_name) })
+      upsertRide(await api.join(ride.id, person.display_name, '', null, person.id))
+      setToast({ kind: 'ok', text: t.toasts.nameIn(person.display_name, ride.driver_name) })
     })
 
   /** The driver's switch: may the passengers add and remove each other? */

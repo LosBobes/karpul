@@ -75,9 +75,10 @@ is decided by id through `is_person(user, id, name)` in `services.py` (the front
 accounts, falls back to the normalised name (`norm_name`, mirrored by `sameName` in
 `lib/dates.ts`, keep both in sync). `database.link_people` fills the ids in by name on every
 start (and gives every account a calendar token); registering claims the id-less rows that go
-by the new name (`claim_rows`), which is also how a seat a driver gave a colleague by name
-becomes theirs. A driver can still add someone without an account by name (`passenger_id`
-null). A ride whose driver is a name with no account (`driver_id` null, mostly the
+by the new name (`claim_rows`), which is how an old seat by name becomes theirs. Someone else
+is put in a car only as an account: *Add a colleague* (`PassengerPicker`, `lib/people.ts`) searches
+`GET /api/people` (id and name of every account, any signed-in user) and sends `passenger_id`;
+`join_ride` refuses a name nobody has an account under (422), so no new seat has `passenger_id` null. A ride whose driver is a name with no account (`driver_id` null, mostly the
 backfilled paper log) wears a *No account* tag on the driver card, and someone signed in under a
 *similar* name (`similar_names` in `services.py`: diacritics, case and word order aside, edit
 similarity ≥ `SIMILAR_NAME`; mirrored by `similarName` in `lib/dates.ts`, `mayClaim` in `lib/me.ts`)

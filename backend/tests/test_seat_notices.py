@@ -121,10 +121,15 @@ def test_a_passenger_taking_someone_out_is_named_not_the_driver(client, sent):
     assert client.get("/api/notices", headers=BOB).json()[0]["by_name"] == "Cid Ilić"
 
 
-def test_a_seat_by_name_tells_whoever_put_it_there(client, sent):
+def test_a_seat_by_name_tells_whoever_put_it_there(client, engine, sent):
+    # Nobody is put in by a bare name any more, but seats from before that
+    # (and the paper log's) still go by one.
     ride = client.post("/api/rides", json=own(passengers_manage=True), headers=ANA).json()
     client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Bob Jović"}, headers=BOB)
-    ride = client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Nobody Yet"}, headers=BOB).json()
+    with Session(engine) as session:
+        session.add(Booking(ride_id=ride["id"], passenger_name="Nobody Yet", added_by_id=uid(client, BOB)))
+        session.commit()
+    ride = client.get(f"/api/rides/{ride['id']}", headers=ANA).json()
     nobody = booking(ride, "Nobody Yet")
     assert nobody["passenger_id"] is None
     sent.clear()
@@ -208,6 +213,7 @@ def test_nobody_gets_into_an_unconfirmed_ride_until_the_driver_confirms(client, 
     assert r.status_code == 409
     assert r.json()["detail"] == "The driver has not confirmed this ride yet"
     # The driver may still put their own people in; then the queue is shut too.
+    client.auth("Dan Kos")
     assert client.post(f"/api/rides/{rid}/bookings", json={"passenger_name": "Dan Kos"}, headers=ANA).status_code == 201
     assert client.post(f"/api/rides/{rid}/waitlist", json={}, headers=BOB).json()["detail"] == "The driver has not confirmed this ride yet"
 

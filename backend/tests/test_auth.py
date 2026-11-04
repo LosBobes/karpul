@@ -252,21 +252,28 @@ def test_a_seat_needs_an_account(client):
     assert r.status_code == 401
 
 
-def test_registering_claims_the_seats_that_already_go_by_your_name(client):
-    """A driver can put a colleague in by name before that colleague has an
-    account; registering under the name makes the seat theirs."""
+def test_someone_else_is_picked_from_the_accounts_never_typed(client):
+    """A driver puts a colleague in by picking their account; a name nobody
+    has an account under is refused, so every seat belongs to someone."""
     ana = register(client)["token"]
     ride = client.post("/api/rides", json=own_ride(), headers=bearer(ana)).json()
-    r = client.post(f"/api/rides/{ride['id']}/bookings", json={"passenger_name": "Marko Jovanović"}, headers=bearer(ana))
-    assert r.status_code == 201
-    assert r.json()["bookings"][0]["passenger_id"] is None
+    url = f"/api/rides/{ride['id']}/bookings"
+    r = client.post(url, json={"passenger_name": "Marko Jovanović"}, headers=bearer(ana))
+    assert r.status_code == 422
+    assert r.json()["detail"] == "Only colleagues with an account can be added"
+    assert client.post(url, json={"passenger_name": "x", "passenger_id": 9999}, headers=bearer(ana)).status_code == 422
 
     marko = register(client, MARKO)
-    after = client.get(f"/api/rides/{ride['id']}", headers=bearer(ana)).json()
-    assert after["bookings"][0]["passenger_id"] == marko["user"]["id"]
+    people = client.get("/api/people", headers=bearer(ana)).json()
+    assert {"id": marko["user"]["id"], "display_name": "Marko Jovanović"} in people
+    assert client.anon.get("/api/people").status_code == 401
+    # The id decides; the name sent along is only a label.
+    r = client.post(url, json={"passenger_name": "whatever", "passenger_id": marko["user"]["id"]}, headers=bearer(ana))
+    assert r.status_code == 201, r.text
+    seat = r.json()["bookings"][0]
+    assert (seat["passenger_id"], seat["passenger_name"]) == (marko["user"]["id"], "Marko Jovanović")
     # And it is his to give up.
-    bid = after["bookings"][0]["id"]
-    assert client.delete(f"/api/rides/{ride['id']}/bookings/{bid}", headers=bearer(marko["token"])).status_code == 200
+    assert client.delete(f"{url}/{seat['id']}", headers=bearer(marko["token"])).status_code == 200
 
 
 # --- the doors are throttled -------------------------------------------------

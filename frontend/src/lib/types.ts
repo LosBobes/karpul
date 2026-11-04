@@ -43,7 +43,7 @@ export interface CorporateCarInput {
 
 export interface Booking {
   id: number
-  /** The passenger's account; null for a colleague put in by name who has no account yet. */
+  /** The passenger's account; null only for a seat from before accounts (the paper log). */
   passenger_id: number | null
   passenger_name: string
   /** Where they get in: "" is the ride's origin, otherwise one of its stops. */

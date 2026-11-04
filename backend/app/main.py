@@ -34,6 +34,7 @@ from .routers import (
     live,
     notices,
     odometer,
+    people,
     photos,
     places,
     proposals,
@@ -176,6 +177,7 @@ app.include_router(admin.router)
 app.include_router(cars.router)
 app.include_router(rides.router)
 app.include_router(seats.router)
+app.include_router(people.router)
 app.include_router(proposals.router)
 app.include_router(drivers.router)
 app.include_router(odometer.router)

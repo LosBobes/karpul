@@ -41,6 +41,7 @@
   "Only a passenger in this car can take it over",
   "Only an admin can add a ride for someone else",
   "Only an admin can do that",
+  "Only colleagues with an account can be added",
   "Only the author or the driver can remove this message",
   "Only the driver can add other passengers to this car",
   "Only the driver can say the ride is running late",

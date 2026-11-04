@@ -1743,3 +1743,22 @@
   0%, 38% { opacity: 0; transform: translateY(8px) scale(0.96); }
   50%, 100% { opacity: 1; transform: none; }
 }
+
+/* Picking a colleague: "Mil" in the search box, the matches arrive, Mila is picked. */
+.wn-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm);
+  animation: wn-arrive 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.2s);
+}
+.wn-pick-on {
+  background: var(--green-soft);
+  animation: wn-arrive 5s var(--ease-out) infinite, wn-pick 5s var(--ease-out) infinite;
+}
+@keyframes wn-pick {
+  0%, 55% { background: transparent; }
+  65%, 100% { background: var(--green-soft); }
+}

@@ -88,14 +88,16 @@ def test_an_admin_edits_and_removes_someone_elses_ride(client, admin_auth, sent)
     assert ("ride_changed", [ana], {"driver": "Ada Admin"}) in sent
 
     # An admin may also put people in and take them out.
+    client.auth("Zoran")
     added = client.post(f"/api/rides/{made['id']}/bookings", json={"passenger_name": "Zoran"}, headers=admin_auth)
     assert added.status_code == 201, added.text
 
     sent.clear()
     assert client.delete(f"/api/rides/{made['id']}", headers=admin_auth).status_code == 204
-    # The passenger, told of the other cars that day (none here), and the driver.
+    # The passengers, told of the other cars that day (none here), and the driver.
+    zoran = user_id(client, "Zoran")
     assert sent == [
-        ("ride_removed", [mila], {"driver": "Ada Admin", "alternatives": 0, "url": "/"}),
+        ("ride_removed", sorted([mila, zoran]), {"driver": "Ada Admin", "alternatives": 0, "url": "/"}),
         ("ride_removed", [ana], {"driver": "Ada Admin", "url": "/"}),
     ]
 
@@ -131,6 +133,7 @@ def test_the_log_records_what_an_admin_did_to_someone_elses_ride(client, admin_a
     made = client.post("/api/rides", json=ride(driver_id=marko), headers=admin_auth).json()
     url = f"/api/rides/{made['id']}"
     client.patch(url, json={"departure_time": "08:15", "notes": "Card is in the glovebox"}, headers=admin_auth)
+    client.auth("Mila Ilić")
     seat = client.post(f"{url}/bookings", json={"passenger_name": "Mila Ilić"}, headers=admin_auth).json()["bookings"][0]
     client.delete(f"{url}/bookings/{seat['id']}", headers=admin_auth)
     client.delete(url, headers=admin_auth)
