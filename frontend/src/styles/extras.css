@@ -1632,6 +1632,28 @@
   0%, 15% { color: var(--text); text-decoration-color: transparent; }
   25%, 100% { color: var(--muted); text-decoration-color: currentColor; }
 }
+.wn-impact {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.wn-impact-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.3rem;
+  border-radius: var(--radius-sm);
+  background: var(--green-soft);
+  animation: wn-arrive 5s var(--ease-out) infinite;
+}
+.wn-impact-tile strong {
+  font-size: 0.95rem;
+  color: var(--green);
+}
+.wn-impact-tile .wn-line {
+  width: 70%;
+}
 @keyframes wn-arrive {
   0%, 22% { opacity: 0; transform: translateX(-6px); }
   32%, 100% { opacity: 1; transform: none; }

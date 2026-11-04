@@ -1,6 +1,7 @@
 import { getLocale, useLocale, type Locale } from './locale'
 import type { SupportTopic } from './support'
 import type { PushCategory } from './types'
+import type { TourStep } from './tour'
 import type { DemoKey } from './whatsNew'
 
 /**
@@ -1290,6 +1291,25 @@ const en = {
     gotIt: 'Got it',
   },
 
+  tour: {
+    count: (n: number, of: number) => `${n} of ${of}`,
+    next: 'Next',
+    back: 'Back',
+    done: 'Finish',
+    skip: 'Skip the tour',
+    menu: 'Take the tour',
+    steps: {
+      find: ['Find a ride', 'Upcoming lists every ride from today on, Week shows one week day by day, and Day plans the shared cars by the hour. Open a ride to take a seat in it.'],
+      offer: ['Driving somewhere?', 'The green plus adds your ride: the car, the seats, the day and the route. Colleagues going your way get in, and you are told when they do.'],
+      cars: ['The shared cars', 'They are in the menu: how each one stands (kilometres, battery, anything wrong) and how to charge one with the company card.'],
+    } as Record<TourStep, [string, string]>,
+    /** Where a step reads differently beside the dock on a wide screen. */
+    wide: {
+      offer: 'Add ride, top right, offers your ride: the car, the seats, the day and the route. Colleagues going your way get in, and you are told when they do.',
+      cars: 'They are on the left: how each one stands (kilometres, battery, anything wrong) and how to charge one with the company card.',
+    } as Partial<Record<TourStep, string>>,
+  },
+
   whatsNew: {
     title: "What's new",
     menu: "What's new",
@@ -1298,6 +1318,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      impact: {
+        title: 'What your seats took off the road',
+        body: '**Your rides** now adds up the car kilometres your rides saved, and roughly the CO₂ and fuel with them: every passenger is a car left at home, split half and half between driver and passenger. Admins see the whole team\'s under **Usage**. New in the **Help** group: **Take the tour**.',
+      },
       addedBy: {
         title: 'Who added a ride',
         body: 'A ride an admin added in your name now says so on the card: **Added by** and the admin\'s name, on every week of a repeat. **All rides** shows it under the driver and carries it in the spreadsheet, and the **Admin log** keeps the line as before.',
@@ -2773,6 +2797,24 @@ const sr: Messages = {
     gotIt: 'U redu',
   },
 
+  tour: {
+    count: (n, of) => `${n} od ${of}`,
+    next: 'Dalje',
+    back: 'Nazad',
+    done: 'Završi',
+    skip: 'Preskoči obilazak',
+    menu: 'Obilazak aplikacije',
+    steps: {
+      find: ['Nađi vožnju', 'Predstojeće su sve vožnje od danas, Nedelja pokazuje jednu nedelju dan po dan, a Dan raspoređuje zajedničke automobile po satima. Otvori vožnju da zauzmeš mesto.'],
+      offer: ['Ideš negde kolima?', 'Zeleni plus dodaje tvoju vožnju: auto, mesta, dan i putanju. Kolege koje idu tvojim putem ulaze, a ti dobijaš obaveštenje.'],
+      cars: ['Zajednički automobili', 'U meniju su: kako koji stoji (kilometraža, baterija, kvarovi) i kako se puni službenom karticom.'],
+    },
+    wide: {
+      offer: 'Dodaj vožnju, gore desno, nudi tvoju vožnju: auto, mesta, dan i putanju. Kolege koje idu tvojim putem ulaze, a ti dobijaš obaveštenje.',
+      cars: 'Levo su: kako koji stoji (kilometraža, baterija, kvarovi) i kako se puni službenom karticom.',
+    },
+  },
+
   whatsNew: {
     title: 'Šta je novo',
     menu: 'Šta je novo',
@@ -2781,6 +2823,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      impact: {
+        title: 'Koliko su tvoja mesta skinula sa puta',
+        body: '**Tvoje vožnje** sada sabiraju kilometre autom koje su tvoje vožnje uštedele, i otprilike CO₂ i gorivo uz njih: svaki putnik je jedan auto ostavljen kod kuće, podeljeno pola-pola između vozača i putnika. Administratori vide ceo tim u kartici **Korišćenje**. Novo u grupi **Pomoć**: **Obilazak aplikacije**.',
+      },
       addedBy: {
         title: 'Ko je dodao vožnju',
         body: 'Vožnja koju je administrator dodao u tvoje ime sada to piše na kartici: **Dodao/la** i ime administratora, za svaku nedelju ponavljanja. **Sve vožnje** to pokazuju ispod vozača i nose u tabeli, a **Dnevnik administratora** i dalje čuva zapis.',

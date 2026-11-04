@@ -9,7 +9,24 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** Your rides: three green tiles come in one after another, the km, the CO₂ and the fuel. */
+function ImpactDemo() {
+  return (
+    <div className="wn-card">
+      <span className="wn-line wn-line-label" />
+      <div className="wn-impact">
+        {['412', '70', '29'].map((n, i) => (
+          <span key={n} className="wn-impact-tile" style={{ animationDelay: `${i * 0.35}s` }}>
+            <strong>{n}</strong>
+            <span className="wn-line" />
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
