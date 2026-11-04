@@ -14,7 +14,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel import Session, col, select
 
-from .. import geo
+from .. import geo, ratelimit
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..events import request_deleted, request_saved
@@ -98,6 +98,7 @@ def list_requests(
 @router.post("", response_model=RideRequestRead, status_code=status.HTTP_201_CREATED)
 def create_request(payload: RideRequestCreate, session: WriteSessionDep, creds: CredsDep):
     user = require_user(session, creds)
+    ratelimit.spend("request", user.id)
     if payload.request_date < date.today():
         raise HTTPException(422, "That day is already over")
     if payload.request_date > date.today() + timedelta(days=92):

@@ -16,7 +16,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, select
 
-from .. import audit, geo
+from .. import audit, geo, ratelimit
 from ..access import get_ride_or_404, is_driver, may_run
 from ..admin import admin_ids, is_admin
 from ..auth import CredsDep, require_user
@@ -113,6 +113,8 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
     (this one included) over the live socket.
     """
     user = require_user(session, creds)
+    if not is_admin(user):
+        ratelimit.spend("ride", user.id)
     driver = user
     if payload.driver_id is not None and payload.driver_id != user.id:
         if not is_admin(user):

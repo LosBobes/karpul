@@ -342,6 +342,13 @@
   color: var(--muted);
   line-height: 1.2;
 }
+.stat-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.stat-tile-green {
+  background: var(--green-soft);
+  box-shadow: none;
+}
 .feed-row {
   display: flex;
   align-items: center;

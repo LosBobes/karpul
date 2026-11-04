@@ -101,6 +101,27 @@ export function UsageDashboard({ load, download }: { load: (days: number) => Pro
             </div>
           </div>
 
+          {report.team && (
+            <section className="stats">
+              <h3 className="section-title">{t.usage.team}</h3>
+              <div className="stat-grid usage-stats">
+                {(
+                  [
+                    [report.team.seats_filled, t.usage.seatsFilled],
+                    [Math.round(report.team.car_km_avoided), t.usage.carKm],
+                    [Math.round(report.team.co2_kg), t.usage.co2],
+                    [Math.round(report.team.fuel_l), t.usage.fuel],
+                  ] as const
+                ).map(([value, label]) => (
+                  <div key={label} className="card stat-tile stat-tile-green">
+                    <strong className="when-value">{value}</strong>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="usage-shape-row">
             <div className="segmented usage-shape" role="radiogroup" aria-label={t.usage.heatmap}>
               <SegThumb count={SHAPES.length} index={SHAPES.indexOf(shape)} />

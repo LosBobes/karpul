@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlmodel import Session, col, func, select
 
-from .. import audit, geo
+from .. import audit, geo, ratelimit
 from ..admin import admin_ids, require_admin
 from ..auth import CredsDep, require_user
 from ..carstate import car_states
@@ -143,6 +143,7 @@ def report_corporate_car(car_id: int, payload: CarReportIn, session: WriteSessio
     it dirty is not the one who left it so); the newest report is the car's
     state. Nothing at all in the report is a 422."""
     user = require_user(session, creds)
+    ratelimit.spend("car_report", user.id)
     car = _get_car_or_404(session, car_id)
     if not car.active:
         raise HTTPException(status.HTTP_409_CONFLICT, "That car is retired")

@@ -334,6 +334,17 @@ export interface StatBucket {
   rides_ridden: number
   people_carried: number
   km_shared: number
+  /** The driver's and the passenger's halves of every car trip a seat saved. */
+  car_km_avoided: number
+  co2_kg: number
+  fuel_l: number
+}
+
+/** What sharing took off the road (`services.impact`). */
+export interface Impact {
+  car_km_avoided: number
+  co2_kg: number
+  fuel_l: number
 }
 
 export interface HistoryRide {
@@ -356,6 +367,8 @@ export interface CarUsage {
   working_days: number
   cars: CarUsageRow[]
   totals: { rides: number; passengers: number; km: number; days_used: number }
+  /** Every ride in the window, own cars included. */
+  team: Impact & { rides: number; seats_filled: number }
   history: UsageRide[]
 }
 

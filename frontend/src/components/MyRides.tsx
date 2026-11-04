@@ -77,6 +77,7 @@ export function MyRides({ user, onNotice, onClose }: Props) {
               <StatGrid title={t.myRides.thisMonth} bucket={stats.month} />
               <StatGrid title={t.myRides.allTime} bucket={stats.all} />
               <p className="hint">{t.myRides.kmHint}</p>
+              <ImpactGrid bucket={stats.all} />
 
               <h3 className="section-title">{t.myRides.feed}</h3>
               <div className="feed-row">
@@ -143,6 +144,30 @@ function StatGrid({ title, bucket }: { title: string; bucket: StatBucket }) {
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+/** What your seats took off the road, all time: a floor, and an estimate. */
+function ImpactGrid({ bucket }: { bucket: StatBucket }) {
+  const t = useT()
+  const tiles = [
+    [Math.round(bucket.car_km_avoided), t.myRides.carKm],
+    [Math.round(bucket.co2_kg), t.myRides.co2],
+    [Math.round(bucket.fuel_l), t.myRides.fuel],
+  ] as const
+  return (
+    <section className="stats">
+      <h3 className="section-title">{t.myRides.impact}</h3>
+      <div className="stat-grid stat-grid-3">
+        {tiles.map(([value, label]) => (
+          <div key={label} className="card stat-tile stat-tile-green">
+            <strong className="when-value">{value}</strong>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+      <p className="hint">{t.myRides.impactHint}</p>
     </section>
   )
 }
