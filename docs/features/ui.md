@@ -30,7 +30,7 @@ button, and each view is two full-height panes (`.split`) that scroll on their o
 (`data-scroll-pane`):
 Upcoming is the list beside the open ride (no unfolding in place: `Upcoming` gets no `renderDetail`,
 and the pane shows your next ride when nothing is picked), Week is the days, the day's rides as a
-vertical list (`CarCarousel vertical`) and `YouPanel` beside the open ride, Day is the plan with the
+vertical list (`CarCarousel vertical`) and *Ask for a ride* beside the open ride, Day is the plan with the
 ride in a column on the right. The ride pane is a container: past 760px the ride becomes one big
 card split into the driver's half and the passengers'. From 1600px the root font grows to 16px. Two media
 blocks carry the phone layout:
@@ -205,9 +205,7 @@ this car* when `switchFrom` says you are seated elsewhere that day and asks wher
 after the tap (`PickupSheet`); ⋮ with *Share ride*,
 *Add to calendar* and, on a series, *Remove this and following rides*) or `AddCarCard` (the
 dashed placeholder with a small car badge, deliberately no picture; `intro` adds the two-view explanation when the whole board is empty) →
-`YouPanel`. The design's
-"unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
-you can move is yourself, so `YouPanel` says where you are that day and offers to ask for a ride. Every dialog is a `Sheet` (bottom sheet on a phone,
+*Ask for a ride* (while you are in no car that day and not driving) and the day's requests. Every dialog is a `Sheet` (bottom sheet on a phone,
 centred panel on a desktop), the one exception being `UpdateScreen`, which takes the whole screen
 because the bolt you trace on it is the screen; destructive actions go through `ConfirmDialog` instead of
 `window.confirm`. Every overlay (`Sheet`, `Sidebar`, `ConfirmDialog`, `Popover`) calls

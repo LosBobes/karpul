@@ -295,19 +295,6 @@ const en = {
     cropHint: 'The square is what is saved; the circle is how it shows next to your name.',
   },
 
-  you: {
-    title: 'You',
-    allSet: "You're all set!",
-    ridingWith: (first: string, time: string) => `Riding with ${first}, leaving at ${time}.`,
-    drivingToday: (taken: number, seats: number) => `You're driving today. ${taken} of ${seats} seats taken.`,
-    rodeWith: (first: string) => `You rode with ${first}.`,
-    dayOver: 'This day is over.',
-    youDrive: "You're the driver.",
-    inCar: (first: string) => `In ${first}'s car.`,
-    notInCar: 'Not in a car yet. Open one and tap "Get in this car".',
-    noFreeSeats: 'No free seats today.',
-    noRides: 'No rides on this day yet.',
-  },
 
   detail: {
     editRide: 'Edit ride',
@@ -1485,6 +1472,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      noYou: {
+        title: 'Less of you, in a good way',
+        body: "The **You** card under the day's cars is gone. It told you whether you were in a car, which the car itself already says, and it was the place to drop your name when dragging, which is also gone. What it was good for stays: **Ask for a ride** sits right under the cars when you have none that day.",
+      },
       pickAfter: {
         title: 'Tap first, ask questions later',
         body: "**Get in this car** now asks **where do you get in?** after the tap, as a list of the route's places with whoever already gets in at each. One tap and you are in. No more little pickup pill to set beforehand (and forget). We also retired dragging your name onto a car: everyone just tapped anyway.",
@@ -2029,19 +2020,6 @@ const sr: Messages = {
     cropHint: 'Kvadrat je ono što se čuva; krug je ono što se vidi pored tvog imena.',
   },
 
-  you: {
-    title: 'Ti',
-    allSet: 'Sve je spremno!',
-    ridingWith: (first, time) => `Vozi te ${first}, polazak u ${time}.`,
-    drivingToday: (taken, seats) => `Danas voziš. Zauzeto ${taken} od ${seats} mesta.`,
-    rodeWith: (first) => `Tvoj vozač: ${first}.`,
-    dayOver: 'Ovaj dan je prošao.',
-    youDrive: 'Ti si vozač.',
-    inCar: (first) => `U autu, vozi ${first}.`,
-    notInCar: 'Još nisi u autu. Otvori jedan i dodirni „Uđi u ovaj auto“.',
-    noFreeSeats: 'Danas nema slobodnih mesta.',
-    noRides: 'Za ovaj dan još nema vožnji.',
-  },
 
   detail: {
     editRide: 'Izmeni vožnju',
@@ -3192,6 +3170,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      noYou: {
+        title: 'Manje tebe, u dobrom smislu',
+        body: 'Kartica **Ti** ispod automobila tog dana je otišla. Govorila je da li si u nekom autu, što sam auto već kaže, i bila je mesto gde se spušta ime pri prevlačenju, kog takođe više nema. Ono za šta je valjala ostaje: **Zatraži prevoz** stoji odmah ispod automobila kad tog dana nemaš nijedan.',
+      },
       pickAfter: {
         title: 'Prvo dodir, pa pitanja',
         body: '**Uđi u ovaj auto** sada posle dodira pita **gde ulaziš?**, kao spisak mesta na ruti, sa licima onih koji već ulaze na svakom. Jedan dodir i unutra si. Nema više malog dugmeta za mesto ulaska koje je trebalo podesiti unapred (i zaboraviti). Penzionisali smo i prevlačenje imena na auto: svi su ionako samo dodirivali.',

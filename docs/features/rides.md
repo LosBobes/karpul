@@ -55,7 +55,7 @@ departure); `POST /api/rides/{id}/late` (the driver only, the ride's day only) w
 with `RideMessage.late_minutes` (an `ADDED_COLUMNS` column; `body` is the English, the app renders
 `thread.late` in the reader's language) and pushes `running_late` (category *changes*) to the
 passengers. The ride's times do not change.
-On screen: requests under each Upcoming day and under `YouPanel` in Week (`RequestList`,
+On screen: requests under each Upcoming day and under the day's cars in Week (`RequestList`,
 "Offer a ride" opens `RideForm` with `request`), asked through `RequestForm`.
 
 **More on a ride.** `Ride.stops` is the extra pickup points after the origin and `Ride.stops_before`

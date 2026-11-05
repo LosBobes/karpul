@@ -23,42 +23,6 @@
   text-align: center;
 }
 
-/* --- You ------------------------------------------------------------------ */
-.you {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
-.you-row {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  min-height: 60px;
-  padding: 0.6rem 0.75rem;
-  text-align: left;
-  width: 100%;
-}
-.you-row-btn {
-  color: var(--text);
-}
-.you-row-btn:hover {
-  border-color: var(--border-strong);
-}
-.you-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  line-height: 1.3;
-}
-.you-text strong {
-  font-weight: 600;
-}
-.you-text > span {
-  font-size: 0.84rem;
-  color: var(--muted);
-}
 .banner {
   display: flex;
   align-items: center;

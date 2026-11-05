@@ -1970,3 +1970,37 @@
   12% { transform: scale(0.94); }
   18%, 100% { transform: none; }
 }
+
+/* What's new: the You card folds away and Ask for a ride takes its place. */
+.wn-noyou-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  animation: wn-fold 5s var(--ease-out) infinite;
+}
+.wn-noyou-card .wn-line {
+  flex: 1;
+}
+.wn-noyou-ask {
+  display: grid;
+  place-items: center;
+  height: 1.8rem;
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+}
+/* The end state is folded away, so under reduced motion the card is simply gone. */
+.wn-noyou-card {
+  max-height: 0;
+  padding-block: 0;
+  border-width: 0;
+  opacity: 0;
+}
+@keyframes wn-fold {
+  0%, 30% { max-height: 3rem; padding-block: 0.35rem; border-width: 1px; opacity: 1; }
+  45%, 100% { max-height: 0; padding-block: 0; border-width: 0; opacity: 0; }
+}
