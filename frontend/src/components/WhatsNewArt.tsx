@@ -9,7 +9,31 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** A ride's route: a face pops in beside each place, yours (the second) ringed. */
+function WhoWhereDemo() {
+  const stops: [string, string[]][] = [
+    ['wn-who-start', ['AP']],
+    ['wn-who-via', ['MD', 'TI']],
+    ['wn-who-end', []],
+  ]
+  return (
+    <div className="wn-card wn-who">
+      {stops.map(([kind, faces], i) => (
+        <div key={kind} className={`wn-who-row ${kind}`}>
+          <span className="wn-who-dot" />
+          <span className="wn-line" />
+          {faces.map((f, j) => (
+            <span key={f} className={i === 1 && j === 0 ? 'wn-pax-avatar wn-who-face wn-who-me' : 'wn-pax-avatar wn-who-face'} style={{ ['--i' as string]: i + j }}>
+              {f}
+            </span>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }

@@ -144,4 +144,21 @@ describe('CarDetail: the driver', () => {
     expect(card(pending, BOSS).button(t().approve)).not.toBeNull()
     expect(card(pending, MILA).button(t().approve)).toBeNull()
   })
+
+  it('puts each passenger beside the place they get in at on the route, yours ringed', () => {
+    const ride = aRide({
+      stops: ['Zemun'],
+      bookings: [
+        { id: 11, passenger_id: 2, passenger_name: 'Bojan Bojić', pickup: '', created_at: '' },
+        { id: 12, passenger_id: 3, passenger_name: 'Mila Milić', pickup: 'Zemun', created_at: '' },
+      ],
+    })
+    const view = card(ride, MILA)
+    const atStart = view.host.querySelector('.trip-start .trip-who')
+    const atZemun = view.host.querySelector('.trip-via .trip-who')
+    expect(atStart?.getAttribute('aria-label')).toBe(t().getInHere(['Bojan Bojić']))
+    expect(atZemun?.getAttribute('aria-label')).toBe(t().getInHere(['Mila Milić']))
+    expect(atZemun?.querySelector('.trip-face-me')).not.toBeNull()
+    expect(atStart?.querySelector('.trip-face-me')).toBeNull()
+  })
 })
