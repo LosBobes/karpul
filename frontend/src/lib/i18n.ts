@@ -1494,16 +1494,16 @@ const en = {
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
       outOfService: {
-        title: 'A shared car out of service',
-        body: 'When a shared car is at the service or being repaired, the admins take it **out of service** for those days: its card says so, the form paints the days red and nobody can book it then. If you had it booked, you are told. **Your rides** also says what the fuel you saved comes to in dinars, at the official price.',
+        title: 'Cars take sick days too',
+        body: "Even a shared car needs a day off now and then. When one is at the service, the admins put it **out of service**: its card says so, the calendar turns those days red and nobody can book it, however hard they tap. Had it booked already? You hear about it before you are standing next to an empty parking spot. Bonus: **Your rides** now shows what the fuel you saved is worth in dinars, at the official price, so you know exactly how generous you have been.",
       },
       fleetUpkeep: {
-        title: 'Upkeep and costs of the shared cars',
-        body: '**Shared cars** has two new tabs. **Upkeep**: each car\'s registration, insurance, next service (by day or km) and tyres, with a push to the admins 30, 7 and 1 days ahead, and taking a car out of service. **Costs**: fuel, tolls, parking and the rest from the receipts, dinars a km per car, km nobody logged between rides, and the official fuel price, which you update each Friday. A reported problem now has a status, and **Usage** sets the shared-car share.',
+        title: "The fleet manager's new best friend",
+        body: "**Shared cars** grew two tabs. **Upkeep** remembers each car's registration, insurance, service and tyres so you don't have to, and nags you 30, 7 and 1 days ahead (louder about summer tyres in November). It is also where a car goes **out of service**. **Costs** eats receipts: fuel, tolls, parking, washes. It works out dinars a km and catches the kilometres that drove themselves between rides. The official fuel price changes every Friday, and so should yours, under **Costs**. Problems now have a status, **Usage** decides how much shared car everyone gets, and **Your rides** shows the fuel saved in dinars.",
       },
       monthSummary: {
-        title: 'The month, per person',
-        body: '**All rides** has a **Month** tab: per person and department, the shared-car and own-car rides and km, the rides along, and the own-car allowance at 30 % of a litre a km at the official price, flagged past the tax-free amount. As a spreadsheet too. Under **People**: a department, someone\'s own shared-car share, and **Switch off** for someone who left. The **Garage list** can let a plate in for good.',
+        title: 'Month end without spreadsheet tears',
+        body: "**All rides** has a **Month** tab: everyone's shared-car and own-car km, rides along and the own-car allowance (30 % of a litre a km, at the official price), by department, with a polite flag on anyone past the tax-free amount. One click and accounting has its spreadsheet. **People** now take a department, a personal shared-car allowance and a **Switch off** for those who left for greener pastures. And the **Garage list** can let a plate in for good, so the regulars stop being news.",
       },
       pickColleague: {
         title: 'Colleagues are picked, not typed',
@@ -3201,16 +3201,16 @@ const sr: Messages = {
     step: (n, of) => `${n} od ${of}`,
     entries: {
       outOfService: {
-        title: 'Zajednički auto van upotrebe',
-        body: 'Kada je zajednički auto na servisu ili popravci, administratori ga stave **van upotrebe** za te dane: to piše na njegovoj kartici, obrazac boji te dane u crveno i niko ne može da ga rezerviše. Ako si ga rezervisao/la, dobijaš obaveštenje. **Tvoje vožnje** sada kažu i koliko dinara vredi gorivo koje si uštedeo/la, po zvaničnoj ceni.',
+        title: 'I auti uzimaju bolovanje',
+        body: 'I zajednički auto ponekad mora da odmori. Kad ode na servis, administratori ga stave **van upotrebe**: to piše na njegovoj kartici, ti dani u kalendaru pocrvene i niko ne može da ga rezerviše, koliko god kuckao. Ako si ga već rezervisao/la, saznaćeš na vreme, a ne pored praznog parking mesta. Usput: **Tvoje vožnje** sada pokazuju koliko dinara vredi gorivo koje si uštedeo/la, po zvaničnoj ceni. Da znaš tačno koliko si plemenit/a.',
       },
       fleetUpkeep: {
-        title: 'Održavanje i troškovi zajedničkih automobila',
-        body: '**Zajednički automobili** imaju dve nove kartice. **Održavanje**: registracija, osiguranje, sledeći servis (po danu ili km) i gume za svaki auto, uz obaveštenje administratorima 30, 7 i 1 dan ranije, i stavljanje auta van upotrebe. **Troškovi**: gorivo, putarine, parking i ostalo sa računa, dinara po km za svaki auto, km koje niko nije upisao između vožnji, i zvanična cena goriva, koju ažuriraš svakog petka. Prijavljeni problem sada ima status, a pod **Korišćenje** se podešava pravo na zajednički auto.',
+        title: 'Najbolji drug menadžera voznog parka',
+        body: '**Zajednički automobili** dobili su dve nove kartice. **Održavanje** pamti registraciju, osiguranje, servis i gume svakog auta umesto tebe, i podseća 30, 7 i 1 dan ranije (za letnje gume u novembru i glasnije). Tu auto ide i **van upotrebe**. **Troškovi** gutaju račune: gorivo, putarine, parking, pranje. Izračunaju dinare po kilometru i uhvate kilometre koji su se sami odvezli između vožnji. Zvanična cena goriva menja se svakog petka, pa neka se menja i tvoja, pod **Troškovi**. Problemi sada imaju status, **Korišćenje** određuje koliko zajedničkog auta ko dobija, a **Tvoje vožnje** pokazuju uštedu goriva u dinarima.',
       },
       monthSummary: {
-        title: 'Mesec, po osobi',
-        body: '**Sve vožnje** imaju karticu **Mesec**: po osobi i sektoru, vožnje i km zajedničkim i svojim autom, vožnje kao putnik i naknada za sopstveni auto, 30 % cene litra po km po zvaničnoj ceni, uz oznaku preko neoporezivog iznosa. Može i kao tabela. Pod **Ljudi**: sektor, nečije sopstveno pravo na zajednički auto i **Isključi nalog** za nekoga ko je otišao. **Spisak za garažu** može trajno da pusti tablicu.',
+        title: 'Kraj meseca bez suza nad tabelom',
+        body: '**Sve vožnje** imaju karticu **Mesec**: kilometri svakoga, zajedničkim i svojim autom, vožnje kao putnik i naknada za sopstveni auto (30 % cene litra po kilometru, po zvaničnoj ceni), po sektorima, uz učtivu oznaku za svakog ko pređe neoporezivi iznos. Jedan klik i računovodstvo ima svoju tabelu. Pod **Ljudi** sada ide sektor, lično pravo na zajednički auto i **Isključi nalog** za one koji su otišli na zelenije pašnjake. A **Spisak za garažu** može trajno da pusti tablicu, pa stalni gosti više nisu vest.',
       },
       pickColleague: {
         title: 'Kolege se biraju, ne kucaju',

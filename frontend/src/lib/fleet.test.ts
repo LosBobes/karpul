@@ -59,12 +59,16 @@ describe('the fleet helpers', () => {
 })
 
 describe("What's new for whom", () => {
-  it("keeps the admins' own entries from everyone else", () => {
+  it("shows each side its own entries and never the other side's", () => {
     const admin = forReader(WHATS_NEW, true).map((e) => e.id)
     const others = forReader(WHATS_NEW, false).map((e) => e.id)
     expect(admin).toContain('fleetUpkeep')
+    expect(admin).not.toContain('outOfService')
     expect(others).not.toContain('fleetUpkeep')
     expect(others).toContain('outOfService')
+    // An entry for everyone reaches both.
+    expect(admin).toContain('consent')
+    expect(others).toContain('consent')
     expect(MESSAGES.sr.whatsNew.entries.monthSummary.title).not.toBe('')
   })
 })

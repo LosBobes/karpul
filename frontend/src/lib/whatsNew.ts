@@ -10,22 +10,25 @@
  */
 export type DemoKey = 'outOfService' | 'fleetUpkeep' | 'monthSummary' | 'pickColleague' | 'impact' | 'addedBy' | 'seatNotice' | 'carWhere' | 'carBusy' | 'prefill' | 'consent'
 
+export type Audience = 'admins' | 'members'
+
 export interface WhatsNewEntry {
   /** Stable: it is what "seen" remembers. Also the key of its words in i18n. */
   id: DemoKey
   /** The day it reached the app, `YYYY-MM-DD`. */
   date: string
-  /** About the admins' own screens: only an admin is shown it. */
-  admin?: true
+  /** Who it is for: `admins` (their own screens) or `members` (what an admin
+   *  already knows from the other side). Left out, everyone sees it. */
+  for?: Audience
 }
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = [
-  { id: 'outOfService', date: '2026-11-05' },
-  { id: 'fleetUpkeep', date: '2026-11-05', admin: true },
-  { id: 'monthSummary', date: '2026-11-05', admin: true },
+  { id: 'outOfService', date: '2026-11-05', for: 'members' },
+  { id: 'fleetUpkeep', date: '2026-11-05', for: 'admins' },
+  { id: 'monthSummary', date: '2026-11-05', for: 'admins' },
   { id: 'pickColleague', date: '2026-11-04' },
   { id: 'impact', date: '2026-11-04' },
-  { id: 'addedBy', date: '2026-11-04' },
+  { id: 'addedBy', date: '2026-11-04', for: 'members' },
   { id: 'seatNotice', date: '2026-11-03' },
   { id: 'carWhere', date: '2026-11-03' },
   { id: 'carBusy', date: '2026-11-03' },
@@ -33,9 +36,10 @@ export const WHATS_NEW: readonly WhatsNewEntry[] = [
   { id: 'consent', date: '2026-11-02' },
 ]
 
-/** The entries `admin` may be shown: everyone's, and the admins' own to an admin. */
+/** The entries a reader is shown: everyone's, plus the admins' own to an admin
+ *  and the members' own to everyone else, never the other side's. */
 export function forReader(entries: readonly WhatsNewEntry[], admin: boolean): WhatsNewEntry[] {
-  return entries.filter((e) => admin || !e.admin)
+  return entries.filter((e) => !e.for || e.for === (admin ? 'admins' : 'members'))
 }
 
 const SEEN_KEY = 'karpul.whatsNewSeen'

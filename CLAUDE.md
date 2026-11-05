@@ -190,7 +190,12 @@ request that adds or changes something people will notice adds an entry**: `{ id
 `WHATS_NEW` (newest first, `date` the day it lands), its title and a few lines in `whatsNew.entries` in both
 languages of `lib/i18n.ts` (`**words**` bold, as in the how-to), and a demo in `WhatsNewArt` keyed by the id: a
 small piece of the screen it is about playing out on a loop (the `.wn-*` keyframes in `styles/extras.css`; the
-base styles are the end state, because under reduced motion the loops stop). The sheet opens by itself once
+base styles are the end state, because under reduced motion the loops stop). **Write entries a bit tongue in
+cheek**, in both languages: a playful title and a wink or two in the body (*Cars take sick days too*), while still
+saying plainly what changed and where to find it; the no-em-dash rule below still holds. **Each entry says who it
+is for**: `for: 'admins'` for the admins' own screens, `for: 'members'` for what an admin already knows from the
+other side (a car out of service, a ride added in your name), nothing for everyone; `forReader` shows each reader
+only everyone's and their own side's, never the other side's. The sheet opens by itself once
 when an account has an entry it has not seen in this browser (`karpul.whatsNewSeen.<id>`) dated after the day
 it joined (a newcomer is not handed the history, and the end-to-end tests' accounts never see it), and *What's
 new* in the drawer's *Help* group shows all of them. `whatsNew.test.ts` checks ids, order and both languages.
