@@ -404,6 +404,7 @@ const en = {
     getInAt: 'Get in at',
     start: 'Start',
     getsInAt: (place: string) => `Gets in at ${place}`,
+    getInHere: (names: string[]) => `Getting in here: ${names.join(', ')}`,
     changePickup: 'Change pickup',
     elsewhere: 'Somewhere else…',
     newPlace: 'new pickup point',
@@ -1493,6 +1494,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      whoWhere: {
+        title: 'Faces on the map, so to speak',
+        body: "The route on a ride card now shows **who gets in where**: each passenger's face sits beside their pickup point, yours with a green ring. No more scrolling down the list to find out whether Marko is waiting at the office or at the bus stop, and no more driving past him.",
+      },
       outOfService: {
         title: 'Cars take sick days too',
         body: "Even a shared car needs a day off now and then. When one is at the service, the admins put it **out of service**: its card says so, the calendar turns those days red and nobody can book it, however hard they tap. Had it booked already? You hear about it before you are standing next to an empty parking spot. Bonus: **Your rides** now shows what the fuel you saved is worth in dinars, at the official price, so you know exactly how generous you have been.",
@@ -2135,6 +2140,7 @@ const sr: Messages = {
     getInAt: 'Ulazim:',
     start: 'Polazak',
     getsInAt: (place) => `Ulazi: ${place}`,
+    getInHere: (names) => `Ovde ulaze: ${names.join(', ')}`,
     changePickup: 'Promeni mesto ulaska',
     elsewhere: 'Negde drugde…',
     newPlace: 'novo mesto ulaska',
@@ -3200,6 +3206,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      whoWhere: {
+        title: 'Lica na ruti',
+        body: 'Ruta na kartici vožnje sada pokazuje **ko gde ulazi**: lice svakog putnika stoji pored njegovog mesta ulaska, tvoje sa zelenim okvirom. Nema više skrolovanja niz spisak da bi saznao/la da li Marko čeka kod kancelarije ili na stanici, i nema više prolaženja pored njega.',
+      },
       outOfService: {
         title: 'I auti uzimaju bolovanje',
         body: 'I zajednički auto ponekad mora da odmori. Kad ode na servis, administratori ga stave **van upotrebe**: to piše na njegovoj kartici, ti dani u kalendaru pocrvene i niko ne može da ga rezerviše, koliko god kuckao. Ako si ga već rezervisao/la, saznaćeš na vreme, a ne pored praznog parking mesta. Usput: **Tvoje vožnje** sada pokazuju koliko dinara vredi gorivo koje si uštedeo/la, po zvaničnoj ceni. Da znaš tačno koliko si plemenit/a.',

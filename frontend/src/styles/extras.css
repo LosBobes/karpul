@@ -1827,3 +1827,87 @@
 .wn-month-over {
   color: #b45309;
 }
+
+/* Who gets in where: the faces of the passengers at each place on the route,
+   overlapping, each cut out of the card by a ring of the surface; yours wears
+   a green ring. The note ("Pickup") sits after them in the same column. */
+.trip-aside {
+  grid-column: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.trip-who {
+  display: inline-flex;
+  align-items: center;
+  margin: -4px 0;
+}
+.trip-face {
+  position: relative;
+  display: inline-grid;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.trip-face + .trip-face {
+  margin-left: -6px;
+}
+.trip-face .avatar {
+  width: 26px;
+  height: 26px;
+  font-size: 0.66rem;
+}
+.trip-face-me {
+  margin-right: 2px;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--green);
+}
+.trip-more {
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+}
+
+/* What's new: who gets in where. */
+.wn-who-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.9rem;
+}
+.wn-who-row .wn-line {
+  flex: 1;
+}
+.wn-who-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--green);
+  border-radius: 50%;
+  background: var(--surface);
+}
+.wn-who-via .wn-who-dot {
+  width: 7px;
+  height: 7px;
+  margin: 0 1.5px;
+  border-color: var(--border-strong);
+}
+.wn-who-end .wn-who-dot {
+  background: var(--green);
+}
+.wn-who-face {
+  box-shadow: 0 0 0 2px var(--surface);
+  animation: wn-arrive 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.25s);
+}
+.wn-who-face + .wn-who-face {
+  margin-left: -0.9rem;
+}
+.wn-who-me {
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--green);
+}

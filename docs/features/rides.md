@@ -85,7 +85,9 @@ there is room) opens that same `AddStop`, straight to the place and then where o
 a row per place with who gets in there, a tap picks it again in `PlaceDialog` (a stop's `confirm` step also
 takes where on the way, which is how one moves), × takes a stop off, and *Save route* is one `PATCH` of the
 route and its pins (`onSaveRoute` in `App.tsx`; the foot says who `drop_orphaned_pickups` will move to the
-start). A ride with a
+start). On the card's route (`TripRoute`) each place where someone gets in carries their faces
+(`.trip-who`, overlapping avatars, yours ringed green and first, past three a *+N*; a pickup no longer on the
+route counts as the start), so who gets in where reads without the passenger list. A ride with a
 return draws one more, quieter row at the foot of the card's route, the start again with *Back
 <time>* (`.trip-back`, after a dashed rule; no map link, the start has one). `distance_km` and `chip_in` are the driver's own words and only ever
 shown or summed. `RideCreate.repeat_until` is not a column: `create_ride` writes one ride per
