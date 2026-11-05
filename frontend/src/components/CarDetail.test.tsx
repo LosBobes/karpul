@@ -4,6 +4,7 @@
  * the claim of an account-less driver). Each is one render and a look for the
  * control by its label, so a regression shows here long before e2e/.
  */
+import { act } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { messages } from '../lib/i18n'
 import type { Me } from '../lib/me'
@@ -18,18 +19,14 @@ const BOSS: Me = { id: 9, name: 'Šef Šefić', admin: true }
 
 const t = () => messages().detail
 
-function card(ride: Ride, me: Me, extra: { isPast?: boolean } = {}) {
+function card(ride: Ride, me: Me, extra: { isPast?: boolean; onJoin?: (...args: unknown[]) => void } = {}) {
   const noop = vi.fn()
   const props = {
     ride,
     busy: false,
     isPast: extra.isPast ?? false,
     coming: true,
-    dragActive: false,
-    lifted: false,
-    over: false,
-    draggable: false,
-    onJoin: noop,
+    onJoin: extra.onJoin ?? noop,
     onLeave: noop,
     onMovePickup: noop,
     onAddStop: noop,
@@ -56,7 +53,6 @@ function card(ride: Ride, me: Me, extra: { isPast?: boolean } = {}) {
     onLeaveLine: noop,
     onOdometer: noop,
     onError: noop,
-    onGrab: noop,
   }
   return render(<CarDetail {...props} />, { me })
 }
@@ -160,5 +156,26 @@ describe('CarDetail: the driver', () => {
     expect(atZemun?.getAttribute('aria-label')).toBe(t().getInHere(['Mila Milić']))
     expect(atZemun?.querySelector('.trip-face-me')).not.toBeNull()
     expect(atStart?.querySelector('.trip-face-me')).toBeNull()
+  })
+
+  it('asks where you get in after Get in, and takes the seat at the place tapped', () => {
+    const onJoin = vi.fn()
+    const view = card(aRide({ stops: ['Zemun'] }), MILA, { onJoin })
+    act(() => view.button(t().getIn)!.click())
+    expect(onJoin).not.toHaveBeenCalled()
+    const sheet = document.querySelector('[role="dialog"]')!
+    expect(sheet.textContent).toContain(t().whereGetIn)
+    expect(sheet.textContent).toContain(t().elsewhere)
+    const zemun = Array.from(sheet.querySelectorAll('button')).find((b) => b.textContent?.includes('Zemun'))!
+    act(() => zemun.click())
+    expect(onJoin).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }), 'Zemun')
+  })
+
+  it('gets straight in when the start is the only place there is', () => {
+    const onJoin = vi.fn()
+    const view = card(aRide({ passengers_add_stops: false }), MILA, { onJoin })
+    act(() => view.button(t().getIn)!.click())
+    expect(onJoin).toHaveBeenCalledWith(expect.objectContaining({ id: 7 }), '')
+    expect(document.querySelector('.pickup-sheet')).toBeNull()
   })
 })

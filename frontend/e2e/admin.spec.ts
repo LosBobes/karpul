@@ -171,6 +171,7 @@ test('a shared car whose driver cancels is taken over by a passenger', async ({ 
   await expect(saraRow).toBeVisible()
   await saraRow.click()
   await sara.getByRole('button', { name: 'Get in this car' }).first().click()
+  await sara.getByRole('dialog', { name: 'Where do you get in?' }).getByRole('button', { name: /Start/ }).click()
   await expect(toast(sara, `You're in with ${teodorName}.`)).toBeAttached()
 
   // Teodor cancels: the car stays, and its passengers are asked to drive.

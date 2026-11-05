@@ -9,7 +9,22 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** Get in, then the places: the button is pressed, the rows come up, the second lights. */
+function PickAfterDemo() {
+  return (
+    <div className="wn-card wn-pick">
+      <div className="wn-after-btn">+</div>
+      {['wn-who-start', 'wn-who-via'].map((kind, i) => (
+        <div key={kind} className={i === 1 ? 'wn-pick-row wn-pick-on' : 'wn-pick-row'} style={{ ['--i' as string]: i + 1 }}>
+          <span className="wn-who-dot" />
+          <span className="wn-line" />
+        </div>
+      ))}
     </div>
   )
 }

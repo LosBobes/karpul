@@ -223,8 +223,7 @@ never "only admins / only you can see this" (whoever reads it can see it). A hin
 says something the control cannot (a consequence, a privacy risk, a format).
 
 **Accessibility notes.** Toasts are announced through an always-mounted `sr-only` live region
-in `App.tsx`; the visible pill is `aria-hidden`. Every drag has a button equivalent (*Get in*,
-*Switch to this car*, *Leave*). The dark avatars pair a deep tint with a light ink so the
+in `App.tsx`; the visible pill is `aria-hidden`. The dark avatars pair a deep tint with a light ink so the
 initials keep their contrast.
 
 **What gets opened** (`routers/usage.py`, table `UsageCount`, `lib/usage.ts`). `track('view.week')` (views, `sheet.<overlay>` from `useOverlays.show`, `plan.<shape>`) batches screen names and sends them a minute later or when the tab is hidden; `POST /api/usage` adds one per name to that day's count. The row is only the day, the name and the count: no account, no time of day, and only names matching `USAGE_KEY` get in. Admins read it under *Usage* as *What gets opened* (`GET /api/admin/usage?days`). Tests: `tests/test_usage_counts.py`, `usage.test.ts`.
@@ -233,7 +232,7 @@ initials keep their contrast.
 
 **Frontend data flow.** `App.tsx` holds the UI state, with its pieces in hooks: which sheets
 are open (`lib/useOverlays.ts`, one open set, `is`/`show`/`hide` and a stable `closer(name)`),
-the toast (`lib/useToast.ts`), the passenger chip in flight (`lib/usePassengerDrag.ts`),
+the toast (`lib/useToast.ts`),
 everything a ride card does (`lib/useRideActions.ts`: seats, queue, route, switches, removal, asks
 and answers, takeover, claim, running late; each call goes through the board's `withBusy` and
 `upsertRide`, and `newlyAsked` lives there), the admin's desk (`lib/useAdminDesk.ts`: the
@@ -272,16 +271,11 @@ uvicorn worker** (which is what the Dockerfile runs); more workers would need a 
 Publish only after `session.commit()`, and every ride mutation must publish or the other tabs
 go stale. Tests: `tests/test_live.py` (`client.websocket_connect`).
 
-**Drag-and-drop** is pointer-event based (`lib/dnd.ts`, `grabPassenger`), not HTML5 DnD, so it
-works with a finger: mouse lifts the chip after a few pixels of movement, touch after a short
-press-and-hold (a swipe before the hold is treated as a scroll and ignored). Handles carry
-`touch-action: none` in `index.css` — remove that and mobile drags get cancelled by the
-browser's own scrolling. The controller owns a plain-DOM ghost, auto-scrolls at the viewport
-edges and finds the drop target with `elementFromPoint` on `[data-drop]` elements: a card or the
-tray spreads `dropZone(...)` *only while it can receive*, so validity lives in the components.
-`App.tsx` holds the in-flight `drag`/`dragOver` state and dispatches the drop through a ref, since
-the ride list can change under a drag via live updates. Dropping on another car issues `leave`
-then `join`; dropping on the tray issues `leave`.
+**Getting in is a tap, never a drag** (the passenger chip and its drop zones are gone). *Get in
+this car* (or *Switch to this car*, or *Wait for a seat*) asks where afterwards, in
+`components/PickupSheet.tsx`: the route's places in order, one tap each, with *Somewhere else…*
+opening `AddStop`; a route that is only its start, with the passengers' new places switched off,
+has nothing to ask and gets straight in.
 
 **Company cars** are seeded from `CORPORATE_CARS` (`Name|PLATE|seats[|home];…`) only while the `corporatecar` table is empty (`seed.py`); after that the pool is managed through the admin endpoints, and nothing on start touches a car again. `CorporateCar.home` (an `ADDED_COLUMNS` column, *Departs from* in `SharedCars`) is where a car is kept: `RideForm` starts a new ride in it there, and picking another car moves the start along unless the driver typed their own. `GET /api/cars/corporate` stays public and active-only, so `App.tsx` keeps the admin list (`adminCars`, everything) and the ride-form list (`cars`, `active` only) as two views of one fetch — `applyCars()`.
 

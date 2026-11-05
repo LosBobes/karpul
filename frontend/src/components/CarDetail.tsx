@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { firstName, fmtTime } from '../lib/dates'
-import { dropZone, type PassengerDrag } from '../lib/dnd'
 import { useT } from '../lib/i18n'
 import { drives, inRide, isMyBooking, myBooking as findMyBooking, myWaitlistEntry, placeInLine, runs, useMe } from '../lib/me'
 import { hasPins, routeUrl, stopHint } from '../lib/maps'
@@ -12,9 +11,9 @@ import { mapsOn, useMapConfig, useMapsAllowed } from '../lib/places'
 import { allStops, MAX_STOPS, type NewStop } from '../lib/stops'
 import { telHref } from '../lib/support'
 import type { CarState, Ride, RideInput, RideRequest } from '../lib/types'
-import { useCoarsePointer } from '../lib/useCoarsePointer'
 import { useWide } from '../lib/useWide'
 import { AddStop } from './AddStop'
+import { PickupSheet } from './PickupSheet'
 import { RouteEditor } from './RouteEditor'
 import { ChangeAsk, SuggestTime } from './ChangeAsk'
 import { DriverCar } from './DriverCar'
@@ -30,7 +29,6 @@ import {
   ClockIcon,
   ChevronRightIcon,
   CopyIcon,
-  GripIcon,
   HourglassIcon,
   KebabIcon,
   MapIcon,
@@ -122,14 +120,6 @@ interface Props {
   inlineMap?: boolean
   /** Something in the thread failed; the board says so in its toast. */
   onError: (text: string) => void
-  dragActive: boolean
-  /** The chip in flight was picked up from this car. */
-  lifted: boolean
-  /** The chip is hovering over this card. */
-  over: boolean
-  onGrab: (e: React.PointerEvent<HTMLElement>, drag: PassengerDrag) => void
-  /** False where there is nowhere to drag the chip to (the upcoming list). */
-  draggable?: boolean
 }
 
 function openRoute(ride: Ride) {
@@ -141,7 +131,7 @@ const ELSEWHERE = '\u0000elsewhere'
 
 /**
  * The selected ride: who drives, when it leaves and comes back, where from and
- * to, and who is in the car. The passenger list doubles as the drop zone.
+ * to, and who is in the car. *Get in* asks where after the tap (`PickupSheet`).
  */
 export function CarDetail({
   ride,
@@ -182,15 +172,9 @@ export function CarDetail({
   myRequest,
   inlineMap,
   onError,
-  dragActive,
-  lifted,
-  over,
-  onGrab,
-  draggable = true,
 }: Props) {
   const t = useT()
   const me = useMe()
-  const coarse = useCoarsePointer()
   const isDriver = drives(ride, me)
   // The driver runs the ride; so may an admin, who schedules the cars (backend: _may_run).
   const runsIt = runs(ride, me)
@@ -200,13 +184,11 @@ export function CarDetail({
   const full = ride.free_seats <= 0
   // A seat on offer stays on screen while a call is out (its buttons only go
   // disabled), so the card never flickers through "No passengers yet" before
-  // the passenger arrives; `canJoin` is whether it can be taken right now.
+  // the passenger arrives.
   // A ride from the paper log takes nobody until its driver confirms it
   // (backend: join_ride); whoever runs it may still put people in.
   const held = ride.unconfirmed && !runsIt
   const seatOnOffer = !isDriver && !myBooking && !full && !isPast && !held
-  const canJoin = seatOnOffer && !busy
-  const receives = dragActive && canJoin
   // Who may put other people in and take them out: the driver (or an admin)
   // always, the passengers while the driver has switched it on (backend: _may_manage_seats).
   const canManage = !isPast && (runsIt || (ride.passengers_manage && !!myBooking))
@@ -220,8 +202,10 @@ export function CarDetail({
   // A passenger's "Suggest another time" sheet.
   const [suggesting, setSuggesting] = useState(false)
   const arrived = useArrivals(ride.bookings.map((b) => b.id))
-  // Where you get in: the start, one of the stops, or somewhere new you put on the route.
-  const [pickup, setPickup] = useState('')
+  // Where you get in is asked after the tap: the route's places (`asking`), or
+  // somewhere new put on the route (`choosing`), for a seat or a place in the queue.
+  const [asking, setAsking] = useState<'join' | 'wait' | null>(null)
+  const [choosing, setChoosing] = useState<'join' | 'wait' | null>(null)
   const [movingPickup, setMovingPickup] = useState<false | 'pick' | 'new'>(false)
   // Whoever runs the ride: straight to a new pickup point, or the whole route.
   const [routing, setRouting] = useState<'add' | 'edit' | null>(null)
@@ -244,29 +228,21 @@ export function CarDetail({
     ...ride.stops.map((s) => ({ value: s, label: s })),
   ]
   const withElsewhere = mayAddStop ? [...pickupOptions, { value: ELSEWHERE, label: t.detail.elsewhere }] : pickupOptions
-  const choosingPlace = pickup === ELSEWHERE
+  const choosingPlace = choosing !== null
   // A passenger's own *Add a pickup point*: getting in, queueing or moving their seat to a new place.
   const passengerAddsStop = !isPast && !isDriver && mayAddStop && (seatOnOffer || canWait || !!myBooking)
   const switching = !!switchFrom && !!onSwitch
-  const getIn = () => (switching ? onSwitch!(ride, switchFrom!, pickup) : onJoin(ride, pickup))
+  // A route that is only its start, with nowhere new allowed, has nothing to ask.
+  const asksPickup = hasStops || mayAddStop
+  const joinAt = (place: string) => (switching ? onSwitch!(ride, switchFrom!, place) : onJoin(ride, place))
+  const getIn = () => (asksPickup ? setAsking('join') : joinAt(''))
+  const wait = () => (asksPickup ? setAsking('wait') : onWait(ride, ''))
   const getInAt = (place: string, where: NewStop) => {
-    setPickup('')
+    setChoosing(null)
     if (switching) onSwitch!(ride, switchFrom!, place, where)
     else onJoin(ride, place, where)
   }
-  // Where you get in is a pill on the button that takes the seat, so it never reads as the route.
-  const pickupChip = (prefix?: string) => (
-    <Select
-      variant="chip"
-      label={t.detail.pickup}
-      prefix={prefix}
-      icon={<PinIcon size={14} />}
-      value={pickup}
-      options={withElsewhere}
-      onChange={setPickup}
-    />
-  )
-  const getInLabel = dragActive ? t.detail.dropToGetIn : switching ? t.detail.switchTo : t.detail.getIn
+  const getInLabel = switching ? t.detail.switchTo : t.detail.getIn
 
 
   function pickPassenger(person: Person) {
@@ -426,7 +402,7 @@ export function CarDetail({
               type="button"
               className="link link-sm trip-add"
               disabled={busy}
-              onClick={() => (myBooking ? setMovingPickup('new') : setPickup(ELSEWHERE))}
+              onClick={() => (myBooking ? setMovingPickup('new') : setChoosing(seatOnOffer ? 'join' : 'wait'))}
             >
               <PlusIcon size={14} /> {t.detail.addStop}
             </button>
@@ -477,17 +453,7 @@ export function CarDetail({
         <Odometer ride={ride} busy={busy} coming={coming} onOdometer={onOdometer} />
       )}
 
-      <section
-        className={[
-          'pax',
-          receives && 'pax-droppable',
-          dragActive && !receives && !lifted && 'pax-nodrop',
-          receives && over && 'pax-over',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        {...dropZone(receives ? { kind: 'ride', rideId: ride.id } : null)}
-      >
+      <section className="pax">
         <h3 className="section-title">
           {t.detail.passengersTitle}{' '}
           <span className="section-count">
@@ -515,17 +481,36 @@ export function CarDetail({
           </div>
         )}
 
-        {(seatOnOffer || canWait) && choosingPlace && (
+        {asking && (
+          <PickupSheet
+            ride={ride}
+            busy={busy}
+            elsewhere={mayAddStop}
+            onClose={() => setAsking(null)}
+            onPick={(place) => {
+              const what = asking
+              setAsking(null)
+              if (what === 'join') joinAt(place)
+              else onWait(ride, place)
+            }}
+            onElsewhere={() => {
+              setChoosing(asking)
+              setAsking(null)
+            }}
+          />
+        )}
+
+        {choosing && (seatOnOffer || canWait) && (
           <AddStop
             ride={ride}
-            submitLabel={seatOnOffer ? getInLabel : t.detail.waitFor}
+            submitLabel={choosing === 'join' && seatOnOffer ? getInLabel : t.detail.waitFor}
             busy={busy}
-            onCancel={() => setPickup('')}
+            onCancel={() => setChoosing(null)}
             onSubmit={
-              seatOnOffer
+              choosing === 'join' && seatOnOffer
                 ? getInAt
                 : (place, where) => {
-                    setPickup('')
+                    setChoosing(null)
                     onWait(ride, place, where)
                   }
             }
@@ -544,17 +529,8 @@ export function CarDetail({
             <button type="button" className="dropzone" disabled={busy} onClick={getIn}>
               <UsersIcon size={28} />
               <strong>{getInLabel}</strong>
-              <span>
-                {switching
-                  ? t.detail.switchHint(firstName(switchFrom!.ride.driver_name))
-                  : draggable
-                    ? coarse
-                      ? t.detail.dragHintCoarse
-                      : t.detail.dragHint
-                    : t.detail.tapSeat}
-              </span>
+              <span>{switching ? t.detail.switchHint(firstName(switchFrom!.ride.driver_name)) : t.detail.tapSeat}</span>
             </button>
-            <div className="join-box-foot">{pickupChip(t.detail.getInAt)}</div>
           </div>
         ) : null}
 
@@ -562,20 +538,10 @@ export function CarDetail({
           <ul className="pax-list">
             {ride.bookings.map((b) => {
               const mine = isMyBooking(b, me)
-              const grabbable = draggable && mine && !busy && !isPast
               // Someone new grows into the list; your own row takes the place of the get-in row you tapped.
               return (
                 <li key={b.id} className={arrived.has(b.id) && !mine ? 'pax-slot pax-slot-new' : 'pax-slot'}>
-                  <div
-                    className={['pax-row', mine && 'pax-row-me', grabbable && 'grabbable', mine && lifted && 'lifting']
-                      .filter(Boolean)
-                      .join(' ')}
-                    title={grabbable ? t.detail.dragSwitch : undefined}
-                    onPointerDown={(e) => {
-                      if (grabbable) onGrab(e, { name: me.name, fromRideId: ride.id, bookingId: b.id })
-                    }}
-                    onDragStart={(e) => e.preventDefault()}
-                  >
+                  <div className={mine ? 'pax-row pax-row-me' : 'pax-row'}>
                     <Avatar name={b.passenger_name} />
                     <span className="pax-name">
                       <span className="pax-name-row">
@@ -645,24 +611,16 @@ export function CarDetail({
                         {t.detail.leave}
                       </button>
                     )}
-                    {grabbable && (
-                      <span className="grip" aria-hidden="true">
-                        <GripIcon size={18} />
-                      </span>
-                    )}
                   </div>
                 </li>
               )
             })}
             {seatOnOffer && !choosingPlace && (
               <li>
-                <div className="join-row">
-                  <button type="button" className="add-row" disabled={busy} onClick={getIn}>
-                    <PlusIcon size={18} />
-                    {getInLabel}
-                  </button>
-                  {pickupChip()}
-                </div>
+                <button type="button" className="add-row" disabled={busy} onClick={getIn}>
+                  <PlusIcon size={18} />
+                  {getInLabel}
+                </button>
                 {switching && <p className="hint hint-tight">{t.detail.switchHint(firstName(switchFrom!.ride.driver_name))}</p>}
               </li>
             )}
@@ -684,13 +642,10 @@ export function CarDetail({
 
         {canWait && !choosingPlace && (
           <>
-            <div className="join-row join-row-boxed">
-              <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={() => onWait(ride, pickup)}>
-                <HourglassIcon size={18} />
-                {t.detail.waitFor}
-              </button>
-              {(hasStops || mayAddStop) && pickupChip()}
-            </div>
+            <button type="button" className="add-row add-row-quiet" disabled={busy} onClick={wait}>
+              <HourglassIcon size={18} />
+              {t.detail.waitFor}
+            </button>
             <p className="hint hint-tight">{t.detail.waitHint}</p>
           </>
         )}

@@ -65,6 +65,7 @@ test('offer a ride, get in, leave, and the driver removes it', async ({ browser 
   await row.click()
   await expect(nikola.getByText('90 km one way').first()).toBeVisible()
   await nikola.getByRole('button', { name: 'Get in this car' }).first().click()
+  await nikola.getByRole('dialog', { name: 'Where do you get in?' }).getByRole('button', { name: /Start/ }).click()
   await expect(toast(nikola, `You're in with ${lenaName}.`)).toBeAttached()
 
   // Lena's board shows him, live.

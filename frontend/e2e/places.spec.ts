@@ -85,8 +85,8 @@ test('places are suggested, pinned and shown on the map', async ({ browser }, in
   // He gets in somewhere new: the same full-screen place picker as the ride
   // form, then moving its map (a zoom here) puts the pin where it stops, and a
   // last step asks where on the way.
-  await toma.getByRole('button', { name: 'Pickup', exact: true }).first().click()
-  await toma.getByRole('option', { name: 'Somewhere else…' }).click()
+  await toma.getByRole('button', { name: 'Get in this car' }).first().click()
+  await toma.getByRole('dialog', { name: 'Where do you get in?' }).getByRole('button', { name: 'Somewhere else…' }).click()
   const picker = toma.getByRole('dialog', { name: 'New pickup point' })
   await expect(picker.getByRole('heading', { name: 'Saved places' })).toBeVisible()
   await picker.getByLabel('Search places and addresses').fill('Kod Spensa')

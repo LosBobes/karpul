@@ -237,28 +237,12 @@
     width: 44px;
     height: 44px;
   }
-  .grabbable:hover {
-    border-color: var(--border);
-    box-shadow: var(--shadow);
-    transform: none;
-  }
-  .grabbable:hover .grip {
-    color: var(--border-strong);
-  }
-  .pax-row-me.grabbable:hover {
-    border-color: var(--green-line);
-  }
   .cars-arrow {
     display: none;
   }
   .week-btn {
     width: 36px;
     height: 36px;
-  }
-  .car-tile-droppable {
-    /* The dashed outline is the only affordance on a phone (no cursor, no
-       hover), so make it a touch louder than on desktop. */
-    box-shadow: 0 0 0 2px var(--green-line);
   }
   .fab:hover .plus-circle {
     /* Hover sticks after a tap on a phone; without this the plus would spring
@@ -601,7 +585,7 @@
    phone's hover sticks after the tap. */
 @media (hover: hover) and (pointer: fine) {
   .session:hover:not(.session-open),
-  .car-tile:hover:not(.car-tile-selected):not(.car-tile-nodrop) {
+  .car-tile:hover:not(.car-tile-selected) {
     transform: translateY(-2px);
     box-shadow: var(--shadow-hover);
   }

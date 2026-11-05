@@ -27,7 +27,7 @@ one 600px column. From 1024px (`lib/useWide.ts`, the *Wide screens* block in `in
 that fills the window: the page never scrolls; the drawer's content is docked down the left edge
 (`Dock` in `Sidebar.tsx`, no ☰), a toolbar carries the view's name, the view switch and the add
 button, and each view is two full-height panes (`.split`) that scroll on their own
-(`data-scroll-pane`, which `lib/dnd.ts` auto-scrolls during a drag instead of the window):
+(`data-scroll-pane`):
 Upcoming is the list beside the open ride (no unfolding in place: `Upcoming` gets no `renderDetail`,
 and the pane shows your next ride when nothing is picked), Week is the days, the day's rides as a
 vertical list (`CarCarousel vertical`) and `YouPanel` beside the open ride, Day is the plan with the
@@ -191,25 +191,23 @@ remembered as `karpul.planShape`; with nothing remembered a wide screen opens on
 pane's height) and a phone on the timeline. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
-unfolds `CarDetail` beneath it with `draggable={false}`, because there is no `YouPanel` tray and
-no other same-day tile to drop on. Above the list sit the filter chips (*All*, *Free seats*, *My
+unfolds `CarDetail` beneath it. Above the list sit the filter chips (*All*, *Free seats*, *My
 rides*, *I'm in*) and a search box, state local to `Upcoming`; the day headings are sticky under
 the top bar (`.upcoming-head`). `App.tsx` loads whichever range the view needs (`range`) and
 the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
 width — nothing scrolls; above them one line for the week, whose name opens a calendar
 (`DatePicker variant="title"`) with *Today* and the two arrows on the right, and a sideways swipe on
 the strip also steps a week; the days are bare text, the sliding green pill marks the picked one) →
-`CarCarousel` (one tile per ride that day with its route line, hidden when there are none; tiles are also drop targets; the seat count goes red when full and green when you are in or driving) →
+`CarCarousel` (one tile per ride that day with its route line, hidden when there are none; the seat count goes red when full and green when you are in or driving) →
 either `CarDetail` (driver card, times, route with the pickup points, distance and chip-in
-tags, passenger list with the drop zone and the *Get in this car* row, which reads *Switch to
-this car* when `switchFrom` says you are seated elsewhere that day, the keyboard's way of
-dragging; a pickup `Select` above the seats when the ride has stops; ⋮ with *Share ride*,
+tags, passenger list and the *Get in this car* row, which reads *Switch to
+this car* when `switchFrom` says you are seated elsewhere that day and asks where you get in
+after the tap (`PickupSheet`); ⋮ with *Share ride*,
 *Add to calendar* and, on a series, *Remove this and following rides*) or `AddCarCard` (the
 dashed placeholder with a small car badge, deliberately no picture; `intro` adds the two-view explanation when the whole board is empty) →
 `YouPanel`. The design's
 "unassigned passengers" list has no equivalent because Karpul has no roster: the only passenger
-you can move is yourself, so `YouPanel` is your draggable chip when you are not seated and the
-"drop here to get out" target when you are. Every dialog is a `Sheet` (bottom sheet on a phone,
+you can move is yourself, so `YouPanel` says where you are that day and offers to ask for a ride. Every dialog is a `Sheet` (bottom sheet on a phone,
 centred panel on a desktop), the one exception being `UpdateScreen`, which takes the whole screen
 because the bolt you trace on it is the screen; destructive actions go through `ConfirmDialog` instead of
 `window.confirm`. Every overlay (`Sheet`, `Sidebar`, `ConfirmDialog`, `Popover`) calls
