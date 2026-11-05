@@ -138,6 +138,8 @@ def login(payload: LoginIn, request: Request, session: WriteSessionDep):
         ratelimit.login_failures_by_account.hit(account)
         ratelimit.login_failures_by_ip.hit(ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong username or password")
+    if user.disabled:  # type: ignore[union-attr]
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is switched off. Ask an admin")
     ratelimit.login_failures_by_account.forget(account)
     return _signed_in(session, user)  # type: ignore[arg-type]
 
@@ -273,6 +275,8 @@ def reset_password(payload: ResetIn, request: Request, session: WriteSessionDep)
     user = session.get(User, row.user_id)
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "This reset link has expired or was already used")
+    if user.disabled:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This account is switched off. Ask an admin")
     user.password_hash = hash_password(payload.new_password)
     row.used_at = utcnow()
     end_other_sessions(session, user, None)

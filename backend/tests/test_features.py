@@ -344,9 +344,10 @@ def test_usage_exports_as_a_spreadsheet(client, admin_auth):
     assert "attachment" in r.headers["content-disposition"]
     assert r.content.startswith("\ufeff".encode())
     lines = r.content.decode("utf-8-sig").splitlines()
-    assert lines[0] == "date,departure,return,car,driver,from,to,passengers,seats,km"
-    assert lines[1].startswith(f"{yesterday},07:30:00,16:30:00,")
-    assert "Đorđe Ćirić" in lines[1] and lines[1].endswith(",1,2,30.0")
+    # Semicolons and a decimal comma: Excel in Serbia reads a comma file as one column.
+    assert lines[0] == "date;departure;return;car;driver;from;to;passengers;seats;km"
+    assert lines[1].startswith(f"{yesterday};07:30:00;16:30:00;")
+    assert "Đorđe Ćirić" in lines[1] and lines[1].endswith(";1;2;30")
 
 
 def test_usage_report_counts_per_car(client, admin_auth):

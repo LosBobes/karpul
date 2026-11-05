@@ -23,6 +23,7 @@ from ..auth import CredsDep, require_user
 from ..calendar import ride_ics
 from ..database import get_session, get_write_session
 from ..events import request_saved, ride_saved
+from ..fleet import plate_standing
 from ..models import Booking, Ride, RideRequest, User
 from ..offices import garage_task
 from ..push import notify
@@ -138,6 +139,8 @@ def create_ride(payload: RideCreate, session: WriteSessionDep, creds: CredsDep):
                 raise HTTPException(409, f"{exc.detail} ({ride_date.isoformat()})") from exc
             raise
         ride = Ride(**data, driver_id=driver.id, series_id=series_id, approval=approval)
+        # A plate the garage lets in for good is on its list already.
+        ride.plate_registered = plate_standing(session, ride.plate)
         if driver is not user:
             ride.added_by_id, ride.added_by_name = user.id, user.display_name
         session.add(ride)

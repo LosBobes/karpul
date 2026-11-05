@@ -1,21 +1,30 @@
 import csv
 import io
-from datetime import date
+from datetime import date, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
-from sqlmodel import Session, col, func, select
+from sqlmodel import Session, col, delete, func, select
 
-from .. import audit, geo, ratelimit
-from ..admin import admin_ids, require_admin
+from .. import audit, fleet, geo, ratelimit
+from ..admin import admin_ids, is_admin, require_admin
 from ..auth import CredsDep, require_user
 from ..carstate import car_states
 from ..database import get_session, get_write_session
 from ..events import cars_changed, cars_state_changed
-from ..models import CarReport, CarType, CorporateCar, Ride, User
+from ..models import CarBlock, CarCost, CarReport, CarType, CorporateCar, FleetNotice, Ride, User
 from ..push import notify
-from ..schemas import CarBusyRead, CarReportIn, CarReportRead, CarStateRead, CorporateCarCreate, CorporateCarRead, CorporateCarUpdate
+from ..schemas import (
+    CarBusyRead,
+    CarReportIn,
+    CarReportRead,
+    CarStateRead,
+    CorporateCarCreate,
+    CorporateCarRead,
+    CorporateCarUpdate,
+    IssueStatusIn,
+)
 from ..services import corporate_car_label, corporate_usage, relabel_rides_for_car
 
 router = APIRouter(prefix="/api/cars", tags=["cars"])
@@ -104,11 +113,20 @@ def corporate_car_busy(
         )
         .order_by(Ride.ride_date, Ride.departure_time, Ride.id)
     )
-    return [
+    taken = [
         CarBusyRead(ride_id=r.id, ride_date=r.ride_date, departure_time=r.departure_time, return_time=r.return_time, driver_name=r.driver_name)  # type: ignore[arg-type]
         for r in session.exec(stmt)
         if r.id != exclude and r.approval != "pending"
     ]
+    for block in fleet.blocks_from(session, date_from, car_id):
+        day = max(block.start_date, date_from)
+        last = min(block.end_date or date_to, date_to)
+        while day <= last:
+            taken.append(
+                CarBusyRead(ride_id=0, ride_date=day, departure_time=time(0), return_time=None, driver_name=block.reason, out_of_service=True)
+            )
+            day += timedelta(days=1)
+    return sorted(taken, key=lambda b: (b.ride_date, b.departure_time))
 
 
 @router.get("/corporate/state", response_model=list[CarStateRead])
@@ -117,8 +135,38 @@ def corporate_car_state(session: SessionDep, creds: CredsDep):
     whether it is clean and what is wrong, from the newest reading and
     report, with a guess for the rides since (app/carstate.py). For
     everyone signed in: the next driver wants to know before they go."""
-    require_user(session, creds)
-    return car_states(session)
+    user = require_user(session, creds)
+    states = car_states(session)
+    today = date.today()
+    blocks = fleet.blocks_from(session, today)
+    admin = is_admin(user)
+    for state in states:
+        car = state["car"]
+        state["blocks"] = [b for b in blocks if b.car_id == car.id]
+        # The paperwork is the fleet manager's business, not the next driver's.
+        state["due"] = [d.as_dict() for d in fleet.due_items(car, state["odometer"]["value"], today)] if admin else []
+    return states
+
+
+@router.put("/corporate/reports/{report_id}/status", response_model=CarReportRead)
+def set_issue_status(report_id: int, payload: IssueStatusIn, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: where a reported problem stands: open, seen, at the garage.
+    Fixed is not a status: it is a newer report saying nothing is wrong."""
+    admin = require_admin(session, creds)
+    report = _get_report_or_404(session, report_id)
+    if not report.issues:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That report names no problem")
+    if report.issue_status != payload.status:
+        audit.record(
+            session, admin, "issue_status", _report_subject(session, report),
+            changes=[("issue_status", report.issue_status or "open", payload.status or "open")],
+        )
+        report.issue_status = payload.status
+        session.add(report)
+    session.commit()
+    session.refresh(report)
+    cars_state_changed()
+    return report
 
 
 def file_report(session: Session, user: User, car: CorporateCar, payload: CarReportIn, ride_id: int | None = None) -> CarReport:
@@ -232,6 +280,16 @@ USAGE_CSV_COLUMNS = [
 ]
 
 
+def _csv_cell(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        return f"{value:g}".replace(".", ",")
+    text = str(value)
+    # A cell that starts like a formula is read as text, not run.
+    return "'" + text if text[:1] in ("=", "+", "-", "@") else text
+
+
 @router.get("/corporate/usage.csv")
 def corporate_car_usage_csv(session: SessionDep, creds: CredsDep, days: int = Query(default=90, ge=7, le=730)):
     """Admin-only: the company-car rides of the last `days` days as a
@@ -240,10 +298,12 @@ def corporate_car_usage_csv(session: SessionDep, creds: CredsDep, days: int = Qu
     require_admin(session, creds)
     usage = corporate_usage(session, days, history_limit=None)
     out = io.StringIO()
-    writer = csv.writer(out)
+    # Semicolons and a decimal comma, like *All rides* (lib/rideLog.ts): Excel in
+    # Serbia and Germany reads a comma file as one column.
+    writer = csv.writer(out, delimiter=";")
     writer.writerow([header for header, _ in USAGE_CSV_COLUMNS])
     for ride in usage["history"]:
-        writer.writerow(["" if ride[key] is None else str(ride[key]) for _, key in USAGE_CSV_COLUMNS])
+        writer.writerow([_csv_cell(ride[key]) for _, key in USAGE_CSV_COLUMNS])
     filename = f"karpul-company-cars-{usage['from']}-to-{usage['to']}.csv"
     return Response(
         "\ufeff" + out.getvalue(),
@@ -276,6 +336,8 @@ def update_corporate_car(car_id: int, payload: CorporateCarUpdate, session: Writ
     admin = require_admin(session, creds)
     car = _get_car_or_404(session, car_id)
     data = payload.model_dump(exclude_unset=True)
+    if "tyres" in data and data["tyres"] is None:
+        data["tyres"] = ""
     label = corporate_car_label(car)
     pinned = "home_point" in data
     point = data.pop("home_point", None)
@@ -340,6 +402,10 @@ def delete_corporate_car(car_id: int, session: WriteSessionDep, creds: CredsDep)
             status.HTTP_409_CONFLICT,
             f"{car.name} is used by {used} ride(s); retire it instead of deleting it",
         )
+    if session.exec(select(CarCost.id).where(CarCost.car_id == car.id)).first() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{car.name} has costs on record; retire it instead of deleting it")
+    for table in (CarBlock, FleetNotice, CarReport):
+        session.exec(delete(table).where(col(table.car_id) == car.id))  # type: ignore[attr-defined]
     audit.record(session, admin, "car_removed", corporate_car_label(car))
     session.delete(car)
     session.commit()

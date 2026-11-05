@@ -20,6 +20,7 @@ from sqlmodel import Session
 
 from . import backfill, backfill_notice, geo, ratelimit
 from .database import engine, get_session, init_db
+from .fleet import seed_fuel_prices
 from .geofence import GeoFence
 from .housekeeping import backup_status, housekeeping_loop
 from .models import Ride
@@ -31,6 +32,7 @@ from .routers import (
     auth,
     cars,
     drivers,
+    fleet,
     live,
     notices,
     odometer,
@@ -73,6 +75,7 @@ async def lifespan(_: FastAPI):
     init_db()
     with Session(engine) as session:
         seed_corporate_cars(session)
+        seed_fuel_prices(session)
     # The shared Mazda's 2026 paper log, once (app/backfill.py). It must never
     # keep the app from starting.
     try:
@@ -175,6 +178,7 @@ async def log_slow_and_failed(request: Request, call_next):
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(cars.router)
+app.include_router(fleet.router)
 app.include_router(rides.router)
 app.include_router(seats.router)
 app.include_router(people.router)

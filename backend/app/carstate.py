@@ -173,9 +173,11 @@ def car_state(car: CorporateCar, rides: list[Ride], reports: list[CarReport], no
     if said is not None:
         clean = Fact(said.clean, _utc(said.created_at), said.user_name)
     issues = Fact("")
+    issue_status = ""
     said = next((p for p in reports if p.issues is not None), None)
     if said is not None:
         issues = Fact(said.issues, _utc(said.created_at), said.user_name)
+        issue_status = said.issue_status if said.issues else ""
 
     return {
         "car": car,
@@ -189,6 +191,10 @@ def car_state(car: CorporateCar, rides: list[Ride], reports: list[CarReport], no
         "issues": issues.as_dict(),
         "recent": reports[:RECENT_REPORTS],
         "location": car_location(car, rides, now),
+        # The newest report naming the problem in `issues`: its id (for the
+        # admin's status) and where it stands.
+        "issue_status": issue_status,
+        "issue_report_id": said.id if said is not None and said.issues else None,
     }
 
 

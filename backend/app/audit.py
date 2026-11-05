@@ -37,6 +37,20 @@ ACTIONS = (
     "plate_registered",  # an own car's plate put on the Beograd garage's list
     "plate_unregistered",  # ... and that tick taken back
     "account_deleted",
+    "account_edited",  # a department or someone's own shared-car share
+    "account_disabled",  # someone who left, switched off
+    "account_enabled",
+    "plate_standing",  # a plate the garage lets in for good
+    "plate_standing_removed",
+    "issue_status",  # a reported problem seen, or at the garage
+    "car_blocked",  # a car out of service
+    "car_block_changed",
+    "car_unblocked",
+    "cost_added",
+    "cost_removed",
+    "fuel_price_added",
+    "fuel_price_removed",
+    "settings_changed",
 )
 
 

@@ -66,17 +66,17 @@ class Target:
 # Notifications sheet). Every `kind` notify() sends belongs to exactly one.
 CATEGORIES: dict[str, tuple[str, ...]] = {
     "seats": ("got_in", "got_out", "taken_out", "guest_taken_out", "seat_freed"),
-    "changes": ("change_asked", "change_agreed", "change_declined", "time_suggested", "suggestion_accepted", "suggestion_declined", "running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver"),
+    "changes": ("change_asked", "change_agreed", "change_declined", "time_suggested", "suggestion_accepted", "suggestion_declined", "running_late", "ride_changed", "ride_removed", "ride_assigned", "stop_added", "driver_needed", "driver_found", "no_driver", "car_blocked"),
     "reminders": ("leaving_soon", "note_km", "log_yours", "log_claim"),
     "messages": ("message",),
     "requests": ("request_made", "request_answered"),
-    "approvals": ("approval_requested", "ride_approved", "ride_declined", "garage_plate", "plate_registered"),
-    "cars": ("car_issue",),
+    "approvals": ("approval_requested", "ride_approved", "ride_declined", "garage_plate", "plate_registered", "approval_waiting"),
+    "cars": ("car_issue", "fleet_registration", "fleet_insurance", "fleet_service", "fleet_tyres"),
 }
 CATEGORY_OF = {kind: category for category, kinds in CATEGORIES.items() for kind in kinds}
 # Losing a seat someone counted on cannot be switched off: muting "seats"
 # silences the rest of that category, never these.
-ALWAYS_SENT = frozenset({"taken_out", "guest_taken_out", "ride_removed"})
+ALWAYS_SENT = frozenset({"taken_out", "guest_taken_out", "ride_removed", "car_blocked"})
 
 
 def muted(user: User) -> list[str]:
@@ -138,6 +138,13 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_declined": lambda name: f"{name} declined your shared car",
         "garage_plate": lambda name, plate: f"{name} comes to the Beograd office in {plate}: add it to the garage list",
         "plate_registered": lambda name, plate: f"{plate} is on the garage list ({name})",
+        "approval_waiting": lambda name: f"{name}'s shared car still waits for an approval and leaves soon",
+        "car_blocked": lambda car, reason="": f"{car} is out of service on the day of your ride" + (f": {reason}" if reason else ""),
+        "fleet_registration": lambda car, days=None, km=None: f"{car}: the registration " + _en_due(days),
+        "fleet_insurance": lambda car, days=None, km=None: f"{car}: the insurance " + _en_due(days),
+        "fleet_service": lambda car, days=None, km=None: f"{car}: the service is due "
+        + (f"in {km} km" if km is not None and km > 0 and (days is None or days > 0) else "now" if (km is not None and km <= 0) or (days is not None and days <= 0) else f"in {days} days"),
+        "fleet_tyres": lambda car, days=None, km=None: f"{car} still has summer tyres in the winter season",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} to {destination}",
         # Not strftime: its names follow the server's locale, not the reader's.
         "day": lambda d: f"{('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')[d.weekday()]} {d.day:02d} "
@@ -183,11 +190,45 @@ TEXTS: dict[str, dict[str, Any]] = {
         "ride_declined": lambda name: f"{name} je odbio/la tvoj zajednički auto",
         "garage_plate": lambda name, plate: f"{name} dolazi u kancelariju u Beogradu autom {plate}: dodaj ga na spisak za garažu",
         "plate_registered": lambda name, plate: f"{plate} je na spisku za garažu ({name})",
+        "approval_waiting": lambda name: f"Zajednički auto koji traži {name} još čeka odobrenje, a polazi uskoro",
+        "car_blocked": lambda car, reason="": f"{car} je van upotrebe na dan tvoje vožnje" + (f": {reason}" if reason else ""),
+        "fleet_registration": lambda car, days=None, km=None: f"{car}: registracija " + _sr_due(days),
+        "fleet_insurance": lambda car, days=None, km=None: f"{car}: osiguranje " + _sr_due(days, "je isteklo"),
+        "fleet_service": lambda car, days=None, km=None: f"{car}: servis je "
+        + (f"za {km} km" if km is not None and km > 0 and (days is None or days > 0) else "na redu sada" if (km is not None and km <= 0) or (days is not None and days <= 0) else f"za {_sr_days(days)}"),
+        "fleet_tyres": lambda car, days=None, km=None: f"{car} još ima letnje gume u zimskom periodu",
         "when": lambda day, hhmm, origin, destination: f"{day} {hhmm}, {origin} do {destination}",
         "day": lambda d: f"{('pon', 'uto', 'sre', 'čet', 'pet', 'sub', 'ned')[d.weekday()]} {d.day}. "
         f"{('jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'avg', 'sep', 'okt', 'nov', 'dec')[d.month - 1]}",
     },
 }
+
+
+def _en_due(days: int | None) -> str:
+    if days is None:
+        return "is due"
+    if days < 0:
+        return "has run out"
+    if days == 0:
+        return "runs out today"
+    return f"runs out in {days} day{'s' if days != 1 else ''}"
+
+
+def _sr_days(n: int) -> str:
+    """Serbian "N days" after "za": one, a few, many."""
+    if n % 10 == 1 and n % 100 != 11:
+        return f"{n} dan"
+    return f"{n} dana"
+
+
+def _sr_due(days: int | None, ran_out: str = "je istekla") -> str:
+    if days is None:
+        return "ističe"
+    if days < 0:
+        return ran_out
+    if days == 0:
+        return "ističe danas"
+    return f"ističe za {_sr_days(days)}"
 
 
 def _sr_cars(n: int) -> str:

@@ -37,7 +37,7 @@ def admin_ids(session: Session) -> list[int | None]:
     ones configured, for a push that goes to the admins."""
     from sqlmodel import select
 
-    return [u.id for u in session.exec(select(User)) if is_admin(u)]
+    return [u.id for u in session.exec(select(User)) if is_admin(u) and not u.disabled]
 
 
 def require_admin(session: Session, creds: Credentials) -> User:
