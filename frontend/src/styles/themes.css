@@ -725,3 +725,18 @@
   margin: 0;
   font-size: 0.82rem;
 }
+
+/* The fleet (styles/fleet.css). */
+:root[data-resolved='dark'] .fleet-block-now,
+:root[data-resolved='dark'] .due-soon {
+  background: #45300b;
+  color: #fcd34d;
+}
+:root[data-resolved='dark'] .due-overdue,
+:root[data-resolved='dark'] .car-block-now {
+  background: #4a1c1c;
+  color: #fca5a5;
+}
+:root[data-resolved='dark'] .log-gap {
+  color: #fcd34d;
+}

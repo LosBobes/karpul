@@ -107,7 +107,7 @@ export function logCsv(rides: Ride[], t: Messages): string {
   const c = t.rideLog.col
   const header = [
     c.date, c.departs, c.back, c.driver, c.phone, c.car, c.type, c.from, c.stops, c.to, c.seats, c.taken, c.passengers, c.waiting, c.km,
-    c.odoStart, c.odoEnd, c.driven, c.atWheel, c.chipIn, c.note, c.addedBy,
+    c.odoStart, c.odoEnd, c.driven, c.gap, c.atWheel, c.chipIn, c.note, c.addedBy,
   ]
   const rows = rides.map((r) => {
     const odo = odometerSpan(r)
@@ -131,6 +131,7 @@ export function logCsv(rides: Ride[], t: Messages): string {
     odo.start == null ? '' : String(odo.start),
     odo.end == null ? '' : String(odo.end),
     driven == null ? '' : String(driven),
+    r.km_gap == null ? '' : String(r.km_gap),
     // Plain digits here: a thousands separator would read as a decimal comma.
     wheelBooked(r)
       ? r.needs_driver ? '' : `${r.driver_name} (${t.rideLog.booked})`

@@ -7,7 +7,9 @@ import { odometerSpan, kmDriven } from '../lib/odometer'
 import { atWheel, filterLog, wheelBooked, logCsv, logTotals, sortLog, type LogKind, type LogSort, type SortKey } from '../lib/rideLog'
 import type { Ride } from '../lib/types'
 import { DatePicker } from './DatePicker'
-import { CarIcon, DownloadIcon, SearchIcon, XIcon } from './icons'
+import { CarIcon, DownloadIcon, PeopleIcon, SearchIcon, TableIcon, XIcon } from './icons'
+import { MonthSummaryView } from './MonthSummary'
+import { save } from '../lib/saveFile'
 import { SegThumb } from './Segmented'
 import { Select } from './Select'
 import { Sheet } from './Sheet'
@@ -32,16 +34,6 @@ function fmtDate(iso: string): string {
   return d.toLocaleDateString(intlTag(), { weekday: 'short', day: 'numeric', month: 'short', year })
 }
 
-function save(text: string, name: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 10_000)
-}
 
 interface Props {
   onClose: () => void
@@ -57,6 +49,7 @@ interface Props {
  */
 export function RideLog({ onClose }: Props) {
   const t = useT()
+  const [view, setView] = useState<'rides' | 'summary'>('rides')
   const [period, setPeriod] = useState<Period>('upcoming')
   const [{ from, to }, setRange] = useState(() => window('upcoming'))
   const [kind, setKind] = useState<LogKind>('all')
@@ -116,7 +109,19 @@ export function RideLog({ onClose }: Props) {
 
   return (
     <Sheet id="ride-log-title" title={t.rideLog.title} onClose={onClose} className="panel-wide">
+      <div className="segmented admin-tabs log-views" role="radiogroup" aria-label={t.rideLog.title}>
+        <SegThumb count={2} index={view === 'rides' ? 0 : 1} />
+        {(['rides', 'summary'] as const).map((v) => (
+          <button key={v} type="button" role="radio" aria-checked={view === v} className={view === v ? 'seg seg-on' : 'seg'} onClick={() => setView(v)}>
+            {v === 'rides' ? <TableIcon size={16} /> : <PeopleIcon size={16} />} {v === 'rides' ? t.rideLog.ridesTab : t.summary.tab}
+          </button>
+        ))}
+      </div>
 
+      {view === 'summary' && <MonthSummaryView />}
+
+      {view === 'rides' && (
+      <>
       <div className="log-tools">
         <div className="segmented log-period" role="radiogroup" aria-label={t.rideLog.title}>
           <SegThumb count={2} index={period === 'upcoming' ? 0 : 1} />
@@ -247,6 +252,8 @@ export function RideLog({ onClose }: Props) {
           </table>
         </div>
       )}
+      </>
+      )}
     </Sheet>
   )
 }
@@ -259,7 +266,14 @@ function OdometerCells({ ride }: { ride: Ride }) {
   const n = (v: number | null) => (v == null ? '' : v.toLocaleString(intlTag()))
   return (
     <>
-      <td className="log-num mono">{start == null ? '' : `${n(start)} → ${n(end)}`}</td>
+      <td className="log-num mono">
+        {start == null ? '' : `${n(start)} → ${n(end)}`}
+        {ride.km_gap != null && ride.km_gap !== 0 && (
+          <span className="log-sub log-gap" title={t.rideLog.gapHint}>
+            {ride.km_gap > 0 ? t.rideLog.gapMore(n(ride.km_gap)) : t.rideLog.gapBack(n(-ride.km_gap))}
+          </span>
+        )}
+      </td>
       <td className="log-num mono">{n(driven)}</td>
       <td className="log-wide">
         {atWheel(ride, intlTag())}

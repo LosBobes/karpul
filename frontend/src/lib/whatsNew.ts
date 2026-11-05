@@ -8,16 +8,21 @@
  * showing only what this account has not seen in this browser and nothing from
  * before the account existed: a newcomer is not handed the history.
  */
-export type DemoKey = 'pickColleague' | 'impact' | 'addedBy' | 'seatNotice' | 'carWhere' | 'carBusy' | 'prefill' | 'consent'
+export type DemoKey = 'outOfService' | 'fleetUpkeep' | 'monthSummary' | 'pickColleague' | 'impact' | 'addedBy' | 'seatNotice' | 'carWhere' | 'carBusy' | 'prefill' | 'consent'
 
 export interface WhatsNewEntry {
   /** Stable: it is what "seen" remembers. Also the key of its words in i18n. */
   id: DemoKey
   /** The day it reached the app, `YYYY-MM-DD`. */
   date: string
+  /** About the admins' own screens: only an admin is shown it. */
+  admin?: true
 }
 
 export const WHATS_NEW: readonly WhatsNewEntry[] = [
+  { id: 'outOfService', date: '2026-11-05' },
+  { id: 'fleetUpkeep', date: '2026-11-05', admin: true },
+  { id: 'monthSummary', date: '2026-11-05', admin: true },
   { id: 'pickColleague', date: '2026-11-04' },
   { id: 'impact', date: '2026-11-04' },
   { id: 'addedBy', date: '2026-11-04' },
@@ -27,6 +32,11 @@ export const WHATS_NEW: readonly WhatsNewEntry[] = [
   { id: 'prefill', date: '2026-11-02' },
   { id: 'consent', date: '2026-11-02' },
 ]
+
+/** The entries `admin` may be shown: everyone's, and the admins' own to an admin. */
+export function forReader(entries: readonly WhatsNewEntry[], admin: boolean): WhatsNewEntry[] {
+  return entries.filter((e) => admin || !e.admin)
+}
 
 const SEEN_KEY = 'karpul.whatsNewSeen'
 

@@ -31,7 +31,7 @@ import { Dock, Sidebar } from './components/Sidebar'
 import { SlideSwitch } from './components/SlideSwitch'
 import { SupportSheet } from './components/SupportSheet'
 import { WhatsNew } from './components/WhatsNew'
-import { loadSeen, markSeen, unseen, WHATS_NEW, type WhatsNewEntry } from './lib/whatsNew'
+import { forReader, loadSeen, markSeen, unseen, WHATS_NEW, type WhatsNewEntry } from './lib/whatsNew'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
 import { YouPanel } from './components/YouPanel'
@@ -144,15 +144,17 @@ function Board({ session }: { session: Session }) {
 
   // What's new (lib/whatsNew.ts): what landed since this account last looked
   // in this browser opens by itself once; the drawer shows all of it again.
-  const [newsShown, setNewsShown] = useState<readonly WhatsNewEntry[]>(() => unseen(WHATS_NEW, loadSeen(user.id), user.created_at))
+  // An entry about the admins' own screens is shown to admins only.
+  const news = useMemo(() => forReader(WHATS_NEW, user.is_admin), [user.is_admin])
+  const [newsShown, setNewsShown] = useState<readonly WhatsNewEntry[]>(() => unseen(news, loadSeen(user.id), user.created_at))
   useEffect(() => {
-    const fresh = unseen(WHATS_NEW, loadSeen(user.id), user.created_at)
+    const fresh = unseen(news, loadSeen(user.id), user.created_at)
     if (fresh.length) show('whatsNew')
-  }, [user.id, user.created_at, show])
+  }, [user.id, user.created_at, news, show])
   const closeNews = useCallback(() => {
-    markSeen(user.id, WHATS_NEW.map((e) => e.id))
+    markSeen(user.id, news.map((e) => e.id))
     hide('whatsNew')
-  }, [user.id, hide])
+  }, [user.id, news, hide])
 
   // Admin (backend: app/admin.py): the company-car pool and the people. The
   // drawer offers them to admins only; the server checks every call anyway.
@@ -632,7 +634,7 @@ function Board({ session }: { session: Session }) {
     onSupport: () => show('support'),
     onFeedback: () => show('feedback'),
     onWhatsNew: () => {
-      setNewsShown(WHATS_NEW)
+      setNewsShown(news)
       show('whatsNew')
     },
     onTour: () => {
@@ -797,7 +799,7 @@ function Board({ session }: { session: Session }) {
         {is('howTo') && <HowTo isAdmin={isAdmin} onSupport={() => show('support')} onClose={closer('howTo')} />}
 
 
-        {is('whatsNew') && <WhatsNew entries={newsShown.length ? newsShown : WHATS_NEW} onClose={closeNews} />}
+        {is('whatsNew') && <WhatsNew entries={newsShown.length ? newsShown : news} onClose={closeNews} />}
         {is('support') && <SupportSheet onFeedback={() => show('feedback')} onClose={closer('support')} />}
 
         {is('feedback') && <FeedbackSheet user={`${userName} (@${user.username})`} view={view} onClose={closer('feedback')} />}
@@ -898,7 +900,7 @@ function Board({ session }: { session: Session }) {
           <GarageList
             version={desk.tick}
             busyId={busyId}
-            onMark={(r, registered) => void onMarkPlate(r, registered)}
+            onMark={(r, registered, standing) => void onMarkPlate(r, registered, standing)}
             onOpen={(r) => openLoggedRide(r.id)}
             onClose={closer('garage')}
           />

@@ -4,12 +4,12 @@ Moved out of CLAUDE.md, which keeps a one-line pointer here. These are the
 feature notes for working on this part of Karpul: the rules, where they live
 and why. Keep them in step with the code like CLAUDE.md itself.
 
-**A shared car is rationed.** `SHARED_CAR_PER_WEEK` / `SHARED_CAR_PER_DAY` (both 1) in `services.py`:
+**A shared car is rationed.** The share is a setting (`fleet.DEFAULTS`: `share_per_week`, `share_per_day`, both 1, and `share_max_hours`, 24), changed under *Usage* (`ShareRules`, `PUT /api/fleet/settings`), and an account can have its own week (`User.shared_per_week`, set under *People*):
 `shared_car_use` counts a driver's shared-car rides in a Mon–Sun week and on a day (pending and
 approved ones too), `over_shared_car_share` turns that into `LIMIT_WEEK` / `LIMIT_DAY` (the day's
 text wins), and then `LIMIT_STRETCH`: `shared_car_stretch` joins the ride with the driver's shared-car
 rides that meet or overlap it (any car, any approval; no return holds the car to midnight) and more than
-`SHARED_CAR_MAX_STRETCH` (24 h) in a row is past the share too (the day either side is all it reads). `approval_for` in `app/ride_edits.py` applies it on create (per occurrence of a series)
+`share_max_hours` in a row (`limit_stretch(hours)` words the refusal) is past the share too (the day either side is all it reads). `approval_for` in `app/ride_edits.py` applies it on create (per occurrence of a series)
 and when an edit moves an unapproved ride to another day, car type or time: within the share the ride's
 `approval` is `""`; past it a plain user gets the 409, or with `RideCreate.request_approval` the ride
 is added as `"pending"` and every admin (`admin.admin_ids`) is pushed `approval_requested`; an admin
@@ -136,3 +136,29 @@ Novi Sad is 90 km, Novi Sad to Beograd 92 (`OFFICES` holds the names people writ
 `prepare` (`app/ride_edits.py`) fills a blank `distance_km` in on that route, `fill_office_distances` does it for old
 rides on every start, the form shows the known figure as the placeholder and says so
 (`form.knownRoad`), and the car state's guess uses it. Tests: `tests/test_offices.py`.
+
+
+**The fleet** (`app/fleet.py`, `routers/fleet.py`, tested in `tests/test_fleet.py`). *Shared cars* has two more admin
+tabs. **Upkeep** (`FleetUpkeep.tsx`): each car's `registration_until`, `insurance_until`, `service_due_on` /
+`service_due_km` and `tyres` (`ADDED_COLUMNS` on `corporatecar`, set through the car's PATCH), turned into a due list by
+`fleet.due_items` (soon is 30 days or `SERVICE_SOON_KM`; summer tyres from 1 November to 1 April are overdue), shown as
+chips on the car card to admins only (`CarStateRead.due`), and pushed to the admins at 30, 7, 1 and 0 days and 1000 / 0 km
+(`send_fleet_reminders`, each step once through `FleetNotice`, run once a day from 8:00 by the reminder loop). **Out of
+service** (`CarBlock`, start to end inclusive, no end: until further notice): `ensure_car_available` refuses a ride on
+one (*That car is out of service that day*), the busy endpoint returns its days as whole-day `out_of_service` rows so the
+form paints them red, the car card shows it to everyone (`CarStateRead.blocks`), and the drivers already booked then are
+pushed `car_blocked` (always sent) and listed back to the admin; their rides stay for them to move. A reported problem has
+an `issue_status` (`""`, `seen`, `garage`; `PUT /api/cars/corporate/reports/{id}/status`), and *Take out of service* on it
+blocks the car from today. **Costs** (`FleetCosts.tsx`, `CarCost`): fuel, charging, tolls, parking, washes, services,
+entered by an admin; `fleet_overview` gives per car the total, the km its odometer logged, dinars a km and the km nobody
+logged (`odometer_gaps`: a pickup reading that does not carry on from the car's last return, also `km_gap` in *All rides*
+and its spreadsheet). A car with costs is retired, not deleted. **The fuel price** (`FuelPrice`, `price_on`): Serbia caps
+Evrodizel and BMB 95 every Friday; `FUEL_REFERENCE` (the ministry's figures of 30 Oct 2026, 236 and 207 dinars a litre)
+seeds an empty table on start, and an admin adds each new week's. The cost form suggests litres times that price, *Your
+rides* and *Usage* show the fuel saved in dinars (`impact(..., fuel_price)`), and the month summary reckons the allowance in it.
+The admins are also reminded once of a pending ask leaving within 12 hours (`reminders.send_approval_nudges`, `Ride.approval_nudged`).
+The usage spreadsheet uses semicolons and a decimal comma, like *All rides*.
+
+**Plates the garage lets in for good** (`GaragePlate`): *Let in for good* on the garage list ticks the ride and its other
+coming rides with that plate, and a new ride with it starts ticked (`fleet.plate_standing`, in `rides.create_ride` and
+`ride_edits.apply_edit`), so nobody is asked again; unticking or removing it from the list asks again.

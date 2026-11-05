@@ -5,10 +5,11 @@ import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
 import { useMe } from '../lib/me'
 import { loadPhotos, photoFor, usePhotos } from '../lib/photos'
-import type { AdminUser } from '../lib/types'
+import type { AdminUser, AdminUserPatch } from '../lib/types'
 import { Avatar } from './Avatar'
 import { ConfirmDialog } from './ConfirmDialog'
-import { CopyIcon, KebabIcon, KeyIcon, SearchIcon, ShieldIcon, TrashIcon, XIcon } from './icons'
+import { CopyIcon, KebabIcon, KeyIcon, LogoutIcon, PencilIcon, SearchIcon, ShieldIcon, TrashIcon, XIcon } from './icons'
+import { Select } from './Select'
 import { Menu } from './Menu'
 import { Sheet } from './Sheet'
 
@@ -46,6 +47,8 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
   const [link, setLink] = useState<{ userId: number; url: string; expires: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [doomed, setDoomed] = useState<AdminUser | null>(null)
+  const [leaving, setLeaving] = useState<AdminUser | null>(null)
+  const [editing, setEditing] = useState<number | null>(null)
   const photos = usePhotos()
 
   const fail = useCallback((e: unknown) => setError(e instanceof Error ? messages().apiError(e.message) : messages().common.somethingWrong), [])
@@ -72,6 +75,22 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
       fail(e)
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function update(u: AdminUser, patch: AdminUserPatch, done: string) {
+    setBusyId(u.id)
+    setError(null)
+    try {
+      const updated = await api.updateUser(u.id, patch)
+      setPeople((ps) => ps?.map((p) => (p.id === u.id ? updated : p)) ?? null)
+      onNotice(done)
+      setEditing(null)
+    } catch (e) {
+      fail(e)
+    } finally {
+      setBusyId(null)
+      setLeaving(null)
     }
   }
 
@@ -132,7 +151,8 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
   }
 
   const q = fold(query.trim())
-  const shown = (people ?? []).filter((p) => !q || fold(`${p.display_name} ${p.username} ${p.email ?? ''}`).includes(q))
+  const shown = (people ?? []).filter((p) => !q || fold(`${p.display_name} ${p.username} ${p.email ?? ''} ${p.department}`).includes(q))
+  const departments = [...new Set((people ?? []).map((p) => p.department).filter(Boolean))].sort()
 
   return (
     <Sheet id="people-title" title={t.people.title} onClose={onClose}>
@@ -155,7 +175,7 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
         {shown.map((u) => {
           const self = u.id === me.id
           return (
-            <li key={u.id} className="admin-row">
+            <li key={u.id} className={u.disabled ? 'admin-row admin-row-retired' : 'admin-row'}>
               <Avatar name={u.display_name} size="sm" />
               <span className="admin-row-text">
                 <strong>
@@ -170,7 +190,14 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                 <span>
                   @{u.username}
                   {u.email && ` · ${u.email}`}
+                  {u.department && ` · ${u.department}`}
                 </span>
+                {(u.disabled || u.shared_per_week !== null) && (
+                  <span className="people-tags">
+                    {u.disabled && <span className="tag">{t.people.switchedOff}</span>}
+                    {u.shared_per_week !== null && <span className="tag">{t.people.ownShare(u.shared_per_week)}</span>}
+                  </span>
+                )}
               </span>
               <Menu
                 trigger={<KebabIcon />}
@@ -182,6 +209,12 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                     onSelect: () => void toggleAdmin(u),
                     // An admin by the server's setting stays one; the server says so too.
                     disabled: busyId === u.id || u.admin_by_config,
+                  },
+                  {
+                    label: t.people.details,
+                    icon: <PencilIcon size={18} />,
+                    onSelect: () => setEditing(editing === u.id ? null : u.id),
+                    disabled: busyId === u.id,
                   },
                   {
                     label: t.people.resetLink,
@@ -200,6 +233,12 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                       ]
                     : []),
                   {
+                    label: u.disabled ? t.people.switchOn : t.people.switchOff,
+                    icon: <LogoutIcon size={18} />,
+                    onSelect: () => (u.disabled ? void update(u, { disabled: false }, messages().people.switchedOn(u.display_name)) : setLeaving(u)),
+                    disabled: busyId === u.id || self || u.admin_by_config,
+                  },
+                  {
                     label: t.people.deleteAccount,
                     icon: <TrashIcon size={18} />,
                     onSelect: () => setDoomed(u),
@@ -209,6 +248,15 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                   },
                 ]}
               />
+              {editing === u.id && (
+                <PersonEditor
+                  person={u}
+                  departments={departments}
+                  busy={busyId === u.id}
+                  onCancel={() => setEditing(null)}
+                  onSave={(patch) => void update(u, patch, messages().people.saved(u.display_name))}
+                />
+              )}
               {link?.userId === u.id && (
                 <div className="admin-editor reset-link">
                   <span className="field-label">{t.people.resetLinkFor(u.display_name)}</span>
@@ -226,6 +274,16 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
           )
         })}
       </ul>
+      {leaving && (
+        <ConfirmDialog
+          title={t.people.switchOffTitle(leaving.display_name)}
+          body={t.people.switchOffBody}
+          confirmLabel={t.people.switchOff}
+          busy={busyId === leaving.id}
+          onConfirm={() => void update(leaving, { disabled: true }, messages().people.switchedOffDone(leaving.display_name))}
+          onCancel={() => setLeaving(null)}
+        />
+      )}
       {doomed && (
         <ConfirmDialog
           title={t.people.deleteTitle(doomed.display_name)}
@@ -237,5 +295,60 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
         />
       )}
     </Sheet>
+  )
+}
+
+/** An account's department and its own week of shared cars ('office': the office's share). */
+function PersonEditor({
+  person,
+  departments,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  person: AdminUser
+  departments: string[]
+  busy: boolean
+  onSave: (patch: AdminUserPatch) => void
+  onCancel: () => void
+}) {
+  const t = useT()
+  const [department, setDepartment] = useState(person.department)
+  const [share, setShare] = useState<string>(person.shared_per_week === null ? 'office' : String(person.shared_per_week))
+  const listId = `departments-${person.id}`
+  return (
+    <div className="admin-editor">
+      <label className="field">
+        <span className="field-label">{t.people.department}</span>
+        <input list={listId} maxLength={60} placeholder={t.people.departmentPlaceholder} value={department} onChange={(e) => setDepartment(e.target.value)} />
+        <datalist id={listId}>
+          {departments.map((d) => (
+            <option key={d} value={d} />
+          ))}
+        </datalist>
+      </label>
+      <div className="field">
+        <span className="field-label">{t.people.share}</span>
+        <Select<string>
+          label={t.people.share}
+          value={share}
+          onChange={setShare}
+          options={[{ value: 'office', label: t.people.officeShare }, ...[0, 1, 2, 3, 4, 5, 6, 7].map((n) => ({ value: String(n), label: t.people.ownShare(n) }))]}
+        />
+      </div>
+      <div className="row-end">
+        <button type="button" className="btn btn-soft" onClick={onCancel}>
+          {t.common.cancel}
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy}
+          onClick={() => onSave({ department: department.trim(), shared_per_week: share === 'office' ? null : Number(share) })}
+        >
+          {busy ? t.common.saving : t.common.save}
+        </button>
+      </div>
+    </div>
   )
 }

@@ -16,6 +16,8 @@ export interface CarBusy {
   departure_time: string
   return_time: string | null
   driver_name: string
+  /** A day the car is out of service: all of it is taken, `driver_name` is the reason. */
+  out_of_service?: boolean
 }
 
 export interface CorporateCar {
@@ -30,6 +32,23 @@ export interface CorporateCar {
   /** Where `home` is on the map, when an admin pinned it. */
   home_lat?: number | null
   home_lng?: number | null
+  /** Paperwork and upkeep (backend: app/fleet.py), ISO days. */
+  registration_until?: string | null
+  insurance_until?: string | null
+  service_due_on?: string | null
+  service_due_km?: number | null
+  tyres?: Tyres
+}
+
+export type Tyres = '' | 'summer' | 'winter' | 'all_season'
+
+/** PATCH /api/cars/corporate/{id}: a car's paperwork; null clears one. */
+export interface CarPaperwork {
+  registration_until: string | null
+  insurance_until: string | null
+  service_due_on: string | null
+  service_due_km: number | null
+  tyres: Tyres
 }
 
 export interface CorporateCarInput {
@@ -127,6 +146,8 @@ export interface Ride {
   free_seats: number
   /** A shared car's odometer, stretch by stretch, in the order they were driven. */
   legs: DriveLeg[]
+  /** *All rides* only: km between the car's last return and this pickup that nobody logged. */
+  km_gap?: number | null
   /** The pins of the route; a place nobody pinned is not in it (lib/maps.ts `pointOf`). */
   points: Points
 }
@@ -287,6 +308,19 @@ export interface AdminUser {
   /** An admin through KARPUL_ADMINS on the server, which the app cannot change. */
   admin_by_config: boolean
   created_at: string
+  department: string
+  /** Their own shared-car rides a week; null follows the office's. */
+  shared_per_week: number | null
+  /** Switched off: someone who left. */
+  disabled: boolean
+}
+
+/** PATCH /api/admin/users/{id} */
+export interface AdminUserPatch {
+  is_admin?: boolean
+  department?: string
+  shared_per_week?: number | null
+  disabled?: boolean
 }
 
 export interface RideInput {
@@ -338,6 +372,8 @@ export interface StatBucket {
   car_km_avoided: number
   co2_kg: number
   fuel_l: number
+  /** What that fuel comes to at the official price, dinars; null when no price is known. */
+  fuel_rsd?: number | null
 }
 
 /** What sharing took off the road (`services.impact`). */
@@ -345,6 +381,7 @@ export interface Impact {
   car_km_avoided: number
   co2_kg: number
   fuel_l: number
+  fuel_rsd?: number | null
 }
 
 export interface HistoryRide {
@@ -447,8 +484,12 @@ export interface CarReport {
   soc: number | null
   clean: boolean | null
   issues: string | null
+  /** Where a reported problem stands. */
+  issue_status?: IssueStatus
   created_at: string
 }
+
+export type IssueStatus = '' | 'seen' | 'garage'
 
 /** One thing known about a shared car (backend: app/carstate.py Fact). */
 export interface Fact<T> {
@@ -472,6 +513,132 @@ export interface CarState {
   recent: CarReport[]
   /** Where it is now, worked out from its rides (backend: carstate.car_location). */
   location: CarLocation
+  /** Where the problem in `issues` stands, and the report that named it. */
+  issue_status?: IssueStatus
+  issue_report_id?: number | null
+  /** When it is out of service, now and to come. */
+  blocks?: CarBlock[]
+  /** What its paperwork and upkeep have coming; admins only (empty for others). */
+  due?: Due[]
+}
+
+/** A car out of service (backend: models.CarBlock); `end_date` null is until further notice. */
+export interface CarBlock {
+  id: number
+  car_id: number
+  start_date: string
+  end_date: string | null
+  reason: string
+  by_name: string
+  created_at: string
+}
+
+export type DueKind = 'registration' | 'insurance' | 'service' | 'tyres'
+
+/** Something a car's paperwork or upkeep has coming (backend: fleet.due_items). */
+export interface Due {
+  kind: DueKind
+  level: 'overdue' | 'soon' | 'ok'
+  on: string | null
+  days_left: number | null
+  km_left: number | null
+}
+
+export type CostKind = 'fuel' | 'charging' | 'toll' | 'parking' | 'wash' | 'service' | 'other'
+
+export interface CarCost {
+  id: number
+  car_id: number
+  day: string
+  kind: CostKind
+  amount: number
+  litres: number | null
+  odometer_km: number | null
+  note: string
+  user_name: string
+  created_at: string
+}
+
+export interface CarCostInput {
+  car_id: number
+  day: string
+  kind: CostKind
+  amount: number
+  litres?: number | null
+  odometer_km?: number | null
+  note?: string
+}
+
+/** The official price of a litre from a day on (backend: models.FuelPrice), dinars. */
+export interface FuelPrice {
+  id: number
+  valid_from: string
+  diesel: number
+  petrol: number
+  source: string
+}
+
+export type Fuel = 'petrol' | 'diesel'
+
+/** GET/PUT /api/fleet/settings */
+export interface FleetSettings {
+  share_per_week: number
+  share_per_day: number
+  share_max_hours: number
+  allowance_fuel: Fuel
+  allowance_cap: number
+}
+
+/** GET /api/fleet/overview: per car, over a window. */
+export interface FleetOverview {
+  from: string
+  to: string
+  cars: {
+    car_id: number
+    car: string
+    plate: string
+    total: number
+    by_kind: Partial<Record<CostKind, number>>
+    km: number
+    unlogged_km: number
+    per_km: number | null
+  }[]
+}
+
+/** A person's month (backend: fleet.month_summary). */
+export interface PersonMonth {
+  user_id: number | null
+  name: string
+  department: string
+  shared_rides: number
+  shared_km: number
+  own_rides: number
+  own_km: number
+  passenger_rides: number
+  passenger_km: number
+  /** The own-car allowance at the official fuel price, dinars. */
+  allowance: number
+  /** Past the monthly amount free of income tax. */
+  over_cap: boolean
+}
+
+export interface MonthSummary {
+  month: string
+  from: string
+  to: string
+  fuel: Fuel
+  fuel_price: number | null
+  allowance_share: number
+  allowance_cap: number
+  people: PersonMonth[]
+}
+
+export interface GaragePlate {
+  id: number
+  plate: string
+  owner_name: string
+  by_name: string
+  created_at: string
 }
 
 export interface CarLocation {

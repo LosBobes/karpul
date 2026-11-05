@@ -5,10 +5,13 @@ import { factText, fmtWhen } from '../lib/carState'
 import { CLOCK } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
-import type { CarReport, CarState } from '../lib/types'
+import type { CarReport, CarState, IssueStatus } from '../lib/types'
+import { blockSpan, blockedNow, dueText } from '../lib/fleet'
+import { todayISO } from '../lib/dates'
+import { Select } from './Select'
 import { Avatar } from './Avatar'
 import { CarGlyph, PowertrainMark } from './CarArt'
-import { CheckIcon, BoltIcon, CarIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, PinIcon, RoadIcon, TrashIcon } from './icons'
+import { CheckIcon, BoltIcon, CarIcon, DropIcon, InfoIcon, KebabIcon, PencilIcon, PinIcon, RoadIcon, TrashIcon, WrenchIcon } from './icons'
 import { CarReportSheet } from './CarReportSheet'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Menu } from './Menu'
@@ -92,6 +95,8 @@ export function CarStatusList({ states, isAdmin, onNotice, onReported, carMenu, 
               menu={carMenu?.(s.car.id)}
               editor={carEditor?.(s.car.id)}
               busy={busy}
+              onNotice={onNotice}
+              onReported={onReported}
               reporting={open}
               editing={edited}
               onReport={() => {
@@ -137,6 +142,8 @@ interface CardProps {
   menu?: ReactNode
   editor?: ReactNode
   busy: boolean
+  onNotice: (text: string) => void
+  onReported: () => void
   reporting: boolean
   /** The report being put right, when the open form edits one. */
   editing: CarReport | null
@@ -182,7 +189,7 @@ function fmtClock(iso: string): string {
   return new Date(iso).toLocaleTimeString(intlTag(), CLOCK)
 }
 
-function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, onReport, onEdit, onRemove, onFix, onDone }: CardProps) {
+function CarStateCard({ state, isAdmin, menu, editor, busy, onNotice, onReported, reporting, editing, onReport, onEdit, onRemove, onFix, onDone }: CardProps) {
   const t = useT()
   const odo = factText(state.odometer, (v) => t.carState.km(km(v)))
   const soc = factText(state.soc, (v) => t.carState.pct(v))
@@ -210,6 +217,8 @@ function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, 
       {editor}
 
       <CarWhere state={state} />
+      <CarOutOfService state={state} />
+      {isAdmin && <CarDue state={state} />}
 
       <dl className="car-facts">
         <div className={odo.guessed ? 'car-fact car-fact-guess' : 'car-fact'}>
@@ -248,6 +257,8 @@ function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, 
           </button>
         )}
       </div>
+      {issues && state.issue_status && !isAdmin && <p className="hint hint-tight issue-status">{t.carState.statusLabel}: {t.carState.issueStatus[state.issue_status]}</p>}
+      {issues && isAdmin && <IssueTools state={state} onNotice={onNotice} onReported={onReported} />}
 
       {state.recent.length > 0 && (
         <details className="car-recent">
@@ -293,5 +304,92 @@ function CarStateCard({ state, isAdmin, menu, editor, busy, reporting, editing, 
       </button>
       {reporting && <CarReportSheet key={editing?.id ?? 'new'} state={state} report={editing} onDone={onDone} />}
     </article>
+  )
+}
+
+/** When the car is out of service, now or soon: for everyone, so nobody plans on it. */
+function CarOutOfService({ state }: { state: CarState }) {
+  const t = useT()
+  const blocks = state.blocks ?? []
+  if (blocks.length === 0) return null
+  return (
+    <div className="car-blocks">
+      {blocks.map((b) => (
+        <p key={b.id} className={blockedNow(b) ? 'car-block car-block-now' : 'car-block'}>
+          <WrenchIcon size={16} />
+          <span>
+            <strong>{blockedNow(b) ? t.carState.outNow : t.carState.outSoon}</strong> {blockSpan(b)}
+            {b.reason && ` · ${b.reason}`}
+          </span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
+/** Admins: what the car's paperwork and upkeep have coming (soon or overdue only). */
+function CarDue({ state }: { state: CarState }) {
+  const due = (state.due ?? []).filter((d) => d.level !== 'ok')
+  if (due.length === 0) return null
+  return (
+    <div className="due-chips">
+      {due.map((d) => (
+        <span key={d.kind} className={`due-chip due-${d.level}`}>
+          {dueText(d)}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** Admins: where a reported problem stands, and taking the car off the road over it. */
+function IssueTools({ state, onNotice, onReported }: { state: CarState; onNotice: (text: string) => void; onReported: () => void }) {
+  const t = useT()
+  const [busy, setBusy] = useState(false)
+  const reportId = state.issue_report_id ?? null
+  const out = (state.blocks ?? []).some((b) => blockedNow(b))
+
+  async function run(work: () => Promise<unknown>, done: string) {
+    setBusy(true)
+    try {
+      await work()
+      onNotice(done)
+      onReported()
+    } catch (err) {
+      onNotice(errText(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="issue-tools">
+      {reportId !== null && (
+        <Select<IssueStatus>
+          variant="chip"
+          prefix={t.carState.statusLabel}
+          label={t.carState.statusLabel}
+          value={state.issue_status ?? ''}
+          disabled={busy}
+          onChange={(status) => void run(() => api.setIssueStatus(reportId, status), t.carState.statusSaved)}
+          options={(['', 'seen', 'garage'] as const).map((v) => ({ value: v, label: t.carState.issueStatus[v] }))}
+        />
+      )}
+      {!out && (
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={busy}
+          onClick={() =>
+            void run(
+              () => api.addBlock({ car_id: state.car.id, start_date: todayISO(), end_date: null, reason: state.issues.value ?? '' }),
+              t.fleet.blocked(state.car.name),
+            )
+          }
+        >
+          <WrenchIcon size={16} /> {t.carState.takeOut}
+        </button>
+      )}
+    </div>
   )
 }

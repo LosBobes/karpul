@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { fmtRsd } from '../lib/fleet'
 import { fmtHour, fmtShortDate, parseISODate, addDays, startOfWeek } from '../lib/dates'
 import { messages, useT } from '../lib/i18n'
 import { intlTag } from '../lib/locale'
@@ -117,6 +118,7 @@ export function UsageDashboard({ load, download }: { load: (days: number) => Pro
                   <div key={label} className="card stat-tile stat-tile-green">
                     <strong className="when-value">{value}</strong>
                     <span>{label}</span>
+                    {label === t.usage.fuel && report.team?.fuel_rsd ? <small className="stat-sub">{t.myRides.fuelRsd(fmtRsd(report.team.fuel_rsd))}</small> : null}
                   </div>
                 ))}
               </div>

@@ -48,6 +48,7 @@ export function firstFreeDay(
 
 /** The server's own words for a clash (services.ensure_car_available), so `apiError` has them in Serbian too. */
 export function clashText(b: CarBusy): string {
+  if (b.out_of_service) return 'That car is out of service that day'
   return (
     `That corporate car is already booked by ${b.driver_name} from ${b.departure_time.slice(0, 5)}` +
     (b.return_time ? ` to ${b.return_time.slice(0, 5)}` : '') +

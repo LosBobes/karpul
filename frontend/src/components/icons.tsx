@@ -466,3 +466,7 @@ export const ShieldIcon = icon(
     <path d="m9.25 12.25 2 2 3.75-4" />
   </>,
 )
+/** Fluent's Wrench: a car's upkeep, its service and paperwork. */
+export const WrenchIcon = icon(
+  <path d="M14.75 3.6a4.75 4.75 0 0 0-4.3 6.55L3.9 16.7a2.2 2.2 0 0 0 3.1 3.1l6.55-6.55a4.75 4.75 0 0 0 6.55-4.3c0-.5-.08-.98-.22-1.43l-2.9 2.9-2.4-.6-.6-2.4 2.9-2.9a4.75 4.75 0 0 0-1.43-.22Z" />,
+)

@@ -1,6 +1,6 @@
 import { getLocale, useLocale, type Locale } from './locale'
 import type { SupportTopic } from './support'
-import type { PushCategory } from './types'
+import type { CostKind, DueKind, IssueStatus, PushCategory } from './types'
 import type { TourStep } from './tour'
 import type { DemoKey } from './whatsNew'
 
@@ -160,6 +160,7 @@ const en = {
     carKm: 'car km saved',
     co2: 'kg CO₂ saved',
     fuel: 'litres of fuel saved',
+    fuelRsd: (amount: string) => `about ${amount} at the official price`,
     impactHint: 'Each passenger is a car left at home, the trip split half and half between driver and passenger. About 0.17 kg CO₂ and 7 l per 100 km, an average car.',
     history: 'Past rides',
     noHistory: 'No past rides yet.',
@@ -190,7 +191,7 @@ const en = {
       messages: ['Messages', 'Someone writes in the thread of your ride'],
       requests: ['Ride requests', 'Someone asks for a ride on a road you drive, or a driver offers you the one you asked for'],
       approvals: ['Shared-car approvals', 'An ask past the share, and the answer to yours'],
-      cars: ['Shared-car reports', 'Someone reports a problem with a shared car'],
+      cars: ['Shared-car reports', "Someone reports a problem with a shared car, or a car's paperwork or service is due"],
     } as Record<PushCategory, [string, string]>,
     lead: 'Before you leave',
     leadChoice: (minutes: number) => `${minutes} min`,
@@ -635,6 +636,101 @@ const en = {
     download: 'Download as a spreadsheet',
   },
 
+  /** The fleet manager's tabs of Shared cars: components/FleetUpkeep.tsx, FleetCosts.tsx, ShareRules.tsx. */
+  fleet: {
+    upkeepTab: 'Upkeep',
+    costsTab: 'Costs',
+    noCars: 'No shared cars in the pool.',
+    paperwork: 'Dates',
+    nothingDue: 'Nothing due in the next 30 days.',
+    dueKind: { registration: 'Registration', insurance: 'Insurance', service: 'Service', tyres: 'Tyres' } as Record<DueKind, string>,
+    tyres: { summer: 'Summer', winter: 'Winter', all_season: 'All-season' } as Record<'summer' | 'winter' | 'all_season', string>,
+    notSaid: 'Not said',
+    tyresNow: 'Summer tyres in the winter season',
+    tyresSoon: (days: number) => `Winter tyres from 1 November, in ${enPlural(days, 'day', 'days')}`,
+    overdueDays: (n: number) => `${enPlural(n, 'day', 'days')} overdue`,
+    today: 'today',
+    inDays: (n: number) => `in ${enPlural(n, 'day', 'days')}`,
+    overdueKm: (km: number) => `${km.toLocaleString('en')} km overdue`,
+    inKm: (km: number) => `in ${km.toLocaleString('en')} km`,
+    fromOn: (date: string) => `from ${date}, until further notice`,
+    outOfService: 'Out of service',
+    inService: 'In service.',
+    backInService: (car: string) => `${car} is back in service`,
+    backToday: 'Back in service',
+    cancelBlock: 'Cancel',
+    blocked: (car: string) => `${car} is out of service on those days`,
+    blockedWithRides: (car: string, n: number) => `${car} is out of service. ${enPlural(n, 'ride is', 'rides are')} booked in it then; the drivers were told`,
+    takeOut: 'Take out of service',
+    setDate: 'Set a day',
+    clear: (label: string) => `Clear ${label.toLowerCase()}`,
+    registrationUntil: 'Registered until',
+    insuranceUntil: 'Insured until',
+    serviceOn: 'Next service by',
+    serviceKm: 'Next service at (km)',
+    saved: 'Saved',
+    firstDay: 'First day',
+    lastDay: 'Last day',
+    untilNotice: 'No last day: until you put it back in service.',
+    reason: 'Why',
+    reasonPlaceholder: 'e.g. Service at the dealer',
+    fuelPrice: 'Official fuel price',
+    diesel: 'Evrodizel',
+    petrol: 'BMB 95',
+    perLitre: 'dinars a litre',
+    validFrom: (date: string) => `From ${date}`,
+    noPrice: 'No price yet.',
+    newPrice: "Add this week's price",
+    window: 'Window',
+    perCar: 'Per car',
+    col: { car: 'Car', total: 'Spent', km: 'Driven (km)', perKm: 'A km', unlogged: 'Not logged (km)' },
+    costAdded: 'Cost added',
+    addCost: 'Add a cost',
+    noCosts: 'No costs in this window.',
+    kind: { fuel: 'Fuel', charging: 'Charging', toll: 'Toll', parking: 'Parking', wash: 'Wash', service: 'Service', other: 'Other' } as Record<CostKind, string>,
+    removeCost: 'Remove the cost',
+    from: 'From',
+    source: 'Source',
+    day: 'Day',
+    what: 'What',
+    litres: 'Litres',
+    amount: 'Amount (din)',
+    atOfficial: (fuel: string, price: string) => `At the official price of ${fuel}, ${price} a litre. Type the receipt's amount if it differs.`,
+    note: 'Note',
+    rules: 'The shared-car share',
+    perWeek: 'Rides a week',
+    perDay: 'Rides a day',
+    maxHours: 'Hours in a row',
+    rulesHint: 'Past these, a ride needs an approval. Someone can have their own week under People.',
+    rulesSaved: 'The share is changed',
+  },
+
+  /** All rides → Month: components/MonthSummary.tsx, backend fleet.month_summary. */
+  summary: {
+    tab: 'Month',
+    month: 'Month',
+    prev: 'Previous month',
+    next: 'Next month',
+    fuel: 'Allowance fuel',
+    cap: 'Tax-free a month (din)',
+    rule: (pct: number, fuel: string, price: string) => `Own car allowance: ${pct} % of a litre of ${fuel} (${price} din) for every km, at each day's official price.`,
+    noPrice: 'No fuel price is known, so there is no allowance.',
+    empty: 'No rides this month.',
+    col: {
+      name: 'Name',
+      department: 'Department',
+      sharedRides: 'Shared-car rides',
+      sharedKm: 'Shared car km',
+      ownRides: 'Own-car rides',
+      ownKm: 'Own car km',
+      passengerRides: 'Rides along',
+      passengerKm: 'km along',
+      allowance: 'Allowance',
+    },
+    noDepartment: 'No department',
+    overCap: (cap: string) => `over ${cap}`,
+  },
+
   /** The admin's list of accounts: components/PeopleAdmin.tsx. */
   people: {
     title: 'People',
@@ -654,6 +750,21 @@ const en = {
     deleteTitle: (name: string) => `Delete ${name}'s account?`,
     deleteBody:
       'Their coming rides are cancelled (the passengers are told), their seats go to whoever is waiting, and their requests are withdrawn. Past rides keep their name. This cannot be undone.',
+    details: 'Department and share',
+    department: 'Department',
+    departmentPlaceholder: 'e.g. Sales',
+    share: 'Shared-car rides a week',
+    officeShare: "The office's share",
+    ownShare: (n: number) => (n === 0 ? 'No shared cars without approval' : `${enPlural(n, 'shared-car ride', 'shared-car rides')} a week`),
+    saved: (name: string) => `${name}: saved`,
+    switchOff: 'Switch off',
+    switchOn: 'Switch back on',
+    switchedOff: 'Switched off',
+    switchOffTitle: (name: string) => `Switch ${name}'s account off?`,
+    switchOffBody:
+      'For someone who left. They are signed out everywhere and cannot sign in, and nobody can add them to a car. Their coming rides are cancelled (the passengers are told) and their seats go to whoever is waiting. Past rides stay theirs. You can switch it back on.',
+    switchedOffDone: (name: string) => `${name} is switched off`,
+    switchedOn: (name: string) => `${name} is switched back on`,
   },
 
   /** The shared-car rides waiting for an admin: components/Approvals.tsx. */
@@ -673,6 +784,9 @@ const en = {
     markDone: 'Mark as added',
     undo: 'Not added after all',
     onList: 'On the list',
+    forGood: 'Let in for good',
+    standing: 'Let in for good',
+    forgetPlate: (plate: string) => `${plate} is no longer let in for good`,
   },
 
   /** The admin's log: components/AdminLog.tsx, backend app/audit.py. */
@@ -730,6 +844,34 @@ const en = {
           return `${admin} put the car of ${subject} on the garage list`
         case 'plate_unregistered':
           return `${admin} took the car of ${subject} off the garage list`
+        case 'account_edited':
+          return `${admin} changed the account of ${subject}`
+        case 'account_disabled':
+          return `${admin} switched off the account of ${subject}`
+        case 'account_enabled':
+          return `${admin} switched the account of ${subject} back on`
+        case 'plate_standing':
+          return `${admin} let the car of ${subject} into the garage for good`
+        case 'plate_standing_removed':
+          return `${admin} no longer lets the car of ${subject} into the garage for good`
+        case 'issue_status':
+          return `${admin} updated a problem with ${subject}`
+        case 'car_blocked':
+          return `${admin} took ${subject} out of service`
+        case 'car_block_changed':
+          return `${admin} changed when ${subject} is out of service`
+        case 'car_unblocked':
+          return `${admin} put ${subject} back in service`
+        case 'cost_added':
+          return `${admin} added a cost for ${subject}`
+        case 'cost_removed':
+          return `${admin} removed a cost for ${subject}`
+        case 'fuel_price_added':
+          return `${admin} added the fuel price from ${subject}`
+        case 'fuel_price_removed':
+          return `${admin} removed the fuel price from ${subject}`
+        case 'settings_changed':
+          return `${admin} changed the shared-car share or the allowance`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -766,6 +908,26 @@ const en = {
       soc: 'Battery (%)',
       clean: 'Clean',
       issues: 'Wrong with it',
+      department: 'Department',
+      shared_per_week: 'Own shared-car rides a week',
+      registration_until: 'Registered until',
+      insurance_until: 'Insured until',
+      service_due_on: 'Next service by',
+      service_due_km: 'Next service at (km)',
+      tyres: 'Tyres',
+      issue_status: 'Problem',
+      days: 'Days',
+      reason: 'Why',
+      kind: 'What',
+      amount: 'Amount (din)',
+      day: 'Day',
+      diesel: 'Evrodizel',
+      petrol: 'BMB 95',
+      share_per_week: 'Shared-car rides a week',
+      share_per_day: 'Shared-car rides a day',
+      share_max_hours: 'Hours in a row',
+      allowance_fuel: 'Allowance fuel',
+      allowance_cap: 'Tax-free a month',
     } as Record<string, string>,
   },
 
@@ -803,6 +965,7 @@ const en = {
       odoStart: 'Odometer out',
       odoEnd: 'Odometer back',
       driven: 'Driven (km)',
+      gap: 'Not logged before (km)',
       atWheel: 'At the wheel',
       addedBy: 'Added by',
     },
@@ -818,6 +981,10 @@ const en = {
       (driven > 0 ? ` · ${driven.toLocaleString('en')} km driven in shared cars` : ''),
     sortBy: (column: string) => `Sort by ${column}`,
     download: 'Download as a spreadsheet',
+    ridesTab: 'Rides',
+    gapHint: "Between the car's last return and this pickup reading",
+    gapMore: (km: string) => `${km} km not logged before`,
+    gapBack: (km: string) => `reading ${km} km lower than the last return`,
   },
 
   odo: {
@@ -847,6 +1014,12 @@ const en = {
 
   /** The state of each shared car: components/CarStatus.tsx (backend: app/carstate.py). */
   carState: {
+    issueStatus: { '': 'Open', seen: 'Seen by an admin', garage: 'Being repaired' } as Record<IssueStatus, string>,
+    statusLabel: 'Status',
+    statusSaved: 'Status saved',
+    takeOut: 'Take out of service',
+    outNow: 'Out of service',
+    outSoon: 'Out of service soon:',
     whereOut: (place: string, driver: string, until: string | null) => `On the road to ${place} with ${driver}` + (until ? `, back by ${until}` : ''),
     whereParked: (place: string) => `In ${place}`,
     whereHome: (place: string) => `In ${place}, where it is kept`,
@@ -1168,7 +1341,7 @@ const en = {
         title: 'Shared cars',
         steps: [
           'A shared car cannot be double-booked. **Day** shows when each one is free; tap a free stretch to book it.',
-          'Each person gets one shared-car ride a day and one a week, and no more than 24 hours in a row. Past that, **Ask an admin to approve it**. A ride awaiting approval does not hold the car.',
+          'Each person gets one shared-car ride a day and one a week, and no more than 24 hours in a row, unless the admins set it otherwise. Past that, **Ask an admin to approve it**. A ride awaiting approval does not hold the car. A car out of service cannot be booked on those days.',
           'Before your first drive, read the **Shared car guide**: charging with the company card and the Mazda 6e.',
           'In the car, note the odometer: **Note the start**, **Hand over** when someone else drives, **Car is back** with the battery and anything wrong.',
           '**Shared cars** shows each car\'s odometer, battery and reported problems. **Report on this car** tells the admins.',
@@ -1320,6 +1493,18 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      outOfService: {
+        title: 'A shared car out of service',
+        body: 'When a shared car is at the service or being repaired, the admins take it **out of service** for those days: its card says so, the form paints the days red and nobody can book it then. If you had it booked, you are told. **Your rides** also says what the fuel you saved comes to in dinars, at the official price.',
+      },
+      fleetUpkeep: {
+        title: 'Upkeep and costs of the shared cars',
+        body: '**Shared cars** has two new tabs. **Upkeep**: each car\'s registration, insurance, next service (by day or km) and tyres, with a push to the admins 30, 7 and 1 days ahead, and taking a car out of service. **Costs**: fuel, tolls, parking and the rest from the receipts, dinars a km per car, km nobody logged between rides, and the official fuel price, which you update each Friday. A reported problem now has a status, and **Usage** sets the shared-car share.',
+      },
+      monthSummary: {
+        title: 'The month, per person',
+        body: '**All rides** has a **Month** tab: per person and department, the shared-car and own-car rides and km, the rides along, and the own-car allowance at 30 % of a litre a km at the official price, flagged past the tax-free amount. As a spreadsheet too. Under **People**: a department, someone\'s own shared-car share, and **Switch off** for someone who left. The **Garage list** can let a plate in for good.',
+      },
       pickColleague: {
         title: 'Colleagues are picked, not typed',
         body: '**Add a colleague** on a ride card now searches the people with an account: type a few letters and tap the name. A typed name nobody has an account under can no longer take a seat, so every seat belongs to someone who sees it, gets the reminders and can give it up.',
@@ -1393,7 +1578,19 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^`via` is lat,lng pairs separated by semicolons$/, () => '`via` su parovi lat,lng odvojeni tačkom i zarezom'],
   [/^You already have a shared car this week\. An admin can approve another$/, () => 'Već imaš zajednički auto ove sedmice. Administrator može da odobri još jedan'],
   [/^You already have a shared car that day\. An admin can approve another$/, () => 'Već imaš zajednički auto tog dana. Administrator može da odobri još jedan'],
-  [/^That keeps a shared car with you for more than 24 hours in a row\. An admin can approve it$/, () => 'Tako bi zajednički auto bio kod tebe duže od 24 sata zaredom. Administrator može da to odobri'],
+  [/^That keeps a shared car with you for more than (\d+) hours in a row\. An admin can approve it$/, (m) => `Tako bi zajednički auto bio kod tebe duže od ${srPlural(Number(m[1]), 'sat', 'sata', 'sati')} zaredom. Administrator može da to odobri`],
+  [/^That car is out of service that day$/, () => 'Taj auto je van upotrebe tog dana'],
+  [/^That car is already out of service on some of those days$/, () => 'Taj auto je već van upotrebe nekih od tih dana'],
+  [/^The last day cannot be before the first$/, () => 'Poslednji dan ne može biti pre prvog'],
+  [/^That report names no problem$/, () => 'Ta prijava ne navodi nikakav problem'],
+  [/^There is a price from that day already$/, () => 'Već postoji cena od tog dana'],
+  [/^Keep at least one fuel price$/, () => 'Mora ostati bar jedna cena goriva'],
+  [/^Price not found$/, () => 'Cena nije pronađena'],
+  [/^Plate not found$/, () => 'Tablica nije pronađena'],
+  [/^Not found$/, () => 'Nije pronađeno'],
+  [/^(.+) has costs on record; retire it instead of deleting it$/, (m) => `${m[1]} ima upisane troškove; povuci ga umesto brisanja`],
+  [/^This account is switched off\. Ask an admin$/, () => 'Ovaj nalog je isključen. Obrati se administratoru'],
+  [/^You cannot switch your own account off$/, () => 'Ne možeš da isključiš svoj nalog'],
   [/^This ride is not waiting for approval$/, () => 'Ova vožnja ne čeka odobrenje'],
   [/^This ride already has a driver$/, () => 'Ova vožnja već ima vozača'],
   [/^This ride has no plate for the garage$/, () => 'Ova vožnja nema tablice za garažu'],
@@ -1697,6 +1894,7 @@ const sr: Messages = {
     carKm: 'ušteđenih km autom',
     co2: 'kg CO₂ manje',
     fuel: 'litara goriva manje',
+    fuelRsd: (amount) => `oko ${amount} po zvaničnoj ceni`,
     impactHint: 'Svaki putnik je jedan auto koji je ostao kod kuće, a vožnja se deli pola-pola između vozača i putnika. Oko 0,17 kg CO₂ i 7 l na 100 km, prosečan auto.',
     history: 'Prošle vožnje',
     noHistory: 'Još nema prošlih vožnji.',
@@ -1727,7 +1925,7 @@ const sr: Messages = {
       messages: ['Poruke', 'Neko napiše nešto u razgovoru tvoje vožnje'],
       requests: ['Zahtevi za prevoz', 'Neko traži prevoz na putu koji voziš, ili ti vozač ponudi prevoz koji si tražio/la'],
       approvals: ['Odobrenja zajedničkog auta', 'Zahtev preko dozvoljenog i odgovor na tvoj'],
-      cars: ['Prijave o zajedničkom autu', 'Neko prijavi problem sa zajedničkim autom'],
+      cars: ['Prijave o zajedničkom autu', 'Neko prijavi problem sa zajedničkim autom, ili autu ističe registracija ili dolazi servis'],
     },
     lead: 'Pre polaska',
     leadChoice: (minutes) => `${minutes} min`,
@@ -2175,6 +2373,9 @@ const sr: Messages = {
     markDone: 'Označi kao dodato',
     undo: 'Ipak nije dodato',
     onList: 'Na spisku',
+    forGood: 'Pusti trajno',
+    standing: 'Trajno pušteni',
+    forgetPlate: (plate) => `${plate} više nije trajno pušten`,
   },
 
   adminLog: {
@@ -2231,6 +2432,34 @@ const sr: Messages = {
           return `${admin} je dodao/la auto na spisak za garažu, vozi ${subject}`
         case 'plate_unregistered':
           return `${admin} je skinuo/la auto sa spiska za garažu, vozi ${subject}`
+        case 'account_edited':
+          return `${admin} je izmenio/la nalog: ${subject}`
+        case 'account_disabled':
+          return `${admin} je isključio/la nalog: ${subject}`
+        case 'account_enabled':
+          return `${admin} je ponovo uključio/la nalog: ${subject}`
+        case 'plate_standing':
+          return `${admin} je trajno pustio/la u garažu auto: ${subject}`
+        case 'plate_standing_removed':
+          return `${admin} više ne pušta trajno u garažu auto: ${subject}`
+        case 'issue_status':
+          return `${admin} je ažurirao/la problem: ${subject}`
+        case 'car_blocked':
+          return `${admin} je stavio/la van upotrebe: ${subject}`
+        case 'car_block_changed':
+          return `${admin} je promenio/la kada je van upotrebe: ${subject}`
+        case 'car_unblocked':
+          return `${admin} je vratio/la u upotrebu: ${subject}`
+        case 'cost_added':
+          return `${admin} je dodao/la trošak: ${subject}`
+        case 'cost_removed':
+          return `${admin} je uklonio/la trošak: ${subject}`
+        case 'fuel_price_added':
+          return `${admin} je dodao/la cenu goriva od ${subject}`
+        case 'fuel_price_removed':
+          return `${admin} je uklonio/la cenu goriva od ${subject}`
+        case 'settings_changed':
+          return `${admin} je promenio/la pravo na zajednički auto ili naknadu`
         default:
           return `${admin}: ${action} ${subject}`
       }
@@ -2267,6 +2496,26 @@ const sr: Messages = {
       soc: 'Baterija (%)',
       clean: 'Čist',
       issues: 'Kvar',
+      department: 'Sektor',
+      shared_per_week: 'Svoje vožnje zajedničkim autom sedmično',
+      registration_until: 'Registrovan do',
+      insurance_until: 'Osiguran do',
+      service_due_on: 'Sledeći servis do',
+      service_due_km: 'Sledeći servis na (km)',
+      tyres: 'Gume',
+      issue_status: 'Problem',
+      days: 'Dani',
+      reason: 'Razlog',
+      kind: 'Šta',
+      amount: 'Iznos (din)',
+      day: 'Dan',
+      diesel: 'Evrodizel',
+      petrol: 'BMB 95',
+      share_per_week: 'Vožnji zajedničkim autom sedmično',
+      share_per_day: 'Vožnji zajedničkim autom dnevno',
+      share_max_hours: 'Sati zaredom',
+      allowance_fuel: 'Gorivo za naknadu',
+      allowance_cap: 'Neoporezivo mesečno',
     },
   },
 
@@ -2303,6 +2552,7 @@ const sr: Messages = {
       odoStart: 'Kilometraža pri preuzimanju',
       odoEnd: 'Kilometraža pri vraćanju',
       driven: 'Pređeno (km)',
+      gap: 'Neupisano pre (km)',
       atWheel: 'Za volanom',
       addedBy: 'Dodao/la',
     },
@@ -2318,6 +2568,10 @@ const sr: Messages = {
       (driven > 0 ? ` · ${driven.toLocaleString('sr-Latn')} km pređeno zajedničkim automobilima` : ''),
     sortBy: (column) => `Sortiraj po koloni ${column}`,
     download: 'Preuzmi kao tabelu',
+    ridesTab: 'Vožnje',
+    gapHint: 'Između poslednjeg vraćanja auta i ovog očitavanja pri preuzimanju',
+    gapMore: (km) => `${km} km pre toga nije upisano`,
+    gapBack: (km) => `očitavanje ${km} km niže od poslednjeg vraćanja`,
   },
 
   odo: {
@@ -2345,6 +2599,12 @@ const sr: Messages = {
   },
 
   carState: {
+    issueStatus: { '': 'Otvoreno', seen: 'Administrator je video', garage: 'Na popravci' },
+    statusLabel: 'Status',
+    statusSaved: 'Status je sačuvan',
+    takeOut: 'Stavi van upotrebe',
+    outNow: 'Van upotrebe',
+    outSoon: 'Uskoro van upotrebe:',
     whereOut: (place, driver, until) => `Na putu za ${place}, vozi ${driver}` + (until ? `, vraća se do ${until}` : ''),
     whereParked: (place) => `Mesto: ${place}`,
     whereHome: (place) => `Mesto: ${place}, gde se drži`,
@@ -2398,6 +2658,99 @@ const sr: Messages = {
     readingsHint: 'Izmenjeno očitavanje se čuva kao prijava na tvoje ime.',
   },
 
+
+  fleet: {
+    upkeepTab: 'Održavanje',
+    costsTab: 'Troškovi',
+    noCars: 'U voznom parku nema zajedničkih automobila.',
+    paperwork: 'Datumi',
+    nothingDue: 'Ništa ne ističe u narednih 30 dana.',
+    dueKind: { registration: 'Registracija', insurance: 'Osiguranje', service: 'Servis', tyres: 'Gume' },
+    tyres: { summer: 'Letnje', winter: 'Zimske', all_season: 'Celogodišnje' },
+    notSaid: 'Nije navedeno',
+    tyresNow: 'Letnje gume u zimskom periodu',
+    tyresSoon: (days) => `Zimske gume od 1. novembra, za ${srPlural(days, 'dan', 'dana', 'dana')}`,
+    overdueDays: (n) => `kasni ${srPlural(n, 'dan', 'dana', 'dana')}`,
+    today: 'danas',
+    inDays: (n) => `za ${srPlural(n, 'dan', 'dana', 'dana')}`,
+    overdueKm: (km) => `prekoračeno ${km.toLocaleString('sr-Latn-RS')} km`,
+    inKm: (km) => `za ${km.toLocaleString('sr-Latn-RS')} km`,
+    fromOn: (date) => `od ${date}, do daljeg`,
+    outOfService: 'Van upotrebe',
+    inService: 'U upotrebi.',
+    backInService: (car) => `${car} je ponovo u upotrebi`,
+    backToday: 'Vrati u upotrebu',
+    cancelBlock: 'Otkaži',
+    blocked: (car) => `${car} je van upotrebe tih dana`,
+    blockedWithRides: (car, n) => `${car} je van upotrebe. Tada je u njemu ${srPlural(n, 'rezervisana vožnja', 'rezervisane vožnje', 'rezervisanih vožnji')}; vozači su obavešteni`,
+    takeOut: 'Stavi van upotrebe',
+    setDate: 'Izaberi dan',
+    clear: (label) => `Obriši: ${label.toLowerCase()}`,
+    registrationUntil: 'Registrovan do',
+    insuranceUntil: 'Osiguran do',
+    serviceOn: 'Sledeći servis do',
+    serviceKm: 'Sledeći servis na (km)',
+    saved: 'Sačuvano',
+    firstDay: 'Prvi dan',
+    lastDay: 'Poslednji dan',
+    untilNotice: 'Bez poslednjeg dana: dok ga ne vratiš u upotrebu.',
+    reason: 'Razlog',
+    reasonPlaceholder: 'npr. Servis kod ovlašćenog servisera',
+    fuelPrice: 'Zvanična cena goriva',
+    diesel: 'Evrodizel',
+    petrol: 'BMB 95',
+    perLitre: 'dinara po litru',
+    validFrom: (date) => `Od ${date}`,
+    noPrice: 'Još nema cene.',
+    newPrice: 'Dodaj cenu za ovu sedmicu',
+    window: 'Period',
+    perCar: 'Po autu',
+    col: { car: 'Auto', total: 'Potrošeno', km: 'Pređeno (km)', perKm: 'Po km', unlogged: 'Neupisano (km)' },
+    costAdded: 'Trošak je dodat',
+    addCost: 'Dodaj trošak',
+    noCosts: 'Nema troškova u ovom periodu.',
+    kind: { fuel: 'Gorivo', charging: 'Punjenje', toll: 'Putarina', parking: 'Parking', wash: 'Pranje', service: 'Servis', other: 'Ostalo' },
+    removeCost: 'Ukloni trošak',
+    from: 'Od',
+    source: 'Izvor',
+    day: 'Dan',
+    what: 'Šta',
+    litres: 'Litara',
+    amount: 'Iznos (din)',
+    atOfficial: (fuel, price) => `Po zvaničnoj ceni za ${fuel}, ${price} po litru. Upiši iznos sa računa ako se razlikuje.`,
+    note: 'Napomena',
+    rules: 'Pravo na zajednički auto',
+    perWeek: 'Vožnji sedmično',
+    perDay: 'Vožnji dnevno',
+    maxHours: 'Sati zaredom',
+    rulesHint: 'Preko ovoga vožnji treba odobrenje. Neko može imati svoje sedmično pravo, pod Ljudi.',
+    rulesSaved: 'Pravo na zajednički auto je promenjeno',
+  },
+
+  summary: {
+    tab: 'Mesec',
+    month: 'Mesec',
+    prev: 'Prethodni mesec',
+    next: 'Sledeći mesec',
+    fuel: 'Gorivo za naknadu',
+    cap: 'Neoporezivo mesečno (din)',
+    rule: (pct, fuel, price) => `Naknada za sopstveni auto: ${pct} % cene litra goriva ${fuel} (${price} din) po pređenom km, po zvaničnoj ceni tog dana.`,
+    noPrice: 'Cena goriva nije poznata, pa nema naknade.',
+    empty: 'Nema vožnji ovog meseca.',
+    col: {
+      name: 'Ime',
+      department: 'Sektor',
+      sharedRides: 'Vožnje zajedničkim autom',
+      sharedKm: 'km zajedničkim autom',
+      ownRides: 'Vožnje svojim autom',
+      ownKm: 'km svojim autom',
+      passengerRides: 'Vožnje kao putnik',
+      passengerKm: 'km kao putnik',
+      allowance: 'Naknada',
+    },
+    noDepartment: 'Bez sektora',
+    overCap: (cap) => `preko ${cap}`,
+  },
   people: {
     title: 'Ljudi',
     count: (n) => srPlural(n, 'nalog', 'naloga', 'naloga'),
@@ -2416,6 +2769,21 @@ const sr: Messages = {
     deleteTitle: (name) => `Obrisati nalog (${name})?`,
     deleteBody:
       'Predstojeće vožnje se otkazuju (putnici dobijaju obaveštenje), mesta prelaze na one koji čekaju, a zahtevi se povlače. Prošle vožnje zadržavaju ime. Ovo se ne može poništiti.',
+    details: 'Sektor i pravo na auto',
+    department: 'Sektor',
+    departmentPlaceholder: 'npr. Prodaja',
+    share: 'Vožnji zajedničkim autom sedmično',
+    officeShare: 'Kao za sve',
+    ownShare: (n) => (n === 0 ? 'Zajednički auto samo uz odobrenje' : `${srPlural(n, 'vožnja', 'vožnje', 'vožnji')} zajedničkim autom sedmično`),
+    saved: (name) => `${name}: sačuvano`,
+    switchOff: 'Isključi nalog',
+    switchOn: 'Ponovo uključi nalog',
+    switchedOff: 'Isključen',
+    switchOffTitle: (name) => `Isključiti nalog (${name})?`,
+    switchOffBody:
+      'Za nekoga ko je otišao. Odjavljuje se svuda i ne može da se prijavi, i niko ne može da ga doda u auto. Predstojeće vožnje se otkazuju (putnici dobijaju obaveštenje), a mesta prelaze na one koji čekaju. Prošle vožnje ostaju njegove. Nalog možeš ponovo da uključiš.',
+    switchedOffDone: (name) => `Nalog je isključen (${name})`,
+    switchedOn: (name) => `Nalog je ponovo uključen (${name})`,
   },
 
   upcoming: {
@@ -2684,7 +3052,7 @@ const sr: Messages = {
         title: 'Zajednički automobili',
         steps: [
           'Zajednički auto ne može dvaput da se rezerviše za isto vreme. **Dan** pokazuje kada je koji slobodan; dodirni slobodan deo da ga rezervišeš.',
-          'Svako ima jednu vožnju zajedničkim autom dnevno i jednu sedmično, i ne duže od 24 sata zaredom. Preko toga, **Zatraži odobrenje administratora**. Vožnja koja čeka odobrenje ne drži auto.',
+          'Svako ima jednu vožnju zajedničkim autom dnevno i jednu sedmično, i ne duže od 24 sata zaredom, osim ako administratori ne podese drugačije. Preko toga, **Zatraži odobrenje administratora**. Vožnja koja čeka odobrenje ne drži auto. Auto van upotrebe ne može da se rezerviše tih dana.',
           'Pre prve vožnje pročitaj **Vodič za zajednički auto**: punjenje službenom karticom i Mazda 6e.',
           'U autu upisuj kilometražu: **Upiši početnu**, **Predaj volan** kad vozi neko drugi, **Auto je vraćen** sa stanjem baterije i eventualnim problemima.',
           '**Zajednički automobili** pokazuju kilometražu, bateriju i prijavljene probleme svakog auta. **Prijavi stanje auta** javlja administratorima.',
@@ -2832,6 +3200,18 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      outOfService: {
+        title: 'Zajednički auto van upotrebe',
+        body: 'Kada je zajednički auto na servisu ili popravci, administratori ga stave **van upotrebe** za te dane: to piše na njegovoj kartici, obrazac boji te dane u crveno i niko ne može da ga rezerviše. Ako si ga rezervisao/la, dobijaš obaveštenje. **Tvoje vožnje** sada kažu i koliko dinara vredi gorivo koje si uštedeo/la, po zvaničnoj ceni.',
+      },
+      fleetUpkeep: {
+        title: 'Održavanje i troškovi zajedničkih automobila',
+        body: '**Zajednički automobili** imaju dve nove kartice. **Održavanje**: registracija, osiguranje, sledeći servis (po danu ili km) i gume za svaki auto, uz obaveštenje administratorima 30, 7 i 1 dan ranije, i stavljanje auta van upotrebe. **Troškovi**: gorivo, putarine, parking i ostalo sa računa, dinara po km za svaki auto, km koje niko nije upisao između vožnji, i zvanična cena goriva, koju ažuriraš svakog petka. Prijavljeni problem sada ima status, a pod **Korišćenje** se podešava pravo na zajednički auto.',
+      },
+      monthSummary: {
+        title: 'Mesec, po osobi',
+        body: '**Sve vožnje** imaju karticu **Mesec**: po osobi i sektoru, vožnje i km zajedničkim i svojim autom, vožnje kao putnik i naknada za sopstveni auto, 30 % cene litra po km po zvaničnoj ceni, uz oznaku preko neoporezivog iznosa. Može i kao tabela. Pod **Ljudi**: sektor, nečije sopstveno pravo na zajednički auto i **Isključi nalog** za nekoga ko je otišao. **Spisak za garažu** može trajno da pusti tablicu.',
+      },
       pickColleague: {
         title: 'Kolege se biraju, ne kucaju',
         body: '**Dodaj kolegu** na kartici vožnje sada pretražuje ljude koji imaju nalog: ukucaj nekoliko slova i dodirni ime. Ime pod kojim niko nema nalog više ne može da zauzme mesto, pa svako mesto pripada nekome ko ga vidi, dobija podsetnike i može da ga se odrekne.',
