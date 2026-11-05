@@ -53,8 +53,8 @@ test('a passenger and the driver put new pickup points on the route', async ({ b
   const row = goran.getByRole('button', { name: new RegExp(`Vesna Driver ${tag} · Green Polo`) })
   await expect(row).toBeVisible()
   await row.click()
-  await goran.getByRole('button', { name: 'Pickup', exact: true }).first().click()
-  await goran.getByRole('option', { name: 'Somewhere else…' }).click()
+  await goran.getByRole('button', { name: 'Get in this car' }).first().click()
+  await goran.getByRole('dialog', { name: 'Where do you get in?' }).getByRole('button', { name: 'Somewhere else…' }).click()
   // The place is picked in the full-screen place dialog, then where on the way.
   const goranPlace = goran.getByRole('dialog', { name: 'New pickup point' })
   await goranPlace.getByLabel('Search places and addresses').fill('Futog')
@@ -135,6 +135,7 @@ test('a new pickup point from the waiting list goes on the route with the seat',
   const rowName = new RegExp(`Dara Driver ${tag} · White Up`)
   await ema.getByRole('button', { name: rowName }).click()
   await ema.getByRole('button', { name: 'Get in this car' }).first().click()
+  await ema.getByRole('dialog', { name: 'Where do you get in?' }).getByRole('button', { name: /Start/ }).click()
   await expect(toast(ema, `You're in with Dara Driver ${tag}.`)).toBeAttached()
 
   // Filip queues to get in at Kać, before the start; the route does not change yet.

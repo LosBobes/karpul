@@ -121,7 +121,7 @@
    track is the bolt waiting, the green trail is how far the finger has got,
    and the whole thing flashes over and throws a flare across the screen when
    it closes. `touch-action: none` is what keeps the browser from scrolling the
-   page instead, the same bargain the drag handles make in lib/dnd.ts.
+   page instead.
 
    It is its own screen rather than a sheet because the bolt is the screen: a
    stroke that crosses a phone from edge to edge is the whole point, and a

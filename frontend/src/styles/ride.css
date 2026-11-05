@@ -155,21 +155,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 0.35rem;
-  margin: -0.35rem;
-  border-radius: var(--radius);
-  border: 2px dashed transparent;
-  transition: border-color 0.12s, background 0.12s, opacity 0.12s;
-}
-.pax-droppable {
-  border-color: var(--green-line);
-}
-.pax-over {
-  border-color: var(--green);
-  background: var(--green-soft);
-}
-.pax-nodrop {
-  opacity: 0.45;
 }
 .pax-list {
   list-style: none;
@@ -227,47 +212,6 @@
 }
 .pax-leave {
   font-size: 0.84rem;
-}
-.grip {
-  display: inline-grid;
-  place-items: center;
-  color: var(--border-strong);
-  margin-right: -0.2rem;
-}
-/* Anything you can pick up. `touch-action: none` (lib/dnd.ts) is what makes a
-   finger drag possible at all; without it the browser takes the gesture for
-   scrolling and cancels our pointer part-way. */
-.grabbable {
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-touch-callout: none;
-  transition: box-shadow var(--hover), transform var(--hover), border-color var(--hover), background var(--hover);
-}
-.grabbable:hover {
-  border-color: var(--green);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-1px);
-}
-/* A row inside the passenger list does not leave the list; it warms instead. */
-.pax-row.grabbable:hover {
-  box-shadow: none;
-  transform: none;
-  background: color-mix(in srgb, var(--green-soft) 80%, var(--surface));
-}
-.grabbable:hover .grip {
-  color: var(--green);
-}
-.grabbable:active {
-  cursor: grabbing;
-  transform: none;
-}
-/* While the chip is in flight the original stays put but goes ghosted. */
-.lifting {
-  opacity: 0.4;
-  box-shadow: none;
-  transform: none;
 }
 .add-row,
 .dropzone {
@@ -363,12 +307,6 @@
 }
 .pax-list .add-row:hover:not(:disabled) svg {
   transform: rotate(90deg);
-}
-.pax-over .dropzone,
-.pax-over .add-row {
-  border-color: var(--green);
-  border-style: solid;
-  background: var(--green-soft);
 }
 
 /* --- Waiting list (components/CarDetail.tsx) ------------------------------

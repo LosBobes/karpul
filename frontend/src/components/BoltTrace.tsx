@@ -4,9 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
  * The bolt you trace to take a new build (components/UpdateScreen.tsx).
  *
  * It is the thunderbolt the app's mark ends in, straightened into three
- * strokes a finger can follow. The drag is pointer-event based for the same
- * reason the passenger chips are (lib/dnd.ts): HTML5 drag never worked with a
- * finger, and the pad carries `touch-action: none` so the browser scrolls the
+ * strokes a finger can follow. The drag is pointer-event based because HTML5
+ * drag never worked with a finger, and the pad carries `touch-action: none` so the browser scrolls the
  * screen instead of stealing the gesture.
  *
  * Following it is meant to be satisfying, not a test. The finger is matched

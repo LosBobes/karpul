@@ -28,18 +28,6 @@
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  padding: 0.35rem;
-  margin: -0.35rem;
-  border-radius: var(--radius);
-  border: 2px dashed transparent;
-  transition: border-color 0.12s, background 0.12s;
-}
-.you-armed {
-  border-color: color-mix(in srgb, var(--red) 45%, transparent);
-}
-.you-over {
-  border-color: var(--red);
-  background: var(--red-soft);
 }
 .you-row {
   display: flex;
@@ -70,24 +58,6 @@
 .you-text > span {
   font-size: 0.84rem;
   color: var(--muted);
-}
-.you-row-out {
-  justify-content: center;
-  border-style: dashed;
-  border-color: var(--red);
-  color: var(--red);
-}
-.you-row-out .you-text {
-  flex: none;
-}
-.you-out-icon {
-  display: inline-grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--red-soft);
-  color: var(--red);
 }
 .banner {
   display: flex;
@@ -342,38 +312,4 @@
 }
 .empty-card-btn:hover {
   border-color: var(--green-line);
-}
-/* --- Drag ghost ---------------------------------------------------------- */
-/* The chip that follows the pointer. A plain DOM node created by lib/dnd.ts,
-   drawn over everything and transparent to hit-testing so elementFromPoint
-   sees the car underneath it. It is placed by transform alone (see dnd.ts),
-   so no margin, inset or width may be set here. */
-.drag-ghost {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 50;
-  pointer-events: none;
-  will-change: transform;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.9rem 0.45rem 0.55rem;
-  border: 1px solid var(--green-line);
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--text);
-  font-weight: 600;
-  font-size: 0.95rem;
-  white-space: nowrap;
-  box-shadow: var(--shadow-pop);
-  transform: translate(-1000px, -1000px);
-}
-.drag-ghost .grip {
-  color: var(--green);
-}
-body.dragging {
-  cursor: grabbing;
-  user-select: none;
-  -webkit-user-select: none;
 }

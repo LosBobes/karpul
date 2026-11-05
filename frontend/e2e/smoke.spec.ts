@@ -57,6 +57,7 @@ test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
   await expect(row).toBeVisible()
   await row.click()
   await marko.getByRole('button', { name: 'Get in this car' }).first().click()
+  await marko.getByRole('dialog', { name: 'Where do you get in?' }).getByRole('button', { name: /Start/ }).click()
   await expect(toast(marko, `You're in with ${anaName}.`)).toBeAttached()
 
   // And writes in the thread.

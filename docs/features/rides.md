@@ -71,11 +71,13 @@ destination is a 422) and the driver is pushed `stop_added`; the driver or an ad
 `POST /api/rides/{id}/stops`. The driver's switch `Ride.passengers_add_stops` (on by default, in
 `RideUpdate` like `passengers_manage`; the ⋮ menu and the form's Advanced route) closes the route to
 passengers' new places (a 403; picking a place already on it still works, and whoever runs the ride
-may still add one for a passenger); off, the pickup `Select` drops *Somewhere else…*. The waiting list takes a
+may still add one for a passenger); off, the pickup sheet drops *Somewhere else…*. The waiting list takes a
 new place too (`WaitlistJoin.new_stop`), but keeps it on the entry (`WaitlistEntry.new_stop_before`
 / `new_stop_index`) instead of the route: `promote_waitlist` puts it on the route with the seat
 (and the driver is pushed `stop_added`), or seats them at the origin when the switch is off or the
-route is full by then. On screen the pickup `Select` ends in *Somewhere else…*, which opens
+route is full by then. On screen the place is asked after the tap on *Get in this car* or *Wait for a seat*
+(`components/PickupSheet.tsx`: a row per place on the route, each taking the seat there, faces of who already
+gets in there; a route that is only its start with the switch off asks nothing), and ends in *Somewhere else…*, which opens
 `components/AddStop.tsx`: the full-screen `PlaceDialog` of the ride form's places, with `freeText` (a *Use
 "<words>"* row, the place with no pin) and a `confirm` step after the pick that names the place and asks which
 stretch of the route it is on (`stopSlots` in `lib/stops.ts`) above the submit button,

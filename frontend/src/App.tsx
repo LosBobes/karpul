@@ -45,7 +45,6 @@ import { setUser, useSession, type Session } from './lib/auth'
 import { messages, useT } from './lib/i18n'
 import { parseISODate, todayISO } from './lib/dates'
 import { useSlideDir } from './lib/motion'
-import type { PassengerDrag } from './lib/dnd'
 import { isMyRequest, MeContext, myBooking, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateNotices, useUpdateReady } from './lib/pwa'
@@ -56,7 +55,6 @@ import { useBoard } from './lib/useBoard'
 import { useOverlays } from './lib/useOverlays'
 import { track } from './lib/usage'
 import { newAccount, setTourDone, tourDone } from './lib/tour'
-import { usePassengerDrag } from './lib/usePassengerDrag'
 import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
 import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
@@ -295,32 +293,7 @@ function Board({ session }: { session: Session }) {
   // What the ride card does (lib/useRideActions.ts): seats, the queue, the
   // route, the driver's switches, removal, asks and answers.
   const actions = useRideActions({ me, rides, withBusy, upsertRide, removeRides, setToast, setConfirm })
-  const { onJoin, afterLeave, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onConfirmRide, onClaim, onLate } = actions
-
-  /** Drop of the passenger chip onto a car: switch cars if already seated, else join. */
-  const onDropPassenger = (target: Ride, drag: PassengerDrag) => {
-    setCarSel(target.id)
-    void withBusy(target.id, async () => {
-      if (drag.fromRideId !== null && drag.bookingId !== null && drag.fromRideId !== target.id) {
-        afterLeave(await api.leave(drag.fromRideId, drag.bookingId))
-      }
-      upsertRide(await api.join(target.id, userName))
-      setToast({ kind: 'ok', text: t.toasts.youreIn(target.driver_name) })
-    })
-  }
-
-  // Where the chip lands is looked up against the *current* rides: the board
-  // can change under a drag (live updates), so the hook reads them at drop time.
-  const { drag, dragOver, onGrab } = usePassengerDrag({
-    onDropOnRide: (rideId, dragged) => {
-      const ride = rides.find((r) => r.id === rideId)
-      if (ride) onDropPassenger(ride, dragged)
-    },
-    onDropOnTray: (dragged) => {
-      const from = dragged.fromRideId !== null ? rides.find((r) => r.id === dragged.fromRideId) : undefined
-      if (from && dragged.bookingId !== null) void onLeave(from, dragged.bookingId)
-    },
-  })
+  const { onJoin, onLeave, onSwitch, onMovePickup, onAddStop, onSaveRoute, onOdometer, onWait, onLeaveLine, onShare, onDownloadCalendar, onAddPassenger, onTogglePassengersManage, onTogglePassengersAddStops, onCancel, onCancelFollowing, onAnswerChange, onWithdrawChange, onSuggestTime, onTakeOver, onConfirmRide, onClaim, onLate } = actions
 
   const closeForm = useCallback(() => {
     setForm(null)
@@ -413,7 +386,6 @@ function Board({ session }: { session: Session }) {
   const dayRequests = upcoming ? [] : openRequests.filter((r) => r.request_date === selected)
   const isPast = !upcoming && selected < todayISO()
   const myRideToday = dayRides.find((r) => myBooking(r, me) !== undefined) ?? null
-  const myBookingToday = myRideToday ? (myBooking(myRideToday, me) ?? null) : null
   const askedToday = dayRequests.some((r) => isMyRequest(r, me))
   const canAdd = !isPast
 
@@ -476,7 +448,7 @@ function Board({ session }: { session: Session }) {
     return other && booking ? { ride: other, bookingId: booking.id } : null
   }
 
-  const detailFor = (ride: Ride, inList: boolean) => (
+  const detailFor = (ride: Ride) => (
     <CarDetail
       key={ride.id}
       ride={ride}
@@ -516,11 +488,6 @@ function Board({ session }: { session: Session }) {
       coming={ride.ride_date > todayISO()}
       myRequest={openRequests.find((r) => r.request_date === ride.ride_date && isMyRequest(r, me))}
       onError={failure}
-      dragActive={drag !== null}
-      lifted={drag?.fromRideId === ride.id}
-      over={dragOver?.kind === 'ride' && dragOver.rideId === ride.id}
-      onGrab={onGrab}
-      draggable={!inList}
     />
   )
 
@@ -533,11 +500,11 @@ function Board({ session }: { session: Session }) {
       <span className="car-tile skeleton" />
     </div>
   ) : dayRides.length === 0 ? null : (
-    <CarCarousel rides={dayRides} selected={selection} dragActive={drag !== null} over={dragOver} onSelect={setCarSel} vertical={wide} />
+    <CarCarousel rides={dayRides} selected={selection} onSelect={setCarSel} vertical={wide} />
   )
   const dayDetail = loading ? null : openRide ? (
     <SlideSwitch id={String(openRide.id)} dir={tileDir}>
-      {detailFor(openRide, false)}
+      {detailFor(openRide)}
     </SlideSwitch>
   ) : (
     <AddCarCard isPast={isPast} />
@@ -547,11 +514,7 @@ function Board({ session }: { session: Session }) {
       <YouPanel
         dayRides={dayRides}
         currentRide={myRideToday}
-        currentBookingId={myBookingToday?.id ?? null}
         isPast={isPast}
-        dragActive={drag !== null}
-        over={dragOver?.kind === 'tray'}
-        onGrab={onGrab}
         onOpenCar={setCarSel}
         onAsk={() => openAsk(selected)}
         asked={askedToday}
@@ -612,7 +575,7 @@ function Board({ session }: { session: Session }) {
     />
   )
   const planPicked = carSel !== null ? (dayRides.find((r) => r.id === carSel) ?? null) : null
-  const planDetail = planPicked && <SlideSwitch id={String(planPicked.id)} dir="right">{detailFor(planPicked, true)}</SlideSwitch>
+  const planDetail = planPicked && <SlideSwitch id={String(planPicked.id)} dir="right">{detailFor(planPicked)}</SlideSwitch>
 
   // The app menu's items: a drawer under the ☰ on a phone, docked down the
   // left edge on a wide screen.
@@ -731,12 +694,12 @@ function Board({ session }: { session: Session }) {
                         onWithdraw={(r) => void onWithdraw(r)}
                         openId={openUpcomingId}
                         onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
-                        renderDetail={wide ? undefined : (ride) => detailFor(ride, true)}
+                        renderDetail={wide ? undefined : (ride) => detailFor(ride)}
                       />,
                     )}
                     {wide && openUpcomingRide && (
                       <aside className="split-pane" data-scroll-pane="" aria-label={openUpcomingRide.car_name}>
-                        <SlideSwitch id={String(openUpcomingRide.id)} dir="right">{detailFor(openUpcomingRide, true)}</SlideSwitch>
+                        <SlideSwitch id={String(openUpcomingRide.id)} dir="right">{detailFor(openUpcomingRide)}</SlideSwitch>
                       </aside>
                     )}
                   </div>
@@ -785,7 +748,7 @@ function Board({ session }: { session: Session }) {
           </main>
         </div>
 
-        {!wide && canAdd && drag === null && <AddRideFab onClick={openNewCar} />}
+        {!wide && canAdd && <AddRideFab onClick={openNewCar} />}
 
         {!wide && tabBar}
 

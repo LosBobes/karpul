@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { firstName, fmtTime, shortCarName } from '../lib/dates'
 import { useT } from '../lib/i18n'
-import { dropZone, type DropTarget } from '../lib/dnd'
-import { drives, hasSeatFor, seatedIn, useMe, type Me } from '../lib/me'
+import { drives, seatedIn, useMe } from '../lib/me'
 import type { Ride } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
@@ -10,25 +9,16 @@ import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 interface Props {
   rides: Ride[]
   selected: number | null
-  /** Someone is dragging the passenger chip; cards that can take it light up. */
-  dragActive: boolean
-  over: DropTarget | null
   onSelect: (rideId: number) => void
   /** A list down the side column on a wide screen instead of a sideways strip. */
   vertical?: boolean
 }
 
-function canReceive(ride: Ride, me: Me): boolean {
-  if (drives(ride, me) || seatedIn(ride, me)) return false
-  return hasSeatFor(ride, me)
-}
-
 /**
- * One tile per ride going that day. The tiles are also drop targets, so a
- * chip can be dropped straight onto another car without opening it first.
+ * One tile per ride going that day; a tap opens it.
  * Adding a ride is the floating plus (AddRideButton.tsx), not a tile here.
  */
-export function CarCarousel({ rides, selected, dragActive, over, onSelect, vertical = false }: Props) {
+export function CarCarousel({ rides, selected, onSelect, vertical = false }: Props) {
   const t = useT()
   const me = useMe()
   const strip = useRef<HTMLDivElement>(null)
@@ -54,16 +44,11 @@ export function CarCarousel({ rides, selected, dragActive, over, onSelect, verti
           const seated = seatedIn(r, me)
           const mine = driving || seated
           const full = r.free_seats <= 0
-          const receives = dragActive && canReceive(r, me)
-          const isOver = over?.kind === 'ride' && over.rideId === r.id
           const cls = [
             'car-tile',
             selected === r.id && 'car-tile-selected',
             full && 'car-tile-full',
             mine && 'car-tile-mine',
-            receives && 'car-tile-droppable',
-            dragActive && !receives && 'car-tile-nodrop',
-            receives && isOver && 'car-tile-over',
           ]
             .filter(Boolean)
             .join(' ')
@@ -75,7 +60,6 @@ export function CarCarousel({ rides, selected, dragActive, over, onSelect, verti
               aria-pressed={selected === r.id}
               onClick={() => onSelect(r.id)}
               title={`${r.driver_name} · ${r.car_name}`}
-              {...dropZone(receives ? { kind: 'ride', rideId: r.id } : null)}
             >
               <span className="car-tile-art">
                 <CarGlyph carName={r.car_name} size={22} />
