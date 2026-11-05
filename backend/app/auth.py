@@ -249,7 +249,7 @@ def require_user(session: Session, creds: Credentials) -> User:
     if not creds.token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in first")
     user = user_for_token(session, creds.token)
-    if user is None:
+    if user is None or user.disabled:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired; sign in again")
     return user
 

@@ -9,7 +9,72 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** A shared car's card: the out-of-service line slides in, and three days of the calendar turn red. */
+function OutOfServiceDemo() {
+  const taken = [2, 3, 4]
+  return (
+    <div className="wn-card">
+      <div className="wn-busy-head">
+        <span className="wn-line wn-line-label" />
+        <span className="wn-busy-time">FIRM-002</span>
+      </div>
+      <div className="wn-block-line">
+        <span className="wn-block-icon" />
+        <span className="wn-line" />
+      </div>
+      <div className="wn-cal">
+        {[9, 10, 11, 12, 13, 14, 15].map((d, i) => (
+          <span key={d} className={taken.includes(i) ? 'wn-cal-day wn-cal-taken' : 'wn-cal-day'} style={{ ['--i' as string]: taken.indexOf(i) }}>
+            {d}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** A car's upkeep: the due chips pop in, amber then red, and the official fuel price under them. */
+function FleetUpkeepDemo() {
+  return (
+    <div className="wn-card">
+      <span className="wn-line wn-line-label" />
+      <div className="wn-due">
+        {['7', '800 km', '!'].map((text, i) => (
+          <span key={text} className={i === 2 ? 'wn-due-chip wn-due-red' : 'wn-due-chip'} style={{ ['--i' as string]: i }}>
+            {text}
+          </span>
+        ))}
+      </div>
+      <div className="wn-fuel">
+        <strong>236,00</strong>
+        <strong>207,00</strong>
+      </div>
+    </div>
+  )
+}
+
+/** All rides → Month: a row per person fills in, the allowance last. */
+function MonthSummaryDemo() {
+  const rows = [
+    ['AP', '182', '10.920'],
+    ['MJ', '90', '5.400'],
+    ['NN', '364', '21.840'],
+  ]
+  return (
+    <div className="wn-card wn-month">
+      {rows.map(([who, km, din], i) => (
+        <div key={who} className="wn-month-row" style={{ ['--i' as string]: i }}>
+          <span className="wn-pax-avatar">{who}</span>
+          <span className="wn-line" />
+          <span className="wn-month-km">{km}</span>
+          <strong className={i === 2 ? 'wn-month-din wn-month-over' : 'wn-month-din'}>{din}</strong>
+        </div>
+      ))}
     </div>
   )
 }

@@ -1,0 +1,227 @@
+/* ---------------------------------------------------------------------------
+   The fleet manager's and the office manager's screens: the Upkeep and Costs
+   tabs of Shared cars (components/FleetUpkeep.tsx, FleetCosts.tsx,
+   ShareRules.tsx), a car out of service and its due list on the car card
+   (CarStatus.tsx), the month summary of All rides (MonthSummary.tsx), and
+   the garage's plates let in for good. The dark theme's tints are in themes.css.
+--------------------------------------------------------------------------- */
+
+.fleet-list,
+.fleet-costs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.fleet-car {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+}
+.fleet-car-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fleet-car-head .admin-row-text {
+  flex: 1;
+  min-width: 0;
+}
+.fleet-sub {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.fleet-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem 0.75rem;
+  margin: 0;
+}
+.fleet-facts div {
+  min-width: 0;
+}
+.fleet-facts dt {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.fleet-facts dd {
+  margin: 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.fleet-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.fleet-block {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+.fleet-block-now {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* What a car's paperwork has coming: amber soon, red overdue. */
+.due-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.due-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.due-soon {
+  background: #fef3c7;
+  color: #b45309;
+}
+.due-overdue {
+  background: var(--red-soft);
+  color: #b42318;
+}
+
+.optional-date {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.optional-date > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+.control-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+}
+
+/* Out of service, on the car's card for everyone. */
+.car-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.car-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0.45rem 0.6rem;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+}
+.car-block svg {
+  flex: none;
+  margin-top: 0.1rem;
+}
+.car-block-now {
+  background: var(--red-soft);
+  color: #b42318;
+}
+.issue-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* The official fuel price. */
+.fuel-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.85rem;
+}
+.fuel-prices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+.fuel-prices strong {
+  font-size: 1.15rem;
+}
+
+.share-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.85rem;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+@media (max-width: 420px) {
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* All rides: the odometer's gap, and the month summary. */
+.log-gap {
+  color: #b45309;
+  font-weight: 600;
+}
+.log-views {
+  margin-bottom: 0.75rem;
+}
+.month-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.month-name {
+  min-width: 9rem;
+  text-align: center;
+  text-transform: capitalize;
+}
+.summary-group th {
+  padding-top: 0.6rem;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+.people-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.standing-plates {
+  margin-top: 1rem;
+}
+.stat-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.7rem;
+  color: var(--muted);
+}

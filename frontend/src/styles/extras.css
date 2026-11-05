@@ -1762,3 +1762,68 @@
   0%, 55% { background: transparent; }
   65%, 100% { background: var(--green-soft); }
 }
+
+/* What's new: a car out of service, its upkeep, the month summary. */
+.wn-block-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--red-soft);
+  animation: wn-arrive 5s var(--ease-out) infinite;
+}
+.wn-block-line .wn-line {
+  flex: 1;
+}
+.wn-block-icon {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 2px;
+  background: var(--red);
+}
+.wn-due {
+  display: flex;
+  gap: 0.35rem;
+}
+.wn-due-chip {
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #b45309;
+  animation: wn-arrive 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.35s);
+}
+.wn-due-red {
+  background: var(--red-soft);
+  color: #b42318;
+}
+.wn-fuel {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.wn-month {
+  gap: 0.35rem;
+}
+.wn-month-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  animation: wn-arrive 5s var(--ease-out) infinite;
+  animation-delay: calc(var(--i) * 0.35s);
+}
+.wn-month-km,
+.wn-month-din {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.wn-month-over {
+  color: #b45309;
+}

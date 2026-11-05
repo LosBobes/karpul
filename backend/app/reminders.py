@@ -141,12 +141,47 @@ def drop_driverless(session: Session, now: datetime | None = None) -> int:
     return len(due)
 
 
+# A pending shared car that leaves within this many hours and nobody decided
+# yet: the admins are reminded, once (`Ride.approval_nudged`).
+NUDGE_HOURS = 12
+
+
+def send_approval_nudges(session: Session, now: datetime) -> int:
+    """Remind the admins of every ask still pending shortly before it leaves;
+    returns how many rides they were reminded of."""
+    from .admin import admin_ids
+
+    stmt = select(Ride).where(
+        Ride.approval == "pending",
+        Ride.approval_nudged.is_(False),  # type: ignore[attr-defined]
+        Ride.ride_date >= now.date(),
+        Ride.ride_date <= (now + timedelta(hours=NUDGE_HOURS)).date(),
+    )
+    nudged = 0
+    admins = None
+    for ride in session.exec(stmt):
+        leaves = datetime.combine(ride.ride_date, ride.departure_time)
+        if leaves < now or leaves - now > timedelta(hours=NUDGE_HOURS):
+            continue
+        if admins is None:
+            admins = admin_ids(session)
+        notify(session, admins, "approval_waiting", ride, name=ride.driver_name)
+        ride.approval_nudged = True
+        session.add(ride)
+        nudged += 1
+    return nudged
+
+
 def send_due_reminders(session: Session, now: datetime | None = None) -> int:
-    """Both reminders, once; returns how many rides had a departure reminder
+    """Every reminder, once; returns how many rides had a departure reminder
     go out this tick. Commits."""
+    from .fleet import daily_fleet_check
+
     now = now or datetime.now()
     told = send_departure_reminders(session, now)
     send_km_reminders(session, now)
+    send_approval_nudges(session, now)
+    daily_fleet_check(session, now)
     session.commit()
     return told
 

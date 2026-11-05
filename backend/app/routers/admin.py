@@ -7,6 +7,7 @@ and look every ride up in one table (`/rides`), past ones included; the
 app turns what is on screen into a spreadsheet itself.
 """
 
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Annotated
 
@@ -14,16 +15,18 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import selectinload
 from sqlmodel import Session, col, delete, select
 
-from .. import audit
+from .. import audit, fleet
 from ..admin import admin_by_config, configured_admins, is_admin, require_admin
 from ..auth import CredsDep, issue_reset
 from ..database import get_session, get_write_session
 from ..events import disconnect, photos_changed, request_deleted, request_saved, ride_deleted, ride_saved
 from ..models import (
     AdminAction,
+    AuthSession,
     Booking,
     CarType,
     DriveLeg,
+    GaragePlate,
     PasswordReset,
     ProfilePhoto,
     PushSubscription,
@@ -36,7 +39,7 @@ from ..models import (
 )
 from ..offices import needs_garage
 from ..push import notify
-from ..schemas import AdminActionRead, AdminUserRead, AdminUserUpdate, GaragePlateUpdate, ResetLinkOut, RideRead
+from ..schemas import AdminActionRead, AdminUserRead, AdminUserUpdate, GaragePlateRead, GaragePlateUpdate, ResetLinkOut, RideRead
 from ..services import board_extras, promote_waitlist, to_ride_read_dict
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -55,6 +58,9 @@ def _admin_view(user: User) -> AdminUserRead:
         is_admin=is_admin(user),
         admin_by_config=admin_by_config(user),
         created_at=user.created_at,
+        department=user.department,
+        shared_per_week=user.shared_per_week,
+        disabled=user.disabled,
     )
 
 
@@ -81,24 +87,60 @@ def list_users(session: SessionDep, creds: CredsDep):
 
 @router.patch("/users/{user_id}", response_model=AdminUserRead)
 def update_user(user_id: int, payload: AdminUserUpdate, session: WriteSessionDep, creds: CredsDep):
-    """Make an account an admin, or stop it being one. An admin through
-    KARPUL_ADMINS stays one whatever this says, and the last admin cannot be
-    removed, or nobody could manage the pool any more."""
+    """Change an account: make it an admin or stop it being one (an admin
+    through KARPUL_ADMINS stays one whatever this says, and the last admin
+    cannot be removed, or nobody could manage the pool any more), its
+    department, its own share of shared cars, or switch it off. Switching
+    off is for someone who left: their coming rides, seats, queue places and
+    requests go as when an account is deleted, every browser of theirs is
+    signed out, and the history keeps them linked, unlike a deletion."""
     admin = require_admin(session, creds)
     user = _get_user_or_404(session, user_id)
-    if not payload.is_admin and admin_by_config(user):
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            f"{user.display_name} is an admin by the server's configuration (KARPUL_ADMINS)",
-        )
-    if not payload.is_admin and user.is_admin:
-        _keep_an_admin(session, user)
-    if user.is_admin != payload.is_admin:
-        audit.record(session, admin, "admin_granted" if payload.is_admin else "admin_revoked", user.display_name)
-    user.is_admin = payload.is_admin
+    sent = payload.model_fields_set
+    if payload.is_admin is not None:
+        if not payload.is_admin and admin_by_config(user):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"{user.display_name} is an admin by the server's configuration (KARPUL_ADMINS)",
+            )
+        if not payload.is_admin and user.is_admin:
+            _keep_an_admin(session, user)
+        if user.is_admin != payload.is_admin:
+            audit.record(session, admin, "admin_granted" if payload.is_admin else "admin_revoked", user.display_name)
+        user.is_admin = payload.is_admin
+    changes = []
+    if payload.department is not None and payload.department != user.department:
+        changes.append(("department", user.department, payload.department))
+        user.department = payload.department
+    if "shared_per_week" in sent and payload.shared_per_week != user.shared_per_week:
+        changes.append(("shared_per_week", user.shared_per_week, payload.shared_per_week))
+        user.shared_per_week = payload.shared_per_week
+    if changes:
+        audit.record(session, admin, "account_edited", user.display_name, changes=changes)
+    fallout: Fallout | None = None
+    if payload.disabled is not None and payload.disabled != user.disabled:
+        if payload.disabled:
+            if user.id == admin.id:
+                raise HTTPException(status.HTTP_409_CONFLICT, "You cannot switch your own account off")
+            if admin_by_config(user):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"{user.display_name} is an admin by the server's configuration (KARPUL_ADMINS)",
+                )
+            if is_admin(user):
+                _keep_an_admin(session, user)
+            fallout = _clear_coming(session, user)
+            session.exec(delete(AuthSession).where(col(AuthSession.user_id) == user.id))
+            session.exec(delete(PushSubscription).where(col(PushSubscription.user_id) == user.id))
+            session.exec(delete(PasswordReset).where(col(PasswordReset.user_id) == user.id))
+        audit.record(session, admin, "account_disabled" if payload.disabled else "account_enabled", user.display_name)
+        user.disabled = payload.disabled
     session.add(user)
     session.commit()
     session.refresh(user)
+    if fallout is not None:
+        disconnect(user_id)
+        _publish(session, fallout)
     return _admin_view(user)
 
 
@@ -113,6 +155,76 @@ def reset_link(user_id: int, session: WriteSessionDep, creds: CredsDep):
     session.commit()
     session.refresh(row)
     return ResetLinkOut(path=f"/reset/{token}", expires_at=row.expires_at)
+
+
+@dataclass
+class Fallout:
+    """What clearing an account's coming plans changed, to publish after the commit."""
+
+    gone: list[tuple[int, date]] = field(default_factory=list)
+    promoted: list[tuple[Ride, list[Booking]]] = field(default_factory=list)
+    withdrawn: list[int] = field(default_factory=list)
+    reopened: list[RideRequest] = field(default_factory=list)
+
+
+def _clear_coming(session: Session, user: User) -> Fallout:
+    """Take away what `user` had planned from today on: the rides it would
+    drive (their passengers are told), its seats in coming rides (the seat
+    goes to the first in line), its waiting-list places and its requests."""
+    today = date.today()
+    out = Fallout()
+    reopened: list[RideRequest] = []
+    for ride in session.exec(select(Ride).where(Ride.driver_id == user.id, Ride.ride_date >= today)).all():
+        passengers = [b.passenger_id for b in ride.bookings]
+        if passengers:
+            notify(session, passengers, "ride_removed", ride, driver=ride.driver_name)
+        for request in session.exec(select(RideRequest).where(RideRequest.ride_id == ride.id)):
+            request.ride_id = None
+            session.add(request)
+            reopened.append(request)
+        out.gone.append((ride.id, ride.ride_date))  # type: ignore[arg-type]
+        session.delete(ride)
+
+    changed: dict[int, Ride] = {}
+    seats = session.exec(
+        select(Booking).join(Ride).where(Booking.passenger_id == user.id, Ride.ride_date >= today)
+    ).all()
+    for booking in seats:
+        ride = booking.ride
+        ride.bookings.remove(booking)
+        session.delete(booking)
+        changed[ride.id] = ride  # type: ignore[index]
+        notify(session, [ride.driver_id], "got_out", ride, name=booking.passenger_name)
+    for entry in session.exec(select(WaitlistEntry).where(WaitlistEntry.user_id == user.id)).all():
+        entry.ride.waitlist.remove(entry)
+        session.delete(entry)
+        changed[entry.ride_id] = entry.ride
+    for ride in changed.values():
+        if ride in session.deleted:
+            continue
+        out.promoted.append((ride, promote_waitlist(session, ride)))
+
+    requests = session.exec(select(RideRequest).where(RideRequest.user_id == user.id)).all()
+    out.withdrawn = [r.id for r in requests]  # type: ignore[misc]
+    for request in requests:
+        session.delete(request)
+    out.reopened = [r for r in reopened if r.user_id != user.id]
+    return out
+
+
+def _publish(session: Session, fallout: Fallout) -> None:
+    for rid, rdate in fallout.gone:
+        ride_deleted(rid, rdate)
+    for ride, booked in fallout.promoted:
+        session.refresh(ride)
+        ride_saved(ride, created=False)
+        if booked:
+            notify(session, [b.passenger_id for b in booked], "seat_freed", ride, driver=ride.driver_name)
+    for rid in fallout.withdrawn:
+        request_deleted(rid)
+    for request in fallout.reopened:
+        session.refresh(request)
+        request_saved(request)
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -135,48 +247,7 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
         )
     if is_admin(user):
         _keep_an_admin(session, user)
-    today = date.today()
-
-    # Rides it would drive: cancelled, as if it had removed them itself.
-    gone: list[tuple[int, date]] = []
-    reopened: list[RideRequest] = []
-    for ride in session.exec(select(Ride).where(Ride.driver_id == user.id, Ride.ride_date >= today)).all():
-        passengers = [b.passenger_id for b in ride.bookings]
-        if passengers:
-            notify(session, passengers, "ride_removed", ride, driver=ride.driver_name)
-        for request in session.exec(select(RideRequest).where(RideRequest.ride_id == ride.id)):
-            request.ride_id = None
-            session.add(request)
-            reopened.append(request)
-        gone.append((ride.id, ride.ride_date))  # type: ignore[arg-type]
-        session.delete(ride)
-
-    # Its seats in coming rides, and its places in their queues.
-    changed: dict[int, Ride] = {}
-    promoted: list[tuple[Ride, list[Booking]]] = []
-    seats = session.exec(
-        select(Booking).join(Ride).where(Booking.passenger_id == user.id, Ride.ride_date >= today)
-    ).all()
-    for booking in seats:
-        ride = booking.ride
-        ride.bookings.remove(booking)
-        session.delete(booking)
-        changed[ride.id] = ride  # type: ignore[index]
-        notify(session, [ride.driver_id], "got_out", ride, name=booking.passenger_name)
-    for entry in session.exec(select(WaitlistEntry).where(WaitlistEntry.user_id == user.id)).all():
-        entry.ride.waitlist.remove(entry)
-        session.delete(entry)
-        changed[entry.ride_id] = entry.ride
-    for ride in changed.values():
-        if ride in session.deleted:
-            continue
-        promoted.append((ride, promote_waitlist(session, ride)))
-
-    requests = session.exec(select(RideRequest).where(RideRequest.user_id == user.id)).all()
-    withdrawn = [r.id for r in requests]
-    for request in requests:
-        session.delete(request)
-    reopened = [r for r in reopened if r.user_id != user.id]
+    fallout = _clear_coming(session, user)
 
     # The past keeps its names; only the link to the account goes.
     for booking in session.exec(select(Booking).where(Booking.passenger_id == user.id)).all():
@@ -211,18 +282,7 @@ def delete_user(user_id: int, session: WriteSessionDep, creds: CredsDep):
     disconnect(user_id)
     if had_photo:
         photos_changed()
-    for rid, rdate in gone:
-        ride_deleted(rid, rdate)
-    for ride, booked in promoted:
-        session.refresh(ride)
-        ride_saved(ride, created=False)
-        if booked:
-            notify(session, [b.passenger_id for b in booked], "seat_freed", ride, driver=ride.driver_name)
-    for rid in withdrawn:
-        request_deleted(rid)  # type: ignore[arg-type]
-    for request in reopened:
-        session.refresh(request)
-        request_saved(request)
+    _publish(session, fallout)
 
 
 # The rides table looks further than the board's 92 days: an office keeps a
@@ -259,9 +319,10 @@ def ride_log(
     """Admin-only: every ride in a window of up to MAX_LOG_DAYS, past or
     coming, as the board shows them."""
     require_admin(session, creds)
-    _, _, rides = _log_rides(session, date_from, date_to)
+    _, end, rides = _log_rides(session, date_from, date_to)
     extras = board_extras(session, rides)
-    return [to_ride_read_dict(r, extras) for r in rides]
+    gaps = fleet.odometer_gaps(fleet.shared_rides_until(session, end))
+    return [{**to_ride_read_dict(r, extras), "km_gap": gaps.get(r.id)} for r in rides]  # type: ignore[arg-type]
 
 
 
@@ -324,17 +385,69 @@ def garage_plate(ride_id: int, payload: GaragePlateUpdate, session: WriteSession
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ride not found")
     if not needs_garage(ride.car_type, ride.plate, ride.destination):
         raise HTTPException(status.HTTP_409_CONFLICT, "This ride has no plate for the garage")
-    if ride.plate_registered == payload.registered:
+    standing = session.exec(select(GaragePlate).where(GaragePlate.plate == ride.plate)).first()
+    others: list[Ride] = []
+    if payload.registered and payload.standing and standing is None:
+        session.add(GaragePlate(plate=ride.plate, owner_name=ride.driver_name, by_name=admin.display_name))
+        audit.record(session, admin, "plate_standing", ride.driver_name, changes=[("plate", None, ride.plate)])
+        # Its other coming rides are on the list now too.
+        others = [
+            r
+            for r in session.exec(
+                select(Ride).where(Ride.plate == ride.plate, Ride.ride_date >= date.today(), Ride.id != ride.id)
+            )
+            if not r.plate_registered and needs_garage(r.car_type, r.plate, r.destination)
+        ]
+        for other in others:
+            other.plate_registered = True
+            session.add(other)
+    elif not payload.registered and standing is not None:
+        # Not on the list after all: nor for good.
+        session.delete(standing)
+        audit.record(session, admin, "plate_standing_removed", standing.owner_name, changes=[("plate", ride.plate, None)])
+    if ride.plate_registered == payload.registered and not others:
+        session.commit()
         return to_ride_read_dict(ride)
+    if ride.plate_registered != payload.registered:
+        audit.record(
+            session, admin, "plate_registered" if payload.registered else "plate_unregistered", ride.driver_name,
+            ride=ride, changes=[("plate", None, ride.plate)],
+        )
     ride.plate_registered = payload.registered
     session.add(ride)
-    audit.record(
-        session, admin, "plate_registered" if payload.registered else "plate_unregistered", ride.driver_name,
-        ride=ride, changes=[("plate", None, ride.plate)],
-    )
     session.commit()
     session.refresh(ride)
     ride_saved(ride, created=False)
+    for other in others:
+        session.refresh(other)
+        ride_saved(other, created=False)
     if payload.registered:
         notify(session, [ride.driver_id], "plate_registered", ride, name=admin.display_name, plate=ride.plate)
     return to_ride_read_dict(ride)
+
+
+@router.get("/garage/plates", response_model=list[GaragePlateRead])
+def standing_plates(session: SessionDep, creds: CredsDep):
+    """Admin-only: the plates the Beograd garage lets in for good."""
+    require_admin(session, creds)
+    return session.exec(select(GaragePlate).order_by(GaragePlate.plate)).all()
+
+
+@router.delete("/garage/plates/{plate_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_standing_plate(plate_id: int, session: WriteSessionDep, creds: CredsDep):
+    """Admin-only: a plate is no longer let in for good; its coming rides
+    are asked about again, as new ones."""
+    admin = require_admin(session, creds)
+    row = session.get(GaragePlate, plate_id)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Plate not found")
+    audit.record(session, admin, "plate_standing_removed", row.owner_name, changes=[("plate", row.plate, None)])
+    session.delete(row)
+    session.commit()
+
+
+@router.get("/summary")
+def summary(session: SessionDep, creds: CredsDep, month: str = Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")):
+    """Admin-only: the month's figures per person (fleet.month_summary)."""
+    require_admin(session, creds)
+    return fleet.month_summary(session, month)

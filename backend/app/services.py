@@ -443,16 +443,22 @@ def resolve_corporate_car(session: Session, car_id: int) -> CorporateCar:
 
 # A shared car is rationed per driver: this many rides a week (Mon to Sun) and
 # a day, pending and approved ones counted. Past that an admin has to approve.
-SHARED_CAR_PER_WEEK = 1
-SHARED_CAR_PER_DAY = 1
+# An admin sets how many under Usage (fleet.DEFAULTS: one a week, one a day),
+# and a person can have their own week's share (`User.shared_per_week`).
 LIMIT_WEEK = "You already have a shared car this week. An admin can approve another"
 LIMIT_DAY = "You already have a shared car that day. An admin can approve another"
 # Nor may a driver's shared-car rides join up into one stretch longer than this
 # (a ride left with no return holds the car to midnight, and the next day's
 # ride from 00:00 carries straight on). Rides are same-day, so one ride alone
 # is at most 24 hours: it takes two that meet.
-SHARED_CAR_MAX_STRETCH = timedelta(hours=24)
-LIMIT_STRETCH = "That keeps a shared car with you for more than 24 hours in a row. An admin can approve it"
+# (`share_max_hours`, 24 unless an admin changed it.)
+
+
+def limit_stretch(hours: int) -> str:
+    return f"That keeps a shared car with you for more than {hours} hours in a row. An admin can approve it"
+
+
+LIMIT_STRETCH = limit_stretch(24)
 
 
 def shared_car_use(session: Session, driver_id: int, day: date, exclude_ride_id: int | None = None) -> tuple[int, int]:
@@ -521,13 +527,19 @@ def over_shared_car_share(
 ) -> str | None:
     """The reason a shared-car ride on `day` is past the driver's share, or
     None while it is within it. The day's text wins, being the nearer one."""
+    from .fleet import setting
+
+    driver = session.get(User, driver_id)
+    per_week = driver.shared_per_week if driver is not None and driver.shared_per_week is not None else setting(session, "share_per_week")
+    per_day = setting(session, "share_per_day")
+    hours = setting(session, "share_max_hours")
     week, same_day = shared_car_use(session, driver_id, day, exclude_ride_id)
-    if same_day >= SHARED_CAR_PER_DAY:
+    if same_day >= per_day:
         return LIMIT_DAY
-    if week >= SHARED_CAR_PER_WEEK:
+    if week >= per_week:
         return LIMIT_WEEK
-    if shared_car_stretch(session, driver_id, day, departure, return_time, exclude_ride_id) > SHARED_CAR_MAX_STRETCH:
-        return LIMIT_STRETCH
+    if shared_car_stretch(session, driver_id, day, departure, return_time, exclude_ride_id) > timedelta(hours=hours):
+        return limit_stretch(hours)
     return None
 
 
@@ -539,6 +551,10 @@ def ensure_car_available(
     return_time: time | None,
     exclude_ride_id: int | None = None,
 ) -> None:
+    from .fleet import block_on
+
+    if block_on(session, car_id, ride_date) is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "That car is out of service that day")
     stmt = select(Ride).where(
         Ride.corporate_car_id == car_id,
         Ride.ride_date == ride_date,
@@ -606,7 +622,7 @@ FUEL_L_PER_KM = 0.07
 """And what it burns: 7 l per 100 km."""
 
 
-def impact(rides: list[Ride], user_id: int | None = None) -> dict:
+def impact(rides: list[Ride], user_id: int | None = None, fuel_price: float | None = None) -> dict:
     """The car trips the rides took off the road, and what they would have put out.
 
     Every passenger in a ride is one car that stayed at home for the ride's
@@ -628,6 +644,8 @@ def impact(rides: list[Ride], user_id: int | None = None) -> dict:
         "car_km_avoided": round(km, 1),
         "co2_kg": round(km * CO2_KG_PER_KM, 1),
         "fuel_l": round(km * FUEL_L_PER_KM, 1),
+        # What that fuel comes to at the official price (app/fleet.py), when known.
+        "fuel_rsd": round(km * FUEL_L_PER_KM * fuel_price) if fuel_price is not None else None,
     }
 
 
@@ -639,9 +657,12 @@ def person_stats(session: Session, user: User, today: date | None = None) -> dic
     driver or passenger (the drivers set the distance; rides without one count
     as 0). A return ride is not doubled: the figure is a floor, not a claim.
     """
+    from .fleet import price_on, setting
+
     today = today or date.today()
     rides = rides_of(session, user, date(2000, 1, 1), today)
     month_start = today.replace(day=1)
+    price = price_on(session, today, setting(session, "allowance_fuel"))
 
     def bucket(subset: list[Ride]) -> dict:
         driven = [r for r in subset if r.driver_id == user.id]
@@ -651,7 +672,7 @@ def person_stats(session: Session, user: User, today: date | None = None) -> dic
             "rides_ridden": len(ridden),
             "people_carried": sum(len(r.bookings) for r in driven),
             "km_shared": round(sum(r.distance_km or 0 for r in subset), 1),
-            **impact(subset, user.id),
+            **impact(subset, user.id, price),
         }
 
     history = [
@@ -712,6 +733,8 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
     out, so a car out at the weekend counts as used and the rate never passes
     100%). Plus the recent rides as history.
     """
+    from .fleet import price_on, setting
+
     today = today or date.today()
     start = today - timedelta(days=days - 1)
     working = max(_working_days(start, today), 1)
@@ -786,7 +809,7 @@ def corporate_usage(session: Session, days: int, today: date | None = None, hist
         "team": {
             "rides": len(window),
             "seats_filled": sum(len(r.bookings) for r in window),
-            **impact(window),
+            **impact(window, fuel_price=price_on(session, today, setting(session, "allowance_fuel"))),
         },
         "history": history[:history_limit] if history_limit is not None else history,
     }

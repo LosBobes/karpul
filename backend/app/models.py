@@ -66,6 +66,14 @@ class User(SQLModel, table=True):
     # (`GET /api/rides/last`): car, seats, times, route and the rest, on the
     # day picked. Per account, so it holds in every browser.
     prefill_rides: bool = Field(default=True, sa_column_kwargs={"server_default": "1"})
+    # The team or cost centre, set by an admin; the month summary groups by it.
+    department: str = Field(default="", sa_column_kwargs={"server_default": ""})
+    # This person's own share of shared-car rides a week, when it differs
+    # from the office's (app/fleet.py, `share_per_week`); None follows the office.
+    shared_per_week: int | None = None
+    # Switched off by an admin (someone who left): cannot sign in, is not
+    # offered as a colleague, keeps their history under their name.
+    disabled: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     created_at: datetime = Field(default_factory=utcnow)
 
     sessions: list["AuthSession"] = Relationship(
@@ -104,6 +112,16 @@ class CorporateCar(SQLModel, table=True):
     # in the car that starts there gets the pin.
     home_lat: float | None = None
     home_lng: float | None = None
+    # The car's paperwork and upkeep (app/fleet.py): the admins are pushed
+    # ahead of each date, and the shared cars' Upkeep tab lists what is due.
+    registration_until: date | None = None
+    insurance_until: date | None = None
+    # The next service, by a day, by the odometer, or by whichever comes first.
+    service_due_on: date | None = None
+    service_due_km: int | None = None
+    # What is on the wheels: "summer", "winter", "all_season" or "" (not said).
+    # Summer tyres in the winter season (1 Nov to 1 Apr) are flagged.
+    tyres: str = Field(default="", sa_column_kwargs={"server_default": ""})
 
     rides: list["Ride"] = Relationship(back_populates="corporate_car")
 
@@ -171,11 +189,14 @@ class Ride(SQLModel, table=True):
     # Set once the driver was asked to note the odometer after a shared car's
     # return (app/reminders.py), so it is asked once.
     km_reminder_sent: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
-    # A shared car is rationed (services.SHARED_CAR_PER_WEEK / _PER_DAY): a
+    # A shared car is rationed (fleet.DEFAULTS share_per_week / _per_day): a
     # ride past the driver's share is "" when within it, "pending" while it
     # waits for an admin, "approved" once an admin let it through (or made
     # it). Own cars are always "".
     approval: str = Field(default="")
+    # The admins were reminded that this pending ride still waits, shortly
+    # before it leaves (app/reminders.py); once.
+    approval_nudged: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     # The driver of a shared car cancelled with passengers in it: the ride
     # stays (and keeps the car) while they are asked whether one of them
     # drives instead (POST /api/rides/{id}/takeover). `driver_id` and
@@ -466,6 +487,9 @@ class CarReport(SQLModel, table=True):
     clean: bool | None = None
     # What is wrong, in the reporter's words: "" for nothing wrong, None for not said.
     issues: str | None = None
+    # Where a reported problem stands, set by an admin: "" open, "seen", or
+    # "garage" (being repaired). Fixed is a newer report saying `issues: ""`.
+    issue_status: str = Field(default="", sa_column_kwargs={"server_default": ""})
     created_at: datetime = Field(default_factory=utcnow, index=True)
 
 
@@ -505,3 +529,84 @@ class UsageCount(SQLModel, table=True):
     # "view.week", "sheet.myRides", ... (USAGE_KEY in routers/usage.py).
     key: str
     count: int = Field(default=0)
+
+
+class CarBlock(SQLModel, table=True):
+    """A shared car out of service from `start_date` to `end_date` (inclusive;
+    None: until further notice), for a service, a repair or anything else:
+    nobody can book it on those days (`services.ensure_car_available`) and the
+    form paints them taken. Written by an admin (`routers/fleet.py`)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    car_id: int = Field(foreign_key="corporatecar.id", index=True)
+    start_date: date = Field(index=True)
+    end_date: date | None = None
+    reason: str = ""
+    by_name: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class CarCost(SQLModel, table=True):
+    """Money spent on a shared car: fuel or charging, a toll, parking, a wash,
+    a service. Amounts in dinars. Entered by an admin from the receipt."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    car_id: int = Field(foreign_key="corporatecar.id", index=True)
+    day: date = Field(index=True)
+    # fleet.COST_KINDS
+    kind: str
+    amount: float
+    litres: float | None = None
+    odometer_km: int | None = None
+    note: str = ""
+    user_id: int | None = Field(default=None, foreign_key="appuser.id")
+    user_name: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class FuelPrice(SQLModel, table=True):
+    """The official fuel price from a day on: Serbia caps the retail price of
+    Evrodizel and BMB 95 every Friday (the ministry of trade, under the decree
+    limiting oil derivative prices). The newest row on or before a day is that
+    day's price (`fleet.price_on`); seeded with `fleet.FUEL_REFERENCE`."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    valid_from: date = Field(unique=True, index=True)
+    # Dinars a litre.
+    diesel: float
+    petrol: float
+    source: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Setting(SQLModel, table=True):
+    """An office-wide setting an admin can change (`fleet.DEFAULTS`); a key
+    with no row has its default."""
+
+    key: str = Field(primary_key=True)
+    value: str
+
+
+class GaragePlate(SQLModel, table=True):
+    """A licence plate the Beograd garage lets in for good: a ride coming in
+    with it is on the list already, so nobody is asked to add it again."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    plate: str = Field(unique=True, index=True)
+    # Whose car it was when an admin put it on for good, as a reminder.
+    owner_name: str = ""
+    by_name: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class FleetNotice(SQLModel, table=True):
+    """A reminder about a car's paperwork or upkeep that went out to the
+    admins (app/fleet.py), so each step is pushed once: `key` is what is due
+    and at which step ("registration:2026-12-01:7")."""
+
+    __table_args__ = (UniqueConstraint("car_id", "key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    car_id: int = Field(foreign_key="corporatecar.id", index=True)
+    key: str
+    created_at: datetime = Field(default_factory=utcnow)

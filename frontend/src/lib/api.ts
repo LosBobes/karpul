@@ -4,6 +4,17 @@ import type { NewStop } from './stops'
 import type {
   AdminAction,
   AdminUser,
+  AdminUserPatch,
+  CarBlock,
+  CarCost,
+  CarCostInput,
+  CarPaperwork,
+  FleetOverview,
+  FleetSettings,
+  FuelPrice,
+  GaragePlate,
+  IssueStatus,
+  MonthSummary,
   CarBusy,
   CarReport,
   CarReportInput,
@@ -396,11 +407,41 @@ export const api = {
   withdrawChange: (rideId: number) => request<Ride>(`/api/rides/${rideId}/proposal`, { method: 'DELETE' }),
   /** Own cars coming to the Beograd office whose plate the garage needs, waiting ones first. */
   garage: () => request<Ride[]>('/api/admin/garage'),
-  setPlateRegistered: (rideId: number, registered: boolean) =>
-    request<Ride>(`/api/admin/garage/${rideId}`, json('PUT', { registered })),
+  /** `standing`: the garage lets the plate in for good, so its next rides are on the list already. */
+  setPlateRegistered: (rideId: number, registered: boolean, standing = false) =>
+    request<Ride>(`/api/admin/garage/${rideId}`, json('PUT', { registered, standing })),
+  standingPlates: () => request<GaragePlate[]>('/api/admin/garage/plates'),
+  removeStandingPlate: (id: number) => request<void>(`/api/admin/garage/plates/${id}`, { method: 'DELETE' }),
   adminLog: (before?: number) => request<AdminAction[]>(`/api/admin/log${before ? `?before=${before}` : ''}`),
 
   setAdmin: (userId: number, isAdmin: boolean) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', { is_admin: isAdmin })),
+  /** A department, someone's own share, or switching an account off (or back on). */
+  updateUser: (userId: number, patch: AdminUserPatch) => request<AdminUser>(`/api/admin/users/${userId}`, json('PATCH', patch)),
+
+  /** Who went how far in a month, with the own-car allowance (backend: fleet.month_summary). */
+  monthSummary: (month: string) => request<MonthSummary>(`/api/admin/summary?month=${month}`),
+
+  // --- the fleet (backend: routers/fleet.py) ---
+
+  setPaperwork: (carId: number, paperwork: Partial<CarPaperwork>) =>
+    request<CorporateCar>(`/api/cars/corporate/${carId}`, json('PATCH', paperwork)),
+  setIssueStatus: (reportId: number, status: IssueStatus) =>
+    request<CarReport>(`/api/cars/corporate/reports/${reportId}/status`, json('PUT', { status })),
+  blocks: () => request<CarBlock[]>('/api/fleet/blocks'),
+  addBlock: (input: { car_id: number; start_date: string; end_date: string | null; reason: string }) =>
+    request<{ block: CarBlock; rides: Ride[] }>('/api/fleet/blocks', json('POST', input)),
+  endBlock: (id: number, endDate: string | null) => request<CarBlock>(`/api/fleet/blocks/${id}`, json('PATCH', { end_date: endDate })),
+  removeBlock: (id: number) => request<void>(`/api/fleet/blocks/${id}`, { method: 'DELETE' }),
+  costs: (from: string, to: string) => request<CarCost[]>(`/api/fleet/costs?from=${from}&to=${to}`),
+  addCost: (input: CarCostInput) => request<CarCost>('/api/fleet/costs', json('POST', input)),
+  removeCost: (id: number) => request<void>(`/api/fleet/costs/${id}`, { method: 'DELETE' }),
+  fleetOverview: (from: string, to: string) => request<FleetOverview>(`/api/fleet/overview?from=${from}&to=${to}`),
+  fuelPrices: () => request<FuelPrice[]>('/api/fleet/fuel'),
+  addFuelPrice: (input: { valid_from: string; diesel: number; petrol: number; source: string }) =>
+    request<FuelPrice>('/api/fleet/fuel', json('POST', input)),
+  removeFuelPrice: (id: number) => request<void>(`/api/fleet/fuel/${id}`, { method: 'DELETE' }),
+  fleetSettings: () => request<FleetSettings>('/api/fleet/settings'),
+  setFleetSettings: (settings: FleetSettings) => request<FleetSettings>('/api/fleet/settings', json('PUT', settings)),
 
   /** Delete an account: its coming rides, seats and requests go, its past stays. */
   deleteUser: (userId: number) => request<void>(`/api/admin/users/${userId}`, { method: 'DELETE' }),

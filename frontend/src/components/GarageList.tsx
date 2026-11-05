@@ -2,16 +2,17 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { fmtShortDate, fmtTime } from '../lib/dates'
 import { useT } from '../lib/i18n'
-import type { Ride } from '../lib/types'
+import type { GaragePlate, Ride } from '../lib/types'
 import { Avatar } from './Avatar'
-import { ArrowRightIcon, CheckIcon } from './icons'
+import { ArrowRightIcon, CheckIcon, TrashIcon } from './icons'
 import { Sheet } from './Sheet'
 
 interface Props {
   /** Bumped by the board after a tick or a live change, so the list reloads. */
   version: number
   busyId: number | null
-  onMark: (ride: Ride, registered: boolean) => void
+  /** `standing`: the garage lets the plate in for good, so its next rides are on the list already. */
+  onMark: (ride: Ride, registered: boolean, standing?: boolean) => void
   /** Open the ride on the day plan. */
   onOpen: (ride: Ride) => void
   onClose: () => void
@@ -27,7 +28,9 @@ interface Props {
 export function GarageList({ version, busyId, onMark, onOpen, onClose }: Props) {
   const t = useT()
   const [rides, setRides] = useState<Ride[] | null>(null)
+  const [plates, setPlates] = useState<GaragePlate[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [mine, setMine] = useState(0)
 
   useEffect(() => {
     api
@@ -37,7 +40,20 @@ export function GarageList({ version, busyId, onMark, onOpen, onClose }: Props) 
         setError(null)
       })
       .catch((e) => setError(t.apiError(e instanceof Error ? e.message : String(e))))
-  }, [version, t])
+    api
+      .standingPlates()
+      .then(setPlates)
+      .catch(() => setPlates([]))
+  }, [version, mine, t])
+
+  async function forget(plate: GaragePlate) {
+    try {
+      await api.removeStandingPlate(plate.id)
+    } catch (e) {
+      setError(t.apiError(e instanceof Error ? e.message : String(e)))
+    }
+    setMine((n) => n + 1)
+  }
 
   return (
     <Sheet id="garage-title" title={t.garage.title} className="approvals" onClose={onClose}>
@@ -77,15 +93,38 @@ export function GarageList({ version, busyId, onMark, onOpen, onClose }: Props) 
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onMark(r, true)}>
-                      <CheckIcon size={16} /> {t.garage.markDone}
-                    </button>
+                    <>
+                      <button type="button" className="btn btn-primary" disabled={busy} onClick={() => onMark(r, true)}>
+                        <CheckIcon size={16} /> {t.garage.markDone}
+                      </button>
+                      <button type="button" className="btn btn-soft" disabled={busy} onClick={() => onMark(r, true, true)}>
+                        {t.garage.forGood}
+                      </button>
+                    </>
                   )}
                 </span>
               </li>
             )
           })}
         </ul>
+      )}
+      {plates.length > 0 && (
+        <section className="standing-plates" aria-label={t.garage.standing}>
+          <h3 className="section-title">{t.garage.standing}</h3>
+          <ul className="admin-list">
+            {plates.map((p) => (
+              <li key={p.id} className="admin-row">
+                <span className="admin-row-text">
+                  <strong className="garage-plate">{p.plate}</strong>
+                  <span>{p.owner_name}</span>
+                </span>
+                <button type="button" className="icon-btn" aria-label={t.garage.forgetPlate(p.plate)} title={t.garage.forgetPlate(p.plate)} onClick={() => void forget(p)}>
+                  <TrashIcon size={18} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </Sheet>
   )

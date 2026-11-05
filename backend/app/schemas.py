@@ -62,6 +62,9 @@ class CarBusyRead(BaseModel):
     departure_time: time
     return_time: time | None
     driver_name: str
+    # A day the car is out of service (fleet.CarBlock): the whole day is
+    # taken, `ride_id` is 0 and `driver_name` the reason.
+    out_of_service: bool = False
 
 
 class CorporateCarRead(BaseModel):
@@ -76,6 +79,12 @@ class CorporateCarRead(BaseModel):
     # Where `home` is on the map, when an admin pinned it.
     home_lat: float | None = None
     home_lng: float | None = None
+    # Paperwork and upkeep (app/fleet.py).
+    registration_until: date | None = None
+    insurance_until: date | None = None
+    service_due_on: date | None = None
+    service_due_km: int | None = None
+    tyres: str = ""
 
 
 class CorporateCarCreate(BaseModel):
@@ -115,6 +124,12 @@ class CorporateCarUpdate(BaseModel):
     home: str | None = Field(default=None, max_length=120)
     # The pin of `home`; null takes it away.
     home_point: Point | None = None
+    # Paperwork and upkeep; null clears a date or the km.
+    registration_until: date | None = None
+    insurance_until: date | None = None
+    service_due_on: date | None = None
+    service_due_km: int | None = Field(default=None, ge=0, le=9_999_999)
+    tyres: Literal["", "summer", "winter", "all_season"] | None = None
 
     @field_validator("name")
     @classmethod
@@ -301,6 +316,10 @@ class AdminUserRead(BaseModel):
     # An admin through KARPUL_ADMINS, which the app cannot change.
     admin_by_config: bool
     created_at: datetime
+    department: str = ""
+    # Their own shared-car rides a week, None: the office's (fleet.DEFAULTS).
+    shared_per_week: int | None = None
+    disabled: bool = False
 
 
 class AdminActionRead(BaseModel):
@@ -329,7 +348,19 @@ class AdminActionRead(BaseModel):
 
 
 class AdminUserUpdate(BaseModel):
-    is_admin: bool
+    """What an admin changes about an account; each field optional, and
+    `shared_per_week: null` sent goes back to the office's share."""
+
+    is_admin: bool | None = None
+    department: str | None = Field(default=None, max_length=60)
+    shared_per_week: int | None = Field(default=None, ge=0, le=7)
+    # Switch the account off (someone who left) or back on.
+    disabled: bool | None = None
+
+    @field_validator("department")
+    @classmethod
+    def clean_department(cls, v: str | None) -> str | None:
+        return " ".join(v.split()) if v is not None else None
 
 
 class ResetLinkOut(BaseModel):
@@ -457,6 +488,8 @@ class CarReportRead(BaseModel):
     soc: int | None
     clean: bool | None
     issues: str | None
+    # Where a reported problem stands: "" open, "seen", "garage".
+    issue_status: str = ""
     created_at: datetime
 
 
@@ -496,6 +529,130 @@ class CarStateRead(BaseModel):
     issues: FactRead
     recent: list[CarReportRead]
     location: CarLocationRead
+    # Where the problem in `issues` stands ("" open, "seen", "garage"), and
+    # the report that named it.
+    issue_status: str = ""
+    issue_report_id: int | None = None
+    # When the car is out of service, now and to come (fleet.CarBlock).
+    blocks: list["CarBlockRead"] = []
+    # What its paperwork and upkeep have coming (fleet.due_items); admins only.
+    due: list["DueRead"] = []
+
+
+class IssueStatusIn(BaseModel):
+    status: Literal["", "seen", "garage"]
+
+
+class CarBlockRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    car_id: int
+    start_date: date
+    end_date: date | None
+    reason: str
+    by_name: str
+    created_at: datetime
+
+
+class CarBlockIn(BaseModel):
+    """An admin takes a car out of service; no `end_date`: until further notice."""
+
+    car_id: int
+    start_date: date
+    end_date: date | None = None
+    reason: str = Field(default="", max_length=200)
+
+    @field_validator("reason")
+    @classmethod
+    def clean_reason(cls, v: str) -> str:
+        return " ".join(v.split())
+
+    @model_validator(mode="after")
+    def end_after_start(self) -> "CarBlockIn":
+        if self.end_date is not None and self.end_date < self.start_date:
+            raise ValueError("The last day cannot be before the first")
+        return self
+
+
+class CarBlockEnd(BaseModel):
+    """When a block ends instead (null: until further notice)."""
+
+    end_date: date | None
+
+
+class CarBlockOut(BaseModel):
+    """A new block, and the rides already booked in the car on its days."""
+
+    block: CarBlockRead
+    rides: list["RideRead"]
+
+
+class DueRead(BaseModel):
+    kind: str
+    level: str
+    on: date | None = None
+    days_left: int | None = None
+    km_left: int | None = None
+
+
+class CarCostIn(BaseModel):
+    car_id: int
+    day: date
+    kind: Literal["fuel", "charging", "toll", "parking", "wash", "service", "other"]
+    amount: float = Field(gt=0, le=10_000_000)
+    litres: float | None = Field(default=None, gt=0, le=2000)
+    odometer_km: Km | None = None
+    note: str = Field(default="", max_length=200)
+
+    @field_validator("note")
+    @classmethod
+    def clean_note(cls, v: str) -> str:
+        return " ".join(v.split())
+
+
+class CarCostRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    car_id: int
+    day: date
+    kind: str
+    amount: float
+    litres: float | None
+    odometer_km: int | None
+    note: str
+    user_name: str
+    created_at: datetime
+
+
+class FuelPriceIn(BaseModel):
+    """A week's official price, dinars a litre."""
+
+    valid_from: date
+    diesel: float = Field(gt=0, le=10_000)
+    petrol: float = Field(gt=0, le=10_000)
+    source: str = Field(default="", max_length=200)
+
+
+class FuelPriceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    valid_from: date
+    diesel: float
+    petrol: float
+    source: str
+
+
+class FleetSettings(BaseModel):
+    """The office's rules an admin can change (fleet.DEFAULTS)."""
+
+    share_per_week: int = Field(ge=1, le=7)
+    share_per_day: int = Field(ge=1, le=3)
+    share_max_hours: int = Field(ge=1, le=72)
+    allowance_fuel: Literal["petrol", "diesel"]
+    allowance_cap: int = Field(ge=0, le=1_000_000)
 
 
 class NewStop(BaseModel):
@@ -785,9 +942,22 @@ class ProposalRead(BaseModel):
 
 
 class GaragePlateUpdate(BaseModel):
-    """An admin's tick: the plate is on the garage's list, or not after all."""
+    """An admin's tick: the plate is on the garage's list, or not after all.
+    `standing`: the garage lets it in for good, so its next rides are on the
+    list already (`GaragePlate`)."""
 
     registered: bool
+    standing: bool = False
+
+
+class GaragePlateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    plate: str
+    owner_name: str
+    by_name: str
+    created_at: datetime
 
 
 class RideRead(BaseModel):
@@ -846,6 +1016,9 @@ class RideRead(BaseModel):
     # The pins of the route, by the place's folded name (services.fold_name):
     # {"novi sad": {"lat": 45.25, "lng": 19.84}}.
     points: dict[str, dict[str, float]] = {}
+    # *All rides* only: the km between the car's last return and this ride's
+    # pickup reading that nobody logged (fleet.odometer_gaps); None elsewhere.
+    km_gap: int | None = None
 
 
 # --- ride requests ------------------------------------------------------------
@@ -963,3 +1136,7 @@ class KnownPlaceUpdate(BaseModel):
     @classmethod
     def clean(cls, v: str | None) -> str | None:
         return _clean_name(v) if v is not None else None
+
+
+CarStateRead.model_rebuild()
+CarBlockOut.model_rebuild()

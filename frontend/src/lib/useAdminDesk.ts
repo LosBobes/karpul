@@ -85,10 +85,10 @@ export function useAdminDesk({ isAdmin, rides, withBusy, upsertRide, removeRides
 
   // --- an own car's plate for the Beograd garage: the admin ticks it off ---
 
-  const onMarkPlate = (ride: Ride, registered: boolean) =>
+  const onMarkPlate = (ride: Ride, registered: boolean, standing = false) =>
     withBusy(ride.id, async () => {
       try {
-        upsertRide(await api.setPlateRegistered(ride.id, registered))
+        upsertRide(await api.setPlateRegistered(ride.id, registered, standing))
       } finally {
         bump()
       }

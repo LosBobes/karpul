@@ -17,6 +17,7 @@ from sqlmodel import Session
 from . import audit, geo
 from .access import on_behalf
 from .admin import admin_ids, is_admin
+from .fleet import plate_standing
 from .models import Booking, CarType, Ride, User
 from .offices import garage_task, office_distance
 from .push import notify
@@ -165,7 +166,7 @@ def apply_edit(session: Session, user: User, ride: Ride, sent: dict) -> Applied:
     # a new task for the admins, however the old one stood.
     was_task = garage_task(ride)
     if data["plate"] != ride.plate or data["ride_date"] != ride.ride_date:
-        data["plate_registered"] = False
+        data["plate_registered"] = plate_standing(session, data["plate"])
     # Whatever the driver had asked the passengers is overtaken by a change
     # made outright.
     if moved:

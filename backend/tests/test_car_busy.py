@@ -38,7 +38,7 @@ def test_the_rides_that_hold_a_car_and_not_the_pending_ones(client):
     got = busy(client, car["id"])
     assert got.status_code == 200, got.text
     assert got.json() == [
-        {"ride_id": held["id"], "ride_date": MONDAY.isoformat(), "departure_time": "08:00:00", "return_time": "12:00:00", "driver_name": "Ana Petrović"}
+        {"ride_id": held["id"], "ride_date": MONDAY.isoformat(), "departure_time": "08:00:00", "return_time": "12:00:00", "driver_name": "Ana Petrović", "out_of_service": False}
     ]
     # The ride being edited never clashes with itself.
     assert busy(client, car["id"], exclude=held["id"]).json() == []

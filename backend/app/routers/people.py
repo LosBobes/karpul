@@ -30,6 +30,6 @@ def list_people(session: SessionDep, creds: CredsDep):
     require_user(session, creds)
     people = session.exec(select(User)).all()
     return sorted(
-        (Person(id=p.id, display_name=p.display_name) for p in people if p.id is not None),
+        (Person(id=p.id, display_name=p.display_name) for p in people if p.id is not None and not p.disabled),
         key=lambda p: p.display_name.casefold(),
     )

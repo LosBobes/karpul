@@ -30,6 +30,8 @@
 @import './styles/sheets.css';
 /* the toast, the bolt you trace, the motion keyframes */
 @import './styles/feedback.css';
+/* the fleet: upkeep, costs, out of service, the month summary */
+@import './styles/fleet.css';
 /* the phone layout, later additions: hints, pickup rows, week tiles, the upcoming filters, empty states, figures, all rides, the appearance switch */
 @import './styles/extras.css';
 /* the dark theme, fingers not cursors, wide screens, hover, support and feedback */

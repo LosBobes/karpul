@@ -23,3 +23,15 @@ outlive the ride, car or person. On screen: *Admin log* in the drawer (`AdminLog
 the changes as chips with the old value struck through; a line about a ride that still exists opens it
 on the day plan. A new action needs its sentence in `adminLog.line` (both languages) and a new field
 its label in `adminLog.fields`. Tests: `tests/test_admin_rides.py`.
+
+
+**The office manager's side.** *All rides* has a **Month** tab (`MonthSummary.tsx`, `GET /api/admin/summary?month`,
+`fleet.month_summary`): per person, grouped by `User.department` (set under *People*), the shared-car rides and km (the
+odometer's stretches at the wheel where there are any, else the ride's length), own-car rides and km, rides along, and the
+own-car allowance: 30 % of a litre of the `allowance_fuel` (BMB 95 unless changed) at each day's official price for every
+km, flagged past `allowance_cap` (10,121 dinars a month, the tax-free amount from 1 Feb 2026). Pending rides and ones
+nobody drove are left out; its spreadsheet is built in the browser (`lib/fleet.ts summaryCsv`). **Switching an account off**
+(`User.disabled`, `PATCH /api/admin/users/{id} {disabled}`) is for someone who left: their coming plans go as on deletion
+(`_clear_coming`, shared with `delete_user`), sessions, push subscriptions and reset links are dropped and sockets closed,
+sign-in and reset answer *This account is switched off*, `/api/people` and `admin_ids` leave them out, and the history keeps
+the id. Not yourself, not a configured admin, not the last admin. Every change is in the admin's log.

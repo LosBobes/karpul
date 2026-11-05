@@ -190,7 +190,12 @@ request that adds or changes something people will notice adds an entry**: `{ id
 `WHATS_NEW` (newest first, `date` the day it lands), its title and a few lines in `whatsNew.entries` in both
 languages of `lib/i18n.ts` (`**words**` bold, as in the how-to), and a demo in `WhatsNewArt` keyed by the id: a
 small piece of the screen it is about playing out on a loop (the `.wn-*` keyframes in `styles/extras.css`; the
-base styles are the end state, because under reduced motion the loops stop). The sheet opens by itself once
+base styles are the end state, because under reduced motion the loops stop). **Write entries a bit tongue in
+cheek**, in both languages: a playful title and a wink or two in the body (*Cars take sick days too*), while still
+saying plainly what changed and where to find it; the no-em-dash rule below still holds. **Each entry says who it
+is for**: `for: 'admins'` for the admins' own screens, `for: 'members'` for what an admin already knows from the
+other side (a car out of service, a ride added in your name), nothing for everyone; `forReader` shows each reader
+only everyone's and their own side's, never the other side's. The sheet opens by itself once
 when an account has an entry it has not seen in this browser (`karpul.whatsNewSeen.<id>`) dated after the day
 it joined (a newcomer is not handed the history, and the end-to-end tests' accounts never see it), and *What's
 new* in the drawer's *Help* group shows all of them. `whatsNew.test.ts` checks ids, order and both languages.
@@ -288,8 +293,8 @@ The long write-ups of each feature live in `docs/features/`; read the one for th
 
 - [operations.md](docs/features/operations.md): the Mazda paper-log backfill (`backfill.run_once`, coming log rides `unconfirmed` until their driver confirms), the app's own nightly snapshot and its off-box copy (`app/housekeeping.py`, `app/offsite.py`), `/api/health`, Sentry, the slow/failed request log, and the country filter (`app/geofence.py`).
 - [accounts.md](docs/features/accounts.md): profile photos (cropped in the browser, served openly by a random key, `Avatar` looks them up by name) and the driver's phone (`RideRead.driver_phone`).
-- [admin.md](docs/features/admin.md): `may_run` lets an admin run any ride, `RideCreate.driver_id` adds one in someone's name (`Ride.added_by_*`), and every admin action is a line in `AdminAction` written before the commit (`audit.record`).
-- [shared-cars.md](docs/features/shared-cars.md): the one-a-week/one-a-day share and the 24 h stretch (`approval_for`, pending rides hold no slot, *Approvals*), the driver who cancels hands the car to a passenger (`needs_driver`), the Beograd garage list, the odometer (`DriveLeg`), the car's state and its guess (`app/carstate.py`, `CarReport`), where a car is, taken days in the form, *Usage*, and the office road (90 / 92 km).
+- [admin.md](docs/features/admin.md): the month summary per person with the own-car allowance, switching an account off, `may_run` lets an admin run any ride, `RideCreate.driver_id` adds one in someone's name (`Ride.added_by_*`), and every admin action is a line in `AdminAction` written before the commit (`audit.record`).
+- [shared-cars.md](docs/features/shared-cars.md): the share and the stretch as settings (`app/fleet.py`), the fleet (upkeep, out of service, costs, the official fuel price, odometer gaps, plates let in for good), (`approval_for`, pending rides hold no slot, *Approvals*), the driver who cancels hands the car to a passenger (`needs_driver`), the Beograd garage list, the odometer (`DriveLeg`), the car's state and its guess (`app/carstate.py`, `CarReport`), where a car is, taken days in the form, *Usage*, and the office road (90 / 92 km).
 - [rides.md](docs/features/rides.md): a driver's change waits for the passengers (`Ride.proposal`), the waiting list, threads, requests, seat notices (`SeatNotice`), running late, stops before and after the start and new pickup points, a new ride starting from your last one, and `RideForm`'s two depths.
 - [maps.md](docs/features/maps.md): `KARPUL_MAPS`, pins by folded name (`Ride.points`), known places and their re-pinning, the server-side geocoder and router, and the map components.
 - [notifications.md](docs/features/notifications.md): Web Push without pywebpush, who is told what, categories and reminders, the calendar files and feed, `/ride/{id}` previews, and the figures in *Your rides* (km shared, and the car km, CO₂ and fuel saved: `services.impact`, each saved trip split half and half between driver and passenger so the team's adds up).

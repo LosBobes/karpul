@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import { setUser, type AuthUser } from '../lib/auth'
 import { fmtShortDate, fmtTime, shortCarName } from '../lib/dates'
+import { fmtRsd } from '../lib/fleet'
 import { messages, useT } from '../lib/i18n'
 import type { PersonStats, StatBucket } from '../lib/types'
 import { Avatar } from './Avatar'
@@ -164,6 +165,7 @@ function ImpactGrid({ bucket }: { bucket: StatBucket }) {
           <div key={label} className="card stat-tile stat-tile-green">
             <strong className="when-value">{value}</strong>
             <span>{label}</span>
+            {label === t.myRides.fuel && bucket.fuel_rsd ? <small className="stat-sub">{t.myRides.fuelRsd(fmtRsd(bucket.fuel_rsd))}</small> : null}
           </div>
         ))}
       </div>

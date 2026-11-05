@@ -4,7 +4,10 @@ import { messages, useT } from '../lib/i18n'
 import type { CarReportInput, CarState, CarUsage, CorporateCar, CorporateCarInput, Point } from '../lib/types'
 import { CarGlyph, PowertrainMark } from './CarArt'
 import { CarStatusList } from './CarStatus'
-import { CarIcon, ChartIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon, XIcon } from './icons'
+import { CarIcon, ChartIcon, CoinsIcon, KebabIcon, MinusIcon, PencilIcon, PlusIcon, TrashIcon, WrenchIcon, XIcon } from './icons'
+import { FleetCosts } from './FleetCosts'
+import { FleetUpkeep } from './FleetUpkeep'
+import { ShareRules } from './ShareRules'
 import { PlaceDialog } from './PlaceDialog'
 import { Menu } from './Menu'
 import { PlaceInput } from './PlaceInput'
@@ -42,8 +45,8 @@ interface Props {
 /** Sentinel id for the "add a car" row, which has no car id of its own. */
 export const NEW_CAR_BUSY_ID = -1
 
-export type SharedCarsTab = 'cars' | 'usage'
-const TABS: SharedCarsTab[] = ['cars', 'usage']
+export type SharedCarsTab = 'cars' | 'upkeep' | 'costs' | 'usage'
+const TABS: SharedCarsTab[] = ['cars', 'upkeep', 'costs', 'usage']
 
 /**
  * The shared cars, in one sheet: a card per car with how it stands
@@ -55,8 +58,8 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
   const t = useT()
   const [editing, setEditing] = useState<number | 'new' | null>(null)
   const tab: SharedCarsTab = isAdmin ? picked : 'cars'
-  const tabIcon = { cars: <CarIcon size={16} />, usage: <ChartIcon size={16} /> }
-  const tabLabel = { cars: t.usage.carsTab, usage: t.usage.tab }
+  const tabIcon = { cars: <CarIcon size={16} />, upkeep: <WrenchIcon size={16} />, costs: <CoinsIcon size={16} />, usage: <ChartIcon size={16} /> }
+  const tabLabel = { cars: t.usage.carsTab, upkeep: t.fleet.upkeepTab, costs: t.fleet.costsTab, usage: t.usage.tab }
   const byId = new Map(cars.map((c) => [c.id, c]))
   const retired = cars.filter((c) => !c.active)
 
@@ -136,7 +139,14 @@ export function SharedCars({ isAdmin, states, onNotice, onReported, tab: picked,
         </div>
       )}
 
-      {tab === 'usage' && <UsageDashboard load={onLoadUsage} download={onDownloadUsage} />}
+      {tab === 'upkeep' && <FleetUpkeep cars={cars} states={states} onNotice={onNotice} onChanged={onReported} />}
+      {tab === 'costs' && <FleetCosts cars={cars} onNotice={onNotice} />}
+      {tab === 'usage' && (
+        <>
+          <ShareRules onNotice={onNotice} />
+          <UsageDashboard load={onLoadUsage} download={onDownloadUsage} />
+        </>
+      )}
 
       {tab === 'cars' && (
         <>
