@@ -9,7 +9,21 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'noYou' ? <NoYouDemo /> : demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** The You card folds away under the cars, and Ask for a ride moves up into its place. */
+function NoYouDemo() {
+  return (
+    <div className="wn-card wn-noyou">
+      <span className="wn-line wn-line-label" />
+      <div className="wn-noyou-card">
+        <span className="wn-pax-avatar">VB</span>
+        <span className="wn-line" />
+      </div>
+      <div className="wn-noyou-ask">✋</div>
     </div>
   )
 }

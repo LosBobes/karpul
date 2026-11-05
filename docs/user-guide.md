@@ -103,22 +103,18 @@ out of the app.
    full cars. Type a place or a driver's name in the search box to find a ride going your way.
 2. **Tap a row.** The ride opens: the driver, when it **Leaves** and **Returns**, the route
    from start to destination with any pickup points, and who is already in the car.
-3. If the ride has pickup points, choose where you get in with **Get in at**. If none of them
-   suits you, choose **Somewhere else…**: the place picker opens over the whole screen, the same one
+3. Tap **Get in this car**, and it asks **Where do you get in?**: tap a place on the route. If none
+   of them suits you, choose **Somewhere else…**: the place picker opens over the whole screen, the same one
    as for a ride's places. Pick a saved place or an address, **Pick on the map** to put the ring on
    the exact spot, or just use the words you typed; then say where on the way it is. The place is
    added to the route and the driver is told.
-4. Tap **Get in this car**. Your name appears in the passenger list and the driver gets a
-   notification.
+4. Your name appears in the passenger list and the driver gets a notification.
 
 That is it. Some more things you can do from there:
 
 - **Leave:** tap **Leave** next to your name. The driver is told.
 - **Switch cars:** if you are already in a car that day, the button on another car reads
   **Switch to this car**. One tap moves you.
-- **Drag and drop:** in the **Week** view you can also drag your chip from the **You** tray
-  onto a car, from one car to another, or back to **You** to get out. On a phone, press and
-  hold your chip for a moment until it lifts, then drag.
 - **Change your pickup point** later with **Change pickup**.
 - **Call the driver:** if the driver gave a phone number, **Call the driver** is on the card.
 - **Write to the car:** open **Messages** on the ride. Everyone in the car is notified.
@@ -342,7 +338,7 @@ one takes it by departure time, it is removed and everyone is told.
 
 ## 7. No car going your way? Ask for a ride
 
-Use **Ask for a ride** (at the top of *Upcoming*, under the filters, and in the **You** panel in *Week*):
+Use **Ask for a ride** (at the top of *Upcoming*, under the filters, and under the day's cars in *Week*):
 the day, roughly when, from and to, and a note ("any time before 9").
 
 Your request shows on the board under that day, among the people **Looking for a ride**, and

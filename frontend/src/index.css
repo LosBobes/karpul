@@ -24,7 +24,7 @@
 @import './styles/admin-log.css';
 /* the upcoming list, the passengers, the waiting list, the odometer, the car state, the thread, the requests */
 @import './styles/ride.css';
-/* people, your place, the notification centre, the empty card */
+/* people, the notification centre, the empty card */
 @import './styles/people.css';
 /* sheets and dialogs, the ride form, the guide, the language switch, sign in, your account, the drawer, the car pool */
 @import './styles/sheets.css';

@@ -16,7 +16,7 @@ import { DateCarousel } from './components/DateCarousel'
 import { DayPlan, type Slot } from './components/DayPlan'
 import { FeedbackSheet } from './components/FeedbackSheet'
 import { FluentIcon, type FluentName } from './components/FluentIcon'
-import { ArrowRightIcon, CalendarIcon, ClockIcon, ListIcon, MenuIcon } from './components/icons'
+import { ArrowRightIcon, CalendarIcon, ClockIcon, HandIcon, ListIcon, MenuIcon } from './components/icons'
 import { Logo } from './components/Logo'
 import { MyRides } from './components/MyRides'
 import { NotificationsSheet } from './components/NotificationsSheet'
@@ -34,7 +34,6 @@ import { WhatsNew } from './components/WhatsNew'
 import { forReader, loadSeen, markSeen, unseen, WHATS_NEW, type WhatsNewEntry } from './lib/whatsNew'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
-import { YouPanel } from './components/YouPanel'
 import { api, ApiError } from './lib/api'
 import type { Confirm } from './lib/confirm'
 import { errMsg } from './lib/errors'
@@ -45,7 +44,7 @@ import { setUser, useSession, type Session } from './lib/auth'
 import { messages, useT } from './lib/i18n'
 import { parseISODate, todayISO } from './lib/dates'
 import { useSlideDir } from './lib/motion'
-import { isMyRequest, MeContext, myBooking, type Me } from './lib/me'
+import { drives, isMyRequest, MeContext, myBooking, type Me } from './lib/me'
 import { resubscribePush } from './lib/push'
 import { useUpdateNotices, useUpdateReady } from './lib/pwa'
 import type { Ride, RideInput, RideRequest } from './lib/types'
@@ -509,16 +508,16 @@ function Board({ session }: { session: Session }) {
   ) : (
     <AddCarCard isPast={isPast} />
   )
+  // Nothing suits you that day: ask for a ride. In a car, driving or past, there is nothing to ask.
+  const canAskToday = !isPast && !askedToday && !myRideToday && !dayRides.some((r) => drives(r, me))
   const dayYou = loading ? null : (
     <>
-      <YouPanel
-        dayRides={dayRides}
-        currentRide={myRideToday}
-        isPast={isPast}
-        onOpenCar={setCarSel}
-        onAsk={() => openAsk(selected)}
-        asked={askedToday}
-      />
+      {canAskToday && (
+        <button type="button" className="add-row add-row-quiet" onClick={() => openAsk(selected)}>
+          <HandIcon size={18} />
+          {t.requests.ask}
+        </button>
+      )}
       <RequestList requests={dayRequests} isPast={isPast} busy={busyId !== null} onOffer={onOffer} onWithdraw={(r) => void onWithdraw(r)} />
     </>
   )
