@@ -1763,6 +1763,12 @@ function srApiError(message: string): string {
   // sign in again"), so the message is tried whole before it is split.
   const whole = srWhole(message)
   if (whole !== null) return whole
+  // A weekly series names the day that failed at the end: "<text> (2026-12-12)".
+  const day = message.match(/^(.+) \((\d{4}-\d{2}-\d{2})\)$/)
+  if (day) {
+    const head = srWhole(day[1])
+    if (head !== null) return `${head} (${day[2]})`
+  }
   // api.ts joins several validation errors with "; ", each "field: text".
   return message
     .split('; ')

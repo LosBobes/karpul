@@ -35,6 +35,12 @@ describe('server errors in Serbian', () => {
     )
   })
 
+  it('translates any refusal a repeat names its day on', () => {
+    expect(sr().apiError('You already have a shared car this week. An admin can approve another (2026-12-12)')).toBe(
+      'Već imaš zajednički auto ove sedmice. Administrator može da odobri još jedan (2026-12-12)',
+    )
+  })
+
   it('says plainly when the server could not be reached', () => {
     expect(sr().apiError('No connection to the server')).toBe('Nema veze sa serverom')
   })
