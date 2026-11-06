@@ -545,7 +545,7 @@ export function CarDetail({
                     <Avatar name={b.passenger_name} />
                     <span className="pax-name">
                       <span className="pax-name-row">
-                        {b.passenger_name}
+                        <span className="pax-name-text">{b.passenger_name}</span>
                         {mine && <span className="tag">{t.detail.you}</span>}
                       </span>
                       {(hasStops || (mine && !isPast)) && (
