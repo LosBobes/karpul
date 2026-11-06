@@ -34,9 +34,9 @@ import { WhatsNew } from './components/WhatsNew'
 import { forReader, loadSeen, markSeen, unseen, WHATS_NEW, type WhatsNewEntry } from './lib/whatsNew'
 import { SegThumb } from './components/Segmented'
 import { Upcoming } from './components/Upcoming'
-import { api, ApiError } from './lib/api'
+import { api } from './lib/api'
 import type { Confirm } from './lib/confirm'
-import { errMsg } from './lib/errors'
+import { asksApproval, errMsg } from './lib/errors'
 import { useAdminDesk } from './lib/useAdminDesk'
 import { useRideRequests } from './lib/useRideRequests'
 import { newlyAsked, useRideActions } from './lib/useRideActions'
@@ -361,8 +361,7 @@ function Board({ session }: { session: Session }) {
       setSelectedDate(input.ride_date)
     } catch (e) {
       setFormError(errMsg(e))
-      // The share's refusal (backend: services.LIMIT_WEEK / LIMIT_DAY) names its own way out.
-      setFormAsk(e instanceof ApiError && /An admin can approve (another|it)$/.test(e.message))
+      setFormAsk(asksApproval(e))
     } finally {
       setSubmitting(false)
     }

@@ -8,3 +8,12 @@ export function errMsg(e: unknown): string {
   if (e instanceof Error) return e.message
   return t.common.somethingWrong
 }
+
+/**
+ * Whether a failed ride is past the shared-car share, whose refusal names its own
+ * way out (backend: services.LIMIT_WEEK / LIMIT_DAY / limit_stretch). A weekly
+ * series puts the day that hit it at the end, "(2026-12-12)", so that may follow.
+ */
+export function asksApproval(e: unknown): boolean {
+  return e instanceof ApiError && /An admin can approve (another|it)(?: \(\d{4}-\d{2}-\d{2}\))?$/.test(e.message)
+}
