@@ -1990,6 +1990,76 @@
   18%, 100% { transform: none; }
 }
 
+/* What's new: the tour's spotlight. The ring (its outer shadow is the dimming)
+   lands on the tabs, then glides to the plus with its card; the end state, on
+   the plus, is what reduced motion shows. */
+.wn-spot {
+  position: relative;
+  overflow: hidden;
+  height: 8.5rem;
+}
+.wn-spot-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 1.6rem;
+}
+.wn-spot-tabs {
+  display: flex;
+  gap: 0.4rem;
+  width: 9rem;
+}
+.wn-spot-tabs .wn-line {
+  flex: 1;
+}
+.wn-spot-plus {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--green);
+  color: #fff;
+  font-weight: 700;
+}
+.wn-spot-hole {
+  position: absolute;
+  top: 0.6rem;
+  left: calc(100% - 2.75rem);
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--green);
+  box-shadow: 0 0 0 40rem rgb(0 0 0 / 0.45);
+  animation: wn-spot-hole 6s var(--ease-out) infinite;
+}
+.wn-spot-tip {
+  position: absolute;
+  top: 3.3rem;
+  left: calc(100% - 8.6rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 7.8rem;
+  padding: 0.5rem;
+  border-left: 3px solid var(--green);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  animation: wn-spot-tip 6s var(--ease-out) infinite;
+}
+@keyframes wn-spot-hole {
+  0%, 8% { opacity: 0; top: 0.6rem; left: 0.6rem; width: 9.5rem; height: 2.1rem; }
+  15%, 42% { opacity: 1; top: 0.6rem; left: 0.6rem; width: 9.5rem; height: 2.1rem; }
+  55%, 92% { opacity: 1; top: 0.6rem; left: calc(100% - 2.75rem); width: 2.1rem; height: 2.1rem; }
+  100% { opacity: 0; top: 0.6rem; left: calc(100% - 2.75rem); width: 2.1rem; height: 2.1rem; }
+}
+@keyframes wn-spot-tip {
+  0%, 12% { opacity: 0; left: 0.85rem; }
+  20%, 42% { opacity: 1; left: 0.85rem; }
+  55%, 92% { opacity: 1; left: calc(100% - 8.6rem); }
+  100% { opacity: 0; left: calc(100% - 8.6rem); }
+}
+
 /* What's new: the You card folds away and Ask for a ride takes its place. */
 .wn-noyou-card {
   display: flex;

@@ -9,7 +9,30 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'noYou' ? <NoYouDemo /> : demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'tourSpotlight' ? <TourSpotlightDemo /> : demo === 'noYou' ? <NoYouDemo /> : demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+    </div>
+  )
+}
+
+/** The board dims, a ring lands on the tabs, then glides to the plus with its card. */
+function TourSpotlightDemo() {
+  return (
+    <div className="wn-card wn-spot">
+      <div className="wn-spot-bar">
+        <span className="wn-spot-tabs">
+          <span className="wn-line" />
+          <span className="wn-line" />
+          <span className="wn-line" />
+        </span>
+        <span className="wn-spot-plus">+</span>
+      </div>
+      <span className="wn-line" />
+      <span className="wn-line wn-line-label" />
+      <span className="wn-spot-hole" />
+      <span className="wn-spot-tip">
+        <span className="wn-line" />
+        <span className="wn-line wn-line-label" />
+      </span>
     </div>
   )
 }

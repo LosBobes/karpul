@@ -399,6 +399,7 @@ function Board({ session }: { session: Session }) {
     <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
   )
   // The first-login tour (lib/tour.ts): once, for a new account, in this browser.
+  // An overlay in a portal, so where it is rendered does not matter.
   const finishTour = () => {
     setTourDone(user.id, true)
     setTouring(false)
@@ -625,7 +626,7 @@ function Board({ session }: { session: Session }) {
   return (
     <MeContext.Provider value={me}>
       <div className={wide ? 'app app-wide' : 'app'}>
-        {wide && <Dock {...menu} extra={tour} />}
+        {wide && <Dock {...menu} />}
         <div className="workspace">
           <header className="topbar">
             {wide ? (
@@ -662,7 +663,6 @@ function Board({ session }: { session: Session }) {
           <main>
             {!wide && seatNotices}
             {!wide && installCard}
-            {!wide && tour}
 
             {/* One switch for the three views, so the one leaving slides out as the next comes in. */}
             <SlideSwitch id={view} dir={viewDir}>
@@ -760,6 +760,7 @@ function Board({ session }: { session: Session }) {
         {is('howTo') && <HowTo isAdmin={isAdmin} onSupport={() => show('support')} onClose={closer('howTo')} />}
 
 
+        {tour}
         {is('whatsNew') && <WhatsNew entries={newsShown.length ? newsShown : news} onClose={closeNews} />}
         {is('support') && <SupportSheet onFeedback={() => show('feedback')} onClose={closer('support')} />}
 

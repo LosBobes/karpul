@@ -38,6 +38,8 @@ async function register(browser: Browser, who: ReturnType<typeof person>, option
   await page.getByLabel('Password').fill('a-long-enough-password')
   await page.getByRole('button', { name: 'Create account' }).click()
   await expect(page.getByRole('radiogroup', { name: 'View' })).toBeVisible()
+  // A new account gets the first-login tour, an overlay over the board.
+  await page.getByRole('button', { name: 'Skip the tour' }).click()
   return page
 }
 
