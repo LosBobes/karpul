@@ -596,6 +596,25 @@ span.plus-circle svg {
   }
 }
 
+/* Things laid out in one grid cell, only one visible (`.is-ghost` keeps its
+   space): a box as big as its biggest variant, so stepping through pages or
+   swapping Next for Done never resizes or moves anything (Tour.tsx,
+   WhatsNew.tsx, StackedLabel.tsx). */
+.one-cell {
+  display: grid;
+}
+.one-cell > * {
+  grid-area: 1 / 1;
+}
+.one-cell-label > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.is-ghost {
+  visibility: hidden;
+}
+
 /* The first-login tour (Tour.tsx): a card above the board on a phone and at
    the top of the dock on a wide screen, never over anything; `.tour-spot` is
    the ring it puts round the control a step is about. */
@@ -609,6 +628,11 @@ span.plus-circle svg {
 }
 .tour-card-dock {
   margin: 0 0.75rem 0.75rem;
+}
+.tour-words > * {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 .tour-card h2 {
   margin: 0;
