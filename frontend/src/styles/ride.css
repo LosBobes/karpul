@@ -123,23 +123,65 @@
   color: var(--green);
   white-space: nowrap;
 }
-/* The unfolded card grows out of the row (a grid row from 0fr to 1fr, so the
-   list below slides down with it). The clip wrapper hides the overflow while
-   it grows; its negative margin and matching padding leave room for the
-   cards' shadows so they are not cut off once open. */
-.session-detail {
-  display: grid;
-  grid-template-rows: 1fr;
-  margin: 0.6rem 0 0.5rem 0.75rem;
-  padding-left: 0.75rem;
-  border-left: 2px solid var(--green-line);
-  animation: unfold 0.28s var(--ease-out);
+/* One ride on a screen of its own, on a phone (components/RidePage.tsx): over
+   the board, under every sheet's backdrop (10) and above the tab bar and the
+   plus (8). It comes in from the right like a page pushed onto the view and
+   goes back the way it came. Only the closing keeps its end state: a
+   transform left on the page would trap the card's own fixed sheets. */
+.ride-page {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  animation: ride-page-in var(--dur-gentle) var(--ease-out);
 }
-.session-detail-clip {
-  min-height: 0;
-  overflow: hidden;
-  margin: -8px;
-  padding: 8px;
+.ride-page-closing {
+  animation: ride-page-out var(--dur-normal) var(--ease-in) forwards;
+  pointer-events: none;
+}
+.ride-page-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 3.5rem;
+  padding: calc(0.45rem + env(safe-area-inset-top)) max(0.7rem, calc(50% - 300px)) 0.45rem;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+.ride-page-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+.ride-page-title small {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+.ride-page-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem max(1.1rem, calc(50% - 300px + 1.1rem)) calc(1.5rem + env(safe-area-inset-bottom));
+}
+@keyframes ride-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+}
+@keyframes ride-page-out {
+  to {
+    opacity: 0;
+    transform: translateX(40px);
+  }
 }
 @keyframes unfold {
   from {

@@ -59,7 +59,7 @@ describe('the open tile on a day', () => {
 })
 
 describe('the open row in the upcoming list', () => {
-  it('unfolds only on a tap on a phone, and never leaves a wide pane empty', () => {
+  it('opens only on a tap on a phone, and never leaves a wide pane empty', () => {
     expect(upcomingSelection(null, [ride(3), mine], me, false)).toBeNull()
     expect(upcomingSelection(3, [ride(3), mine], me, false)).toBe(3)
     expect(upcomingSelection(null, [ride(3), mine], me, true)).toBe(7)

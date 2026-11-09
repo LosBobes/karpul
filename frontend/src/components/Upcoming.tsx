@@ -1,4 +1,3 @@
-import { type ReactNode } from 'react'
 import { fmtDayDate, fmtDayLabel, fmtTime, shortCarName } from '../lib/dates'
 import { useKept } from '../lib/keep'
 import { useT } from '../lib/i18n'
@@ -25,20 +24,19 @@ interface Props {
   onAsk: () => void
   onOffer: (request: RideRequest) => void
   onWithdraw: (request: RideRequest) => void
-  /** The ride whose detail is unfolded under its row. */
+  /** The open ride: on its own screen on a phone, in the pane beside the list on a wide screen. */
   openId: number | null
   onOpen: (rideId: number | null) => void
-  /** Draws the unfolded detail (App owns the handlers it needs). Left out
-   * on a wide screen, where the open ride shows in the pane beside the list. */
-  renderDetail?: (ride: Ride) => ReactNode
+  /** A row opens its ride on a screen of its own (RidePage, on a phone). */
+  opensPage?: boolean
 }
 
 /**
  * The next sessions as one list: a heading per day, a row per ride going that
- * day, then who is still looking for a ride that day. Tapping a row unfolds
- * the full ride card underneath it, so joining or editing never leaves the list.
+ * day, then who is still looking for a ride that day. Tapping a row opens the
+ * ride: on a screen of its own on a phone, beside the list on a wide screen.
  */
-export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, openId, onOpen, renderDetail }: Props) {
+export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, openId, onOpen, opensPage = false }: Props) {
   const t = useT()
   const me = useMe()
   // Filters live here: they are a way of looking at the list, not board state.
@@ -137,8 +135,9 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
                   .join(' ')
                 return (
                   <li key={r.id} className="session-item">
-                    <button type="button" className={cls} aria-expanded={renderDetail ? open : undefined}
-                      aria-current={!renderDetail && open ? 'true' : undefined} onClick={() => onOpen(open ? null : r.id)}>
+                    <button type="button" className={cls} aria-haspopup={opensPage ? 'dialog' : undefined}
+                      aria-expanded={opensPage ? open : undefined} aria-current={!opensPage && open ? 'true' : undefined}
+                      onClick={() => onOpen(open ? null : r.id)}>
                       {/* Three lines, each with the whole width: when (and your
                           place in it), the way, who drives what. */}
                       <span className="session-top">
@@ -173,11 +172,6 @@ export function Upcoming({ rides, requests, busy, onAsk, onOffer, onWithdraw, op
                         {allStops(r).length > 0 && <span className="session-stops">{t.upcoming.stops(allStops(r).length)}</span>}
                       </span>
                     </button>
-                    {open && renderDetail && (
-                      <div className="session-detail">
-                        <div className="session-detail-clip">{renderDetail(r)}</div>
-                      </div>
-                    )}
                   </li>
                 )
               })}

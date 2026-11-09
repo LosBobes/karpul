@@ -28,7 +28,7 @@ that fills the window: the page never scrolls; the drawer's content is docked do
 (`Dock` in `Sidebar.tsx`, no ☰), a toolbar carries the view's name, the view switch and the add
 button, and each view is two full-height panes (`.split`) that scroll on their own
 (`data-scroll-pane`):
-Upcoming is the list beside the open ride (no unfolding in place: `Upcoming` gets no `renderDetail`,
+Upcoming is the list beside the open ride (no screen of its own: `Upcoming` gets no `opensPage`,
 and the pane shows your next ride when nothing is picked), Week is the days, the day's rides as a
 vertical list (`CarCarousel vertical`) and *Ask for a ride* beside the open ride, Day is the plan with the
 ride in a column on the right. The ride pane is a container: past 760px the ride becomes one big
@@ -109,9 +109,9 @@ and the drawer's `pick` closes on the spot on purpose so the sheet it opens owns
 entry alone. Sheets rise from the bottom edge on a phone and pop up on a desktop, the drawer
 slides from the left, confirmations grow out of the middle and popovers come out of their anchor (`Popover` sets
 `transform-origin` and measures itself with `offsetWidth`, which a transform does not change),
-the toast and the floating plus spring in (the plus also contracts while pressed and springs back on release; the pressed state comes from pointer and key events, not `:active`, which phones apply late and Chrome holds on after the finger lifts), the Upcoming detail unfolds as a grid row from
-`0fr` (the `.session-detail-clip` wrapper hides the overflow and leaves room for shadows), a
-passenger who just got in grows into the car's list the same way (`.pax-slot-new`, `useArrivals`
+the toast and the floating plus spring in (the plus also contracts while pressed and springs back on release; the pressed state comes from pointer and key events, not `:active`, which phones apply late and Chrome holds on after the finger lifts), a ride opened on a phone comes in from the right as a screen of its own and goes back the same way
+(`.ride-page`, below), a
+passenger who just got in grows into the car's list as a grid row from `0fr` (`.pax-slot-new`, `useArrivals`
 in `lib/motion.ts`: not on first render, not into an empty list, not your own row, which takes the
 place of the *Get in* row; the seat controls stay on screen, disabled, while the call is out, so
 the card never flickers through its empty state first), and
@@ -173,7 +173,7 @@ as `.tone-*`; solid green when it is yours), from the driver's avatar at departu
 return, the way `CarDetail` draws a route; no return runs off the right edge, as the server holds the
 car to end of day. Now is an ink rule behind the roads (not red, which is for removal); each pool car
 says when it is next free (`rowStatus`). Switching to it jumps to today; `range` is that one day. A tapped bar
-opens the ride under the plan (beside it on a wide screen, `.split-day`); a free stretch of a pool car
+opens the ride (on its own screen on a phone, beside the plan on a wide screen, `.split-day`); a free stretch of a pool car
 (`.plan-free`, never in the past; under a mouse a ring follows the pointer to the half hour, popping in on a spring and shrinking away where it was when the pointer leaves, per road in `pins`, and the clock's ring the same through `useLinger` in `lib/motion.ts`; a company car's hour ticks are elements, `.plan-tick`, and the ones on a free stretch are green-tinted and stand up in a wave from the pointer, `--d` delaying each by its distance) opens `RideForm` with `slot`: that car, departure at the tapped
 half hour, back by the next booking or 17:00. While the board scrolls (a phone, a narrow pane), an
 overview strip sits on top of it (`components/PlanOverview.tsx`): the whole day across the card's width,
@@ -191,7 +191,14 @@ remembered as `karpul.planShape`; with nothing remembered a wide screen opens on
 pane's height) and a phone on the timeline. Upcoming is
 `Upcoming` (`components/Upcoming.tsx`): every ride from today for the next `UPCOMING_DAYS` (90;
 the API caps a range at 92) grouped under a heading per day, one row per car; a tapped row
-unfolds `CarDetail` beneath it. Above the list sit the filter chips (*All*, *Free seats*, *My
+opens the ride. **On a phone a picked ride is a screen of its own** in every view (a row in Upcoming, a
+tile in Week, a bar in Day): `RidePage` (`components/RidePage.tsx`), a fixed full-screen layer over the
+board (z-index 9: above the tab bar and the plus, under every sheet's backdrop, so the card's own sheets
+and App's forms stack over it) with a back arrow and the day and time in its bar, and `CarDetail` in a
+body that scrolls on its own. It is open while `carSel` names a loaded ride (`pageRide` in `App.tsx`, so a
+reload, a shared `/ride/{id}` link and a just-added ride open it too), closes through `useClosing` and
+`useBackClose` (the phone's back), and the list stays mounted underneath, so it comes back where it was
+scrolled. Nothing unfolds inside the list any more; a wide screen keeps the pane beside it. Above the list sit the filter chips (*All*, *Free seats*, *My
 rides*, *I'm in*) and a search box, state local to `Upcoming`; the day headings are sticky under
 the top bar (`.upcoming-head`). `App.tsx` loads whichever range the view needs (`range`) and
 the live-event filter uses the same range. Week is the day board: `DateCarousel` (the loaded Mon–Sun week as seven pills that always fit the
