@@ -596,19 +596,71 @@ span.plus-circle svg {
   }
 }
 
-/* The first-login tour (Tour.tsx): a card above the board on a phone and at
-   the top of the dock on a wide screen, never over anything; `.tour-spot` is
-   the ring it puts round the control a step is about. */
+/* Things laid out in one grid cell, only one visible (`.is-ghost` keeps its
+   space): a box as big as its biggest variant, so stepping through pages or
+   swapping Next for Done never resizes or moves anything (Tour.tsx,
+   WhatsNew.tsx, StackedLabel.tsx). */
+.one-cell {
+  display: grid;
+}
+.one-cell > * {
+  grid-area: 1 / 1;
+}
+.one-cell-label > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.is-ghost {
+  visibility: hidden;
+}
+
+/* The first-login tour (Tour.tsx): the screen dims, `.tour-hole` is the
+   clear, green-ringed box round the control a step is about (its outer shadow
+   is the dimming, so the two never drift apart), and the card floats beside
+   it. Hole and card glide between steps. */
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  background: rgb(0 0 0 / 0.55);
+  animation: fade-in var(--dur-gentle) var(--ease-out);
+}
+.tour-hole {
+  position: fixed;
+  border-radius: var(--radius-lg);
+  outline: 2px solid var(--green);
+  outline-offset: 0;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.55);
+  pointer-events: none;
+  transition:
+    top 0.45s var(--ease-out),
+    left 0.45s var(--ease-out),
+    width 0.45s var(--ease-out),
+    height 0.45s var(--ease-out);
+}
 .tour-card {
+  position: fixed;
+  width: min(22rem, calc(100vw - 24px));
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.9rem 1rem;
   border-left: 3px solid var(--green);
+  box-shadow: var(--shadow-pop);
+  transition:
+    top 0.45s var(--ease-out),
+    left 0.45s var(--ease-out);
   animation: pop-in-up var(--dur-gentle) var(--ease-out);
 }
-.tour-card-dock {
-  margin: 0 0.75rem 0.75rem;
+.tour-words > * {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 .tour-card h2 {
   margin: 0;
@@ -655,11 +707,6 @@ span.plus-circle svg {
   width: 16px;
   border-radius: 3px;
   background: var(--green);
-}
-.tour-spot {
-  /* No animation: the controls it rings (the plus) have their own. */
-  outline: 2px solid var(--green);
-  outline-offset: 3px;
 }
 
 /* The home-screen install offer (InstallCard.tsx): a card above the board on

@@ -1472,6 +1472,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      tourSpotlight: {
+        title: 'The tour turns the lights down',
+        body: "The tour now dims the screen and shines a green ring on the very button it is talking about, with its card right beside it, and the buttons stay put from step to step. Missed it as a newcomer? **Take the tour** in the menu's **Help** runs it again. Popcorn not included.",
+      },
       noYou: {
         title: 'Less of you, in a good way',
         body: "The **You** card under the day's cars is gone. It told you whether you were in a car, which the car itself already says, and it was the place to drop your name when dragging, which is also gone. What it was good for stays: **Ask for a ride** sits right under the cars when you have none that day.",
@@ -3176,6 +3180,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      tourSpotlight: {
+        title: 'Obilazak gasi svetla',
+        body: 'Obilazak sad zatamni ekran i uperi zeleni krug baš u dugme o kom priča, sa karticom odmah pored, a dugmad stoje u mestu od koraka do koraka. Propustio si ga kao novajlija? **Obilazak aplikacije** u meniju, pod **Pomoć**, pušta ga ponovo. Kokice nisu uključene.',
+      },
       noYou: {
         title: 'Manje tebe, u dobrom smislu',
         body: 'Kartica **Ti** ispod automobila tog dana je otišla. Govorila je da li si u nekom autu, što sam auto već kaže, i bila je mesto gde se spušta ime pri prevlačenju, kog takođe više nema. Ono za šta je valjala ostaje: **Zatraži prevoz** stoji odmah ispod automobila kad tog dana nemaš nijedan.',

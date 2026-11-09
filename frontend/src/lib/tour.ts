@@ -1,9 +1,8 @@
 /**
- * The first-login tour (components/Tour.tsx): three cards, each with a ring
- * round the control it is about, shown once to a new account in a browser.
- * Not a modal: it sits above the board on a phone and in the dock on a wide
- * screen, so nothing under it is ever covered. *Take the tour* in the
- * drawer's Help group shows it again.
+ * The first-login tour (components/Tour.tsx): three cards over a dimmed
+ * screen, each opening a ringed hole round the control it is about, shown
+ * once to a new account in a browser. *Take the tour* in the drawer's Help
+ * group shows it again.
  */
 
 export const TOUR_STEPS = ['find', 'offer', 'cars'] as const
@@ -12,7 +11,7 @@ export type TourStep = (typeof TOUR_STEPS)[number]
 /** An account this new (in days) is offered the tour; older ones know the app. */
 export const TOUR_NEW_DAYS = 14
 
-/** The element each step puts its ring round, on a phone and on a wide screen. */
+/** The element each step opens its hole round, on a phone and on a wide screen. */
 const TARGETS: Record<TourStep, [phone: string, wide: string]> = {
   find: ['.tabbar', '.topbar-center'],
   offer: ['.fab', '.toolbar-add'],

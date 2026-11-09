@@ -283,7 +283,7 @@ function SidebarBody({ userName, handle, isAdmin, onAccount, onPeople, onPlaces,
  * desktop app keeps its sidebar, instead of a drawer behind the ☰. Nothing
  * to close, no backdrop, no history entry; an item opens its sheet directly.
  */
-export function Dock({ extra, ...props }: Content & { extra?: ReactNode }) {
+export function Dock(props: Content) {
   const pick = (fn: () => void) => fn
   return (
     <aside id="app-sidebar" className="drawer dock" aria-label="Karpul">
@@ -292,8 +292,6 @@ export function Dock({ extra, ...props }: Content & { extra?: ReactNode }) {
           <Logo /> Karpul
         </span>
       </header>
-      {/* The first-login tour sits here on a wide screen, covering nothing. */}
-      {extra}
       <SidebarBody {...props} pick={pick} />
     </aside>
   )
