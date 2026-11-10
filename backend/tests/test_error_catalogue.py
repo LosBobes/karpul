@@ -23,6 +23,6 @@ def test_the_catalogue_reads_the_texts_it_should():
     assert "Only the driver can add other passengers to this car" in texts
     assert "Ana Petrović already joined this ride" in texts
     assert "Too many attempts; try again in 3 min" in texts
-    assert "must be an email address" in texts
+    assert "must be a phone number" in texts
     assert "That corporate car is already booked by Ana Petrović from 08:00 to 08:00 that day" in texts
     assert not any("{" in t for t in texts)

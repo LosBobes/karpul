@@ -12,14 +12,12 @@ TOMORROW = (date.today() + timedelta(days=1)).isoformat()
 
 ANA = {
     "username": "ana",
-    "email": "ana@example.com",
     "first_name": "Ana",
     "last_name": "Petrović",
     "password": "one-two-three-four",
 }
 MARKO = {
     "username": "marko",
-    "email": "marko@example.com",
     "first_name": "Marko",
     "last_name": "Jovanović",
     "password": "four-three-two-one",
@@ -74,10 +72,11 @@ def test_register_signs_you_in_and_never_echoes_the_password(client):
     assert ANA["password"] not in str(body)
 
 
-def test_username_and_email_are_stored_lowercase(client):
+def test_username_is_stored_lowercase_and_no_email_is_kept(client):
+    # An app from before the change may still send an email: it is ignored.
     body = register(client, username="Ana.P", email="Ana.P@Example.COM")
     assert body["user"]["username"] == "ana.p"
-    assert body["user"]["email"] == "ana.p@example.com"
+    assert "email" not in body["user"]
 
 
 @pytest.mark.parametrize(
@@ -85,7 +84,6 @@ def test_username_and_email_are_stored_lowercase(client):
     [
         ({"username": "no"}, "username"),
         ({"username": "Ana Petrović"}, "username"),
-        ({"email": "not-an-email"}, "email"),
         ({"phone": "call me"}, "phone"),
         ({"phone": "12345"}, "phone"),
         ({"password": "short"}, "password"),
@@ -98,21 +96,17 @@ def test_register_rejects_nonsense(client, overrides, field):
     assert field in r.text
 
 
-def test_username_email_and_display_name_are_each_unique(client):
+def test_username_and_display_name_are_each_unique(client):
     register(client)
-    taken_username = client.post("/api/auth/register", json={**ANA, "email": "other@example.com"})
+    taken_username = client.post("/api/auth/register", json={**ANA, "last_name": "Other"})
     assert taken_username.status_code == 409
     assert "username" in taken_username.json()["detail"]
-
-    taken_email = client.post("/api/auth/register", json={**ANA, "username": "ana2"})
-    assert taken_email.status_code == 409
-    assert "email" in taken_email.json()["detail"]
 
     # The board calls people by their display name, so two accounts may not
     # answer to one name however different their usernames are.
     same_name = client.post(
         "/api/auth/register",
-        json={**ANA, "username": "ana2", "email": "ana2@example.com", "first_name": " ana ", "last_name": "PETROVIĆ"},
+        json={**ANA, "username": "ana2", "first_name": " ana ", "last_name": "PETROVIĆ"},
     )
     assert same_name.status_code == 409
     assert "Ana Petrović" in same_name.json()["detail"] or "ana PETROVIĆ" in same_name.json()["detail"]
@@ -121,9 +115,9 @@ def test_username_email_and_display_name_are_each_unique(client):
 # --- signing in --------------------------------------------------------------
 
 
-def test_login_with_username_or_email(client):
+def test_login_with_the_username_either_case(client):
     register(client)
-    for login in ("ana", "ANA", "ana@example.com"):
+    for login in ("ana", "ANA"):
         r = client.post("/api/auth/login", json={"login": login, "password": ANA["password"]})
         assert r.status_code == 200, r.text
         assert r.json()["user"]["username"] == "ana"
@@ -306,7 +300,7 @@ def test_registrations_are_throttled_per_address(client):
     for i in range(10):
         client.post(
             "/api/auth/register",
-            json={**ANA, "username": f"ana{i}", "email": f"a{i}@example.com", "last_name": f"P{i}"},
+            json={**ANA, "username": f"ana{i}", "last_name": f"P{i}"},
         )
     assert client.post("/api/auth/register", json=MARKO).status_code == 429
 
@@ -443,38 +437,24 @@ def test_you_cannot_rename_yourself_onto_someone_else(client):
     assert r.status_code == 409
 
 
-def test_changing_the_email(client):
-    ana = register(client)["token"]
-    register(client, MARKO)
-    assert client.patch("/api/auth/me", json={"email": "marko@example.com"}, headers=bearer(ana)).status_code == 409
-    r = client.patch("/api/auth/me", json={"email": "Ana.New@Example.com"}, headers=bearer(ana))
-    assert r.status_code == 200
-    assert r.json()["email"] == "ana.new@example.com"
-    assert client.post("/api/auth/login", json={"login": "ana.new@example.com", "password": ANA["password"]}).status_code == 200
-
-
-def test_email_and_phone_are_optional(client):
-    no_email = {k: v for k, v in ANA.items() if k != "email"}
-    body = register(client, no_email)
-    assert body["user"]["email"] is None and body["user"]["phone"] is None
-    # A blank box is no email too, and two accounts without one do not clash.
-    marko = register(client, MARKO, email="  ", phone=" +381  64 123 4567 ")["user"]
-    assert marko["email"] is None
+def test_phone_is_optional(client):
+    body = register(client)
+    assert body["user"]["phone"] is None
+    marko = register(client, MARKO, phone=" +381  64 123 4567 ")["user"]
     assert marko["phone"] == "+381 64 123 4567"
     assert client.post("/api/auth/login", json={"login": "ana", "password": ANA["password"]}).status_code == 200
 
 
-def test_changing_and_clearing_the_email_and_phone(client):
+def test_changing_and_clearing_the_phone(client):
     ana = register(client)["token"]
     r = client.patch("/api/auth/me", json={"phone": "064/123-45-67"}, headers=bearer(ana))
     assert r.status_code == 200 and r.json()["phone"] == "064/123-45-67"
     # Leaving a field out keeps it; an empty one removes it.
     r = client.patch("/api/auth/me", json={"first_name": "Ana"}, headers=bearer(ana))
-    assert r.json()["phone"] == "064/123-45-67" and r.json()["email"] == "ana@example.com"
-    r = client.patch("/api/auth/me", json={"email": "", "phone": ""}, headers=bearer(ana))
+    assert r.json()["phone"] == "064/123-45-67"
+    r = client.patch("/api/auth/me", json={"phone": ""}, headers=bearer(ana))
     assert r.status_code == 200
-    assert r.json()["email"] is None and r.json()["phone"] is None
-    assert client.post("/api/auth/login", json={"login": "ana@example.com", "password": ANA["password"]}).status_code == 401
+    assert r.json()["phone"] is None
 
 
 def test_a_ride_carries_its_drivers_phone(client):

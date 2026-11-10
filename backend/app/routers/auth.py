@@ -48,12 +48,10 @@ def user_read(user: User) -> UserRead:
     return out
 
 
-def _taken(session: Session, *, username: str | None = None, email: str | None = None, name_key: str | None = None) -> User | None:
+def _taken(session: Session, *, username: str | None = None, name_key: str | None = None) -> User | None:
     clauses = []
     if username is not None:
         clauses.append(User.username == username)
-    if email is not None:
-        clauses.append(User.email == email)
     if name_key is not None:
         clauses.append(User.name_key == name_key)
     if not clauses:
@@ -76,8 +74,7 @@ def _signed_in(session: Session, user: User) -> AuthOut:
 def register(payload: RegisterIn, request: Request, session: WriteSessionDep):
     """Create an account and sign the browser in with it.
 
-    The display name (first + last) has to be free as well as the username and
-    the email: the board identifies people by that name, so two accounts
+    The display name (first + last) has to be free as well as the username: the board identifies people by that name, so two accounts
     answering to one name would be two people sharing a seat list. Rides and
     seats that already go by the name and belong to no account (from before
     accounts, or a seat a driver gave this colleague by name) become theirs.
@@ -87,16 +84,13 @@ def register(payload: RegisterIn, request: Request, session: WriteSessionDep):
     ratelimit.registrations.hit(ip)
     name = f"{payload.first_name} {payload.last_name}"
     name_key = norm_name(name)
-    clash = _taken(session, username=payload.username, email=payload.email, name_key=name_key)
+    clash = _taken(session, username=payload.username, name_key=name_key)
     if clash is not None:
         if clash.username == payload.username:
             raise HTTPException(status.HTTP_409_CONFLICT, "That username is taken")
-        if payload.email is not None and clash.email == payload.email:
-            raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
         raise HTTPException(status.HTTP_409_CONFLICT, f"Another account already goes by {name}")
     user = User(
         username=payload.username,
-        email=payload.email,
         phone=payload.phone,
         first_name=payload.first_name,
         last_name=payload.last_name,
@@ -117,7 +111,7 @@ def register(payload: RegisterIn, request: Request, session: WriteSessionDep):
 
 @router.post("/login", response_model=AuthOut)
 def login(payload: LoginIn, request: Request, session: WriteSessionDep):
-    """Sign in with the username or the email, plus the password.
+    """Sign in with the username and the password.
 
     Wrong passwords are counted per account and per address; past the limit
     the answer is 429 until the window has passed, right password or not.
@@ -189,8 +183,8 @@ def rotate_calendar_token(session: WriteSessionDep, creds: CredsDep):
 
 @router.patch("/me", response_model=UserRead)
 def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep):
-    """Change your own name, email, mobile number or password. An empty email
-    or number removes it; both are optional.
+    """Change your own name, mobile number or password. An empty number
+    removes it; it is optional.
 
     A new name is carried across every ride and booking you are in
     (`services.rename_person`), so the board shows it; the changed rides are
@@ -199,11 +193,6 @@ def update_me(payload: ProfileUpdate, session: WriteSessionDep, creds: CredsDep)
     user = require_user(session, creds)
     data = payload.model_dump(exclude_unset=True)
     old_name = user.display_name
-
-    if "email" in data and payload.email != user.email:
-        if payload.email is not None and _taken(session, email=payload.email) is not None:
-            raise HTTPException(status.HTTP_409_CONFLICT, "That email already has an account")
-        user.email = payload.email
 
     if "phone" in data:
         user.phone = payload.phone

@@ -255,10 +255,8 @@ def require_user(session: Session, creds: Credentials) -> User:
 
 
 def user_by_login(session: Session, login: str) -> User | None:
-    """Look an account up by its username or its email, either case."""
+    """Look an account up by its username, either case."""
     key = login.strip().lower()
     if not key:
         return None
-    return session.exec(
-        select(User).where((User.username == key) | (User.email == key))
-    ).first()
+    return session.exec(select(User).where(User.username == key)).first()

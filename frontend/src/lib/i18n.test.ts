@@ -23,8 +23,8 @@ describe('server errors in Serbian', () => {
   it('translates a validation error with its field, and each of several', () => {
     const t = sr()
     expect(t.apiError('origin: must not be empty')).toBe('Mesto polaska ne sme biti prazno')
-    expect(t.apiError('email: must be an email address; password: must be at least 8 characters')).toBe(
-      'Mejl: mora biti mejl adresa; Lozinka: mora imati najmanje 8 znakova',
+    expect(t.apiError('phone: must be a phone number; password: must be at least 8 characters')).toBe(
+      'Mobilni telefon: mora biti broj telefona; Lozinka: mora imati najmanje 8 znakova',
     )
   })
 

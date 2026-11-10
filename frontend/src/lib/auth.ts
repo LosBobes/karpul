@@ -16,7 +16,6 @@ import { useSyncExternalStore } from 'react'
 export interface AuthUser {
   id: number
   username: string
-  email: string | null
   phone: string | null
   first_name: string
   last_name: string

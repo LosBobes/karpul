@@ -53,7 +53,6 @@ def _admin_view(user: User) -> AdminUserRead:
         id=user.id,  # type: ignore[arg-type]
         username=user.username,
         display_name=user.display_name,
-        email=user.email,
         phone=user.phone,
         is_admin=is_admin(user),
         admin_by_config=admin_by_config(user),

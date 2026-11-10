@@ -1660,7 +1660,6 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   // Accounts (app/auth.py, app/routers/auth.py).
   [/^Wrong username or password$/, () => 'Pogrešno korisničko ime ili lozinka'],
   [/^That username is taken$/, () => 'To korisničko ime je zauzeto'],
-  [/^That email already has an account$/, () => 'Taj mejl već ima nalog'],
   [/^Another account already goes by (.+)$/, (m) => `Drugi nalog se već zove ${m[1]}`],
   [/^Your session has expired; sign in again$/, () => 'Prijava je istekla, prijavi se ponovo'],
   [/^Sign in first$/, () => 'Prvo se prijavi'],
@@ -1700,7 +1699,6 @@ const SR_API_ERRORS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^endpoint must be an https URL$/, () => 'Adresa za obaveštenja mora biti https'],
   [/^Wrong current password$/, () => 'Trenutna lozinka nije tačna'],
   [/^must be at least (\d+) characters$/, (m) => `mora imati najmanje ${m[1]} znakova`],
-  [/^must be an email address$/, () => 'mora biti mejl adresa'],
   [/^must be a phone number$/, () => 'mora biti broj telefona'],
   [/^current_password is required to set a new password$/, () => 'Za novu lozinku upiši i trenutnu'],
   [
@@ -1737,7 +1735,6 @@ const SR_FIELDS: Record<string, string> = {
   repeat_until: 'Ponavljanje do',
   pickup: 'Mesto ulaska',
   username: 'Korisničko ime',
-  email: 'Mejl',
   phone: 'Mobilni telefon',
   first_name: 'Ime',
   last_name: 'Prezime',

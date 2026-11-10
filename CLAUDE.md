@@ -45,7 +45,7 @@ Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the sh
 FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, shipped as **one container**: the multi-stage `Dockerfile` builds the frontend and copies `dist` into the Python image, and `backend/app/main.py` mounts it at `/` behind the `/api` routes (`KARPUL_FRONTEND_DIST`). Anything unmatched falls through to `index.html` — so any new API route must live under `/api`, or the SPA catch-all will swallow it.
 
 **Accounts, and nothing without one.** A person registers with a username, a
-first name and a surname, plus an optional mobile number (no email on screen; `User.email` stays for old accounts) (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
+first name and a surname, plus an optional mobile number (no email at all: `appuser.email` is dropped on start, `DROPPED_COLUMNS`) (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
 `display_name`. `User.name_key` is the normalised display name, unique, so two
 accounts can never answer to one name. Passwords are PBKDF2-HMAC-SHA256 from the standard
 library in a `pbkdf2_sha256$rounds$salt$hash` string (no new dependency, for the same reason
@@ -138,7 +138,7 @@ events keep landing mid-flight; mutation responses go through `upsertRide` inste
 
 **Schema changes.** A new *table* is created by `create_all` on start, which is how
 `appuser`, `authsession` and the newer tables reach a production database. `create_all` never adds a *column*
-to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start (and creates the model's indexes on the new column) and `tests/test_migrations.py` proves it. A NOT NULL column needs a `server_default` too, or `relax_not_null`'s table rebuild cannot copy old rows. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
+to an existing table, so a new column also goes into `ADDED_COLUMNS` in `database.py` with its DDL; `init_db()` runs the `ALTER TABLE`s on start (and creates the model's indexes on the new column) and `tests/test_migrations.py` proves it. A NOT NULL column needs a `server_default` too, or `rebuild_tables`' table rebuild cannot copy old rows. A column to get rid of goes into `DROPPED_COLUMNS` (off the model first): the table is rebuilt without it and the file VACUUMed. The production SQLite file predates `ride.passengers_manage`, which is why this exists.
 
 **Admins are accounts.** An admin manages the company-car pool and the people: `User.is_admin`,
 or a username listed in `KARPUL_ADMINS` (comma-separated, read per request, cannot be undone
