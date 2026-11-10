@@ -22,5 +22,8 @@ rename of someone with a photo and an account deletion publish. An admin takes o
 **Calling the driver.** `User.phone` is optional and shown on the rides that person drives:
 `RideRead.driver_phone` is looked up by `driver_id` (`board_extras` in `services.py`, one query for
 the whole board in `GET /api/rides`, next to the thread's message counts), and `CarDetail` turns it into a *Call the driver* `tel:` link
-for everyone but the driver. Email is optional too; the production `appuser.email` started out
-NOT NULL, so `relax_not_null` in `database.py` rebuilds that table once on start (`RELAXED_COLUMNS`).
+for everyone but the driver. **Karpul keeps no email**: the office mail writes addresses from names
+(`lib/carMail.ts`), so an account is a username, a name and a password, and signing in is by username.
+`appuser.email` is in `DROPPED_COLUMNS` in `database.py`: `rebuild_tables` rebuilds that table once on
+start without it (and its unique index) and VACUUMs, so the addresses leave the file too. An app from
+before still sending `email` is ignored, not refused.

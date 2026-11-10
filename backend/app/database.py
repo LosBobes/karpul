@@ -150,8 +150,15 @@ ADDED_COLUMNS: list[tuple[str, str, str]] = [
 
 # Columns that started out NOT NULL and are optional now. SQLite cannot drop a
 # NOT NULL with ALTER TABLE, so such a table is rebuilt from its model
-# (`relax_not_null`); each entry is (table, column).
-RELAXED_COLUMNS: list[tuple[str, str]] = [
+# (`rebuild_tables`); each entry is (table, column). `appuser.email` was one
+# until it was dropped altogether.
+RELAXED_COLUMNS: list[tuple[str, str]] = []
+
+# Columns the model no longer has, whose data must go: `appuser.email` (Karpul
+# keeps no email; the office mail writes addresses from names). The table is
+# rebuilt from its model (`rebuild_tables`), which copies every other column and
+# leaves this one, and its unique index, behind. Each entry is (table, column).
+DROPPED_COLUMNS: list[tuple[str, str]] = [
     ("appuser", "email"),
 ]
 
@@ -185,26 +192,26 @@ def add_missing_columns(target: Engine) -> list[str]:
     return [f"{table}.{column}" for table, column, _ in missing]
 
 
-def relax_not_null(target: Engine) -> list[str]:
-    """Rebuild the tables in RELAXED_COLUMNS whose column is still NOT NULL.
+def rebuild_tables(target: Engine) -> list[str]:
+    """Rebuild the tables in RELAXED_COLUMNS whose column is still NOT NULL,
+    and those in DROPPED_COLUMNS that still have the column.
 
     The SQLite recipe: create the table afresh from the model under a scratch
     name, copy the rows across (the columns both sides have), drop the old one,
     rename the new one into place and recreate its indexes. Row ids are copied,
     so `authsession.user_id` still points at the same people; the legacy rename
     keeps SQLite from rewriting that foreign key on the way. Returns the
-    "table.column" names that were relaxed; an up-to-date database is a no-op.
+    "table.column" names that were relaxed or dropped; an up-to-date database
+    is a no-op.
     """
     inspector = inspect(target)
     tables = set(inspector.get_table_names())
-    todo = sorted(
-        {
-            table
-            for table, column in RELAXED_COLUMNS
-            if table in tables
-            and any(c["name"] == column and not c["nullable"] for c in inspector.get_columns(table))
-        }
-    )
+    columns = {t: inspector.get_columns(t) for t in {t for t, _ in RELAXED_COLUMNS + DROPPED_COLUMNS} & tables}
+    relaxed = [
+        (t, c) for t, c in RELAXED_COLUMNS if t in columns and any(col["name"] == c and not col["nullable"] for col in columns[t])
+    ]
+    dropped = [(t, c) for t, c in DROPPED_COLUMNS if t in columns and any(col["name"] == c for col in columns[t])]
+    todo = sorted({t for t, _ in relaxed + dropped})
     if not todo:
         return []
     old_columns = {table: [c["name"] for c in inspector.get_columns(table)] for table in todo}
@@ -222,7 +229,15 @@ def relax_not_null(target: Engine) -> list[str]:
             for index in table.indexes:
                 index.create(conn)
         conn.exec_driver_sql("PRAGMA legacy_alter_table=OFF")
-    return [f"{t}.{c}" for t, c in RELAXED_COLUMNS if t in todo]
+    if dropped:
+        # A dropped table's pages stay in the file until VACUUM rewrites it,
+        # and dropped data should be gone, not merely unreachable.
+        raw = target.raw_connection()
+        try:
+            raw.cursor().execute("VACUUM")
+        finally:
+            raw.close()
+    return [f"{t}.{c}" for t, c in relaxed + dropped]
 
 
 def link_people(target: Engine) -> dict[str, int]:
@@ -274,7 +289,7 @@ def init_db() -> None:
     if DATABASE_URL == DEFAULT_DB_URL:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
     SQLModel.metadata.create_all(engine)
-    relax_not_null(engine)
+    rebuild_tables(engine)
     add_missing_columns(engine)
     link_people(engine)
 

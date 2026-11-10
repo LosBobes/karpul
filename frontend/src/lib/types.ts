@@ -302,7 +302,6 @@ export interface AdminUser {
   id: number
   username: string
   display_name: string
-  email: string | null
   phone: string | null
   is_admin: boolean
   /** An admin through KARPUL_ADMINS on the server, which the app cannot change. */
@@ -662,8 +661,6 @@ export interface PushConfig {
 export interface ProfilePatch {
   first_name?: string
   last_name?: string
-  /** `''` removes it. */
-  email?: string
   /** `''` removes it. */
   phone?: string
   current_password?: string

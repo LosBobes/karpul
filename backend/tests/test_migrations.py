@@ -7,7 +7,7 @@ from sqlalchemy import inspect, text
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, select
 
-from app.database import ADDED_COLUMNS, add_missing_columns, make_engine, relax_not_null
+from app.database import ADDED_COLUMNS, add_missing_columns, make_engine, rebuild_tables
 from app.models import AuthSession, Ride, User
 
 
@@ -71,10 +71,12 @@ def test_missing_table_is_skipped():
     assert add_missing_columns(_engine()) == []
 
 
-def test_email_becomes_optional_on_an_old_database():
-    """The first accounts release made `appuser.email` NOT NULL; the table is
-    rebuilt so it can be left out, keeping every row, id and sign-in."""
-    engine = _engine()
+def test_email_is_dropped_from_an_old_database(tmp_path):
+    """Karpul keeps no email. An old `appuser` (here the first accounts release,
+    where email was even NOT NULL) is rebuilt without it, keeping every other
+    row, id and sign-in, and the addresses are gone from the file itself."""
+    db = tmp_path / "old.db"
+    engine = make_engine(f"sqlite:///{db}")
     SQLModel.metadata.create_all(engine)
     with engine.begin() as conn:
         conn.execute(text("DROP TABLE appuser"))
@@ -89,7 +91,7 @@ def test_email_becomes_optional_on_an_old_database():
         conn.execute(text("CREATE UNIQUE INDEX ix_appuser_email ON appuser (email)"))
         conn.execute(
             text(
-                "INSERT INTO appuser VALUES (7, 'ana', 'ana@example.com', 'Ana', 'P', 'ana p', 'x', "
+                "INSERT INTO appuser VALUES (7, 'ana', 'ana.secret@example.com', 'Ana', 'P', 'ana p', 'x', "
                 "'2026-01-01 00:00:00')"
             )
         )
@@ -100,23 +102,22 @@ def test_email_becomes_optional_on_an_old_database():
             )
         )
 
-    assert relax_not_null(engine) == ["appuser.email"]
-    assert relax_not_null(engine) == []
+    assert rebuild_tables(engine) == ["appuser.email"]
+    assert rebuild_tables(engine) == []
     assert add_missing_columns(engine) == []  # the rebuild brought `phone` along
 
-    email = next(c for c in inspect(engine).get_columns("appuser") if c["name"] == "email")
-    assert email["nullable"]
-    assert {i["name"] for i in inspect(engine).get_indexes("appuser")} >= {"ix_appuser_email", "ix_appuser_name_key"}
+    assert "email" not in _columns(engine, "appuser")
+    indexes = {i["name"] for i in inspect(engine).get_indexes("appuser")}
+    assert "ix_appuser_email" not in indexes and "ix_appuser_name_key" in indexes
     foreign = inspect(engine).get_foreign_keys("authsession")
     assert foreign[0]["referred_table"] == "appuser"
 
     with Session(engine) as s:
         ana = s.get(User, 7)
-        assert ana is not None and ana.email == "ana@example.com" and ana.phone is None
+        assert ana is not None and ana.username == "ana" and ana.phone is None
         assert s.get(AuthSession, 1).user_id == 7
-        s.add(User(username="marko", first_name="M", last_name="J", name_key="m j", password_hash="x"))
-        s.add(User(username="mila", first_name="M", last_name="K", name_key="m k", password_hash="x"))
-        s.commit()
+    engine.dispose()
+    assert b"ana.secret@example.com" not in db.read_bytes()
 
 
 def test_rows_from_before_accounts_are_linked_to_the_account_with_that_name():

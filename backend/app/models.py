@@ -18,7 +18,9 @@ class CarType(str, Enum):
 
 class User(SQLModel, table=True):
     """A person with an account: username, password and their real name, plus
-    an email and a mobile number if they choose to give them.
+    a mobile number if they choose to give it. There is no email: the office
+    mail writes addresses from names (`lib/carMail.ts`), and the old column is
+    dropped on start (`database.DROPPED_COLUMNS`).
 
     The rest of the app identifies people by the name they show to colleagues
     (`Ride.driver_name`, `Booking.passenger_name`), so the account owns that
@@ -35,8 +37,6 @@ class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     # Lowercased on the way in, so a login is case-insensitive.
     username: str = Field(unique=True, index=True)
-    # Optional. Several NULLs never clash under SQLite's UNIQUE.
-    email: str | None = Field(default=None, unique=True, index=True)
     # Optional; shown on the rides this person drives, for a "call the driver" button.
     phone: str | None = Field(default=None)
     first_name: str
@@ -47,7 +47,7 @@ class User(SQLModel, table=True):
     password_hash: str
     # May manage the company-car pool and the accounts (app/admin.py). The
     # usernames in KARPUL_ADMINS are admins whatever this says.
-    # A server default too, so rebuilding an old table (database.relax_not_null)
+    # A server default too, so rebuilding an old table (database.rebuild_tables)
     # can copy rows that predate the column.
     is_admin: bool = Field(default=False, sa_column_kwargs={"server_default": "0"})
     # The secret in this person's calendar feed address (/api/calendar/<token>.ics):

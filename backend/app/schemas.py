@@ -153,9 +153,6 @@ class CorporateCarUpdate(BaseModel):
 # a letter or digit at each end, 3 to 32 characters. The display name (first +
 # last) is where accents and spaces belong.
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{1,30}[a-z0-9]$")
-# Deliberately loose: an address is proved by a person receiving mail at it, not
-# by a regular expression. This only catches typing the wrong thing in the box.
-EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s.]+(?:\.[^@\s.]+)+$")
 # A mobile number as people type it: digits with spaces, dashes, dots, slashes
 # or brackets between them and an optional leading +. 6 to 15 digits (E.164 tops
 # out at 15) catches a typo without knowing every country's numbering plan.
@@ -170,16 +167,6 @@ def _clean_username(value: str) -> str:
             "3 to 32 characters: lowercase letters, digits, dot, dash or underscore, "
             "starting and ending with a letter or digit"
         )
-    return value
-
-
-def _clean_email(value: str | None) -> str | None:
-    """Optional: an empty box means no email."""
-    value = (value or "").strip().lower()
-    if not value:
-        return None
-    if not EMAIL_RE.match(value):
-        raise ValueError("must be an email address")
     return value
 
 
@@ -204,7 +191,6 @@ class RegisterIn(BaseModel):
     """A new account. `first_name` + `last_name` become the name colleagues see."""
 
     username: str = Field(min_length=3, max_length=32)
-    email: str | None = Field(default=None, max_length=200)
     phone: str | None = Field(default=None, max_length=40)
     first_name: str = Field(min_length=1, max_length=40)
     last_name: str = Field(min_length=1, max_length=40)
@@ -214,11 +200,6 @@ class RegisterIn(BaseModel):
     @classmethod
     def clean_username(cls, v: str) -> str:
         return _clean_username(v)
-
-    @field_validator("email")
-    @classmethod
-    def clean_email(cls, v: str | None) -> str | None:
-        return _clean_email(v)
 
     @field_validator("phone")
     @classmethod
@@ -237,7 +218,7 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    """`login` is the username or the email; either signs the same account in."""
+    """`login` is the username."""
 
     login: str = Field(min_length=1, max_length=200)
     password: str = Field(min_length=1, max_length=200)
@@ -249,7 +230,6 @@ class ProfileUpdate(BaseModel):
 
     first_name: str | None = Field(default=None, min_length=1, max_length=40)
     last_name: str | None = Field(default=None, min_length=1, max_length=40)
-    email: str | None = Field(default=None, max_length=200)
     phone: str | None = Field(default=None, max_length=40)
     current_password: str | None = Field(default=None, max_length=200)
     new_password: str | None = Field(default=None, min_length=1, max_length=200)
@@ -259,11 +239,6 @@ class ProfileUpdate(BaseModel):
     @classmethod
     def clean_person_name(cls, v: str | None) -> str | None:
         return _clean_name(v) if v is not None else None
-
-    @field_validator("email")
-    @classmethod
-    def clean_email(cls, v: str | None) -> str | None:
-        return _clean_email(v)
 
     @field_validator("phone")
     @classmethod
@@ -291,7 +266,6 @@ class UserRead(BaseModel):
 
     id: int
     username: str
-    email: str | None
     phone: str | None
     first_name: str
     last_name: str
@@ -310,7 +284,6 @@ class AdminUserRead(BaseModel):
     id: int
     username: str
     display_name: str
-    email: str | None
     phone: str | None
     is_admin: bool
     # An admin through KARPUL_ADMINS, which the app cannot change.

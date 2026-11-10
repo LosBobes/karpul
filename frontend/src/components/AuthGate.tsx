@@ -12,9 +12,10 @@ const MODES: Mode[] = ['in', 'up']
 
 /**
  * The door. Nothing of the board is drawn until somebody is signed in, so this
- * is the whole screen: sign in with a username (or the email) and a password,
- * or register, which signs the new account in straight away. The email and the
- * mobile number are optional and say so in their labels.
+ * is the whole screen: sign in with a username and a password, or register,
+ * which signs the new account in straight away. No email is asked for (the
+ * office mail writes addresses from names); the mobile number is optional and
+ * says so in its label.
  *
  * The two tabs slide the way the other switched views do (lib/motion.ts), and
  * the language switch sits at the foot because a newcomer meets this screen
@@ -33,7 +34,6 @@ function SignIn() {
   const [mode, setMode] = useState<Mode>('in')
   const [login, setLogin] = useState('')
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -64,7 +64,6 @@ function SignIn() {
           ? await api.login(login.trim(), password)
           : await api.register({
               username: username.trim(),
-              email: email.trim() || undefined,
               phone: phone.trim() || undefined,
               first_name: firstName.trim(),
               last_name: lastName.trim(),
@@ -167,21 +166,6 @@ function SignIn() {
                   />
                 </label>
                 <p className="hint">{t.auth.phoneHint}</p>
-                <label className="field">
-                  <span className="field-label">
-                    {t.auth.email} <span className="field-optional">{t.auth.optional}</span>
-                  </span>
-                  <input
-                    type="email"
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    maxLength={200}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </label>
-                <p className="hint">{t.auth.emailHint}</p>
               </>
             )}
 
