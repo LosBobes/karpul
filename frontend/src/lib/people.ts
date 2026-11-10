@@ -7,8 +7,6 @@ export interface Person {
   display_name: string
   /** An admin (by the flag or by `KARPUL_ADMINS`): shared-car mails go to them. */
   is_admin?: boolean
-  /** An admin's own email, when the account has one; nobody else's is sent. */
-  email?: string | null
 }
 
 /** Lower case without the accents, so "jovic" finds "Jović". */

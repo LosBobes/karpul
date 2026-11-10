@@ -50,10 +50,11 @@ and `e2e/admin.spec.ts`). Adding a shared-car ride (and its way back, or the fir
 ends with one more step: *Let the office know* shows a mail and *Open in email* hands it to the driver's
 own mail app as a `mailto:` link, so it is sent from them. It cannot be skipped (`Sheet`'s `locked`: no close
 button, Escape, backdrop or back; `useBackClose` keeps the entry), and a reload brings it back (`useKept`). It goes to Vesna Ardeljan (the `org` contact in
-`lib/support.ts`, always the recipient) with every admin in Cc: an admin's own account email when it has
-one, else `name.surname@se.com` from the display name (`companyEmail`: lower case, no accents, `đ` as `dj`).
-`GET /api/people` carries `is_admin` and, for admins only, `email` for this; nobody else's email leaves the
-server. The mail is always Serbian whatever the app language, the date is in the subject, and its foot says
+`lib/support.ts`, `vesna.ardeljan@non.se.com`, always the recipient) with every admin in Cc, each as
+`name.surname@se.com` from the display name (`companyEmail`: lower case, no accents, `đ` as `dj`), unless the
+name is in `KNOWN_ADDRESSES` (any word order): Vesna there is the office's own address, so as an admin she is
+not copied twice. Account emails play no part, so nobody has to give one. `GET /api/people` carries `is_admin`
+for this and no email. The mail is always Serbian whatever the app language, the date is in the subject, and its foot says
 the app wrote it. A pending ride says it waits for approval.
 
 **The Beograd garage list.** The Beograd office's garage lets in only the cars on its list, so an own-car

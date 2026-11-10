@@ -26,16 +26,11 @@ function srDate(iso: string): string {
 }
 
 export const OFFICE_EMAIL = SUPPORT.find((c) => c.topic === 'org')!.email
-/** Who reads `OFFICE_EMAIL`: when she is an admin too, she is not copied as well. */
-export const OFFICE_NAME = 'Vesna Ardeljan'
 export const COMPANY_DOMAIN = 'se.com'
 
-/**
- * A colleague's company address from their name: "Đorđe Jović" →
- * "djordje.jovic@se.com", lower case, no accents, the words joined by dots.
- */
-export function companyEmail(name: string): string {
-  const local = name
+/** A name's words, lower case, no accents, `đ` as `dj`. */
+function nameWords(name: string): string[] {
+  return name
     .toLowerCase()
     .replace(/đ/g, 'dj')
     .normalize('NFD')
@@ -45,13 +40,24 @@ export function companyEmail(name: string): string {
     .trim()
     .split(/\s+/)
     .filter(Boolean)
-    .join('.')
-  return `${local}@${COMPANY_DOMAIN}`
 }
 
-/** An admin's address: their own when the account has one, else the company pattern. */
-export function adminEmail(p: Person): string {
-  return p.email?.trim() || companyEmail(p.display_name)
+/** The same person whatever the word order: "Ardeljan Vesna" is "Vesna Ardeljan". */
+const nameKey = (name: string) => [...nameWords(name)].sort().join(' ')
+
+/**
+ * The colleagues whose address is not `name.surname@se.com`. Vesna Ardeljan
+ * is the office (`OFFICE_EMAIL`), so as an admin she is not copied as well.
+ */
+const KNOWN_ADDRESSES = new Map<string, string>([[nameKey('Vesna Ardeljan'), OFFICE_EMAIL]])
+
+/**
+ * A colleague's company address from their name: "Đorđe Jović" →
+ * "djordje.jovic@se.com", lower case, no accents, the words joined by dots;
+ * or their own from `KNOWN_ADDRESSES`. Nobody has to give the app an email.
+ */
+export function companyEmail(name: string): string {
+  return KNOWN_ADDRESSES.get(nameKey(name)) ?? `${nameWords(name).join('.')}@${COMPANY_DOMAIN}`
 }
 
 /** The copy line: every admin but the office itself, each address once. */
@@ -59,8 +65,8 @@ export function adminCopies(people: Person[]): string[] {
   const seen = new Set([OFFICE_EMAIL.toLowerCase()])
   const out: string[] = []
   for (const p of people) {
-    if (!p.is_admin || companyEmail(p.display_name) === companyEmail(OFFICE_NAME)) continue
-    const e = adminEmail(p)
+    if (!p.is_admin) continue
+    const e = companyEmail(p.display_name)
     if (seen.has(e.toLowerCase())) continue
     seen.add(e.toLowerCase())
     out.push(e)

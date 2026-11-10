@@ -3,7 +3,7 @@ import { aRide } from '../test/render'
 import { adminCopies, carMail, carMailHref, companyEmail, OFFICE_EMAIL, sharedCarRides } from './carMail'
 import type { Person } from './people'
 
-const admin = (id: number, display_name: string, email: string | null = null): Person => ({ id, display_name, is_admin: true, email })
+const admin = (id: number, display_name: string): Person => ({ id, display_name, is_admin: true })
 
 describe('carMail', () => {
   it('makes a company address from a name, lower case and without accents', () => {
@@ -12,15 +12,21 @@ describe('carMail', () => {
     expect(companyEmail('Ana Marija Žarić')).toBe('ana.marija.zaric@se.com')
   })
 
-  it('copies every admin once, their own email first, never the office or a non-admin', () => {
+  it('knows the office has an address of its own, whatever the word order', () => {
+    expect(companyEmail('Vesna Ardeljan')).toBe('vesna.ardeljan@non.se.com')
+    expect(companyEmail('Ardeljan Vesna')).toBe('vesna.ardeljan@non.se.com')
+    expect(OFFICE_EMAIL).toBe('vesna.ardeljan@non.se.com')
+  })
+
+  it('copies every admin once by the company pattern, never the office or a non-admin', () => {
     const people: Person[] = [
       admin(1, 'Ada Čolić'),
-      admin(2, 'Boris Boss', 'boris@example.com'),
+      admin(2, 'Boris Boss'),
       admin(3, 'Vesna Ardeljan'),
       { id: 4, display_name: 'Nina Nobody', is_admin: false },
       admin(5, 'Ada Colic'),
     ]
-    expect(adminCopies(people)).toEqual(['ada.colic@se.com', 'boris@example.com'])
+    expect(adminCopies(people)).toEqual(['ada.colic@se.com', 'boris.boss@se.com'])
   })
 
   it('only mails about shared cars', () => {

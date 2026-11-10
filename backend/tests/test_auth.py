@@ -265,7 +265,7 @@ def test_someone_else_is_picked_from_the_accounts_never_typed(client):
 
     marko = register(client, MARKO)
     people = client.get("/api/people", headers=bearer(ana)).json()
-    assert {"id": marko["user"]["id"], "display_name": "Marko Jovanović", "is_admin": False, "email": None} in people
+    assert {"id": marko["user"]["id"], "display_name": "Marko Jovanović", "is_admin": False} in people
     assert client.anon.get("/api/people").status_code == 401
     # The id decides; the name sent along is only a label.
     r = client.post(url, json={"passenger_name": "whatever", "passenger_id": marko["user"]["id"]}, headers=bearer(ana))
