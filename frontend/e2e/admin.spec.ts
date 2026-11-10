@@ -113,7 +113,11 @@ test('a shared car past the share is asked for, approved by an admin, and a plat
   await expect(mail).toContainText('vesna.ardeljan@non.se.com')
   await expect(mail).toContainText(`boss.admin.${tag.toLowerCase()}@se.com`)
   await expect(mail.getByRole('link', { name: 'Open in email' })).toHaveAttribute('href', /^mailto:vesna\.ardeljan@non\.se\.com\?cc=/)
-  await mail.getByRole('button', { name: 'Not now' }).click()
+  // It cannot be skipped: no close button, Escape does nothing; opening the mail is the way out.
+  await expect(mail.getByRole('button', { name: 'Close' })).toHaveCount(0)
+  await mila.keyboard.press('Escape')
+  await expect(mail).toBeVisible()
+  await mail.getByRole('link', { name: 'Open in email' }).click()
   await expect(mail).toHaveCount(0)
   const pending = mila.getByRole('button', { name: new RegExp(`${milaName} · ${car.name}(?!\\d)`) }).filter({ hasText: 'Awaiting approval' })
   await expect(pending).toBeVisible()

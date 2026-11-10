@@ -21,6 +21,8 @@ import { useEffect, useRef } from 'react'
 
 interface Layer {
   close: () => void
+  /** A step that must be finished (CarMailSheet): back stays on it. */
+  locked: () => boolean
 }
 
 const STATE = { karpulLayer: true }
@@ -39,6 +41,11 @@ function onPopState() {
   }
   const top = stack.pop()
   if (!top) return
+  if (top.locked()) {
+    stack.push(top)
+    history.pushState(STATE, '')
+    return
+  }
   if (stack.length > 0) history.pushState(STATE, '')
   top.close()
 }
@@ -54,15 +61,20 @@ if (hasEntry()) {
 }
 window.addEventListener('popstate', onPopState)
 
-/** Register the calling overlay as an open layer for as long as it is mounted. */
-export function useBackClose(onClose: () => void) {
+/**
+ * Register the calling overlay as an open layer for as long as it is mounted.
+ * A `locked` one keeps the entry: back does nothing while it is up.
+ */
+export function useBackClose(onClose: () => void, locked = false) {
   const closeRef = useRef(onClose)
+  const lockedRef = useRef(locked)
   useEffect(() => {
     closeRef.current = onClose
-  }, [onClose])
+    lockedRef.current = locked
+  }, [onClose, locked])
 
   useEffect(() => {
-    const layer: Layer = { close: () => closeRef.current() }
+    const layer: Layer = { close: () => closeRef.current(), locked: () => lockedRef.current }
     if (!hasEntry()) history.pushState(STATE, '')
     stack.push(layer)
     return () => {

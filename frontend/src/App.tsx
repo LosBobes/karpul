@@ -130,7 +130,8 @@ function Board({ session }: { session: Session }) {
   const [submitting, setSubmitting] = useState(false)
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
   // Taking a shared car has one more step: the mail to the office (CarMailSheet).
-  const [carMailFor, setCarMailFor] = useState<{ rides: Ride[]; repeatUntil?: string | null } | null>(null)
+  // It cannot be skipped, so a reload brings it back (lib/keep.ts).
+  const [carMailFor, setCarMailFor] = useKept<{ rides: Ride[]; repeatUntil?: string | null } | null>('board.carMail', null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useKept<number | null>('board.ride', null)
   // The Shared cars sheet's tab: a ride card opens it on the cars, the drawer where it was.

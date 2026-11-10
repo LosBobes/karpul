@@ -220,7 +220,6 @@ const en = {
     to: 'To',
     cc: 'Cc',
     open: 'Open in email',
-    skip: 'Not now',
     loading: 'Finding the admins…',
   },
 
@@ -1483,7 +1482,7 @@ const en = {
     entries: {
       carMail: {
         title: 'The paperwork writes itself',
-        body: "Taking a shared car now ends with one more step: a ready mail to the office, with every admin in copy, saying who has which car from when until when. Tap **Open in email**, glance, send. The app even signs it, so nobody thinks you suddenly enjoy writing forms.",
+        body: "Taking a shared car now ends with one more step: a ready mail to the office, with every admin in copy, saying who has which car from when until when. It is not optional: tap **Open in email**, glance, send. The app even signs it, so nobody thinks you suddenly enjoy writing forms.",
       },
       tourSpotlight: {
         title: 'The tour turns the lights down',
@@ -1968,7 +1967,6 @@ const sr: Messages = {
     to: 'Za',
     cc: 'Cc',
     open: 'Otvori u mejlu',
-    skip: 'Ne sada',
     loading: 'Tražimo administratore…',
   },
 
@@ -3204,7 +3202,7 @@ const sr: Messages = {
     entries: {
       carMail: {
         title: 'Papirologija se piše sama',
-        body: 'Uzimanje službenog auta sad ima još jedan korak: gotov mejl kancelariji, sa svim administratorima u kopiji, ko ima koji auto od kad do kad. Dodirni **Otvori u mejlu**, baci pogled, pošalji. Aplikacija ga i potpiše, da niko ne pomisli da si odjednom zavoleo formulare.',
+        body: 'Uzimanje službenog auta sad ima još jedan korak: gotov mejl kancelariji, sa svim administratorima u kopiji, ko ima koji auto od kad do kad. Nije opciono: dodirni **Otvori u mejlu**, baci pogled, pošalji. Aplikacija ga i potpiše, da niko ne pomisli da si odjednom zavoleo formulare.',
       },
       tourSpotlight: {
         title: 'Obilazak gasi svetla',

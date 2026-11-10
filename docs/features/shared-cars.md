@@ -48,7 +48,8 @@ too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_shar
 **The mail to the office** (`lib/carMail.ts`, `components/CarMailSheet.tsx`, tested in `carMail.test.ts`
 and `e2e/admin.spec.ts`). Adding a shared-car ride (and its way back, or the first of a weekly series)
 ends with one more step: *Let the office know* shows a mail and *Open in email* hands it to the driver's
-own mail app as a `mailto:` link, so it is sent from them. It goes to Vesna Ardeljan (the `org` contact in
+own mail app as a `mailto:` link, so it is sent from them. It cannot be skipped (`Sheet`'s `locked`: no close
+button, Escape, backdrop or back; `useBackClose` keeps the entry), and a reload brings it back (`useKept`). It goes to Vesna Ardeljan (the `org` contact in
 `lib/support.ts`, always the recipient) with every admin in Cc: an admin's own account email when it has
 one, else `name.surname@se.com` from the display name (`companyEmail`: lower case, no accents, `đ` as `dj`).
 `GET /api/people` carries `is_admin` and, for admins only, `email` for this; nobody else's email leaves the

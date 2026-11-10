@@ -12,13 +12,15 @@ interface Props {
   rides: Ride[]
   /** The first of a weekly series: the last week. */
   repeatUntil?: string | null
+  /** Called once the mail is opened: the only way out. */
   onClose: () => void
 }
 
 /**
  * The step after taking a shared car (lib/carMail.ts): the mail to the office
  * with every admin in copy, shown as it will go out, and a button that opens
- * it in the driver's mail app. The admins are looked up when it opens.
+ * it in the driver's mail app. It cannot be skipped: no close, no Escape, no
+ * back; opening the mail is the way out. The admins are looked up when it opens.
  */
 export function CarMailSheet({ rides, repeatUntil, onClose }: Props) {
   const t = useT()
@@ -39,12 +41,10 @@ export function CarMailSheet({ rides, repeatUntil, onClose }: Props) {
       id="car-mail-title"
       title={t.carMail.title}
       onClose={onClose}
+      locked
       className="car-mail"
       footer={
         <div className="car-mail-actions">
-          <button type="button" className="btn btn-soft" onClick={onClose}>
-            {t.carMail.skip}
-          </button>
           {mail ? (
             <a className="btn btn-primary" href={carMailHref(mail)} onClick={() => setTimeout(onClose, 0)}>
               <MailIcon size={18} /> {t.carMail.open}
