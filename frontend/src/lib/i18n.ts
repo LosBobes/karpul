@@ -215,6 +215,15 @@ const en = {
     } as Record<SupportTopic, { title: string; body: string }>,
   },
 
+  carMail: {
+    title: 'Let the office know',
+    to: 'To',
+    cc: 'Cc',
+    open: 'Open in email',
+    skip: 'Not now',
+    loading: 'Finding the admins…',
+  },
+
   feedback: {
     title: 'Report a bug or send feedback',
     kind: 'What is it',
@@ -1472,6 +1481,10 @@ const en = {
     done: 'Got it',
     step: (n: number, of: number) => `${n} of ${of}`,
     entries: {
+      carMail: {
+        title: 'The paperwork writes itself',
+        body: "Taking a shared car now ends with one more step: a ready mail to the office, with every admin in copy, saying who has which car from when until when. Tap **Open in email**, glance, send. The app even signs it, so nobody thinks you suddenly enjoy writing forms.",
+      },
       tourSpotlight: {
         title: 'The tour turns the lights down',
         body: "The tour now dims the screen and shines a green ring on the very button it is talking about, with its card right beside it, and the buttons stay put from step to step. Missed it as a newcomer? **Take the tour** in the menu's **Help** runs it again. Popcorn not included.",
@@ -1948,6 +1961,15 @@ const sr: Messages = {
       app: { title: 'Problemi sa aplikacijom', body: 'Karpul prikazuje nešto pogrešno, ne da prijavu ili rezervaciju, ili se ruši.' },
       org: { title: 'Organizaciona pitanja', body: 'Ko sme da uzme zajednički auto, pravila, odobrenja i sve ostalo oko dogovora.' },
     },
+  },
+
+  carMail: {
+    title: 'Javite kancelariji',
+    to: 'Za',
+    cc: 'Cc',
+    open: 'Otvori u mejlu',
+    skip: 'Ne sada',
+    loading: 'Tražimo administratore…',
   },
 
   feedback: {
@@ -3180,6 +3202,10 @@ const sr: Messages = {
     done: 'Važi',
     step: (n, of) => `${n} od ${of}`,
     entries: {
+      carMail: {
+        title: 'Papirologija se piše sama',
+        body: 'Uzimanje službenog auta sad ima još jedan korak: gotov mejl kancelariji, sa svim administratorima u kopiji, ko ima koji auto od kad do kad. Dodirni **Otvori u mejlu**, baci pogled, pošalji. Aplikacija ga i potpiše, da niko ne pomisli da si odjednom zavoleo formulare.',
+      },
       tourSpotlight: {
         title: 'Obilazak gasi svetla',
         body: 'Obilazak sad zatamni ekran i uperi zeleni krug baš u dugme o kom priča, sa karticom odmah pored, a dugmad stoje u mestu od koraka do koraka. Propustio si ga kao novajlija? **Obilazak aplikacije** u meniju, pod **Pomoć**, pušta ga ponovo. Kokice nisu uključene.',

@@ -8,6 +8,8 @@ import { GarageList } from './components/GarageList'
 import { AuthGate } from './components/AuthGate'
 import { SharedCars, type SharedCarsTab } from './components/SharedCars'
 import { CarGuide } from './components/CarGuide'
+import { CarMailSheet } from './components/CarMailSheet'
+import { sharedCarRides } from './lib/carMail'
 import { HowTo } from './components/HowTo'
 import { CarCarousel } from './components/CarCarousel'
 import { CarDetail } from './components/CarDetail'
@@ -127,6 +129,8 @@ function Board({ session }: { session: Session }) {
   const [formAsk, setFormAsk] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [confirmState, setConfirm] = useState<Confirm | null>(null)
+  // Taking a shared car has one more step: the mail to the office (CarMailSheet).
+  const [carMailFor, setCarMailFor] = useState<{ rides: Ride[]; repeatUntil?: string | null } | null>(null)
   // Which car tile is open. null = "whatever makes sense for this day" (see `selection`).
   const [carSel, setCarSel] = useKept<number | null>('board.ride', null)
   // The Shared cars sheet's tab: a ride card opens it on the cars, the drawer where it was.
@@ -325,13 +329,18 @@ function Board({ session }: { session: Session }) {
         // The way back is a second ride; the first is in by now, so its
         // failure (the shared car's share, a clash) is a toast, not the form's error.
         let backFailed: string | null = null
+        const added = [created]
         if (wayBack) {
           try {
-            upsertRide(await api.createRide(wayBack))
+            const back = await api.createRide(wayBack)
+            upsertRide(back)
+            added.push(back)
           } catch (e) {
             backFailed = errMsg(e)
           }
         }
+        const shared = sharedCarRides(added)
+        if (shared.length) setCarMailFor({ rides: shared, repeatUntil: input.repeat_until })
         if (input.repeat_until) {
           // The other weeks reach this tab over the socket; a reload catches up if it is down.
           void load()
@@ -855,6 +864,7 @@ function Board({ session }: { session: Session }) {
 
         {is('adminLog') && isAdmin && <AdminLog onOpenRide={openLoggedRide} onClose={closer('adminLog')} />}
 
+        {carMailFor && <CarMailSheet rides={carMailFor.rides} repeatUntil={carMailFor.repeatUntil} onClose={() => setCarMailFor(null)} />}
         {is('approvals') && isAdmin && (
           <Approvals
             version={desk.tick + waiting}
