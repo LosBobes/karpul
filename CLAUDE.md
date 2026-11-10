@@ -185,8 +185,11 @@ the autouse `clean_env` clears `KARPUL_ADMINS` so a developer's shell can't leak
 
 `RideRead` is not a plain ORM dump: `to_ride_read_dict()` adds `bookings`, `waitlist`, `message_count`, `driver_phone` and the computed `free_seats`. Every ride-returning endpoint goes through it (pass `board_extras` for a list).
 
-**What's new** (`lib/whatsNew.ts`, `components/WhatsNew.tsx`, `components/WhatsNewArt.tsx`). **Every pull
-request that adds or changes something people will notice adds an entry**: `{ id, date }` at the top of
+**What's new** (`lib/whatsNew.ts`, `components/WhatsNew.tsx`, `components/WhatsNewArt.tsx`). **A pull
+request that adds or changes something important people will notice adds an entry** (a new feature, a
+changed rule, a new thing to do). **Not** for minor things: a UI rearrangement or refactor, a layout change, a
+restyle, small polish or a fix; the owner does not want those announced, so leave them out and label the PR
+`no-whats-new`. An entry is: `{ id, date }` at the top of
 `WHATS_NEW` (newest first, `date` the day it lands), its title and a few lines in `whatsNew.entries` in both
 languages of `lib/i18n.ts` (`**words**` bold, as in the how-to), and a demo in `WhatsNewArt` keyed by the id: a
 small piece of the screen it is about playing out on a loop (the `.wn-*` keyframes in `styles/extras.css`; the

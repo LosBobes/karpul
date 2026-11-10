@@ -26,6 +26,7 @@ import { RideLog } from './components/RideLog'
 import { RequestForm } from './components/RequestForm'
 import { RequestList } from './components/RequestList'
 import { UpdateScreen } from './components/UpdateScreen'
+import { RidePage } from './components/RidePage'
 import { RideForm } from './components/RideForm'
 import { Dock, Sidebar } from './components/Sidebar'
 import { SlideSwitch } from './components/SlideSwitch'
@@ -417,6 +418,9 @@ function Board({ session }: { session: Session }) {
   )
   const openUpcomingId = upcoming ? upcomingSelection(carSel, rides, me, wide) : null
   const openUpcomingRide = openUpcomingId !== null ? (rides.find((r) => r.id === openUpcomingId) ?? null) : null
+  // On a phone a picked ride is a screen of its own (RidePage), whichever view
+  // it was picked in; a wide screen shows it in the pane beside the list.
+  const pageRide = !wide && carSel !== null ? (rides.find((r) => r.id === carSel) ?? null) : null
 
   const openNewCar = () => setForm({ mode: 'create' })
 
@@ -452,7 +456,7 @@ function Board({ session }: { session: Session }) {
       key={ride.id}
       ride={ride}
       busy={busyId === ride.id}
-      isPast={isPast}
+      isPast={ride.ride_date < todayISO()}
       onJoin={onJoin}
       onLeave={onLeave}
       switchFrom={seatElsewhere(ride)}
@@ -490,8 +494,9 @@ function Board({ session }: { session: Session }) {
     />
   )
 
-  // The week view's three parts: one column on a phone, the tiles and your
-  // own place beside the open ride on a wide screen.
+  // The week view's three parts: one column on a phone (a tapped tile opens
+  // its ride on a screen of its own), the tiles and your own place beside the
+  // open ride on a wide screen.
   const dayTiles = loading ? (
     <div className="cars cars-skeleton" aria-busy="true">
       <span className="car-tile skeleton" />
@@ -499,10 +504,10 @@ function Board({ session }: { session: Session }) {
       <span className="car-tile skeleton" />
     </div>
   ) : dayRides.length === 0 ? null : (
-    <CarCarousel rides={dayRides} selected={selection} onSelect={setCarSel} vertical={wide} />
+    <CarCarousel rides={dayRides} selected={wide ? selection : (pageRide?.id ?? null)} onSelect={setCarSel} vertical={wide} />
   )
   const dayDetail = loading ? null : openRide ? (
-    <SlideSwitch id={String(openRide.id)} dir={tileDir}>
+    wide && <SlideSwitch id={String(openRide.id)} dir={tileDir}>
       {detailFor(openRide)}
     </SlideSwitch>
   ) : (
@@ -557,8 +562,8 @@ function Board({ session }: { session: Session }) {
     </div>
   )
 
-  // The day plan: the timeline, and the ride a bar was tapped for under it
-  // (beside it on a wide screen).
+  // The day plan: the timeline, and the ride a bar was tapped for beside it on
+  // a wide screen (on a screen of its own on a phone).
   const dayPlan = (
     <DayPlan
       date={selected}
@@ -692,7 +697,7 @@ function Board({ session }: { session: Session }) {
                         onWithdraw={(r) => void onWithdraw(r)}
                         openId={openUpcomingId}
                         onOpen={wide ? (id) => id !== null && openUpcoming(id) : openUpcoming}
-                        renderDetail={wide ? undefined : (ride) => detailFor(ride)}
+                        opensPage={!wide}
                       />,
                     )}
                     {wide && openUpcomingRide && (
@@ -712,10 +717,7 @@ function Board({ session }: { session: Session }) {
                     </aside>
                   </div>
                 ) : (
-                  <>
-                    {dayPlan}
-                    {planDetail}
-                  </>
+                  dayPlan
                 ))}
 
               {view === 'week' &&
@@ -749,6 +751,12 @@ function Board({ session }: { session: Session }) {
         {!wide && canAdd && <AddRideFab onClick={openNewCar} />}
 
         {!wide && tabBar}
+
+        {pageRide && (
+          <RidePage key={pageRide.id} ride={pageRide} onClose={() => setCarSel(null)}>
+            {detailFor(pageRide)}
+          </RidePage>
+        )}
 
         {wide && installCard}
         {wide && seatNotices}

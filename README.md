@@ -12,7 +12,7 @@ in; your name and surname are what colleagues see in a car.
 
 - **Upcoming** is the home screen: every session from today on as one list, a heading per day
   and a row per ride with its time, driver, car, route and free seats. Tap a row and the full
-  ride card unfolds underneath it, so you get in, edit or duplicate without leaving the list. The
+  ride card opens (on a screen of its own on a phone, beside the list on a wide screen). The
   list looks 90 days ahead.
 - **Week** is the day board: **pick a day** on the date carousel, then **swipe through the rides**
   going that day. Each tile shows the car and its seat count; the open ride shows the driver, when

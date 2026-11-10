@@ -70,7 +70,7 @@ test('offer a ride, get in, write in its thread', async ({ browser }, info) => {
   await expect(marko.getByText('See you at the fountain').first()).toBeVisible()
 
   // Ana's board shows him in the car and the message count, live.
-  // Adding the ride opened it already on a phone (the row is unfolded); a tap would fold it.
+  // Adding the ride opened it already on a phone (its own screen is up); a tap would not reach the row.
   const anaRow = ana.getByRole('button', { name: new RegExp(`${anaName} · Blue Golf`) })
   if ((await anaRow.getAttribute('aria-expanded')) !== 'true') await anaRow.click()
   await expect(ana.getByText(markoName).first()).toBeVisible()
@@ -157,6 +157,9 @@ test('a profile photo replaces the initials, for everyone', async ({ browser }, 
   const face = ivan.locator(`.avatar img[src="${src}"]`).first()
   await expect(face).toBeVisible()
 
+  // On a phone Nina's new ride opened on its own screen, over the menu: back to the board first.
+  const back = nina.getByRole('dialog').getByRole('button', { name: 'Back' })
+  if (await back.isVisible()) await back.click()
   if (await menu.isVisible()) await menu.click()
   await nina.locator('.drawer-me').first().click()
   // And back to the initials.

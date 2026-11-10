@@ -33,7 +33,7 @@ export function daySelection(picked: number | null, dayRides: Ride[], me: Me): n
 }
 
 /**
- * The open row in the upcoming list: only an explicit tap unfolds one; side by
+ * The open row in the upcoming list: only an explicit tap opens one; side by
  * side on a wide screen the pane is never empty, so with nothing picked it
  * shows your next ride, else the first.
  */
