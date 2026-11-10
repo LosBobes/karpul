@@ -201,7 +201,7 @@ def test_the_rides_table_window_is_checked(client, admin_auth):
 
 def test_everyone_signed_in_sees_who_the_admins_are(client, admin_auth, engine):
     """Whoever takes a shared car mails the admins, so the people list says who
-    they are and an admin's own email; nobody else's."""
+    they are; the addresses come from the names, so no email is in it."""
     from sqlmodel import Session, select
 
     from app.models import User
@@ -215,6 +215,4 @@ def test_everyone_signed_in_sees_who_the_admins_are(client, admin_auth, engine):
     people = {p["display_name"]: p["is_admin"] for p in client.get("/api/people", headers={"X-User-Name": "Ana"}).json()}
     assert people["Ada Admin"] is True
     assert people["Ana"] is False
-    emails = {p["display_name"]: p["email"] for p in client.get("/api/people", headers={"X-User-Name": "Ana"}).json()}
-    assert emails["Ada Admin"] == "ada@example.com"
-    assert emails["Ana"] is None
+    assert all("email" not in p for p in client.get("/api/people", headers={"X-User-Name": "Ana"}).json())
