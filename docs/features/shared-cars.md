@@ -45,6 +45,17 @@ again whenever the board's rides change or a decision is made); each ask is deci
 on it opens the ride on the day plan. The card keeps its *Approve* / *Decline* row (`.approval-row`)
 too. `approval` is an `ADDED_COLUMNS` column. Tests: `tests/test_shared_car_share.py`.
 
+**The mail to the office** (`lib/carMail.ts`, `components/CarMailSheet.tsx`, tested in `carMail.test.ts`
+and `e2e/admin.spec.ts`). Adding a shared-car ride (and its way back, or the first of a weekly series)
+ends with one more step: *Let the office know* shows a mail and *Open in email* hands it to the driver's
+own mail app as a `mailto:` link, so it is sent from them. It cannot be skipped (`Sheet`'s `locked`: no close
+button, Escape, backdrop or back; `useBackClose` keeps the entry), and a reload brings it back (`useKept`). It goes to Vesna Ardeljan (the `org` contact in
+`lib/support.ts`, always the recipient) with every admin in Cc: an admin's own account email when it has
+one, else `name.surname@se.com` from the display name (`companyEmail`: lower case, no accents, `đ` as `dj`).
+`GET /api/people` carries `is_admin` and, for admins only, `email` for this; nobody else's email leaves the
+server. The mail is always Serbian whatever the app language, the date is in the subject, and its foot says
+the app wrote it. A pending ride says it waits for approval.
+
 **The Beograd garage list.** The Beograd office's garage lets in only the cars on its list, so an own-car
 ride whose destination is that office (`offices.needs_garage`, `GARAGE_OFFICE`; mirrored by `goesToGarage` /
 `garageTask` in `lib/offices.ts`) asks for its licence plate: `Ride.plate` (upper-cased, `normalise_plate`, blank

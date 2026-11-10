@@ -197,3 +197,24 @@ def test_the_rides_table_window_is_checked(client, admin_auth):
     too_long = {"from": today.isoformat(), "to": (today + timedelta(days=1200)).isoformat()}
     r = client.get("/api/admin/rides", params=too_long, headers=admin_auth)
     assert r.status_code == 422 and "may not exceed" in r.json()["detail"]
+
+
+def test_everyone_signed_in_sees_who_the_admins_are(client, admin_auth, engine):
+    """Whoever takes a shared car mails the admins, so the people list says who
+    they are and an admin's own email; nobody else's."""
+    from sqlmodel import Session, select
+
+    from app.models import User
+
+    client.get("/api/people", headers={"X-User-Name": "Ana"})
+    with Session(engine) as s:
+        for u in s.exec(select(User)).all():
+            u.email = f"{u.display_name.split()[0].lower()}@example.com"
+            s.add(u)
+        s.commit()
+    people = {p["display_name"]: p["is_admin"] for p in client.get("/api/people", headers={"X-User-Name": "Ana"}).json()}
+    assert people["Ada Admin"] is True
+    assert people["Ana"] is False
+    emails = {p["display_name"]: p["email"] for p in client.get("/api/people", headers={"X-User-Name": "Ana"}).json()}
+    assert emails["Ada Admin"] == "ada@example.com"
+    assert emails["Ana"] is None

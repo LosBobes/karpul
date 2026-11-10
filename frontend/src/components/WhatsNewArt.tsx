@@ -9,7 +9,7 @@ import type { DemoKey } from '../lib/whatsNew'
 export function WhatsNewArt({ demo }: { demo: DemoKey }) {
   return (
     <div className={`wn-art wn-${demo}`} aria-hidden="true">
-      {demo === 'tourSpotlight' ? <TourSpotlightDemo /> : demo === 'noYou' ? <NoYouDemo /> : demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
+      {demo === 'carMail' ? <CarMailDemo /> : demo === 'tourSpotlight' ? <TourSpotlightDemo /> : demo === 'noYou' ? <NoYouDemo /> : demo === 'pickAfter' ? <PickAfterDemo /> : demo === 'whoWhere' ? <WhoWhereDemo /> : demo === 'outOfService' ? <OutOfServiceDemo /> : demo === 'fleetUpkeep' ? <FleetUpkeepDemo /> : demo === 'monthSummary' ? <MonthSummaryDemo /> : demo === 'pickColleague' ? <PickColleagueDemo /> : demo === 'impact' ? <ImpactDemo /> : demo === 'addedBy' ? <AddedByDemo /> : demo === 'seatNotice' ? <SeatNoticeDemo /> : demo === 'carWhere' ? <CarWhereDemo /> : demo === 'carBusy' ? <CarBusyDemo /> : demo === 'prefill' ? <PrefillDemo /> : <ConsentDemo />}
     </div>
   )
 }
@@ -287,6 +287,20 @@ function PrefillDemo() {
         </span>
       </div>
       {['Novi Sad → Beograd', '07:30 – 16:30', 'Mazda 6e · 3'].map((text, i) => (
+        <div key={text} className="wn-field" style={{ ['--i' as string]: i }}>
+          <span className="wn-field-empty" />
+          <span className="wn-field-text">{text}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** The mail after taking a shared car writes itself, line by line: to the office, the admins in copy, the car and its hours. */
+function CarMailDemo() {
+  return (
+    <div className="wn-card">
+      {['✉ vesna.ardeljan', 'Cc: admins', 'Mazda 6e · 08:00 – 17:00'].map((text, i) => (
         <div key={text} className="wn-field" style={{ ['--i' as string]: i }}>
           <span className="wn-field-empty" />
           <span className="wn-field-text">{text}</span>

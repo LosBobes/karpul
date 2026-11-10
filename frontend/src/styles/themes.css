@@ -720,3 +720,49 @@
 :root[data-resolved='dark'] .log-gap {
   color: #fcd34d;
 }
+
+/* --- The mail to the office after taking a shared car (components/CarMailSheet.tsx) - */
+.car-mail-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.car-mail-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  font-size: 0.86rem;
+}
+.car-mail-head dt {
+  color: var(--muted);
+}
+.car-mail-head dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.car-mail-subject {
+  margin: 0;
+  font-weight: 600;
+}
+.car-mail-body {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.car-mail-wait {
+  margin: 0;
+  color: var(--muted);
+}
+.car-mail-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
