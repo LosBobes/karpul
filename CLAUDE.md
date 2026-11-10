@@ -45,7 +45,7 @@ Server operations from a laptop (needs `HETZNER_HOST` / `HETZNER_USER` in the sh
 FastAPI + SQLModel (SQLite) backend, React 19 + Vite + TypeScript frontend, shipped as **one container**: the multi-stage `Dockerfile` builds the frontend and copies `dist` into the Python image, and `backend/app/main.py` mounts it at `/` behind the `/api` routes (`KARPUL_FRONTEND_DIST`). Anything unmatched falls through to `index.html` — so any new API route must live under `/api`, or the SPA catch-all will swallow it.
 
 **Accounts, and nothing without one.** A person registers with a username, a
-first name and a surname, plus an optional email and mobile number (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
+first name and a surname, plus an optional mobile number (no email on screen; `User.email` stays for old accounts) (`app/auth.py`, `routers/auth.py`); `"<first> <last>"` is their
 `display_name`. `User.name_key` is the normalised display name, unique, so two
 accounts can never answer to one name. Passwords are PBKDF2-HMAC-SHA256 from the standard
 library in a `pbkdf2_sha256$rounds$salt$hash` string (no new dependency, for the same reason

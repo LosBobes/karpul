@@ -29,7 +29,7 @@ interface Props {
 
 /**
  * Your account: who you are on the board, and the things you can change about
- * it (the mobile number and the email are optional; emptying one removes it). A new name is carried onto every ride you drive or sit in by the
+ * it (the mobile number is optional; emptying it removes it). A new name is carried onto every ride you drive or sit in by the
  * server (`services.rename_person`), so this is also how a misspelt surname
  * gets fixed without losing your history.
  */
@@ -37,7 +37,6 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
   const t = useT()
   const [firstName, setFirstName] = useKept('account.firstName', user.first_name)
   const [lastName, setLastName] = useKept('account.lastName', user.last_name)
-  const [email, setEmail] = useKept('account.email', user.email ?? '')
   const [phone, setPhone] = useKept('account.phone', user.phone ?? '')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -52,7 +51,6 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
   const changed =
     firstName.trim() !== user.first_name ||
     lastName.trim() !== user.last_name ||
-    email.trim() !== (user.email ?? '') ||
     phone.trim() !== (user.phone ?? '') ||
     newPassword.length > 0
   const ready = changed && firstName.trim() && lastName.trim() && (!newPassword || currentPassword)
@@ -63,8 +61,6 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
     const patch: ProfilePatch = {}
     if (firstName.trim() !== user.first_name) patch.first_name = firstName.trim()
     if (lastName.trim() !== user.last_name) patch.last_name = lastName.trim()
-    // An emptied box goes out as '', which removes it.
-    if (email.trim() !== (user.email ?? '')) patch.email = email.trim()
     if (phone.trim() !== (user.phone ?? '')) patch.phone = phone.trim()
     if (newPassword) {
       patch.current_password = currentPassword
@@ -231,22 +227,6 @@ export function AccountSheet({ user, onRenamed, onSaved, onNotice, onClose }: Pr
         />
       </label>
       <p className="hint">{t.auth.phoneHint}</p>
-
-      <label className="field">
-        <span className="field-label">
-          {t.account.emailSection} <span className="field-optional">{t.auth.optional}</span>
-        </span>
-        <input
-          type="email"
-          autoComplete="email"
-          autoCapitalize="none"
-          spellCheck={false}
-          maxLength={200}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </label>
-      <p className="hint">{t.auth.emailHint}</p>
 
       <h3 className="account-section">{t.account.passwordSection}</h3>
       <div className="grid-2">

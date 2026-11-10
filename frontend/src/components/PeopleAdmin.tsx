@@ -151,7 +151,7 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
   }
 
   const q = fold(query.trim())
-  const shown = (people ?? []).filter((p) => !q || fold(`${p.display_name} ${p.username} ${p.email ?? ''} ${p.department}`).includes(q))
+  const shown = (people ?? []).filter((p) => !q || fold(`${p.display_name} ${p.username} ${p.department}`).includes(q))
   const departments = [...new Set((people ?? []).map((p) => p.department).filter(Boolean))].sort()
 
   return (
@@ -189,7 +189,6 @@ export function PeopleAdmin({ onNotice, onClose }: Props) {
                 </strong>
                 <span>
                   @{u.username}
-                  {u.email && ` · ${u.email}`}
                   {u.department && ` · ${u.department}`}
                 </span>
                 {(u.disabled || u.shared_per_week !== null) && (
