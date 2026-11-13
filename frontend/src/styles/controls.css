@@ -784,3 +784,21 @@ span.plus-circle svg {
 .install-actions .btn {
   min-height: 36px;
 }
+
+/* The phone's "turn on notifications" card (PushCard), on the install card's frame. */
+.push-card-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--green-soft);
+  color: var(--green);
+  animation: notif-ring 0.9s var(--ease-out) 0.4s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .push-card-mark {
+    animation: none;
+  }
+}

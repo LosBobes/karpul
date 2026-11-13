@@ -147,6 +147,14 @@ const en = {
     done: 'Karpul is on your home screen',
   },
 
+  pushCard: {
+    title: 'Turn on notifications',
+    body: 'Hear when someone gets in your car, a ride changes or it is time to leave.',
+    go: 'Turn on',
+    later: 'Not now',
+    blocked: 'The browser blocked notifications. Allow them in the site settings.',
+  },
+
   myRides: {
     title: 'Your rides',
     thisMonth: 'This month',
@@ -201,6 +209,27 @@ const en = {
     unsupported: 'This browser cannot show push notifications. On an iPhone, install Karpul to the home screen first, then try again.',
     unavailable: 'Push is not set up on this server.',
     denied: 'The browser has blocked notifications for this site. Allow them in the site settings, then try again.',
+    test: {
+      title: 'Test',
+      send: 'Send me a test',
+      sending: 'Sending…',
+      browser: 'This browser',
+      permission: 'Permission',
+      permissionValue: { granted: 'allowed', denied: 'blocked', default: 'not asked yet', 'n/a': 'no push here' } as Record<string, string>,
+      worker: 'Service worker',
+      subscribed: 'Subscribed',
+      yes: 'yes',
+      no: 'no',
+      serverOff: 'The server has no push key, so nothing is sent.',
+      none: 'No browser of yours is subscribed. Turn notifications on above, then test again.',
+      thisDevice: 'this device',
+      delivered: (ms: number) => `Handed over, ${ms} ms`,
+      failed: (status: number) => `Refused (${status})`,
+      gone: 'Gone from the push service, removed',
+      error: (detail: string) => `Not reached: ${detail}`,
+      notHere: 'This browser is not among them: turn notifications on above.',
+      after: 'Handed over means the push service took it. Nothing on screen then means the phone held it back: check the system notification settings for Karpul or the browser.',
+    },
   },
 
   support: {
@@ -1888,6 +1917,14 @@ const sr: Messages = {
     done: 'Karpul je na početnom ekranu',
   },
 
+  pushCard: {
+    title: 'Uključi obaveštenja',
+    body: 'Saznaj kad neko uđe u tvoj auto, kad se vožnja promeni ili kad je vreme za polazak.',
+    go: 'Uključi',
+    later: 'Ne sada',
+    blocked: 'Pregledač je blokirao obaveštenja. Dozvoli ih u podešavanjima sajta.',
+  },
+
   myRides: {
     title: 'Tvoje vožnje',
     thisMonth: 'Ovog meseca',
@@ -1942,6 +1979,27 @@ const sr: Messages = {
     unsupported: 'Ovaj pregledač ne može da prikazuje obaveštenja. Na iPhone-u prvo dodaj Karpul na početni ekran, pa pokušaj ponovo.',
     unavailable: 'Obaveštenja nisu podešena na ovom serveru.',
     denied: 'Pregledač je blokirao obaveštenja za ovaj sajt. Dozvoli ih u podešavanjima sajta, pa pokušaj ponovo.',
+    test: {
+      title: 'Proba',
+      send: 'Pošalji mi probno',
+      sending: 'Šaljem…',
+      browser: 'Ovaj pregledač',
+      permission: 'Dozvola',
+      permissionValue: { granted: 'dozvoljeno', denied: 'blokirano', default: 'još nije traženo', 'n/a': 'ovde nema push obaveštenja' },
+      worker: 'Service worker',
+      subscribed: 'Prijavljen',
+      yes: 'da',
+      no: 'ne',
+      serverOff: 'Server nema push ključ, pa se ništa ne šalje.',
+      none: 'Nijedan tvoj pregledač nije prijavljen. Uključi obaveštenja iznad, pa probaj ponovo.',
+      thisDevice: 'ovaj uređaj',
+      delivered: (ms) => `Predato, ${ms} ms`,
+      failed: (status) => `Odbijeno (${status})`,
+      gone: 'Push servis ga više ne zna, uklonjen',
+      error: (detail) => `Nije stiglo: ${detail}`,
+      notHere: 'Ovaj pregledač nije među njima: uključi obaveštenja iznad.',
+      after: 'Predato znači da ga je push servis primio. Ako se onda ništa ne pojavi, telefon ga je zadržao: proveri sistemska podešavanja obaveštenja za Karpul ili pregledač.',
+    },
   },
 
   support: {

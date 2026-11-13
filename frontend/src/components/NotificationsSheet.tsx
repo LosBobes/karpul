@@ -1,14 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { api } from '../lib/api'
 import { messages, useT } from '../lib/i18n'
-import { usePush } from '../lib/push'
+import { checkDevice, usePush, type DeviceCheck } from '../lib/push'
 import { setUpdateNotices, useUpdateNotices } from '../lib/pwa'
-import { PUSH_CATEGORIES, REMIND_CHOICES, type PushCategory, type PushPreferences, type RemindBefore } from '../lib/types'
+import { PUSH_CATEGORIES, REMIND_CHOICES, type PushCategory, type PushPreferences, type PushTestResult, type RemindBefore } from '../lib/types'
 import { ApprovalIcon, BellIcon, BoltIcon, CarIcon, ClockIcon, HandIcon, MessageIcon, RouteIcon, UsersIcon } from './icons'
 import { SegThumb } from './Segmented'
 import { Sheet } from './Sheet'
 
 interface Props {
+  /** Admins get the tester at the foot of the sheet. */
+  admin?: boolean
   onChanged: (on: boolean) => void
   onClose: () => void
 }
@@ -36,7 +38,7 @@ const errMsg = (e: unknown) => messages().apiError(e instanceof Error ? e.messag
  * (15, 30 or 60 minutes, backend: app/reminders.py). Last, this device's "a
  * new version is ready" card, which is a local matter (`lib/pwa.ts`).
  */
-export function NotificationsSheet({ onChanged, onClose }: Props) {
+export function NotificationsSheet({ admin, onChanged, onClose }: Props) {
   const t = useT()
   const { state, error, enable, disable } = usePush()
   const canToggle = state === 'on' || state === 'off'
@@ -186,6 +188,95 @@ export function NotificationsSheet({ onChanged, onClose }: Props) {
           </li>
         </ul>
       </section>
+
+      {admin && <PushTester pushState={state} />}
     </Sheet>
+  )
+}
+
+/**
+ * Admins: what this browser says about itself (permission, service worker,
+ * subscription), and a test sent at once to every browser of their own
+ * account, with what each push service answered (`POST /api/push/test`).
+ * Between the two it shows where a notification gets lost: never subscribed,
+ * refused by the push service, or taken by it and held back by the phone.
+ */
+function PushTester({ pushState }: { pushState: string }) {
+  const t = useT()
+  const tt = t.notif.test
+  const [device, setDevice] = useState<DeviceCheck | null>(null)
+  const [result, setResult] = useState<PushTestResult | null>(null)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    void checkDevice().then((d) => live && setDevice(d))
+    return () => {
+      live = false
+    }
+  }, [pushState])
+
+  const send = async () => {
+    setSending(true)
+    setError(null)
+    try {
+      const d = await checkDevice()
+      setDevice(d)
+      setResult(await api.testPush(d.endpoint))
+    } catch (e) {
+      setError(errMsg(e))
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const yesNo = (v: boolean) => (v ? tt.yes : tt.no)
+  const reachedHere = result?.devices.some((d) => d.this_device) ?? true
+
+  return (
+    <section className="notif-section" aria-labelledby="notif-test">
+      <h3 id="notif-test" className="notif-section-title">
+        {tt.title}
+      </h3>
+      <div className="push-test card">
+        {device && (
+          <dl className="push-test-facts">
+            <dt>{tt.permission}</dt>
+            <dd>{tt.permissionValue[device.permission] ?? device.permission}</dd>
+            <dt>{tt.worker}</dt>
+            <dd>{yesNo(device.worker)}</dd>
+            <dt>{tt.subscribed}</dt>
+            <dd>{yesNo(device.endpoint !== null)}</dd>
+          </dl>
+        )}
+        <button type="button" className="btn btn-primary" disabled={sending} onClick={() => void send()}>
+          <BellIcon size={16} /> {sending ? tt.sending : tt.send}
+        </button>
+        {error && <p className="error">{error}</p>}
+        {result && !result.enabled && <p className="error">{tt.serverOff}</p>}
+        {result?.enabled && result.devices.length === 0 && <p className="error">{tt.none}</p>}
+        {result?.enabled && result.devices.length > 0 && (
+          <ul className="push-test-list">
+            {result.devices.map((d, i) => {
+              const ok = d.status !== null && d.status < 300
+              const text =
+                d.error !== null ? tt.error(d.error) : d.removed ? tt.gone : ok ? tt.delivered(d.ms) : tt.failed(d.status ?? 0)
+              return (
+                <li key={i} className={ok ? 'push-test-ok' : 'push-test-bad'}>
+                  <span className="push-test-host">
+                    {d.host}
+                    {d.this_device && <span className="tag tag-green">{tt.thisDevice}</span>}
+                  </span>
+                  <span className="push-test-status">{text}</span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {result?.enabled && result.devices.length > 0 && !reachedHere && <p className="hint">{tt.notHere}</p>}
+        {result?.enabled && result.devices.some((d) => d.status !== null && d.status < 300) && <p className="hint">{tt.after}</p>}
+      </div>
+    </section>
   )
 }

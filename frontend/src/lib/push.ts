@@ -148,3 +148,42 @@ export async function forgetPushHere(): Promise<void> {
   await api.unsubscribePush(sub.endpoint).catch(() => undefined)
   await sub.unsubscribe().catch(() => undefined)
 }
+
+/** What this browser itself says, for the admins' tester. */
+export interface DeviceCheck {
+  supported: boolean
+  permission: NotificationPermission | 'n/a'
+  worker: boolean
+  endpoint: string | null
+}
+
+export async function checkDevice(): Promise<DeviceCheck> {
+  if (!supported()) return { supported: false, permission: 'n/a', worker: false, endpoint: null }
+  const reg = await navigator.serviceWorker.getRegistration().catch(() => undefined)
+  const sub = reg ? await reg.pushManager.getSubscription().catch(() => null) : null
+  return { supported: true, permission: Notification.permission, worker: !!reg?.active, endpoint: sub?.endpoint ?? null }
+}
+
+/**
+ * The phone card asking to turn notifications on (`PushCard`). Put away, it
+ * stays away in this browser for `HINT_QUIET_DAYS`, then asks once more.
+ */
+const HINT_KEY = 'karpul.pushHint'
+const HINT_QUIET_DAYS = 30
+
+export function pushHintDismissed(now = Date.now()): boolean {
+  try {
+    const at = Number(localStorage.getItem(HINT_KEY))
+    return at > 0 && now - at < HINT_QUIET_DAYS * 86_400_000
+  } catch {
+    return false
+  }
+}
+
+export function dismissPushHint(now = Date.now()): void {
+  try {
+    localStorage.setItem(HINT_KEY, String(now))
+  } catch {
+    // Private mode: the card comes back next visit, which is fine.
+  }
+}

@@ -31,6 +31,7 @@ import type {
   Point,
   ProfilePatch,
   PushConfig,
+  PushTestResult,
   PushPreferences,
   Ride,
   RideInput,
@@ -374,6 +375,8 @@ export const api = {
     request<{ ok: boolean }>('/api/push/subscriptions', json('POST', { ...subscription, locale })),
 
   unsubscribePush: (endpoint: string) => request<void>('/api/push/subscriptions', json('DELETE', { endpoint })),
+  /** Admins: a test notification to every browser of their own account, with each push service's answer. */
+  testPush: (endpoint: string | null) => request<PushTestResult>('/api/push/test', json('POST', { endpoint })),
 
   // --- admin: the car pool and the people (backend: app/admin.py) ---
 
