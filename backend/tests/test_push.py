@@ -277,3 +277,39 @@ def test_a_passenger_whose_ride_goes_is_pointed_at_a_car_with_seats(client, conf
     sent.clear()
     client.delete(f"/api/rides/{alone['id']}", headers={"X-User-Name": "Ana"})
     assert sent[0][1]["title"] == "Ana removed the ride" and sent[0][1]["url"] == "/"
+
+
+def test_admin_push_tester(client, configured, monkeypatch, admin_auth):
+    statuses = iter([201, 410])
+    calls: list[tuple[str, dict]] = []
+
+    def fake_deliver(target, message, identity):
+        calls.append((target.endpoint, message))
+        return next(statuses)
+
+    monkeypatch.setattr(push_module, "deliver", fake_deliver)
+    client.post("/api/push/subscriptions", json=subscription("https://push.example/phone", locale="sr"), headers=admin_auth)
+    client.post("/api/push/subscriptions", json=subscription("https://other.example/old"), headers=admin_auth)
+    client.post("/api/push/subscriptions", json=subscription("https://push.example/bojan"), headers={"X-User-Name": "Bojan"})
+
+    # Not for everyone, and nothing sent.
+    assert client.post("/api/push/test", json={}, headers={"X-User-Name": "Bojan"}).status_code == 403
+    assert client.anon.post("/api/push/test", json={}).status_code == 401
+
+    r = client.post("/api/push/test", json={"endpoint": "https://push.example/phone"}, headers=admin_auth)
+    assert r.status_code == 200
+    out = r.json()
+    assert out["enabled"] is True
+    assert [(d["host"], d["status"], d["this_device"], d["removed"], d["locale"]) for d in out["devices"]] == [
+        ("push.example", 201, True, False, "sr"),
+        ("other.example", 410, False, True, "en"),
+    ]
+    assert [e for e, _ in calls] == ["https://push.example/phone", "https://other.example/old"]
+    assert calls[0][1]["title"] == "Karpul probno obaveštenje"
+    # The dropped one is gone; the next test only reaches the phone.
+    statuses = iter([201])
+    assert [d["host"] for d in client.post("/api/push/test", json={}, headers=admin_auth).json()["devices"]] == ["push.example"]
+
+
+def test_admin_push_tester_without_a_key(client, admin_auth):
+    assert client.post("/api/push/test", json={}, headers=admin_auth).json() == {"enabled": False, "devices": []}

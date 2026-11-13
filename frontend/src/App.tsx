@@ -61,6 +61,8 @@ import { useToast } from './lib/useToast'
 import { useWide } from './lib/useWide'
 import { promptInstall, setInstallDismissed, useInstallDismissed, useInstallMode } from './lib/install'
 import { InstallCard } from './components/InstallCard'
+import { PushCard } from './components/PushCard'
+import { useCoarsePointer } from './lib/useCoarsePointer'
 import { SeatNotices } from './components/SeatNotices'
 import { Tour } from './components/Tour'
 import { clearNotices } from './lib/notices'
@@ -409,6 +411,15 @@ function Board({ session }: { session: Session }) {
   const installCard = installMode && !installDismissed && (
     <InstallCard mode={installMode} floating={wide} onInstalled={installDone} />
   )
+  // On a phone with notifications off, a card to switch them on (PushCard).
+  // The install offer goes first; with the Notifications sheet open the card
+  // steps aside and mounts afresh after, so it sees what the sheet switched.
+  const coarse = useCoarsePointer()
+  const pushDone = useCallback(
+    (on: boolean) => setToast(on ? { kind: 'ok', text: t.toasts.notifOn } : { kind: 'error', text: t.pushCard.blocked }),
+    [setToast, t],
+  )
+  const pushCard = coarse && !installCard && !is('notif') && <PushCard floating={wide} onDone={pushDone} />
   // The first-login tour (lib/tour.ts): once, for a new account, in this browser.
   // An overlay in a portal, so where it is rendered does not matter.
   const finishTour = () => {
@@ -678,6 +689,7 @@ function Board({ session }: { session: Session }) {
           <main>
             {!wide && seatNotices}
             {!wide && installCard}
+            {!wide && pushCard}
 
             {/* One switch for the three views, so the one leaving slides out as the next comes in. */}
             <SlideSwitch id={view} dir={viewDir}>
@@ -769,6 +781,7 @@ function Board({ session }: { session: Session }) {
         )}
 
         {wide && installCard}
+        {wide && pushCard}
         {wide && seatNotices}
 
         {is('sidebar') && !wide && <Sidebar {...menu} onClose={closer('sidebar')} />}
@@ -787,7 +800,7 @@ function Board({ session }: { session: Session }) {
         {is('myRides') && <MyRides user={user} onNotice={notice} onClose={closer('myRides')} />}
 
         {is('notif') && (
-          <NotificationsSheet onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })} onClose={closer('notif')} />
+          <NotificationsSheet admin={isAdmin} onChanged={(on) => setToast({ kind: 'ok', text: on ? t.toasts.notifOn : t.toasts.notifOff })} onClose={closer('notif')} />
         )}
 
         {is('update') && <UpdateScreen onClose={closer('update')} />}

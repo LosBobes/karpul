@@ -291,6 +291,18 @@ def ride_message(
 # --- Sending ----------------------------------------------------------------
 
 
+# The admin's tester (`POST /api/push/test`): no category, never muted.
+TEST_TEXTS = {
+    "en": ("Karpul test notification", "If you can read this, notifications reach this device."),
+    "sr": ("Karpul probno obaveštenje", "Ako ovo čitaš, obaveštenja stižu na ovaj uređaj."),
+}
+
+
+def test_message(locale: str) -> dict[str, str]:
+    title, body = TEST_TEXTS.get(locale, TEST_TEXTS["en"])
+    return {"title": title, "body": body, "url": "/", "tag": "push-test"}
+
+
 def deliver(target: Target, message: dict[str, str], identity: Vapid) -> int:
     """POST one encrypted message to the push service; returns the status code.
     Module-level so tests can replace it."""

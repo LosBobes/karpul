@@ -657,6 +657,22 @@ export interface PushConfig {
   public_key: string | null
 }
 
+/** One browser of the admin's own, as the push tester reached it (backend: routers/push.py `send_test`). */
+export interface PushTestDevice {
+  host: string
+  locale: string
+  this_device: boolean
+  status: number | null
+  error: string | null
+  removed: boolean
+  ms: number
+}
+
+export interface PushTestResult {
+  enabled: boolean
+  devices: PushTestDevice[]
+}
+
 /** PATCH /api/auth/me — every field optional; a new password needs the current one. */
 export interface ProfilePatch {
   first_name?: string

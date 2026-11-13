@@ -1,11 +1,15 @@
 """`/api/push`: the browser's side of the notifications (see app/push.py)."""
 
+import time
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 
+from .. import push as push_module
+from ..admin import require_admin
 from ..auth import CredsDep, require_user
 from ..database import get_session, get_write_session
 from ..models import PushSubscription
@@ -99,3 +103,63 @@ def set_preferences(payload: Preferences, session: WriteSessionDep, creds: Creds
     session.add(user)
     session.commit()
     return Preferences(muted=muted(user), remind_before=lead_of(user))
+
+
+class TestIn(BaseModel):
+    """This browser's endpoint, if it has one, so the answer can point it out."""
+
+    endpoint: str | None = Field(default=None, max_length=1000)
+
+
+class TestDevice(BaseModel):
+    host: str
+    locale: str
+    this_device: bool
+    status: int | None = None
+    error: str | None = None
+    removed: bool = False
+    ms: int
+
+
+class TestOut(BaseModel):
+    enabled: bool
+    devices: list[TestDevice] = []
+
+
+@router.post("/test", response_model=TestOut)
+def send_test(payload: TestIn, session: WriteSessionDep, creds: CredsDep):
+    """An admin's tester: send a notification to every browser filed under
+    their own account, now and in this request, and say what each push
+    service answered. Muted categories do not apply. An endpoint the push
+    service has dropped (404/410) is deleted, as `notify` would."""
+    admin = require_admin(session, creds)
+    identity = vapid()
+    if identity is None:
+        return TestOut(enabled=False)
+    subs = session.exec(select(PushSubscription).where(PushSubscription.user_id == admin.id)).all()
+    devices: list[TestDevice] = []
+    for sub in subs:
+        target = push_module.Target(sub.endpoint, sub.p256dh, sub.auth, sub.locale)
+        started = time.monotonic()
+        code: int | None = None
+        error: str | None = None
+        try:
+            code = push_module.deliver(target, push_module.test_message(sub.locale), identity)
+        except Exception as exc:  # noqa: BLE001 - reported back, not raised
+            error = f"{type(exc).__name__}: {exc}"[:200]
+        removed = code in (404, 410)
+        if removed:
+            session.delete(sub)
+        devices.append(
+            TestDevice(
+                host=urlsplit(sub.endpoint).hostname or "?",
+                locale=sub.locale,
+                this_device=payload.endpoint is not None and sub.endpoint == payload.endpoint,
+                status=code,
+                error=error,
+                removed=removed,
+                ms=round((time.monotonic() - started) * 1000),
+            )
+        )
+    session.commit()
+    return TestOut(enabled=True, devices=devices)

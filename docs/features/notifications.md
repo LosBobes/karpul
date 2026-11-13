@@ -33,6 +33,15 @@ toast and its bolt never show and a waiting build is taken only in the first sec
 10 minutes in a tab, because an iOS app woken from a long sleep can keep its worker waiting and a timed
 reload found it still waiting and reloaded again every few seconds).
 
+**Finding out why nothing arrives.** On a phone (`pointer: coarse`) whose push is merely off (supported, a server
+key, not blocked, no subscription), `PushCard` sits above the board with the switch behind one button; the install
+card goes first, the card steps aside while the Notifications sheet is open, and *Not now* keeps it away for 30 days
+in that browser (`karpul.pushHint`). Admins get a *Test* section at the foot of `NotificationsSheet`: what this
+browser says (permission, service worker, subscribed) and *Send me a test*, `POST /api/push/test`, which sends at
+once, in the request, to every browser of the admin's own account (mutes do not apply) and returns each push
+service's answer; a 404/410 endpoint is deleted there and then. "Handed over" with nothing on screen means the
+phone's own settings are holding it back.
+
 **Calendar, sharing, figures.** `app/calendar.py` writes floating local times (no zone) for one
 ride (`/api/rides/{id}/calendar.ics`, signed in; the app fetches it and hands it over as a
 download) and for a person's feed (`/api/calendar/{token}.ics`, a week back to a year ahead).
